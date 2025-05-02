@@ -59,6 +59,12 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
-
+    //For Navigation
     implementation("androidx.navigation:navigation-compose:$nav_version")
+
+    //For Adaptability
+    implementation("androidx.compose.material3.adaptive:adaptive:1.2.0-alpha04")
+    implementation ("androidx.compose.material3.adaptive:adaptive-layout:1.2.0-alpha04")
+    implementation ("androidx.compose.material3.adaptive:adaptive-navigation:1.2.0-alpha04")
+
 }

@@ -1,4 +1,4 @@
-package com.example.pivota.dashboard
+package com.example.pivota.dashboard.presentation
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
