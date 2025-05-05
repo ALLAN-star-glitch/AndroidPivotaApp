@@ -67,4 +67,9 @@ dependencies {
     implementation ("androidx.compose.material3.adaptive:adaptive-layout:1.2.0-alpha04")
     implementation ("androidx.compose.material3.adaptive:adaptive-navigation:1.2.0-alpha04")
 
+    //Google Fonts
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
+
+
+
 }
