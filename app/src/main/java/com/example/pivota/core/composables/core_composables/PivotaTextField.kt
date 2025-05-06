@@ -1,4 +1,5 @@
-package com.example.pivota.components
+package com.example.pivota.core.composables.core_composables
+
 
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*

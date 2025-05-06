@@ -1,5 +1,6 @@
 package com.example.pivota.auth
 
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -34,30 +36,30 @@ import com.example.pivota.core.composables.core_composables.PivotaSecondaryButto
 
 
 @Composable
-fun LoginScreen() {
+fun RegisterScreen() {
     Box {
         val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
         val isWideScreen = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
 
 
         if (isWideScreen) {
-                TwoPaneLayout(
-                    welcomeText = "Welcome Back,",
-                    desc2 = "Consider upgrading to post unlimitted jobs, rentals, or services",
-                    desc1 = "Take your time. Upgrade when you're ready!",
-                    formContent = { _, _, _ ->
-                        LoginFormContent(
-                            topPadding = 64.dp,
-                            showHeader = true,
-                            isWideScreen = true
-                        )
-                    },
-                    showUgradeButton = true
-                )
+            TwoPaneLayout(
+                welcomeText = "Welcome to Pivota",
+                desc1 = "After registering, you can upgrade your account to post unlimited jobs, rentals, or services.",
+                desc2 = "It's free to join. Upgrade when you're ready!",
+                formContent = { _, _, _ ->
+                    RegistrationFormContent(
+                        topPadding = 64.dp,
+                        showHeader = true,
+                        isWideScreen = true
+                    )
+                },
+                showUgradeButton = true
+            )
 
         } else {
             SinglePaneLayout(
-                header = "LOGIN",
+                header = "REGISTER",
                 showUpgradeButton = false
             )
             Box(
@@ -65,7 +67,7 @@ fun LoginScreen() {
                     .fillMaxSize()
                     .zIndex(2f)
             ) {
-                LoginFormContent(
+                RegistrationFormContent(
                     topPadding = 220.dp,
                     showHeader = true,
                     isWideScreen = false
@@ -78,12 +80,16 @@ fun LoginScreen() {
 
 
 @Composable
-fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: Boolean = false) {
-
+fun RegistrationFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: Boolean = false) {
+    val tealColor = Color(0xFF008080)
 
     // State for input fields
+    var firstName by remember { mutableStateOf("") }
+    var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier
@@ -114,7 +120,7 @@ fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: 
                 )
 
                 Text(
-                    text = "LOGIN",
+                    text = "REGISTER",
                     style = MaterialTheme.typography.headlineMedium.copy(color = Color(0xFF008080)),
                     modifier = Modifier
                         .padding(bottom = 16.dp)
@@ -122,7 +128,19 @@ fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: 
                 )
             }
 
+            PivotaTextField(
+                value = firstName,
+                onValueChange = { firstName = it },
+                label = "First Name",
+                modifier = Modifier.fillMaxWidth(),
+                )
 
+            PivotaTextField(
+                value = lastName,
+                onValueChange = { lastName = it },
+                label = "Last Name",
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             PivotaTextField(
                 value = email,
@@ -131,6 +149,13 @@ fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: 
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            PivotaTextField(
+                value = phone,
+                onValueChange = { phone = it },
+                label = "Phone Number",
+                modifier = Modifier.fillMaxWidth(),
+                keyboardType = KeyboardType.Phone
+            )
 
             // Password Input Field
             PivotaPasswordField(
@@ -140,6 +165,13 @@ fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: 
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            // Confirm Password Input Field
+            PivotaPasswordField(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
+                label = "Confirm Password",
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             //Terms and Conditions Row
             Row(
@@ -158,11 +190,10 @@ fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: 
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                PivotaPrimaryButton(text = "Login")
-
+                PivotaPrimaryButton(text = "Register")
                 Text("OR", color = Color.Gray)
 
-                PivotaSecondaryButton(text = "Register")
+                PivotaSecondaryButton(text = "Login")
             }
 
             AuthGoogleButton()
@@ -174,9 +205,9 @@ fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: 
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun PreviewLoginScreen() {
+fun PreviewRegistrationScreenFreeMembership() {
     MaterialTheme {
-        LoginScreen()
+        RegisterScreen()
     }
 }
 

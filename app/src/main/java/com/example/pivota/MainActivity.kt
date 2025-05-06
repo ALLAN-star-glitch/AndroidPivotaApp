@@ -4,7 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.example.pivota.auth.RegistrationScreenFreeMembership
+import com.example.pivota.auth.LoginScreen
+import com.example.pivota.auth.RegisterScreen
 import com.example.pivota.ui.theme.PivotaTheme
 
 
@@ -15,7 +16,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             PivotaTheme {
 
-                RegistrationScreenFreeMembership()
+                RegisterScreen()
             }
         }
     }
