@@ -1,9 +1,8 @@
 package com.example.pivota.core.presentations.navigation
 
+import PrefrenceScreen
 import WelcomeScreen
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -11,7 +10,6 @@ import androidx.navigation.compose.rememberNavController
 import com.example.pivota.auth.presentation.screens.LoginScreen
 import com.example.pivota.auth.presentation.screens.RegisterScreen
 import com.example.pivota.dashboard.presentation.EmployerDashboardScreen
-import kotlinx.coroutines.launch
 
 @Composable
 fun NavHostSetup(modifier: Modifier = Modifier) {
@@ -20,31 +18,71 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
     NavHost(
         navController = navController,
         startDestination = "welcome",
-        modifier = modifier // comes from MainActivity Scaffold padding
+        modifier = modifier
     ) {
+        // Welcome Screen
         composable("welcome") {
             WelcomeScreen(
-                onNavigateToRegisterScreen = { navController.navigate("register") },
-                onNavigateToLoginScreen = { navController.navigate("loginScreen") }
+                onNavigateToRegisterScreen = {
+                    // No popUpTo here – we want the user to be able to go back to welcome
+                    navController.navigate("register")
+                },
+                onNavigateToLoginScreen = {
+                    // Same here – preserve welcome on back stack
+                    navController.navigate("loginScreen")
+                }
             )
         }
 
+        // Register Screen
         composable("register") {
             RegisterScreen(
-                onRegisterSuccess = { navController.navigate("loginScreen") },
-                onNavigateToLoginScreen = { navController.navigate("loginScreen") }
+                onRegisterSuccess = {
+                    // Clear register screen from back stack after successful registration
+                    navController.navigate("loginScreen") {
+                        popUpTo("register") { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToLoginScreen = {
+                    // Don't clear back stack if just navigating between forms
+                    navController.navigate("loginScreen")
+                }
             )
         }
 
+        // Login Screen
         composable("loginScreen") {
             LoginScreen(
-                onNavigateToDashboardScreen = { navController.navigate("dashboardScreen") },
-                onNavigateToRegisterScreen = { navController.navigate("register") }
+                onNavigateToDashboardScreen = {
+                    // Clear login screen after successful login
+                    navController.navigate("preferenceScreen") {
+                        popUpTo("loginScreen") { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToRegisterScreen = {
+                    navController.navigate("register")
+                }
             )
         }
 
-        composable("dashboardScreen") {
-            EmployerDashboardScreen() // apply padding here
+        // Preference Screen
+        composable("preferenceScreen") {
+            PrefrenceScreen(
+                onNavigateToDashboardScreen = {
+                    // Clear preference screen once dashboard is reached
+                    navController.navigate("dashboard") {
+                        popUpTo("preferenceScreen") { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
+        // Final Dashboard
+        composable("dashboard") {
+            EmployerDashboardScreen()
         }
     }
 }

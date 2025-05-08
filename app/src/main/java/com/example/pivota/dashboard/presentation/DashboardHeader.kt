@@ -23,7 +23,7 @@ fun DashboardHeader() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Employer Dashboard",
+            text = "Dashboard",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF008080) // Pivota Teal
