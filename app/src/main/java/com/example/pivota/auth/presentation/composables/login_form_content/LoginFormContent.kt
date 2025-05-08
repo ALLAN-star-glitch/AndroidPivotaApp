@@ -1,14 +1,18 @@
-package com.example.pivota.auth
-
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,67 +22,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.window.core.layout.WindowSizeClass
-import com.example.pivota.core.composables.auth_composables.AuthGoogleButton
-import com.example.pivota.core.composables.auth_composables.PivotaPasswordField
-import com.example.pivota.core.composables.core_composables.PivotaTextField
-import com.example.pivota.core.composables.auth_composables.PivotaCheckBox
-import com.example.pivota.core.composables.auth_composables.SinglePaneLayout
-import com.example.pivota.core.composables.auth_composables.TwoPaneLayout
-import com.example.pivota.core.composables.core_composables.PivotaPrimaryButton
-import com.example.pivota.core.composables.core_composables.PivotaSecondaryButton
-
+import com.example.pivota.auth.presentation.composables.google_button.AuthGoogleButton
+import com.example.pivota.auth.presentation.composables.checkbox.PivotaCheckBox
+import com.example.pivota.core.presentations.composables.text_field.PivotaPasswordField
+import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
+import com.example.pivota.core.presentations.composables.buttons.PivotaSecondaryButton
+import com.example.pivota.core.presentations.composables.text_field.PivotaTextField
 
 @Composable
-fun LoginScreen() {
-    Box {
-        val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
-        val isWideScreen = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
-
-
-        if (isWideScreen) {
-                TwoPaneLayout(
-                    welcomeText = "Welcome Back,",
-                    desc2 = "Consider upgrading to post unlimitted jobs, rentals, or services",
-                    desc1 = "Take your time. Upgrade when you're ready!",
-                    formContent = { _, _, _ ->
-                        LoginFormContent(
-                            topPadding = 64.dp,
-                            showHeader = true,
-                            isWideScreen = true
-                        )
-                    },
-                    showUgradeButton = true
-                )
-
-        } else {
-            SinglePaneLayout(
-                header = "LOGIN",
-                showUpgradeButton = false
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(2f)
-            ) {
-                LoginFormContent(
-                    topPadding = 220.dp,
-                    showHeader = true,
-                    isWideScreen = false
-                )
-            }
-        }
-    }
-}
-
-
-
-@Composable
-fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: Boolean = false) {
+fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: Boolean = false, onNavigateToRegisterScreen: () -> Unit, onNavigateToDashboardScreen: ()-> Unit) {
 
 
     // State for input fields
@@ -158,26 +113,20 @@ fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: 
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                PivotaPrimaryButton(text = "Login")
+                PivotaPrimaryButton(
+                    text = "Login",
+                    onClick = onNavigateToDashboardScreen
+                )
 
                 Text("OR", color = Color.Gray)
 
-                PivotaSecondaryButton(text = "Register")
+                PivotaSecondaryButton(
+                    text = "Register",
+                    onclick = onNavigateToRegisterScreen
+                )
             }
 
             AuthGoogleButton()
         }
     }
 }
-
-
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun PreviewLoginScreen() {
-    MaterialTheme {
-        LoginScreen()
-    }
-}
-
-

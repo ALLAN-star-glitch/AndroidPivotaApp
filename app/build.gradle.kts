@@ -41,7 +41,7 @@ android {
 
 dependencies {
 
-    val nav_version = "2.8.6"
+    val nav_version = "2.9.0"
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -69,6 +69,9 @@ dependencies {
 
     //Google Fonts
     implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
+
+
+    
 
 
 
