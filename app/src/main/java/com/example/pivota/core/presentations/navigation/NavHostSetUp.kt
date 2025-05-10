@@ -1,15 +1,19 @@
 package com.example.pivota.core.presentations.navigation
 
+
 import PrefrenceScreen
 import WelcomeScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import com.example.pivota.auth.presentation.screens.LoginScreen
 import com.example.pivota.auth.presentation.screens.RegisterScreen
-import com.example.pivota.dashboard.presentation.EmployerDashboardScreen
+import com.example.pivota.dashboard.presentation.screens.DashboardScaffold
+
+
 
 @Composable
 fun NavHostSetup(modifier: Modifier = Modifier) {
@@ -17,72 +21,60 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
 
     NavHost(
         navController = navController,
-        startDestination = "welcome",
+        startDestination = Welcome,
         modifier = modifier
     ) {
-        // Welcome Screen
-        composable("welcome") {
+        composable<Welcome> {
             WelcomeScreen(
                 onNavigateToRegisterScreen = {
-                    // No popUpTo here – we want the user to be able to go back to welcome
-                    navController.navigate("register")
+                    navController.navigate(Register)
                 },
                 onNavigateToLoginScreen = {
-                    // Same here – preserve welcome on back stack
-                    navController.navigate("loginScreen")
+                    navController.navigate(Login)
                 }
             )
         }
 
-        // Register Screen
-        composable("register") {
+        composable<Register> {
             RegisterScreen(
                 onRegisterSuccess = {
-                    // Clear register screen from back stack after successful registration
-                    navController.navigate("loginScreen") {
-                        popUpTo("register") { inclusive = true }
-                        launchSingleTop = true
+                    navController.navigate(MainFlow) {
+                        popUpTo(Register) { inclusive = true }
                     }
                 },
                 onNavigateToLoginScreen = {
-                    // Don't clear back stack if just navigating between forms
-                    navController.navigate("loginScreen")
+                    navController.navigate(Login)
                 }
             )
         }
 
-        // Login Screen
-        composable("loginScreen") {
+        composable<Login> {
             LoginScreen(
                 onNavigateToDashboardScreen = {
-                    // Clear login screen after successful login
-                    navController.navigate("preferenceScreen") {
-                        popUpTo("loginScreen") { inclusive = true }
-                        launchSingleTop = true
+                    navController.navigate(Dashboard) {
+                        popUpTo(Welcome) { inclusive = true }
                     }
                 },
                 onNavigateToRegisterScreen = {
-                    navController.navigate("register")
+                    navController.navigate(Register)
                 }
             )
         }
 
-        // Preference Screen
-        composable("preferenceScreen") {
-            PrefrenceScreen(
-                onNavigateToDashboardScreen = {
-                    // Clear preference screen once dashboard is reached
-                    navController.navigate("dashboard") {
-                        popUpTo("preferenceScreen") { inclusive = true }
-                        launchSingleTop = true
+        navigation<MainFlow>(startDestination = Preference) {
+            composable<Preference> {
+                PrefrenceScreen(
+                    onNavigateToDashboardScreen = {
+                        navController.navigate(Dashboard) {
+                            popUpTo(Welcome) { inclusive = true }
+                        }
                     }
-                }
-            )
-        }
+                )
+            }
 
-        // Final Dashboard
-        composable("dashboard") {
-            EmployerDashboardScreen()
+            composable<Dashboard> {
+                DashboardScaffold()
+            }
         }
     }
 }

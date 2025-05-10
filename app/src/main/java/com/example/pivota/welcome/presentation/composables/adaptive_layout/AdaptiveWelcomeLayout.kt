@@ -88,7 +88,6 @@ fun AdaptiveWelcomeLayout(
                         images = listOf(R.drawable.manphone, R.drawable.building, R.drawable.jobs,R.drawable.services
                         ),
                         messages = listOf("Welcome to Pivota", "Find Houses", "Find Jobs","Connect with Services", )
-
                     )
 
 

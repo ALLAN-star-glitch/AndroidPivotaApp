@@ -47,8 +47,6 @@ fun PreferenceAdaptiveLayout(
                             imageHeight = 300.dp,
                             enableCarousel = true,
                             image = R.drawable.happy_client
-
-
                         )
                     }
 
@@ -64,7 +62,6 @@ fun PreferenceAdaptiveLayout(
                             topPadding = 24.dp,
                             onNavigateToDashboardScreen = onNavigateToDashboard
                         )
-
                     }
                 }
             }
