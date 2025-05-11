@@ -34,12 +34,20 @@ fun DashboardScaffold() {
 
     val myNavigationSuiteItemColors = NavigationSuiteDefaults.itemColors(
         navigationBarItemColors = NavigationBarItemDefaults.colors(
-            indicatorColor = MaterialTheme.colorScheme.primary,
+            indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
             selectedIconColor = Color(0xFFE9C16C),
             selectedTextColor = Color(0xFFE9C16C),
             unselectedIconColor = Color(0xFFF2DCA0),
-            unselectedTextColor = Color(0xFFF2DCA0)
+            unselectedTextColor = Color(0xFFF2DCA0),
         ),
+        navigationRailItemColors = NavigationRailItemDefaults.colors(
+            indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+            selectedIconColor = Color(0xFFE9C16C),
+            selectedTextColor = Color(0xFFE9C16C),
+            unselectedIconColor = Color(0xFFF2DCA0),
+            unselectedTextColor = Color(0xFFF2DCA0),
+        )
+
     )
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
@@ -87,7 +95,8 @@ fun DashboardScaffold() {
             }
         },
         navigationSuiteColors = NavigationSuiteDefaults.colors(
-            navigationBarContainerColor = Color(0xAA008080),
+            navigationBarContainerColor = MaterialTheme.colorScheme.primary,
+            navigationRailContainerColor = MaterialTheme.colorScheme.primary
         )
     ) {
         NavHost(
