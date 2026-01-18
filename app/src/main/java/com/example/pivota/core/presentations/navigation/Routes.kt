@@ -2,16 +2,27 @@ package com.example.pivota.core.presentations.navigation
 
 import kotlinx.serialization.Serializable
 
-// Entry routes
-@Serializable object Welcome
-@Serializable object Register
-@Serializable object Login
+/* ───────── ENTRY ───────── */
+@Serializable
+object Welcome
 
-// Nested graph route
-@Serializable object MainFlow
+/* ───────── GUEST FLOW ───────── */
+@Serializable
+object Discovery          // Preferences / intent selection (guest)
 
-// Routes inside nested graph
-@Serializable object Preference
-@Serializable object Dashboard
+@Serializable
+object GuestDashboard     // Browse listings as guest
 
+/* ───────── AUTH FLOW (ON-DEMAND) ───────── */
+@Serializable
+object AuthFlow
 
+@Serializable
+object Register
+
+@Serializable
+object Login
+
+/* ───────── FULL ACCESS ───────── */
+@Serializable
+object Dashboard

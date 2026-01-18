@@ -24,11 +24,16 @@ import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryBu
 import com.example.pivota.core.presentations.composables.buttons.PivotaSecondaryButton
 
 @Composable
-fun WelcomeContent(topPadding: Dp, onNavigateToRegistrationScreen: () -> Unit, onNavigateToLoginScreen: ()-> Unit) {
-
+fun WelcomeContent(
+    topPadding: Dp,
+    header: String = "Welcome to Pivota",
+    welcomeText: String = "Jobs, Housing & Support Across Africa",
+    onNavigateToRegistrationScreen: () -> Unit,
+    onNavigateToLoginScreen: () -> Unit
+) {
     Box(
         modifier = Modifier
-            .padding(top = topPadding) // Push it down slightly, but still inside scroll
+            .padding(top = topPadding)
             .fillMaxSize()
             .clip(RoundedCornerShape(topEnd = 150.dp))
             .background(Color.White)
@@ -36,49 +41,64 @@ fun WelcomeContent(topPadding: Dp, onNavigateToRegistrationScreen: () -> Unit, o
             .zIndex(2f)
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 16.dp), // Ensures padding doesn't shift form out of view
+                .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
 
+            /* ───── SmartMatch Badge ───── */
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.1f))
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "Powered by SmartMatch™",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                )
+            }
 
-
+            /* ───── Header ───── */
             Text(
-                text = "Welcome to Pivota",
-                style = MaterialTheme.typography.headlineMedium.copy(color = MaterialTheme.colorScheme.primary)
+                text = header,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    color = MaterialTheme.colorScheme.primary
+                )
             )
 
+            /* ───── Welcome Text ───── */
             Text(
-                text = "We connect people across Africa with trusted job opportunities, affordable housing, and reliable services, empowering communities and fostering growth.",
-                style = MaterialTheme.typography.bodyMedium.copy(color = Color.Black)
+                text = welcomeText,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             )
 
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            /* ───── Buttons ───── */
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
                 PivotaPrimaryButton(
                     text = "Get Started",
                     onClick = onNavigateToRegistrationScreen,
-                    modifier = Modifier
-                        .fillMaxWidth(0.85f) // 85% of the parent width
+                    modifier = Modifier.fillMaxWidth(0.85f)
                 )
             }
 
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center){
-                Text(
-                    text = "Already a Member?",
-                    style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.primary)
-                )
-
-            }
-
-            
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
                 PivotaSecondaryButton(
                     text = "Login",
                     onclick = onNavigateToLoginScreen,
-                    modifier = Modifier
-                        .fillMaxWidth(0.85f) // 85% of the parent width
+                    modifier = Modifier.fillMaxWidth(0.85f)
                 )
             }
         }

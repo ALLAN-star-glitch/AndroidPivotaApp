@@ -1,27 +1,21 @@
 package com.example.pivota.auth.presentation.screens
 
-import AdaptiveAuthLayout
-import androidx.compose.runtime.Composable
 
+import androidx.compose.runtime.Composable
+import com.example.pivota.core.presentations.screens.AdaptiveAuthLayout
 
 @Composable
 fun LoginScreen(
-    onNavigateToDashboardScreen: ()-> Unit,
-    onNavigateToRegisterScreen: ()->Unit
-                ) {
-
-    //Adaptive Layout for Login Screen
+    onLoginSuccess: () -> Unit,             // <- renamed to match NavHost
+    onNavigateToRegisterScreen: () -> Unit
+) {
     AdaptiveAuthLayout(
         header = "LOGIN",
         welcomeText = "Welcome Back",
-        desc1 = "After login, you can upgrade your account to post unlimited jobs, rentals, or services",
+        desc1 = "After login, you can unlock full SmartMatch™ recommendations and access more opportunities.",
         desc2 = "Upgrade when you're ready!",
         isLoginScreen = true,
-        onNavigateToDashboard = onNavigateToDashboardScreen,
-        onNavigateToRegisterScreen = onNavigateToRegisterScreen,
+        onNavigateToDashboard = onLoginSuccess,   // <- use this internally
+        onNavigateToRegisterScreen = onNavigateToRegisterScreen
     )
 }
-
-
-
-

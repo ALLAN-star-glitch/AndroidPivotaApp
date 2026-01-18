@@ -1,6 +1,5 @@
 package com.example.pivota.core.presentations.composables.background_image_and_overlay
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,17 +12,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.example.pivota.core.presentations.composables.buttons.PivotaUpgradeButton
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -33,7 +35,7 @@ fun BackgroundImageAndOverlay(
     desc1: String = "",
     desc2: String = "",
     header: String = "",
-    offset: Dp=0.dp,
+    offset: Dp = 0.dp,
     imageHeight: Dp,
     showUpgradeButton: Boolean,
     image: Int = 0, // fallback image
@@ -41,12 +43,12 @@ fun BackgroundImageAndOverlay(
     images: List<Int> = emptyList(),
     messages: List<String> = emptyList()
 ) {
+    val context = LocalContext.current
     val pagerState = rememberPagerState(
         initialPage = 0
-    ){images.size}
+    ) { images.size }
 
     if (enableCarousel && images.isNotEmpty()) {
-        val coroutineScope = rememberCoroutineScope()
         LaunchedEffect(Unit) {
             while (true) {
                 delay(3000)
@@ -60,16 +62,24 @@ fun BackgroundImageAndOverlay(
             modifier = if (isWideScreen) Modifier.fillMaxSize()
             else Modifier.fillMaxWidth().height(imageHeight)
         ) { page ->
-            Image(
-                painter = painterResource(id = images[page]),
+            // Replaced Image with AsyncImage to fix memory crashes
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(images[page])
+                    .crossfade(true)
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
         }
     } else {
-        Image(
-            painter = painterResource(id = image),
+        // Fallback image using AsyncImage
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(image)
+                .crossfade(true)
+                .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = if (isWideScreen) Modifier.fillMaxSize()
@@ -169,7 +179,7 @@ fun BackgroundImageAndOverlay(
                                     .padding(4.dp)
                                     .size(if (pagerState.currentPage == index) 12.dp else 8.dp)
                                     .background(
-                                        color = if (pagerState.currentPage == index) Color(0xFFFFC107) else Color.Gray,
+                                        color = if (pagerState.currentPage == index) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.outline,
                                         shape = RoundedCornerShape(50)
                                     )
                             )

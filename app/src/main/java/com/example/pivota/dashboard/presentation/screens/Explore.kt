@@ -3,37 +3,35 @@ package com.example.pivota.dashboard.presentation.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
-import com.example.pivota.dashboard.presentation.composables.ExploreAppBar
-import com.example.pivota.dashboard.presentation.composables.OpportunitiesSection
 
 @Composable
-fun Explore() {
+fun Explore(
+      isGuest: Boolean = false,
+      onLockedAction: () -> Unit = {}
+) {
       val scrollState = rememberScrollState()
 
-      Box {
-            Column(
-                  modifier = Modifier
-                        .verticalScroll(scrollState)
-            ) {
-                  ExploreAppBar()
+      Column(
+            modifier = Modifier
+                  .fillMaxSize()
+                  .verticalScroll(scrollState)
+                  .padding(16.dp)
+      ) {
+            Text("Explore Screen")
+            Spacer(modifier = Modifier.height(16.dp))
 
-                  // Add spacing to make room for the overlapping section
-                  Spacer(modifier = Modifier.height(32.dp))
-
-                  // Opportunities Section overlaps up
-                  OpportunitiesSection(
-                        modifier = Modifier
-                              .padding(horizontal = 16.dp)
-                              .offset(y = (-60).dp)
-                              .zIndex(1f)
-                  )
-
-                  // More sections can follow here...
-                  Spacer(modifier = Modifier.height(16.dp)) // just for visual breathing room
+            if (isGuest) {
+                  Button(onClick = onLockedAction) {
+                        Text("Login to explore full features")
+                  }
+            } else {
+                  // Show full Explore content for logged-in users
+                  Text("Here is the full Explore content...")
             }
       }
 }

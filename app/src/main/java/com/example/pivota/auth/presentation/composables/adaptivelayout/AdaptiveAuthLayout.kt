@@ -1,3 +1,7 @@
+package com.example.pivota.core.presentations.screens
+
+import LoginFormContent
+import RegistrationFormContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -20,22 +24,37 @@ fun AdaptiveAuthLayout(
     desc1: String,
     desc2: String,
     isLoginScreen: Boolean,
-    onNavigateToRegisterScreen: () -> Unit={},
-    onNavigateToLogin: ()-> Unit={},
-    onNavigateToDashboard: ()-> Unit={},
-    onRegisterSuccess: ()->Unit={}
+    onNavigateToRegisterScreen: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {},
+    onNavigateToDashboard: () -> Unit = {},
+    onRegisterSuccess: () -> Unit = {}
 ) {
     Box {
         val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
         val isMediumScreen = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
         val isExpandedScreen = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
 
-        when {
+        // Localized Images for Kenya / Pan-African context
+        val authCarouselImages = listOf(
+            R.drawable.nairobi_city,
+            R.drawable.happy_people,
+            R.drawable.mama_mboga,
+            R.drawable.organization
+        )
 
-            //TWO PANE LAYOUT
+        // Contextual messages for the auth carousel
+        val authCarouselMessages = listOf(
+            "Access Opportunities in Kenya",
+            "Your Trusted Life Partner",
+            "Empowering the Community",
+            "Verified & Secure"
+        )
+
+        when {
+            /* TWO PANE LAYOUT (Tablet/Desktop) */
             isMediumScreen || isExpandedScreen -> {
                 Row(modifier = Modifier.fillMaxSize()) {
-                    // Left Pane: Image
+                    // Left Pane: Image/Carousel
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
@@ -48,9 +67,11 @@ fun AdaptiveAuthLayout(
                             desc1 = desc1,
                             desc2 = desc2,
                             offset = 200.dp,
-                            showUpgradeButton = true,
+                            showUpgradeButton = false,
                             imageHeight = 300.dp,
-                            image = R.drawable.happyman
+                            enableCarousel = true, // Enables the auto-scroll
+                            images = authCarouselImages,
+                            messages = authCarouselMessages
                         )
                     }
 
@@ -61,8 +82,7 @@ fun AdaptiveAuthLayout(
                             .weight(1f)
                             .background(Color.White)
                     ) {
-                        if (isLoginScreen){
-
+                        if (isLoginScreen) {
                             LoginFormContent(
                                 topPadding = 64.dp,
                                 showHeader = true,
@@ -70,8 +90,7 @@ fun AdaptiveAuthLayout(
                                 onNavigateToRegisterScreen = onNavigateToRegisterScreen,
                                 onNavigateToDashboardScreen = onNavigateToDashboard
                             )
-                            }
-                        else {
+                        } else {
                             RegistrationFormContent(
                                 topPadding = 64.dp,
                                 showHeader = true,
@@ -80,55 +99,53 @@ fun AdaptiveAuthLayout(
                                 onNavigateToLoginScreen = onNavigateToLogin
                             )
                         }
-
                     }
                 }
             }
 
+            /* SINGLE PANE LAYOUT (Mobile) */
             else -> {
-
-                //SINGLE PANE
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(Color.White)
                 ) {
-                        BackgroundImageAndOverlay(
-                            isWideScreen = false,
-                            header = header,
-                            offset = if (isLoginScreen) 350.dp else 140.dp,
-                            showUpgradeButton = false,
-                            imageHeight = if (isLoginScreen) 600.dp else 300.dp,
-                            image = R.drawable.happyman
-                        )
-
+                    BackgroundImageAndOverlay(
+                        isWideScreen = false,
+                        header = header,
+                        // If Registering, we show more of the image to keep UI light
+                        offset = if (isLoginScreen) 350.dp else 180.dp,
+                        showUpgradeButton = false,
+                        // Lower height for registration to give form more room
+                        imageHeight = if (isLoginScreen) 600.dp else 300.dp,
+                        enableCarousel = true,
+                        images = authCarouselImages,
+                        messages = authCarouselMessages
+                    )
 
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .zIndex(2f)
                     ) {
-
-                        if (isLoginScreen)
-
+                        if (isLoginScreen) {
                             LoginFormContent(
                                 topPadding = 450.dp,
                                 showHeader = true,
                                 isWideScreen = false,
-                                onNavigateToRegisterScreen = onNavigateToRegisterScreen ,
+                                onNavigateToRegisterScreen = onNavigateToRegisterScreen,
                                 onNavigateToDashboardScreen = onNavigateToDashboard
                             )
-
-                        else
+                        } else {
                             RegistrationFormContent(
-                                topPadding = 220.dp,
+                                topPadding = 240.dp,
                                 showHeader = true,
                                 isWideScreen = false,
                                 onRegisterSuccess = onRegisterSuccess,
                                 onNavigateToLoginScreen = onNavigateToLogin
                             )
+                        }
                     }
-
                 }
             }
         }

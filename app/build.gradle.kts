@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.example.pivota"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.pivota"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -38,6 +38,10 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.15"
     }
 }
 
@@ -77,6 +81,17 @@ dependencies {
 
     //Google Fonts
     implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
+
+    //Coil for images
+    implementation("io.coil-kt.coil3:coil-compose:3.3.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
+
+    
+        // Add this line to get FavoriteBorder and others
+        implementation("androidx.compose.material:material-icons-extended")
+
+
+
 
 
 

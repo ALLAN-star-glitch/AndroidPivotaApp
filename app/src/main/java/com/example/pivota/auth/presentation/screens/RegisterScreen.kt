@@ -1,8 +1,9 @@
 package com.example.pivota.auth.presentation.screens
 
 
-import AdaptiveAuthLayout
+
 import androidx.compose.runtime.Composable
+import com.example.pivota.core.presentations.screens.AdaptiveAuthLayout
 
 
 @Composable

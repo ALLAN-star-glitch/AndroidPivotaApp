@@ -12,27 +12,22 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import androidx.window.core.layout.WindowSizeClass
-import com.example.pivota.dashboard.presentation.composables.DashboardDestinations
-import com.example.pivota.dashboard.presentation.composables.Explore
-import com.example.pivota.dashboard.presentation.composables.Manage
-import com.example.pivota.dashboard.presentation.composables.Post
-import com.example.pivota.dashboard.presentation.composables.Settings
-import com.example.pivota.dashboard.presentation.composables.TopLevelRoute
-import com.example.pivota.dashboard.presentation.composables.topLevelRoutes
+import com.example.pivota.dashboard.presentation.composables.*
 import kotlinx.serialization.Serializable
 
-
 @Composable
-fun DashboardScaffold() {
+fun DashboardScaffold(
+    isGuest: Boolean = false,
+    onLockedAction: () -> Unit = {}
+) {
     val navController = rememberNavController()
 
-    val myNavigationSuiteItemColors = NavigationSuiteDefaults.itemColors(
+    // Custom navigation item colors
+    val navigationItemColors = NavigationSuiteDefaults.itemColors(
         navigationBarItemColors = NavigationBarItemDefaults.colors(
             indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
             selectedIconColor = Color(0xFFE9C16C),
@@ -47,7 +42,6 @@ fun DashboardScaffold() {
             unselectedIconColor = Color(0xFFF2DCA0),
             unselectedTextColor = Color(0xFFF2DCA0),
         )
-
     )
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
@@ -62,26 +56,20 @@ fun DashboardScaffold() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-
     NavigationSuiteScaffold(
         layoutType = layoutType,
-
         navigationSuiteItems = {
-            topLevelRoutes.forEach { topLevelRoute ->
+            topLevelRoutes.forEach { route ->
                 item(
-                    icon = {
-                        Icon(topLevelRoute.icon, contentDescription = topLevelRoute.contentDescription)
-                    },
-                    label = {
-                        Text(topLevelRoute.label)
-                    },
+                    icon = { Icon(route.icon, contentDescription = route.contentDescription) },
+                    label = { Text(route.label) },
                     selected = currentDestination?.hierarchy?.any {
-                        it.route == topLevelRoute.route::class.qualifiedName
+                        it.route == route.route::class.qualifiedName
                     } == true,
-
                     onClick = {
-                        if (currentDestination?.route != topLevelRoute.route) {
-                            navController.navigate(topLevelRoute.route) {
+                        if (currentDestination?.route != route.route) {
+                            // Guests can still see screens; lock only sensitive actions inside screens
+                            navController.navigate(route.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
                                 }
@@ -90,7 +78,7 @@ fun DashboardScaffold() {
                             }
                         }
                     },
-                    colors = myNavigationSuiteItemColors
+                    colors = navigationItemColors
                 )
             }
         },
@@ -101,19 +89,22 @@ fun DashboardScaffold() {
     ) {
         NavHost(
             navController = navController,
-            startDestination = Explore
+            startDestination = Home,
         ) {
-            composable <Explore>{
-                Explore()
+            composable<Home> {
+                HomeScreen(isGuest = isGuest, onLockedAction = onLockedAction)
+            }
+            composable<Explore> {
+                Explore(isGuest = isGuest, onLockedAction = onLockedAction)
             }
             composable<Post> {
-                Post()
+                Post(isGuest = isGuest, onLockedAction = onLockedAction)
             }
-            composable<Manage> {
-                Manage()
+            composable<Providers> {
+                Providers(isGuest = isGuest, onLockedAction = onLockedAction)
             }
-            composable<Settings> {
-                Settings()
+            composable<Profile> {
+                Profile(isGuest = isGuest, onLockedAction = onLockedAction)
             }
         }
     }
