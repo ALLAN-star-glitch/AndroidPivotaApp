@@ -1,4 +1,4 @@
-package com.example.pivota.auth.presentation.composables.checkbox
+package com.example.pivota.auth.presentation.composables
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width

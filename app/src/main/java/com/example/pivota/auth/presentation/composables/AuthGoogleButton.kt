@@ -1,4 +1,4 @@
-package com.example.pivota.auth.presentation.composables.google_button
+package com.example.pivota.auth.presentation.composables
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement

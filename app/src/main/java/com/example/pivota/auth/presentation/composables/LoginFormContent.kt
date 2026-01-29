@@ -22,27 +22,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.example.pivota.auth.presentation.composables.google_button.AuthGoogleButton
-import com.example.pivota.auth.presentation.composables.checkbox.PivotaCheckBox
+import com.example.pivota.auth.presentation.composables.AuthGoogleButton
+import com.example.pivota.auth.presentation.composables.PivotaCheckBox
 import com.example.pivota.core.presentations.composables.text_field.PivotaPasswordField
 import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
 import com.example.pivota.core.presentations.composables.buttons.PivotaSecondaryButton
 import com.example.pivota.core.presentations.composables.text_field.PivotaTextField
 
 @Composable
-fun RegistrationFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: Boolean = false, onRegisterSuccess: () -> Unit={}, onNavigateToLoginScreen: ()-> Unit) {
+fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: Boolean = false, onNavigateToRegisterScreen: () -> Unit, onNavigateToDashboardScreen: ()-> Unit) {
+
 
     // State for input fields
-    var firstName by remember { mutableStateOf("") }
-    var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier
@@ -73,7 +69,7 @@ fun RegistrationFormContent(topPadding: Dp, showHeader: Boolean = false, isWideS
                 )
 
                 Text(
-                    text = "REGISTER",
+                    text = "LOGIN",
                     style = MaterialTheme.typography.headlineMedium.copy(color = Color(0xFF008080)),
                     modifier = Modifier
                         .padding(bottom = 16.dp)
@@ -81,19 +77,7 @@ fun RegistrationFormContent(topPadding: Dp, showHeader: Boolean = false, isWideS
                 )
             }
 
-            PivotaTextField(
-                value = firstName,
-                onValueChange = { firstName = it },
-                label = "First Name",
-                modifier = Modifier.fillMaxWidth(),
-            )
 
-            PivotaTextField(
-                value = lastName,
-                onValueChange = { lastName = it },
-                label = "Last Name",
-                modifier = Modifier.fillMaxWidth(),
-            )
 
             PivotaTextField(
                 value = email,
@@ -102,13 +86,6 @@ fun RegistrationFormContent(topPadding: Dp, showHeader: Boolean = false, isWideS
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            PivotaTextField(
-                value = phone,
-                onValueChange = { phone = it },
-                label = "Phone Number",
-                modifier = Modifier.fillMaxWidth(),
-                keyboardType = KeyboardType.Phone
-            )
 
             // Password Input Field
             PivotaPasswordField(
@@ -118,13 +95,6 @@ fun RegistrationFormContent(topPadding: Dp, showHeader: Boolean = false, isWideS
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            // Confirm Password Input Field
-            PivotaPasswordField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
-                label = "Confirm Password",
-                modifier = Modifier.fillMaxWidth(),
-            )
 
             //Terms and Conditions Row
             Row(
@@ -144,14 +114,15 @@ fun RegistrationFormContent(topPadding: Dp, showHeader: Boolean = false, isWideS
                 modifier = Modifier.fillMaxWidth()
             ) {
                 PivotaPrimaryButton(
-                    text = "Register",
-                    onClick = onRegisterSuccess,
+                    text = "Login",
+                    onClick = onNavigateToDashboardScreen
                 )
+
                 Text("OR", color = Color.Gray)
 
                 PivotaSecondaryButton(
-                    text = "Login",
-                    onclick = onNavigateToLoginScreen,
+                    text = "Register",
+                    onclick = onNavigateToRegisterScreen
                 )
             }
 
