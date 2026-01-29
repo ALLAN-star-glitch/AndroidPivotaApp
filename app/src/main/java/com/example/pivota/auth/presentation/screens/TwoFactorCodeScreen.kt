@@ -94,7 +94,7 @@ fun TwoFactorCodeScreen(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            "Enter the 6-digit code sent to your email or phone to secure your account and activate your services.",
+            "Enter the 6-digit code sent to your email to secure your account and activate your services.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -159,7 +159,7 @@ fun TwoFactorCodeScreen(
         Spacer(Modifier.height(16.dp))
 
         TextButton(onClick = onChangeContact) {
-            Text("Change email or phone")
+            Text("Change email")
         }
 
         Spacer(Modifier.height(12.dp))

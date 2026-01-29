@@ -1,4 +1,4 @@
-package com.example.pivota.core.presentations.navigation
+package com.example.pivota.core.navigation
 
 import DiscoveryScreen
 import WelcomeScreen
