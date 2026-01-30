@@ -4,6 +4,10 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     // Kotlin serialization plugin for type safe routes and navigation arguments
     kotlin("plugin.serialization") version "2.0.21"
+
+    alias(libs.plugins.ksp)
+
+    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -48,6 +52,7 @@ android {
 dependencies {
 
     val nav_version = "2.9.0"
+    val room_version = "2.8.4"
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -87,16 +92,23 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
 
     
-        // Add this line to get FavoriteBorder and others
-        implementation("androidx.compose.material:material-icons-extended")
+    // Add this line to get FavoriteBorder and others
+    implementation("androidx.compose.material:material-icons-extended")
+
+    implementation("com.google.dagger:hilt-android:2.54")
+    ksp("com.google.dagger:hilt-android-compiler:2.54")
 
 
 
+    implementation("androidx.room:room-runtime:$room_version")
 
+    // If this project uses any Kotlin source, use Kotlin Symbol Processing (KSP)
+    // See Add the KSP plugin to your project
+    ksp("androidx.room:room-compiler:$room_version")
 
+    // optional - Kotlin Extensions and Coroutines support for Room
+    implementation("androidx.room:room-ktx:${room_version}")
 
-
-    
 
 
 
