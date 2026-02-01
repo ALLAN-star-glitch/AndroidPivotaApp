@@ -2,27 +2,18 @@ package com.example.pivota.core.navigation
 
 import kotlinx.serialization.Serializable
 
-/* ───────── ENTRY ───────── */
-@Serializable
-object Welcome
+@Serializable object Splash
+@Serializable object Welcome
+@Serializable object Discovery
+@Serializable object GuestDashboard
+@Serializable object Dashboard
 
-/* ───────── GUEST FLOW ───────── */
-@Serializable
-object Discovery          // Preferences / intent selection (guest)
+// Use an object for the Graph name
+@Serializable object AuthFlow
 
-@Serializable
-object GuestDashboard     // Browse listings as guest
+@Serializable object Register
+@Serializable object Login
 
-/* ───────── AUTH FLOW (ON-DEMAND) ───────── */
+// This route needs to carry the email to the next screen
 @Serializable
-object AuthFlow
-
-@Serializable
-object Register
-
-@Serializable
-object Login
-
-/* ───────── FULL ACCESS ───────── */
-@Serializable
-object Dashboard
+data class VerifyOtp(val email: String)

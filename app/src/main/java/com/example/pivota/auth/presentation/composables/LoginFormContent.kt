@@ -33,16 +33,21 @@ import com.example.pivota.core.presentations.composables.buttons.PivotaSecondary
 import com.example.pivota.core.presentations.composables.text_field.PivotaTextField
 
 @Composable
-fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: Boolean = false, onNavigateToRegisterScreen: () -> Unit, onNavigateToDashboardScreen: ()-> Unit) {
-
-
+fun LoginFormContent(
+    topPadding: Dp,
+    showHeader: Boolean = false,
+    isWideScreen: Boolean = false,
+    onRegisterClick: () -> Unit, // Renamed from onNavigateToRegisterScreen
+    onLoginSuccess: () -> Unit    // Renamed from onNavigateToDashboardScreen
+) {
     // State for input fields
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var rememberMe by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
-            .padding(top = topPadding) // Push it down slightly, but still inside scroll
+            .padding(top = topPadding)
             .fillMaxSize()
             .clip(RoundedCornerShape(topEnd = 58.dp))
             .background(Color.White)
@@ -54,10 +59,10 @@ fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: 
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 16.dp), // Ensures padding doesn't shift form out of view
+                .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
 
-// Only show header if in wide screen (i.e., two-pane layout)
+            // Only show header if in wide screen (i.e., two-pane layout)
             if (showHeader && isWideScreen) {
                 HorizontalDivider(
                     modifier = Modifier
@@ -77,8 +82,6 @@ fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: 
                 )
             }
 
-
-
             PivotaTextField(
                 value = email,
                 onValueChange = { email = it },
@@ -86,8 +89,6 @@ fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: 
                 modifier = Modifier.fillMaxWidth(),
             )
 
-
-            // Password Input Field
             PivotaPasswordField(
                 value = password,
                 onValueChange = { password = it },
@@ -95,19 +96,21 @@ fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: 
                 modifier = Modifier.fillMaxWidth(),
             )
 
-
-            //Terms and Conditions Row
+            // Remember me now
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                PivotaCheckBox()
-
+                PivotaCheckBox(
+                    checked = rememberMe,
+                    onCheckedChange = { rememberMe = it },
+                    text = "Remember me"
+                )
             }
 
-            // Register & Login Row
+            // Action Buttons Row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -115,14 +118,14 @@ fun LoginFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: 
             ) {
                 PivotaPrimaryButton(
                     text = "Login",
-                    onClick = onNavigateToDashboardScreen
+                    onClick = onLoginSuccess // Updated Lambda call
                 )
 
                 Text("OR", color = Color.Gray)
 
                 PivotaSecondaryButton(
                     text = "Register",
-                    onclick = onNavigateToRegisterScreen
+                    onclick = onRegisterClick // Updated Lambda call
                 )
             }
 

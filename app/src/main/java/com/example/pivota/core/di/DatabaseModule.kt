@@ -25,7 +25,13 @@ object DatabaseModule {
             PivotaDatabase::class.java,
             DatabaseConstants.DATABASE_NAME
         )
-            .fallbackToDestructiveMigration() // Useful for MVP 1 development
+            .fallbackToDestructiveMigration(false) // Recommended during active development
             .build()
     }
+
+    @Provides
+    fun provideUserDao(database: PivotaDatabase) = database.userDao()
+
+    @Provides
+    fun provideOrgMemberDao(database: PivotaDatabase) = database.orgMemberDao()
 }

@@ -1,23 +1,12 @@
+package com.example.pivota.auth.presentation.composables
+
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,27 +15,78 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.example.pivota.auth.presentation.composables.AuthGoogleButton
-import com.example.pivota.auth.presentation.composables.PivotaCheckBox
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.pivota.auth.domain.model.AccountType
+import com.example.pivota.auth.domain.model.User
+import com.example.pivota.auth.domain.model.UserRole
+import com.example.pivota.auth.presentation.state.SignupUiState
+import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 import com.example.pivota.core.presentations.composables.text_field.PivotaPasswordField
 import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
 import com.example.pivota.core.presentations.composables.buttons.PivotaSecondaryButton
 import com.example.pivota.core.presentations.composables.text_field.PivotaTextField
+import androidx.compose.ui.tooling.preview.Preview
 
+/**
+ * Stateful wrapper for the Registration Form.
+ * Scoped to the AuthFlow ViewModel to persist data until OTP verification.
+ */
 @Composable
-fun RegistrationFormContent(topPadding: Dp, showHeader: Boolean = false, isWideScreen: Boolean = false, onRegisterSuccess: () -> Unit={}, onNavigateToLoginScreen: ()-> Unit) {
+fun RegistrationFormContent(
+    topPadding: Dp,
+    showHeader: Boolean = false,
+    isWideScreen: Boolean = false,
+    viewModel: SignupViewModel = hiltViewModel(),
+    onSuccess: (String) -> Unit, // Replaces onNavigateToOtp
+    onLoginClick: () -> Unit      // Replaces onNavigateToLoginScreen
+) {
+    val uiState by viewModel.uiState.collectAsState()
 
-    // State for input fields
+    RegistrationFormInternal(
+        topPadding = topPadding,
+        showHeader = showHeader,
+        isWideScreen = isWideScreen,
+        uiState = uiState,
+        onRegisterClick = { user, pass, isOrg ->
+            viewModel.startSignup(user, pass, isOrg)
+        },
+        onSuccess = onSuccess,
+        onLoginClick = onLoginClick
+    )
+}
+
+/**
+ * Stateless internal content for easier testing and previews.
+ */
+@Composable
+private fun RegistrationFormInternal(
+    topPadding: Dp,
+    showHeader: Boolean,
+    isWideScreen: Boolean,
+    uiState: SignupUiState,
+    onRegisterClick: (User, String, Boolean) -> Unit,
+    onSuccess: (String) -> Unit,
+    onLoginClick: () -> Unit
+) {
+    // Form States
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
+    var isOrganization by remember { mutableStateOf(false) }
+    var hasAgreedToTerms by remember { mutableStateOf(false) }
+
+    // Listen for ViewModel state changes to trigger navigation
+    LaunchedEffect(uiState) {
+        if (uiState is SignupUiState.OtpSent) {
+            onSuccess(email)
+        }
+    }
 
     Box(
         modifier = Modifier
-            .padding(top = topPadding) // Push it down slightly, but still inside scroll
+            .padding(top = topPadding)
             .fillMaxSize()
             .clip(RoundedCornerShape(topEnd = 58.dp))
             .background(Color.White)
@@ -58,10 +98,8 @@ fun RegistrationFormContent(topPadding: Dp, showHeader: Boolean = false, isWideS
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 16.dp), // Ensures padding doesn't shift form out of view
+                .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
-
-// Only show header if in wide screen (i.e., two-pane layout)
             if (showHeader && isWideScreen) {
                 HorizontalDivider(
                     modifier = Modifier
@@ -71,7 +109,6 @@ fun RegistrationFormContent(topPadding: Dp, showHeader: Boolean = false, isWideS
                     thickness = 2.dp,
                     color = Color(0xFFE9C16C)
                 )
-
                 Text(
                     text = "REGISTER",
                     style = MaterialTheme.typography.headlineMedium.copy(color = Color(0xFF008080)),
@@ -81,81 +118,79 @@ fun RegistrationFormContent(topPadding: Dp, showHeader: Boolean = false, isWideS
                 )
             }
 
-            PivotaTextField(
-                value = firstName,
-                onValueChange = { firstName = it },
-                label = "First Name",
-                modifier = Modifier.fillMaxWidth(),
-            )
+            PivotaTextField(value = firstName, onValueChange = { firstName = it }, label = "First Name", modifier = Modifier.fillMaxWidth())
+            PivotaTextField(value = lastName, onValueChange = { lastName = it }, label = "Last Name", modifier = Modifier.fillMaxWidth())
+            PivotaTextField(value = email, onValueChange = { email = it }, label = "Email", modifier = Modifier.fillMaxWidth())
+            PivotaTextField(value = phone, onValueChange = { phone = it }, label = "Phone Number", modifier = Modifier.fillMaxWidth(), keyboardType = KeyboardType.Phone)
+            PivotaPasswordField(value = password, onValueChange = { password = it }, label = "Password", modifier = Modifier.fillMaxWidth())
 
-            PivotaTextField(
-                value = lastName,
-                onValueChange = { lastName = it },
-                label = "Last Name",
-                modifier = Modifier.fillMaxWidth(),
-            )
+            // Roles and Terms
+            PivotaCheckBox(checked = isOrganization, onCheckedChange = { isOrganization = it }, text = "Registering as an Organization?")
+            PivotaCheckBox(checked = hasAgreedToTerms, onCheckedChange = { hasAgreedToTerms = it }, text = "I agree to the Terms and Conditions")
 
-            PivotaTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = "Email",
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            PivotaTextField(
-                value = phone,
-                onValueChange = { phone = it },
-                label = "Phone Number",
-                modifier = Modifier.fillMaxWidth(),
-                keyboardType = KeyboardType.Phone
-            )
-
-            // Password Input Field
-            PivotaPasswordField(
-                value = password,
-                onValueChange = { password = it },
-                label = "Password",
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            // Confirm Password Input Field
-            PivotaPasswordField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
-                label = "Confirm Password",
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            //Terms and Conditions Row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                PivotaCheckBox()
-
+            // Error Display
+            if (uiState is SignupUiState.Error) {
+                Text(
+                    text = uiState.message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
             }
 
-            // Register & Login Row
+            // Action Buttons
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 PivotaPrimaryButton(
-                    text = "Register",
-                    onClick = onRegisterSuccess,
+                    text = if (uiState is SignupUiState.Loading) "Sending..." else "Register",
+                    onClick = {
+                        if (hasAgreedToTerms && email.isNotBlank() && password.isNotBlank()) {
+                            val selectedRole = if (isOrganization) UserRole.BUSINESS_ADMINISTRATOR else UserRole.GeneralUser
+                            val selectedAccountType = if (isOrganization) {
+                                // Defaulting orgUuid to empty as it's generated by backend
+                                AccountType.Organization(orgUuid = "", orgName = "$firstName $lastName")
+                            } else AccountType.Individual
+
+                            val user = User(
+                                uuid = "",
+                                accountUuid = "",
+                                firstName = firstName,
+                                lastName = lastName,
+                                email = email,
+                                personalPhone = phone,
+                                role = selectedRole,
+                                accountType = selectedAccountType
+                            )
+                            onRegisterClick(user, password, isOrganization)
+                        }
+                    }
                 )
+
                 Text("OR", color = Color.Gray)
 
-                PivotaSecondaryButton(
-                    text = "Login",
-                    onclick = onNavigateToLoginScreen,
-                )
+                PivotaSecondaryButton(text = "Login", onclick = onLoginClick)
             }
-
             AuthGoogleButton()
         }
+    }
+}
+
+// ───────── PREVIEW ─────────
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
+@Composable
+fun RegistrationFormPreview() {
+    MaterialTheme {
+        RegistrationFormInternal(
+            topPadding = 100.dp,
+            showHeader = true,
+            isWideScreen = false,
+            uiState = SignupUiState.Idle,
+            onRegisterClick = { _, _, _ -> },
+            onSuccess = {},
+            onLoginClick = {}
+        )
     }
 }

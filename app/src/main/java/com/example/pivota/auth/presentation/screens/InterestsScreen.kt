@@ -19,7 +19,10 @@ import androidx.compose.ui.unit.sp
 
 @Preview(showBackground = true)
 @Composable
-fun InterestsScreen() {
+fun InterestsScreen(
+    onBack: () -> Unit = {},
+    onSave: () -> Unit = {})
+{
     var selectedInterests by remember { mutableStateOf(setOf("Housing")) }
     var userType by remember { mutableStateOf("Looking for") }
     var selectedFocus by remember { mutableStateOf("Near me") }
@@ -48,7 +51,7 @@ fun InterestsScreen() {
                         "Skip for now",
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clickable { /* Skip logic */ }
+                        modifier = Modifier.clickable { onBack() }
                     )
                 }
                 Text(
@@ -147,7 +150,7 @@ fun InterestsScreen() {
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Button(
-                        onClick = { /* Save action */ },
+                        onClick = { onSave() },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(28.dp),
                     ) {

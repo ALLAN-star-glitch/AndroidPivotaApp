@@ -27,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.R
+import com.example.pivota.auth.domain.model.SelectedDocument
 
 // Color
 val InfoBorder = Color(0xFFE6B800)

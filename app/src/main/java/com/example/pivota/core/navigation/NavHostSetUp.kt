@@ -3,13 +3,19 @@ package com.example.pivota.core.navigation
 import DiscoveryScreen
 import WelcomeScreen
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
-import com.example.pivota.auth.presentation.screens.LoginScreen
+import androidx.navigation.toRoute
+import com.example.pivota.auth.presentation.screens.InterestsScreen
 import com.example.pivota.auth.presentation.screens.RegisterScreen
+import com.example.pivota.auth.presentation.screens.SplashScreen
+import com.example.pivota.auth.presentation.screens.VerifyOtpScreen
+import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 import com.example.pivota.dashboard.presentation.screens.DashboardScaffold
 
 @Composable
@@ -18,22 +24,39 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
 
     NavHost(
         navController = navController,
-        startDestination = Welcome,
+        startDestination = Splash,
         modifier = modifier
     ) {
+
+        /* ───────── SPLASH SCREEN ───────── */
+        composable<Splash> {
+            SplashScreen(
+                viewModel = hiltViewModel(),
+                onNavigate = { destinationRoute ->
+                    navController.navigate(destinationRoute) {
+                        popUpTo(Splash) { inclusive = true }
+                    }
+                }
+            )
+        }
 
         /* ───────── WELCOME ───────── */
         composable<Welcome> {
             WelcomeScreen(
                 onNavigateToGetStarted = { navController.navigate(Discovery) },
-                onNavigateToLoginScreen = { navController.navigate(Login) }
+                onNavigateToLoginScreen = { navController.navigate(AuthFlow) }
             )
         }
 
-        /* ───────── DISCOVERY / PREFERENCES ───────── */
+        /* ───────── DISCOVERY / INTERESTS ───────── */
         composable<Discovery> {
-            DiscoveryScreen(
-                onContinue = { navController.navigate(GuestDashboard) }
+            InterestsScreen(
+                onBack = { navController.popBackStack() },
+                onSave = {
+                    navController.navigate(GuestDashboard) {
+                        popUpTo(Welcome) { inclusive = true }
+                    }
+                }
             )
         }
 
@@ -41,40 +64,63 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
         composable<GuestDashboard> {
             DashboardScaffold(
                 isGuest = true,
-                onLockedAction = {
-                    // Trigger on-demand auth for guest users
-                    navController.navigate(AuthFlow)
-                }
+                onLockedAction = { navController.navigate(AuthFlow) }
             )
         }
 
-        /* ───────── AUTH FLOW (ON-DEMAND) ───────── */
+        /* ───────── AUTH FLOW (NESTED) ───────── */
         navigation<AuthFlow>(startDestination = Register) {
 
-            composable<Register> {
+            composable<Register> { backStackEntry ->
+                // Shared ViewModel scoped to the entire AuthFlow graph
+                val parentEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(AuthFlow)
+                }
+                val signupViewModel: SignupViewModel = hiltViewModel(parentEntry)
+
                 RegisterScreen(
-                    onRegisterSuccess = {
-                        navController.navigate(Dashboard) {
-                            popUpTo(Welcome) { inclusive = true }
-                        }
+                    viewModel = signupViewModel,
+                    onSuccess = { email ->
+                        // Navigate to OTP with type-safe argument
+                        navController.navigate(VerifyOtp(email = email))
                     },
-                    onNavigateToLoginScreen = { navController.navigate(Login) }
+                    onLoginClick = {
+                        // Logic to go to Login screen will be placed here
+                    }
                 )
             }
 
+            // Login route remains defined but untouched as requested
             composable<Login> {
-                LoginScreen(
-                    onLoginSuccess = {
+                // Placeholder for your LoginScreen
+            }
+
+            composable<VerifyOtp> { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(AuthFlow)
+                }
+                val signupViewModel: SignupViewModel = hiltViewModel(parentEntry)
+
+                // Type-safe argument extraction
+                val args = backStackEntry.toRoute<VerifyOtp>()
+
+                VerifyOtpScreen(
+                    email = args.email,
+                    viewModel = signupViewModel,
+                    onVerificationSuccess = {
+                        // Registration complete! Move to Dashboard and clear Auth stack
                         navController.navigate(Dashboard) {
-                            popUpTo(Welcome) { inclusive = true }
+                            popUpTo(AuthFlow) { inclusive = true }
                         }
                     },
-                    onNavigateToRegisterScreen = { navController.navigate(Register) }
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
                 )
             }
         }
 
-        /* ───────── FULL DASHBOARD ───────── */
+        /* ───────── AUTHENTICATED DASHBOARD ───────── */
         composable<Dashboard> {
             DashboardScaffold(isGuest = false)
         }

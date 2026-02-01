@@ -17,6 +17,7 @@ object DatabaseConstants {
 
     object Tables {
         const val USERS = "users"
+        const val ORGANIZATION_MEMBERS = "organization_members"
         const val LISTINGS = "listings"
         const val CONTRACTORS = "contractors"
         const val SEARCH_HISTORY = "search_history"

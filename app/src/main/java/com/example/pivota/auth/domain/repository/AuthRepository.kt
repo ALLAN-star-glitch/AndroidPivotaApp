@@ -1,23 +1,32 @@
 package com.example.pivota.auth.domain.repository
 
 import com.example.pivota.auth.domain.model.User
-import kotlinx.coroutines.flow.Flow
 
 interface AuthRepository {
-    /**
-     * Saves the user to local storage.
-     * Implementation should handle role assignment (e.g., first user becomes ADMIN).
-     */
-    suspend fun saveUser(user: User)
 
     /**
-     * Observes the currently authenticated user.
-     * Returns a Flow that emits null if no user is logged in.
+     * Stage 1: Request OTP
+     * Used for SIGNUP, 2FA (Login), or RESET_PASSWORD.
      */
-    fun getAuthenticatedUser(): Flow<User?>
+    suspend fun requestOtp(email: String, purpose: String): Result<Unit>
 
     /**
-     * Logs the user out by clearing local session data.
+     * Stage 2: Registration
      */
-    suspend fun clearSession()
+    suspend fun signupIndividual(user: User, code: String, password: String): Result<User>
+    suspend fun signupOrganization(user: User, code: String, password: String): Result<User>
+
+    /**
+     * Stage 2: Login (MFA)
+     * This is the single API call that validates the 2FA code and
+     * returns the User with Access/Refresh tokens.
+     */
+    suspend fun loginWithMfa(email: String, code: String): Result<User>
+
+    /**
+     * Persistence & Navigation
+     */
+    suspend fun saveAuthenticatedUser(user: User)
+    suspend fun setWelcomeScreenSeen()
+    suspend fun hasSeenWelcomeScreen(): Boolean
 }
