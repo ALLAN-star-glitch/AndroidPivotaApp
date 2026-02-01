@@ -11,7 +11,6 @@ fun LoginScreen(
 ) {
     // Adaptive Layout for Login Screen
     AdaptiveAuthLayout(
-        header = "LOGIN",
         welcomeText = "Welcome Back",
         desc1 = "After login, you can unlock full SmartMatch™ recommendations and access more opportunities.",
         desc2 = "Upgrade when you're ready!",

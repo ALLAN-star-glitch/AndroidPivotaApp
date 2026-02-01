@@ -1,7 +1,6 @@
 package com.example.pivota.auth.presentation.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +15,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pivota.auth.presentation.composables.CustomSegmentedToggle
 
 @Preview(showBackground = true)
 @Composable
@@ -171,6 +171,11 @@ fun InterestsScreen(
 }
 
 @Composable
+fun CustomSegmentedToggle(options: List<String>, selected: String, onSelect: () -> Unit) {
+    TODO("Not yet implemented")
+}
+
+@Composable
 fun SectionWrapper(title: String, content: @Composable () -> Unit) {
     Column {
         Text(title, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp))
@@ -193,38 +198,5 @@ fun InterestChip(label: String, isSelected: Boolean, onToggle: () -> Unit) {
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
             fontSize = 14.sp
         )
-    }
-}
-
-@Composable
-fun CustomSegmentedToggle(options: List<String>, selected: String, onSelect: (String) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(52.dp)
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), RoundedCornerShape(26.dp))
-            .padding(4.dp)
-    ) {
-        options.forEach { option ->
-            val isSelected = option == selected
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(
-                        if (isSelected) MaterialTheme.colorScheme.surfaceContainer else Color.Transparent,
-                        RoundedCornerShape(22.dp)
-                    )
-                    .clickable { onSelect(option) },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = option,
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
-            }
-        }
     }
 }

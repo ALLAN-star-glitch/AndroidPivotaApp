@@ -1,18 +1,38 @@
+package com.example.pivota.auth.presentation.composables
+
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,17 +40,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
-import com.example.pivota.auth.presentation.composables.AuthGoogleButton
-import com.example.pivota.auth.presentation.composables.PivotaCheckBox
-import com.example.pivota.core.presentations.composables.text_field.PivotaPasswordField
-import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
-import com.example.pivota.core.presentations.composables.buttons.PivotaSecondaryButton
-import com.example.pivota.core.presentations.composables.text_field.PivotaTextField
+import androidx.compose.ui.unit.sp
+import com.example.pivota.R
 
 @Composable
 fun LoginFormContent(
@@ -55,7 +74,7 @@ fun LoginFormContent(
             .zIndex(2f)
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
@@ -73,34 +92,55 @@ fun LoginFormContent(
                     color = Color(0xFFE9C16C)
                 )
 
+                Spacer(Modifier.height(16.dp))
+
                 Text(
-                    text = "LOGIN",
-                    style = MaterialTheme.typography.headlineMedium.copy(color = Color(0xFF008080)),
-                    modifier = Modifier
-                        .padding(bottom = 16.dp)
-                        .align(Alignment.CenterHorizontally)
+                    "Welcome Back!\nSign in to continue",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
             PivotaTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = "Email",
+                label = { Text("Email or Phone") },
+                placeholder = { Text("example@domain.com") },
                 modifier = Modifier.fillMaxWidth(),
-            )
+                colors = textFieldColors,
 
             PivotaPasswordField(
                 value = password,
                 onValueChange = { password = it },
-                label = "Password",
+                label = { Text("Password") },
                 modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(8.dp),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                colors = textFieldColors,
+
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
+                // Toggle Icon
+                trailingIcon = {
+                    val image = if (passwordVisible)
+                        Icons.Filled.Visibility
+                    else Icons.Filled.VisibilityOff
+
+                    val description = if (passwordVisible) "Hide password" else "Show password"
+
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = image, contentDescription = description)
+                    }
+                }
             )
 
             // Remember me now
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 5.dp),
+                    .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 PivotaCheckBox(
@@ -129,7 +169,14 @@ fun LoginFormContent(
                 )
             }
 
-            AuthGoogleButton()
+            //Terms and Conditions Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PivotaCheckBox()
+
+            }
         }
     }
 }

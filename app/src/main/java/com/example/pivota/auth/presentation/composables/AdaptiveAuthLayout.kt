@@ -18,7 +18,6 @@ import com.example.pivota.core.presentations.composables.background_image_and_ov
 
 @Composable
 fun AdaptiveAuthLayout(
-    header: String,
     welcomeText: String,
     desc1: String,
     desc2: String,
