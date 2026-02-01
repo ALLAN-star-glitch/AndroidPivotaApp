@@ -7,3 +7,4 @@ sealed interface SignupUiState {
     object Success : SignupUiState
     data class Error(val message: String) : SignupUiState
 }
+

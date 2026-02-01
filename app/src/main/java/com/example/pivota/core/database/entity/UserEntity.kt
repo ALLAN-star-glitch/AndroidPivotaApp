@@ -1,3 +1,12 @@
+/**
+ * Represents the authenticated user's local profile and session context.
+ * * This entity uses a "Flattened" structure to store both core identity and
+ * high-level Organization metadata. This allows the UI to instantly resolve:
+ * - **Account Type**: Distinguished by [isOrganization].
+ * - **Context**: The associated [orgName] and [orgUuid] for members or admins.
+ * - **Permissions**: Roles (assigned via backend) and verification status.
+ */
+
 package com.example.pivota.core.database.entity
 
 import androidx.room.Entity

@@ -1,3 +1,13 @@
+/**
+ * Implementation of [AuthRepository] handling the multi-stage authentication lifecycle.
+ * * This repository orchestrates:
+ * - **Identity Verification**: Two-stage OTP requests and validation for logins and signups.
+ * - **Account Flexibility**: Distinct registration flows for Individuals and
+ * Organizations (where the creator is automatically assigned the Admin role).
+ * - **Local State Synchronization**: Persisting session tokens to [PivotaPreferences]
+ * and user profiles to [UserDao] to manage the app's onboarding and auth state.
+ */
+
 package com.example.pivota.auth.data.repository
 
 import com.example.pivota.auth.data.mapper.toDomain
@@ -18,6 +28,8 @@ class AuthRepositoryImpl @Inject constructor(
     private val userDao: UserDao,
     private val preferences: PivotaPreferences
 ) : AuthRepository {
+
+
 
     /**
      * Stage 1: Request OTP

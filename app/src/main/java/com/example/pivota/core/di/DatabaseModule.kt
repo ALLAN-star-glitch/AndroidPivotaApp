@@ -1,3 +1,10 @@
+/**
+ * Dependency Injection module for the database layer.
+ * * Provides a singleton instance of [PivotaDatabase] and ensures that
+ * DAOs for Users and Organization Members are available for injection
+ * into repositories and use cases.
+ */
+
 package com.example.pivota.core.di
 
 import android.content.Context
@@ -13,6 +20,8 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
+
+
 object DatabaseModule {
 
     @Provides

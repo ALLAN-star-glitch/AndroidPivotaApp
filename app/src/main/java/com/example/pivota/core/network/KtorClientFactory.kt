@@ -1,3 +1,12 @@
+/**
+ * Factory for creating and configuring the [HttpClient].
+ * * This central engine standardizes all network communication for Pivota by:
+ * - **Serialization**: Using Kotlinx Serialization to parse backend responses.
+ * - **Resilience**: Enforcing request, connection, and socket timeouts.
+ * - **Observability**: Logging full request/response bodies for debugging.
+ * - **Defaults**: Automatically injecting the Base URL and JSON content-type headers.
+ */
+
 package com.example.pivota.core.network
 
 import io.ktor.client.HttpClient

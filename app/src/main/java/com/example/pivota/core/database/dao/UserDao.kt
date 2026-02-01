@@ -1,3 +1,12 @@
+/**
+ * Data Access Object for local User session management.
+ * * This DAO handles persistence for the authenticated user, supporting both:
+ * - **Individual Accounts**: Standard user profiles.
+ * - **Organization Accounts**: Profiles created with automatic Admin status.
+ * * Note: While roles are managed via the backend, [isUserOrganization] allows
+ * the local UI to adapt functionality based on the account type.
+ */
+
 package com.example.pivota.core.database.dao
 
 import androidx.room.Dao

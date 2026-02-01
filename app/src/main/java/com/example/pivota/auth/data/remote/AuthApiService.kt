@@ -5,8 +5,9 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import javax.inject.Inject
 
-class AuthApiService(private val client: HttpClient) {
+class AuthApiService @Inject constructor    (private val client: HttpClient) {
 
     /**
      * Stage 1: Request OTP

@@ -1,3 +1,11 @@
+/**
+ * Main Room database configuration for the Pivota application.
+ * * This database manages core persistence for:
+ * - **User Profiles**: Individual account data and initial admin credentials.
+ * - **Organization Membership**: Mapping users to organizations and managing
+ * role assignments (Admin/Member) controlled via backend logic.
+ */
+
 package com.example.pivota.core.database
 
 import com.example.pivota.core.database.dao.UserDao
