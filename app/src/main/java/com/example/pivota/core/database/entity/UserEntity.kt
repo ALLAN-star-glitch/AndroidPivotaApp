@@ -2,8 +2,9 @@ package com.example.pivota.core.database.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.example.pivota.core.database.DatabaseConstants
 
-@Entity(tableName = "users")
+@Entity(tableName = DatabaseConstants.Tables.USERS )
 data class UserEntity(
     @PrimaryKey val uuid: String,
     val accountUuid: String,
