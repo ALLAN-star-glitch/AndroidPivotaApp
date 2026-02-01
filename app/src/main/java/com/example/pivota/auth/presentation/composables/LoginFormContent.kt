@@ -65,6 +65,7 @@ fun LoginFormContent(
 
     var passwordVisible by remember { mutableStateOf(false) }
     var isChecked by remember { mutableStateOf(false) }
+    var agreeTerms by remember { mutableStateOf(false) }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -85,7 +86,9 @@ fun LoginFormContent(
             ) {
                 Button(
                     onClick = { onNavigateToDashboardScreen() },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
                     shape = RoundedCornerShape(28.dp),
                 ) {
                     Text("Login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -93,7 +96,9 @@ fun LoginFormContent(
 
                 OutlinedButton(
                     onClick = { /* continue with google */ },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
                     shape = RoundedCornerShape(28.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     colors = ButtonColors(
@@ -255,8 +260,12 @@ fun LoginFormContent(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                PivotaCheckBox()
-
+                PivotaCheckBox(
+                    checked = agreeTerms,
+                    onCheckedChange = {  agreeTerms = !agreeTerms },
+                    text = "I agree to the terms and conditions",
+                    modifier = Modifier
+                )
             }
         }
     }

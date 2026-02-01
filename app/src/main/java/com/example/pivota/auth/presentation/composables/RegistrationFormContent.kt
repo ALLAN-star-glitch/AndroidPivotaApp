@@ -63,6 +63,7 @@ fun RegistrationFormContent(
     var password by remember { mutableStateOf("") }
 
     var passwordVisible by remember { mutableStateOf(false) }
+    var agreeTerms by remember { mutableStateOf(false) }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -249,8 +250,12 @@ fun RegistrationFormContent(
                     .padding(vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                PivotaCheckBox()
-
+                PivotaCheckBox(
+                    checked = agreeTerms,
+                    onCheckedChange = {  agreeTerms = !agreeTerms },
+                    text = "I agree to the terms and conditions",
+                    modifier = Modifier
+                )
             }
         }
     }
