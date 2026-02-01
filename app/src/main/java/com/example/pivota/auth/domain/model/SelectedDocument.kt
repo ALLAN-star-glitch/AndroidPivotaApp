@@ -1,4 +1,4 @@
-package com.example.pivota.auth.models
+package com.example.pivota.auth.domain.model
 
 data class SelectedDocument(
     val id: String,

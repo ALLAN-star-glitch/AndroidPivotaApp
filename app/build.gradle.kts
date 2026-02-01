@@ -1,9 +1,14 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    // Kotlin serialization plugin for type safe routes and navigation arguments
-    kotlin("plugin.serialization") version "2.0.21"
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    id("com.google.dagger.hilt.android")
+
 }
 
 android {
@@ -30,12 +35,15 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_17
+        }
     }
+
     buildFeatures {
         compose = true
     }
@@ -48,6 +56,8 @@ android {
 dependencies {
 
     val nav_version = "2.9.0"
+    val room_version = "2.8.4"
+    val ktorVersion = "3.0.0"
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -87,16 +97,42 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
 
     
-        // Add this line to get FavoriteBorder and others
-        implementation("androidx.compose.material:material-icons-extended")
+    // Add this line to get FavoriteBorder and others
+    implementation("androidx.compose.material:material-icons-extended")
+
+    implementation("com.google.dagger:hilt-android:2.57.1")
+    ksp("com.google.dagger:hilt-android-compiler:2.57.1")
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
+
+
+    implementation("androidx.room:room-runtime:$room_version")
+
+    // If this project uses any Kotlin source, use Kotlin Symbol Processing (KSP)
+    // See Add the KSP plugin to your project
+    ksp("androidx.room:room-compiler:$room_version")
+
+    // optional - Kotlin Extensions and Coroutines support for Room
+    implementation("androidx.room:room-ktx:${room_version}")
+
+    // Preferences DataStore (SharedPreferences like APIs)
+    implementation("androidx.datastore:datastore-preferences:1.2.0")
+
+
+    // Typed DataStore for custom data objects (for example, using Proto or JSON).
+    implementation("androidx.datastore:datastore:1.2.0")
+
+
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
+
+    implementation("io.ktor:ktor-client-android:${ktorVersion}")
+    implementation("io.ktor:ktor-client-content-negotiation:${ktorVersion}")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:${ktorVersion}")
+    implementation("io.ktor:ktor-client-logging:${ktorVersion}")
 
 
 
 
-
-
-
-    
 
 
 

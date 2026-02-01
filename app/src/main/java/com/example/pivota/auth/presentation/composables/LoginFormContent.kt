@@ -53,100 +53,43 @@ import com.example.pivota.R
 
 @Composable
 fun LoginFormContent(
-    onNavigateToRegisterScreen: () -> Unit,
-    onNavigateToDashboardScreen: ()-> Unit
+    topPadding: Dp,
+    showHeader: Boolean = false,
+    isWideScreen: Boolean = false,
+    onRegisterClick: () -> Unit, // Renamed from onNavigateToRegisterScreen
+    onLoginSuccess: () -> Unit    // Renamed from onNavigateToDashboardScreen
 ) {
-
-    val scrollState = rememberScrollState()
-
     // State for input fields
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var rememberMe by remember { mutableStateOf(false) }
 
-    var passwordVisible by remember { mutableStateOf(false) }
-    var isChecked by remember { mutableStateOf(false) }
-
-    val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = MaterialTheme.colorScheme.primary,
-        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-
-        focusedContainerColor = MaterialTheme.colorScheme.surface,
-        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer
-    )
-
-    Scaffold(
-        bottomBar = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
-                    .background(color = MaterialTheme.colorScheme.surface)
-            ) {
-                Button(
-                    onClick = { onNavigateToDashboardScreen() },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                ) {
-                    Text("Login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
-
-                OutlinedButton(
-                    onClick = { /* continue with google */ },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    colors = ButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        disabledContainerColor = MaterialTheme.colorScheme.surface,
-                        disabledContentColor = Color.LightGray
-                    )
-                ) {
-                    Icon(
-                        painterResource(id = R.drawable.ic_google),
-                        contentDescription = null,
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Login with Google", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Don't have and account?")
-                    Text(
-                        text = "Register",
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { onNavigateToRegisterScreen() }
-                    )
-                }
-            }
-        }
-    ) { innerPadding ->
+    Box(
+        modifier = Modifier
+            .padding(top = topPadding)
+            .fillMaxSize()
+            .clip(RoundedCornerShape(topEnd = 58.dp))
+            .background(Color.White)
+            .padding(24.dp)
+            .zIndex(2f)
+    ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(innerPadding)
-                .padding(horizontal = 24.dp, vertical = 16.dp), // Ensures padding doesn't shift form out of view
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
 
-            Spacer(Modifier.height(24.dp))
-
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.stacks_24px), // replace
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(48.dp)
+            // Only show header if in wide screen (i.e., two-pane layout)
+            if (showHeader && isWideScreen) {
+                HorizontalDivider(
+                    modifier = Modifier
+                        .width(100.dp)
+                        .padding(bottom = 8.dp)
+                        .align(Alignment.CenterHorizontally),
+                    thickness = 2.dp,
+                    color = Color(0xFFE9C16C)
                 )
 
                 Spacer(Modifier.height(16.dp))
@@ -158,10 +101,7 @@ fun LoginFormContent(
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            // Email/Phone Input Field
-            OutlinedTextField(
+            PivotaTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Email or Phone") },
@@ -169,16 +109,7 @@ fun LoginFormContent(
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
 
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                ),
-                singleLine = true,
-                shape = RoundedCornerShape(8.dp)
-            )
-
-            // Password Input Field
-            OutlinedTextField(
+            PivotaPasswordField(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Password") },
@@ -206,47 +137,35 @@ fun LoginFormContent(
                 }
             )
 
-            TextButton(
-                onClick = { /* Handle navigation to forgot password */ },
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Text(
-                    text = "Forgot Password?",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-
-            // Enable fingerprint
+            // Remember me now
             Row(
                 modifier = Modifier
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 1. Icon on the left
-                Icon(
-                    painter = painterResource(id = R.drawable.fingerprint_24px),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
+                PivotaCheckBox(
+                    checked = rememberMe,
+                    onCheckedChange = { rememberMe = it },
+                    text = "Remember me"
+                )
+            }
+
+            // Action Buttons Row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                PivotaPrimaryButton(
+                    text = "Login",
+                    onClick = onLoginSuccess // Updated Lambda call
                 )
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Text("OR", color = Color.Gray)
 
-                // 2. Text in the middle (Takes up all remaining space)
-                Text(
-                    text = "Enable fingerprint for faster login",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f)
-                )
-
-                // 3. Toggle on the right
-                Switch(
-                    checked = isChecked,
-                    onCheckedChange = {
-                        isChecked = it
-                        /*show enable fingerprint*/
-                    }
+                PivotaSecondaryButton(
+                    text = "Register",
+                    onclick = onRegisterClick // Updated Lambda call
                 )
             }
 
