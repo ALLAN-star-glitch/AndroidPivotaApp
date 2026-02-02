@@ -27,17 +27,11 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    /**
-     * Uses [toIndividualRequest] extension function from AuthMapper
-     */
     override suspend fun signupIndividual(user: User, code: String, password: String): Result<User> =
         executeAuth {
             apiService.signupIndividual(user.toIndividualRequest(code, password))
         }
 
-    /**
-     * Uses [toOrganisationRequest] extension function from AuthMapper
-     */
     override suspend fun signupOrganization(user: User, code: String, password: String): Result<User> =
         executeAuth {
             apiService.signupOrganization(user.toOrganisationRequest(code, password))
@@ -50,39 +44,50 @@ class AuthRepositoryImpl @Inject constructor(
 
     /**
      * Centralized Authentication Orchestrator
-     * Handles: Token persistence, Domain mapping, and Local DB sync.
+     * Logic: Maps the complex UserResponseDto (Account + User + Completion)
+     * into the Domain User model and persists it.
      */
     private suspend fun executeAuth(
         call: suspend () -> BaseResponseDto<UserResponseDto>
     ): Result<User> = withContext(Dispatchers.IO) {
         try {
             val response = call()
-            if (response.success && response.data != null) {
-                // 1. Persist Session Tokens
-                response.data.accessToken?.let { preferences.saveAccessToken(it) }
-                response.data.refreshToken?.let { preferences.saveRefreshToken(it) }
 
-                // 2. Map to Domain
-                val domainUser = response.data.toDomain()
+            // Handle the nested data structure from your backend response
+            val data = response.data
+            if (response.success && data != null) {
 
-                // 3. Persist Profile to Room
+                // 1. Map DTO components to Domain Model
+                // We pass 'data.account' and 'data.completion' into the mapper
+                // to populate fields like accountType and completionPercentage
+                val domainUser = data.user.toDomain(
+                    account = data.account,
+                    completion = data.completion
+                )
+
+                // 2. Local Database Sync
                 saveAuthenticatedUser(domainUser)
+
+                // 3. Mark account-specific flags in Preferences
+                preferences.saveUserEmail(domainUser.email)
 
                 Result.success(domainUser)
             } else {
+                // Return server-side error message (e.g., "Signup successful" or errors)
                 Result.failure(Exception(response.message))
             }
         } catch (e: Exception) {
+            // Handle network or parsing exceptions
             Result.failure(e)
         }
     }
 
     override suspend fun saveAuthenticatedUser(user: User) {
         withContext(Dispatchers.IO) {
-            // Uses [toEntity] extension function from AuthMapper
+            // Persist the domain user as an Entity for offline access
             userDao.insertUser(user.toEntity())
 
-            // Marks session as active/onboarded
+            // Mark onboarding/welcome flow as done since user is registered
             preferences.setOnboardingComplete(true)
         }
     }

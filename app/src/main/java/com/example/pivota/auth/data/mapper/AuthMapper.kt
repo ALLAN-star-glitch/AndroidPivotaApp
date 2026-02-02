@@ -29,27 +29,33 @@ fun User.toEntity(): UserEntity {
         adminLastName = orgData?.adminLastName,
         isVerified = this.isVerified,
         selectedPlan = this.selectedPlan?.name,
+        // Aligned with the 'isComplete' flag from backend completion DTO
         isOnboardingComplete = this.isOnboardingComplete,
         createdAt = this.createdAt
     )
 }
 
 /**
- * Maps UserResponseDto (Network) to User (Domain)
+ * Maps UserDto + Account + Completion (Network) to User (Domain)
+ * Updated to match the new nested backend structure
  */
-fun UserResponseDto.toDomain(): User {
-    val type = when (this.account.type.uppercase()) {
+fun UserDto.toDomain(
+    account: AccountResponseDto,
+    completion: CompletionResponseDto
+): User {
+    val type = when (account.type.uppercase()) {
         "ORGANIZATION" -> {
-            val org = this.organization ?: throw IllegalStateException("Org data missing")
+            // Note: If Organization-specific fields come in 'profile' or 'user',
+            // map them here. Currently setting defaults for MVP1.
             AccountType.Organization(
-                orgUuid = org.uuid,
-                orgName = org.name,
-                orgType = org.orgType,
-                orgEmail = org.officialEmail,
-                orgPhone = org.officialPhone,
-                orgAddress = org.physicalAddress,
-                adminFirstName = org.adminFirstName,
-                adminLastName = org.adminLastName
+                orgUuid = account.uuid,
+                orgName = "", // Map from profile if available
+                orgType = "",
+                orgEmail = this.email,
+                orgPhone = this.phone ?: "",
+                orgAddress = "",
+                adminFirstName = this.firstName ?: "",
+                adminLastName = this.lastName ?: ""
             )
         }
         else -> AccountType.Individual
@@ -57,14 +63,16 @@ fun UserResponseDto.toDomain(): User {
 
     return User(
         uuid = this.uuid,
-        accountUuid = this.account.uuid,
+        accountUuid = account.uuid,
         firstName = this.firstName ?: "",
         lastName = this.lastName ?: "",
         email = this.email,
         personalPhone = this.phone ?: "",
         accountType = type,
         isVerified = this.status.uppercase() == "ACTIVE",
-        isOnboardingComplete = true,
+        // Logic: Account is fully onboarded if backend says isComplete is true
+        isOnboardingComplete = completion.isComplete,
+        // You can also add completion.percentage to the User model if needed
         createdAt = System.currentTimeMillis()
     )
 }
@@ -96,7 +104,7 @@ fun User.toOrganisationRequest(code: String, password: String): OrganisationSign
         officialEmail = orgData.orgEmail,
         officialPhone = orgData.orgPhone,
         physicalAddress = orgData.orgAddress,
-        email = this.email,           // Admin email (from root user)
+        email = this.email,           // Admin email
         phone = this.personalPhone,    // Admin phone
         adminFirstName = orgData.adminFirstName,
         adminLastName = orgData.adminLastName,
