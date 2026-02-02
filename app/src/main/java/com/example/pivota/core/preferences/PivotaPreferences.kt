@@ -1,14 +1,3 @@
-/**
- * Manager for lightweight persistent app state using DataStore.
- * * This class handles:
- * - **Session Persistence**: Managing JWT tokens for backend authentication.
- * - **Navigation Logic**: Tracking [isOnboardingComplete] to determine the
- * initial destination.
- * - **User Preferences**: Local settings like [SELECTED_LANGUAGE].
- * * Use [clearSession] for standard logouts and [clearAll] for a full factory
- * reset of the app state.
- */
-
 package com.example.pivota.core.preferences
 
 import androidx.datastore.core.DataStore
@@ -49,6 +38,20 @@ class PivotaPreferences @Inject constructor(
 
     val authToken: Flow<String?> = dataStore.data.map { it[AUTH_TOKEN] }
 
+    /**
+     * Specifically added to resolve the repository's "saveAccessToken" call.
+     */
+    suspend fun saveAccessToken(token: String) {
+        dataStore.edit { it[AUTH_TOKEN] = token }
+    }
+
+    /**
+     * Specifically added to resolve the repository's "saveRefreshToken" call.
+     */
+    suspend fun saveRefreshToken(token: String) {
+        dataStore.edit { it[REFRESH_TOKEN] = token }
+    }
+
     suspend fun saveTokens(accessToken: String, refreshToken: String) {
         dataStore.edit {
             it[AUTH_TOKEN] = accessToken
@@ -58,8 +61,6 @@ class PivotaPreferences @Inject constructor(
 
     /**
      * Clears only the Authentication tokens.
-     * Use this for a "Soft Logout" where the user returns to Guest Mode
-     * and does NOT see the Welcome Screen again.
      */
     suspend fun clearSession() {
         dataStore.edit {

@@ -7,29 +7,27 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import javax.inject.Inject
 
-class AuthApiService @Inject constructor    (private val client: HttpClient) {
+class AuthApiService @Inject constructor(
+    private val client: HttpClient
+) {
 
     /**
      * Stage 1: Request OTP
-     * Triggers the backend engine to send a 6-digit code.
-     * For login, the purpose passed here will be "2FA".
+     * Accepts the RequestOtpRequest DTO as called by the Repository.
      */
-    suspend fun requestOtp(email: String, purpose: String): BaseResponseDto<Unit?> {
+    suspend fun requestOtp(request: RequestOtpRequest): BaseResponseDto<Unit?> {
         return client.post("v1/auth-module/otp/request") {
             contentType(ContentType.Application.Json)
-            setBody(RequestOtpRequest(
-                email = email,
-                purpose = purpose
-            ))
+            setBody(request)
         }.body()
     }
 
     /**
      * Stage 2: Individual Registration
-     * Verified by OTP code.
+     * Maps to the individual signup endpoint.
      */
-    suspend fun signupIndividual(request: UserSignupRequestDto): BaseResponseDto<UserDto> {
-        return client.post("auth/signup") {
+    suspend fun signupIndividual(request: UserSignupRequestDto): BaseResponseDto<UserResponseDto> {
+        return client.post("v1/auth-module/auth/signup") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
@@ -37,10 +35,10 @@ class AuthApiService @Inject constructor    (private val client: HttpClient) {
 
     /**
      * Stage 2: Organization Registration
-     * Verified by OTP code.
+     * Maps to the organization signup endpoint.
      */
-    suspend fun signupOrganization(request: OrganisationSignupRequestDto): BaseResponseDto<UserDto> {
-        return client.post("auth/organisation-signup") {
+    suspend fun signupOrganization(request: OrganisationSignupRequestDto): BaseResponseDto<UserResponseDto> {
+        return client.post("v1/auth-module/auth/organisation-signup") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
@@ -48,11 +46,10 @@ class AuthApiService @Inject constructor    (private val client: HttpClient) {
 
     /**
      * Stage 2: Login (MFA/2FA)
-     * Matches backend 'verifyMfaLogin'.
-     * This is the single call after requesting a "2FA" OTP that authenticates the user.
+     * Final step of the login flow.
      */
-    suspend fun verifyLoginOtp(request: VerifyLoginOtpDto): BaseResponseDto<UserDto> {
-        return client.post("auth/verify-mfa") {
+    suspend fun verifyLoginOtp(request: VerifyLoginOtpDto): BaseResponseDto<UserResponseDto> {
+        return client.post("v1/auth-module/auth/verify-mfa") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()

@@ -1,3 +1,5 @@
+package com.example.pivota.discovery.presentation.composables
+
 import DiscoveryContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -23,7 +25,6 @@ fun DiscoveryAdaptiveLayout(
         val isExpandedScreen = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
 
         when {
-
             // TWO-PANE LAYOUT
             isMediumScreen || isExpandedScreen -> {
                 Row(modifier = Modifier.fillMaxSize()) {
@@ -38,9 +39,7 @@ fun DiscoveryAdaptiveLayout(
                         BackgroundImageAndOverlay(
                             header = header,
                             isWideScreen = true,
-                            offset = 200.dp,
-                            showUpgradeButton = true,
-                            imageHeight = 300.dp,
+                            showUpgradeButton = true, // Kept true as per your original
                             enableCarousel = true,
                             image = R.drawable.happy_client
                         )
@@ -72,9 +71,7 @@ fun DiscoveryAdaptiveLayout(
                     BackgroundImageAndOverlay(
                         header = header,
                         isWideScreen = false,
-                        offset = 350.dp,
                         showUpgradeButton = false,
-                        imageHeight = 600.dp,
                         enableCarousel = true,
                         image = R.drawable.happy_client
                     )
@@ -85,6 +82,7 @@ fun DiscoveryAdaptiveLayout(
                             .zIndex(2f)
                     ) {
                         DiscoveryContent(
+                            // Pushes the discovery selection UI below the teal overlay area
                             topPadding = 450.dp,
                             onContinue = onNavigateToDashboard
                         )

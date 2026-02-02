@@ -1,5 +1,6 @@
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.pivota.discovery.presentation.composables.DiscoveryAdaptiveLayout
 
 @Composable
 fun DiscoveryScreen(

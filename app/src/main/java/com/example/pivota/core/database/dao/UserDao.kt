@@ -44,6 +44,6 @@ interface UserDao {
     suspend fun getUserCount(): Int
 
     // 4. Added: Check specifically for Organization status
-    @Query("SELECT isOrganization FROM ${Tables.USERS} WHERE uuid = :userUuid")
+    @Query("SELECT accountType = 'ORGANIZATION' FROM ${Tables.USERS} WHERE uuid = :userUuid")
     suspend fun isUserOrganization(userUuid: String): Boolean
 }

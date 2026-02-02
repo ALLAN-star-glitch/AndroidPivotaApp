@@ -2,7 +2,7 @@ package com.example.pivota.auth.domain.model
 
 /**
  * The core Domain Model for a User in PivotaConnect.
- * This represents the "Identity" and its "Root Anchor" (Account).
+ * Represents the "Identity" and its "Root Anchor" (Account).
  */
 data class User(
     val uuid: String,
@@ -10,8 +10,7 @@ data class User(
     val firstName: String,
     val lastName: String,
     val email: String,
-    val personalPhone: String, // Changed to String to match mapper logic (using empty string fallback)
-    val role: UserRole,
+    val personalPhone: String = "", // empty string if not provided
     val accountType: AccountType,
     val isVerified: Boolean = false,
     val selectedPlan: SubscriptionPlan? = null,
@@ -19,25 +18,28 @@ data class User(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+/**
+ * Sealed class for account type: Individual or Organization.
+ */
 sealed class AccountType {
+
+    /** Individual account type */
     data object Individual : AccountType()
 
+    /** Organization account type */
     data class Organization(
         val orgUuid: String,
         val orgName: String,
-        // Optional metadata from the OrganizationProfile layer
-        val verificationStatus: String = "PENDING"
+        val orgType: String,           // NGO, Company, Institution, etc.
+        val orgEmail: String,
+        val orgPhone: String? = null,
+        val orgAddress: String,
+        val adminFirstName: String,
+        val adminLastName: String
     ) : AccountType()
 }
 
-/**
- * UserRole matches the 'roleName' strings used in your NestJS RBAC service.
- */
-enum class UserRole {
-    BUSINESS_ADMINISTRATOR,
-    GeneralUser
-}
-
+/** Subscription plans for users */
 enum class SubscriptionPlan {
     FREE_FOREVER,
     BRONZE,
