@@ -1,18 +1,9 @@
 package com.example.pivota.auth.presentation.composables
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -20,21 +11,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,216 +25,318 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.R
+import com.example.pivota.auth.domain.model.AccountType
+import com.example.pivota.auth.presentation.state.SignupUiState
+import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 
 @Composable
 fun RegistrationFormContent(
-    onRegisterSuccess: () -> Unit={},
-    onNavigateToLoginScreen: ()-> Unit
+    viewModel: SignupViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+    onRegisterSuccess: (String) -> Unit, // Still hoisted to handle navigation to OTP
+    onLoginLinkClick: () -> Unit,
+
 ) {
     val scrollState = rememberScrollState()
+    val uiState by viewModel.uiState.collectAsState()
 
-    // State for input fields
+    /* ───────── STATE ───────── */
     var accountType by remember { mutableStateOf("Individual") }
-    var fullName by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
 
+    // Individual
+    var firstName by remember { mutableStateOf("") }
+    var lastName by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+
+    // Organisation
+    var orgName by remember { mutableStateOf("") }
+    var orgType by remember { mutableStateOf("") }
+    var orgEmail by remember { mutableStateOf("") }
+    var orgPhone by remember { mutableStateOf("") }
+    var orgAddress by remember { mutableStateOf("") }
+    var adminFirstName by remember { mutableStateOf("") }
+    var adminLastName by remember { mutableStateOf("") }
+
+    // Shared
+    var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var agreeTerms by remember { mutableStateOf(false) }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = MaterialTheme.colorScheme.primary,
         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-
         focusedContainerColor = MaterialTheme.colorScheme.surface,
         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer
     )
 
-    Scaffold(
-        bottomBar = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
-                    .background(color = MaterialTheme.colorScheme.surface)
-            ) {
-                Button(
-                    onClick = { onRegisterSuccess() },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                ) {
-                    Text("Register", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
-
-                OutlinedButton(
-                    onClick = { /* continue with google */ },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    colors = ButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        disabledContainerColor = MaterialTheme.colorScheme.surface,
-                        disabledContentColor = Color.LightGray
-                    )
-                ) {
-                    Icon(
-                        painterResource(id = R.drawable.ic_google),
-                        contentDescription = null,
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Register with Google", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Already have an account?")
-                    Text(
-                        text = "Login",
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { onNavigateToLoginScreen() }
-                    )
-                }
-            }
+    /* ───────── UI STATE HANDLING ───────── */
+    LaunchedEffect(uiState) {
+        if (uiState is SignupUiState.OtpSent) {
+            // Navigate to OTP screen using the email from VM
+            onRegisterSuccess(viewModel.pendingEmail)
+            viewModel.resetState()
         }
-    ) { innerPadding ->
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
+            .verticalScroll(scrollState)
+            .padding(horizontal = 24.dp)
+    ) {
+
+        /* ───────── BRANDING ───────── */
+        Spacer(Modifier.height(48.dp))
+
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(innerPadding)
-                .padding(horizontal = 24.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            Spacer(Modifier.height(24.dp))
-
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.stacks_24px), // replace
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(48.dp)
-                )
-
-                Spacer(Modifier.height(16.dp))
-
-                Text(
-                    "PivotaConnect",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text("Connect, Discover, Grow")
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Individual/Organisation
-            CustomSegmentedToggle (
-                options = listOf("Individual", "Organisation"),
-                selected = accountType,
-                onSelect = { accountType = it }
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "Pivota Connect Logo",
+                modifier = Modifier.size(90.dp)
             )
 
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                "PivotaConnect",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "Connect, Discover, Grow",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        /* ───────── FORM ───────── */
+        CustomSegmentedToggle(
+            options = listOf("Individual", "Organisation"),
+            selected = accountType,
+            onSelect = { accountType = it }
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        /* ───────── INDIVIDUAL ───────── */
+        if (accountType == "Individual") {
             OutlinedTextField(
-                value = fullName,
-                onValueChange = { fullName = it },
-                label = { Text("Full Name") },
-                placeholder = { Text("name") },
+                value = firstName,
+                onValueChange = { firstName = it },
+                label = { Text("First Name") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
-
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Next
-                ),
                 singleLine = true,
                 shape = RoundedCornerShape(8.dp)
             )
-
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = lastName,
+                onValueChange = { lastName = it },
+                label = { Text("Last Name") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                singleLine = true,
+                shape = RoundedCornerShape(8.dp)
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = phone,
+                onValueChange = { phone = it },
+                label = { Text("Phone (Optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                shape = RoundedCornerShape(8.dp)
+            )
+            Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Email") },
-                placeholder = { Text("example@domain.com") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
-
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                ),
-                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 shape = RoundedCornerShape(8.dp)
             )
+        }
 
+        /* ───────── ORGANISATION ───────── */
+        if (accountType == "Organisation") {
             OutlinedTextField(
-                value = phone,
-                onValueChange = { phone = it },
-                label = { Text("Phone Number (Optional)") },
-                placeholder = { Text("07 12 345 678") },
+                value = orgName,
+                onValueChange = { orgName = it },
+                label = { Text("Organisation Name") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
-
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Phone,
-                    imeAction = ImeAction.Next
-                ),
-                singleLine = true,
                 shape = RoundedCornerShape(8.dp)
             )
-
+            Spacer(Modifier.height(12.dp))
             OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password") },
+                value = orgType,
+                onValueChange = { orgType = it },
+                label = { Text("Organisation Type") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(8.dp),
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 colors = textFieldColors,
+                shape = RoundedCornerShape(8.dp)
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = orgEmail,
+                onValueChange = { orgEmail = it },
+                label = { Text("Official Email") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                shape = RoundedCornerShape(8.dp)
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = orgPhone,
+                onValueChange = { orgPhone = it },
+                label = { Text("Official Phone (Optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                shape = RoundedCornerShape(8.dp)
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = orgAddress,
+                onValueChange = { orgAddress = it },
+                label = { Text("Physical Address") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                shape = RoundedCornerShape(8.dp)
+            )
+            Spacer(Modifier.height(16.dp))
+            Text("Administrator Details", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = adminFirstName,
+                onValueChange = { adminFirstName = it },
+                label = { Text("Admin First Name") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                shape = RoundedCornerShape(8.dp)
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = adminLastName,
+                onValueChange = { adminLastName = it },
+                label = { Text("Admin Last Name") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                shape = RoundedCornerShape(8.dp)
+            )
+        }
 
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                // Toggle Icon
-                trailingIcon = {
-                    val image = if (passwordVisible)
-                        Icons.Filled.Visibility
-                    else Icons.Filled.VisibilityOff
+        Spacer(Modifier.height(12.dp))
 
-                    val description = if (passwordVisible) "Hide password" else "Show password"
-
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(imageVector = image, contentDescription = description)
-                    }
+        /* ───────── PASSWORD ───────── */
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                        contentDescription = null
+                    )
                 }
-            )
+            },
+            colors = textFieldColors,
+            shape = RoundedCornerShape(8.dp)
+        )
 
-            //Terms and Conditions Row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                PivotaCheckBox(
-                    checked = agreeTerms,
-                    onCheckedChange = {  agreeTerms = !agreeTerms },
-                    text = "I agree to the terms and conditions",
-                    modifier = Modifier
+        Spacer(Modifier.height(8.dp))
+
+        PivotaCheckBox(
+            checked = agreeTerms,
+            onCheckedChange = { agreeTerms = it },
+            text = "I agree to the terms and conditions"
+        )
+
+        Spacer(Modifier.height(24.dp))
+
+        /* ───────── REGISTER ───────── */
+        Button(
+            onClick = {
+                if (accountType == "Organisation") {
+                    val organization = AccountType.Organization(
+                        orgUuid = "",
+                        orgName = orgName,
+                        orgType = orgType,
+                        orgEmail = orgEmail,
+                        orgPhone = orgPhone,
+                        orgAddress = orgAddress,
+                        adminFirstName = adminFirstName,
+                        adminLastName = adminLastName
+                    )
+                    viewModel.startSignup(
+                        email = orgEmail,
+                        password = password,
+                        phone = orgPhone,
+                        isOrganization = true,
+                        organization = organization
+                    )
+                } else {
+                    viewModel.startSignup(
+                        email = email,
+                        password = password,
+                        phone = phone,
+                        isOrganization = false,
+                        firstName = firstName,
+                        lastName = lastName
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            enabled = uiState !is SignupUiState.Loading && agreeTerms,
+            shape = RoundedCornerShape(28.dp)
+        ) {
+            if (uiState is SignupUiState.Loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.dp,
+                    color = Color.White
                 )
+            } else {
+                Text("Register", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        /* ───────── ERROR HANDLING ───────── */
+        if (uiState is SignupUiState.Error) {
+            Text(
+                text = (uiState as SignupUiState.Error).message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
+        ) {
+            Text("Already have an account? ")
+            Text(
+                text = "Login",
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable { onLoginLinkClick() }
+            )
         }
     }
 }

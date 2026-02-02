@@ -1,9 +1,12 @@
 package com.example.pivota.core.presentations.composables.background_image_and_overlay
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -14,193 +17,205 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.example.pivota.core.presentations.composables.buttons.PivotaUpgradeButton
-import kotlinx.coroutines.delay
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-
+import com.example.pivota.core.presentations.composables.buttons.PivotaUpgradeButton
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BackgroundImageAndOverlay(
     isWideScreen: Boolean,
-    welcomeText: String = "",
     desc1: String = "",
     desc2: String = "",
     header: String = "",
-    offset: Dp = 0.dp,
-    imageHeight: Dp,
     showUpgradeButton: Boolean,
-    image: Int = 0, // fallback image
+    image: Int = 0,
     enableCarousel: Boolean = false,
     images: List<Int> = emptyList(),
     messages: List<String> = emptyList()
 ) {
     val context = LocalContext.current
-    val pagerState = rememberPagerState(
-        initialPage = 0
-    ) { images.size }
+    val pagerState = rememberPagerState(initialPage = 0) { images.size }
 
-    if (enableCarousel && images.isNotEmpty()) {
-        LaunchedEffect(Unit) {
-            while (true) {
-                delay(3000)
-                val next = (pagerState.currentPage + 1) % images.size
-                pagerState.animateScrollToPage(next)
+    // Proportions for layout consistency
+    val topSpacerWeight = if (isWideScreen) 0.5f else 0.3f
+    val overlayWeight = if (isWideScreen) 0.5f else 0.7f
+
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        /* 1. TUNED BACKGROUND LAYER (Image or Carousel) */
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // Wide screen fills the whole pane (1f)
+                    // Mobile takes top area + slight overlap (0.2f) for smooth transition
+                    .weight(if (isWideScreen) 1f else topSpacerWeight + 0.2f)
+            ) {
+                if (enableCarousel && images.isNotEmpty()) {
+                    LaunchedEffect(Unit) {
+                        while (true) {
+                            delay(3000)
+                            val next = (pagerState.currentPage + 1) % images.size
+                            pagerState.animateScrollToPage(next)
+                        }
+                    }
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize()
+                    ) { page ->
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(images[page])
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                } else {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(image)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+
+            // Only add a bottom spacer on mobile to stop the image rendering behind content
+            if (!isWideScreen) {
+                Spacer(modifier = Modifier.weight(0.5f))
             }
         }
 
-        HorizontalPager(
-            state = pagerState,
-            modifier = if (isWideScreen) Modifier.fillMaxSize()
-            else Modifier.fillMaxWidth().height(imageHeight)
-        ) { page ->
-            // Replaced Image with AsyncImage to fix memory crashes
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(images[page])
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-    } else {
-        // Fallback image using AsyncImage
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(image)
-                .crossfade(true)
-                .build(),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = if (isWideScreen) Modifier.fillMaxSize()
-            else Modifier.fillMaxWidth().height(imageHeight)
-        )
-    }
+        /* 2. OVERLAY LAYER */
+        Column(modifier = Modifier.fillMaxSize()) {
 
-    // Overlay
-    Box(
-        modifier = Modifier
-            .offset(y = offset)
-            .fillMaxWidth()
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(topStart = 50.dp, topEnd = 50.dp))
-            .background(Color(0xAA008080))
-            .zIndex(1f)
-    ) {
-        if (isWideScreen) {
-            Column(
+            // Pushes the teal box down
+            Spacer(modifier = Modifier.weight(topSpacerWeight))
+
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 32.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.Top,
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxWidth()
+                    .weight(overlayWeight)
+                    .clip(RoundedCornerShape(topStart = 50.dp, topEnd = 50.dp))
+                    .background(Color(0xAA008080)) // Teal overlay with transparency
+                    .zIndex(1f)
             ) {
-                if (enableCarousel && messages.isNotEmpty()) {
-                    Text(
-                        text = messages[pagerState.currentPage],
-                        style = MaterialTheme.typography.headlineSmall.copy(color = Color.White),
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.Center) {
-                        repeat(images.size) { index ->
-                            Box(
-                                modifier = Modifier
-                                    .padding(4.dp)
-                                    .size(if (pagerState.currentPage == index) 12.dp else 8.dp)
-                                    .background(
-                                        color = if (pagerState.currentPage == index) Color.White else Color.Gray,
-                                        shape = RoundedCornerShape(50)
-                                    )
+                OverlayContent(
+                    isWideScreen = isWideScreen,
+                    enableCarousel = enableCarousel,
+                    messages = messages,
+                    pagerState = pagerState,
+                    imagesSize = images.size,
+                    desc1 = desc1,
+                    desc2 = desc2,
+                    header = header,
+                    showUpgradeButton = showUpgradeButton
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun OverlayContent(
+    isWideScreen: Boolean,
+    enableCarousel: Boolean,
+    messages: List<String>,
+    pagerState: PagerState,
+    imagesSize: Int,
+    desc1: String,
+    desc2: String,
+    header: String,
+    showUpgradeButton: Boolean
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 32.dp, vertical = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        /* ───────── ALWAYS VISIBLE GOLDEN DIVIDER ───────── */
+        Box(
+            modifier = Modifier
+                .width(45.dp)               // Short, professional width
+                .height(4.dp)                // Professional thickness
+                .clip(RoundedCornerShape(2.dp))
+                .background(Color(0xFFFFC107))   // Golden Yellow
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        if (enableCarousel && messages.isNotEmpty()) {
+            /* ───────── CAROUSEL CONTENT ───────── */
+            Text(
+                text = messages[pagerState.currentPage],
+                style = if (isWideScreen) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Carousel Indicators (Dots)
+            Row(horizontalArrangement = Arrangement.Center) {
+                repeat(imagesSize) { index ->
+                    Box(
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .size(if (pagerState.currentPage == index) 10.dp else 6.dp)
+                            .background(
+                                color = if (pagerState.currentPage == index) Color.White else Color.Gray,
+                                shape = RoundedCornerShape(50)
                             )
-                        }
-                    }
-                } else {
-                    Text(
-                        text = welcomeText,
-                        style = MaterialTheme.typography.headlineSmall.copy(color = Color.White)
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    if (desc1.isNotBlank()) {
-                        Text(
-                            text = desc1,
-                            style = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-
-                    if (desc2.isNotBlank()) {
-                        Text(
-                            text = desc2,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = Color(
-                                    0xFFFFC107
-                                )
-                            ),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-
-                if (showUpgradeButton) {
-                    PivotaUpgradeButton(modifier = Modifier.padding(top = 15.dp))
                 }
             }
         } else {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Top,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 24.dp)
-            ) {
-                if (enableCarousel && messages.isNotEmpty()) {
-                    Text(
-                        text = messages[pagerState.currentPage],
-                        style = MaterialTheme.typography.headlineSmall.copy(color = Color.White),
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.Center) {
-                        repeat(images.size) { index ->
-                            Box(
-                                modifier = Modifier
-                                    .padding(4.dp)
-                                    .size(if (pagerState.currentPage == index) 12.dp else 8.dp)
-                                    .background(
-                                        color = if (pagerState.currentPage == index) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.outline,
-                                        shape = RoundedCornerShape(50)
-                                    )
-                            )
-                        }
-                    }
-                } else {
-                    HorizontalDivider(
-                        modifier = Modifier
-                            .width(100.dp)
-                            .padding(bottom = 8.dp),
-                        thickness = 2.dp,
-                        color = Color(0xFFFFC107)
-                    )
-
-                    Text(
-                        text = header,
-                        style = MaterialTheme.typography.headlineMedium.copy(color = Color.White),
-                        modifier = Modifier.padding(bottom = 10.dp)
-                    )
-                }
+            /* ───────── HEADER & DESCRIPTION CONTENT ───────── */
+            if (header.isNotBlank()) {
+                Text(
+                    text = header,
+                    style = MaterialTheme.typography.headlineSmall, // Professional Header
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
+
+            if (desc1.isNotBlank()) {
+                Text(
+                    text = desc1,
+                    style = MaterialTheme.typography.bodyLarge, // Supporting Description
+                    color = Color.White.copy(alpha = 0.9f),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            if (desc2.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = desc2,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFFFFC107), // Secondary accent text
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        if (showUpgradeButton) {
+            PivotaUpgradeButton(modifier = Modifier.padding(top = 15.dp))
         }
     }
 }

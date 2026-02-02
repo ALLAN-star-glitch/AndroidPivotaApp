@@ -53,91 +53,104 @@ fun SplashContent() {
     val pivotaTeal = Color(0xFF006565)
     val opportunityGold = Color(0xFFE9C16C)
 
-    var startAnimation by remember { mutableStateOf(false) }
+    // Set startAnimation to TRUE immediately to avoid the "first-frame lag"
+    var startAnimation by remember { mutableStateOf(true) }
     var showTagline by remember { mutableStateOf(false) }
 
+    // Logo animation: Entrance starts instantly on composition
     val logoAlpha by animateFloatAsState(
         targetValue = if (startAnimation) 1f else 0f,
-        animationSpec = tween(600, easing = EaseOut), label = "logo_alpha"
-    )
-    val logoScale by animateFloatAsState(
-        targetValue = if (startAnimation) 1f else 0.95f,
-        animationSpec = tween(600, easing = EaseOut), label = "logo_scale"
+        animationSpec = tween(600, easing = EaseOut),
+        label = "logo_alpha"
     )
 
-    val pulseAnim = rememberInfiniteTransition(label = "connection_pulse")
-    val pulseScale by pulseAnim.animateFloat(
-        initialValue = 1f,
-        targetValue = 3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ), label = "pulse_scale"
+    val logoScale by animateFloatAsState(
+        targetValue = if (startAnimation) 1f else 0.92f,
+        animationSpec = tween(700, easing = EaseOut),
+        label = "logo_scale"
     )
-    val pulseAlpha by pulseAnim.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 0f,
+
+    // Infinite pulse logic stays the same...
+    val infiniteTransition = rememberInfiniteTransition(label = "wave_pulse")
+    val waveScale by infiniteTransition.animateFloat(
+        initialValue = 0.85f, targetValue = 1.25f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1400, easing = FastOutSlowInEasing),
+            animation = tween(2200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
-        ), label = "pulse_alpha"
+        ), label = "wave_scale"
+    )
+    val waveAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.35f, targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = "wave_alpha"
     )
 
     val taglineAlpha by animateFloatAsState(
         targetValue = if (showTagline) 1f else 0f,
-        animationSpec = tween(600), label = "tagline_fade"
+        animationSpec = tween(600),
+        label = "tagline_alpha"
     )
 
+    // Only handle the delayed appearance of the tagline here
     LaunchedEffect(Unit) {
-        startAnimation = true
-        delay(800)
+        delay(600) // Wait for logo entrance to nearly finish
         showTagline = true
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(foundationGrey),
+            .background(
+                brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                    colors = listOf(Color.White, foundationGrey),
+                    radius = 900f
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
-        if (startAnimation) {
-            Canvas(modifier = Modifier.size(150.dp)) {
-                drawCircle(
-                    color = opportunityGold,
-                    radius = (size.minDimension / 2) * pulseScale,
-                    alpha = pulseAlpha,
-                    style = Stroke(width = 1.5.dp.toPx())
-                )
-            }
+        // ===== WAVES =====
+        Canvas(modifier = Modifier.size(220.dp)) {
+            val baseRadius = size.minDimension / 2
+            drawCircle(
+                color = opportunityGold,
+                radius = baseRadius * waveScale,
+                alpha = waveAlpha,
+                style = Stroke(width = 4.dp.toPx())
+            )
+            drawCircle(
+                color = pivotaTeal,
+                radius = baseRadius * (waveScale * 0.75f),
+                alpha = waveAlpha * 0.6f,
+                style = Stroke(width = 3.dp.toPx())
+            )
         }
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
+        // ===== LOGO + TEXT =====
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = "PivotaConnect Logo",
                 modifier = Modifier
                     .size(140.dp)
                     .scale(logoScale)
-                    .alpha(logoAlpha)
+                    .alpha(logoAlpha) // This will now start animating from frame 1
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             Text(
                 text = "Connecting life opportunities",
                 color = pivotaTeal,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
-                letterSpacing = 0.5.sp,
+                letterSpacing = 0.6.sp,
                 modifier = Modifier.alpha(taglineAlpha)
             )
         }
     }
 }
-
 /**
  * 3. PREVIEW: Top-level declaration.
  */

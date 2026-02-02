@@ -1,7 +1,5 @@
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.pivota.core.presentations.screens.AdaptiveWelcomeLayout
+import com.example.pivota.welcome.presentation.composables.adaptive_layout.AdaptiveWelcomeLayout
 
 @Composable
 fun WelcomeScreen(

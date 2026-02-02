@@ -1,4 +1,4 @@
-package com.example.pivota.core.presentations.screens
+package com.example.pivota.welcome.presentation.composables.adaptive_layout
 
 import WelcomeContent
 import androidx.compose.foundation.background
@@ -53,9 +53,8 @@ fun AdaptiveWelcomeLayout(
                     ) {
                         BackgroundImageAndOverlay(
                             isWideScreen = true,
-                            offset = 200.dp,
+                            // Removed fixed offset and imageHeight
                             showUpgradeButton = false,
-                            imageHeight = 300.dp,
                             enableCarousel = true,
                             images = carouselImages,
                             messages = carouselMessages
@@ -88,9 +87,8 @@ fun AdaptiveWelcomeLayout(
                 ) {
                     BackgroundImageAndOverlay(
                         isWideScreen = false,
-                        offset = 250.dp,
+                        // Removed fixed offset and imageHeight
                         showUpgradeButton = false,
-                        imageHeight = 600.dp,
                         enableCarousel = true,
                         images = carouselImages,
                         messages = carouselMessages

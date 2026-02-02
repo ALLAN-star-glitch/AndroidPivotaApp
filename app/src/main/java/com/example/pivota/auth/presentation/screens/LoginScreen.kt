@@ -1,30 +1,28 @@
 package com.example.pivota.auth.presentation.screens
-
+import androidx.activity.compose.BackHandler // Fixes the unresolved reference
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
 import com.example.pivota.auth.presentation.composables.AdaptiveAuthLayout
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,       // Triggered after successful API call
-    onRegisterClick: () -> Unit       // Triggered when user wants to switch to Register
+    onLoginSuccess: () -> Unit,
+    onRegisterClick: () -> Unit,
+    onForgotPasswordClick: () -> Unit,
+    onBack: () -> Unit
 ) {
-    // Adaptive Layout for Login Screen
-    AdaptiveAuthLayout(
-        welcomeText = "Welcome Back",
-        desc1 = "After login, you can unlock full SmartMatch™ recommendations and access more opportunities.",
-        desc2 = "Upgrade when you're ready!",
-        isLoginScreen = true,
-        onDashboardNavigate = onLoginSuccess, // Maps to the internal Dashboard trigger
-        onRegisterClick = onRegisterClick     // Maps to the internal switch trigger
-    )
-}
+    // This intercepts the system back button and triggers your navigation logic
+    BackHandler {
+        onBack()
+    }
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewLoginScreen() {
-    LoginScreen(
-        onLoginSuccess = {},
-        onRegisterClick = {}
+    AdaptiveAuthLayout(
+        desc1 = "Access Opportunities in Kenya",
+        desc2 = "Your Trusted Life Partner",
+        isLoginScreen = true,
+        onLoginSuccess = onLoginSuccess,
+        onRegisterClick = onRegisterClick,
+        onForgotPasswordClick = onForgotPasswordClick,
+        onLoginClick = { /* Already on login screen */ },
+        onSuccess = { /* Not used in login mode */ }
     )
 }
