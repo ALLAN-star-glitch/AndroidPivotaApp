@@ -1,10 +1,12 @@
 package com.example.pivota.auth.presentation.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -67,8 +69,12 @@ fun VerifyOtpScreen(
                     VerifyOtpContent(
                         email = email,
                         uiState = uiState,
+                        viewModel = viewModel, // Added this
                         onVerify = { code -> viewModel.verifyAndRegister(code) },
-                        onResend = { viewModel.requestSignupOtp(email) },
+                        onResend = {
+                            viewModel.incrementResendCount() // Track the attempt in VM
+                            viewModel.requestSignupOtp(email)
+                        },
                         onNavigateBack = onNavigateBack
                     )
                 }
@@ -78,8 +84,12 @@ fun VerifyOtpScreen(
             VerifyOtpContent(
                 email = email,
                 uiState = uiState,
+                viewModel = viewModel, // Added this
                 onVerify = { code -> viewModel.verifyAndRegister(code) },
-                onResend = { viewModel.requestSignupOtp(email) },
+                onResend = {
+                    viewModel.incrementResendCount() // Track the attempt in VM
+                    viewModel.requestSignupOtp(email)
+                },
                 onNavigateBack = onNavigateBack
             )
         }
@@ -89,6 +99,7 @@ fun VerifyOtpScreen(
 @Composable
 private fun VerifyOtpContent(
     email: String,
+    viewModel: SignupViewModel,
     uiState: SignupUiState,
     onVerify: (String) -> Unit,
     onResend: () -> Unit,
@@ -96,12 +107,20 @@ private fun VerifyOtpContent(
 ) {
     val otpLength = 6
     val focusRequesters = remember { List(otpLength) { FocusRequester() } }
-    val otpValues = remember { mutableStateListOf(*Array(otpLength) { "" }) }
-    var timeLeft by remember { mutableIntStateOf(45) }
+    // Observe state from ViewModel
+    val otpValues by viewModel.otpValues.collectAsState()
+    val resendCount by viewModel.resendCount.collectAsState()
 
-    // Timer Logic
-    LaunchedEffect(Unit) {
-        while (timeLeft > 0) {
+    // Timer & Resend State
+    var timeLeft by remember { mutableIntStateOf(45) }
+    val maxResends = 3
+    val canResend = resendCount < maxResends
+
+    LaunchedEffect(Unit) { focusRequesters[0].requestFocus() }
+
+    // Timer logic: stops if max resends reached
+    LaunchedEffect(timeLeft, resendCount) {
+        if (timeLeft > 0 && canResend) {
             delay(1000)
             timeLeft--
         }
@@ -118,7 +137,7 @@ private fun VerifyOtpContent(
         Icon(
             painter = painterResource(id = R.drawable.verified_user_24px),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+            tint = Color(0xFF006565),
             modifier = Modifier.size(64.dp)
         )
 
@@ -127,17 +146,17 @@ private fun VerifyOtpContent(
         Text(
             "Verify Your Email",
             style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF006565)
         )
 
         Spacer(Modifier.height(8.dp))
 
         Text(
-            "We've sent a 6-digit code to $email. Enter it below to complete your registration.",
+            "Enter the 6-digit code sent to $email",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            color = Color.Gray,
+            textAlign = TextAlign.Center
         )
 
         Spacer(Modifier.height(32.dp))
@@ -145,24 +164,27 @@ private fun VerifyOtpContent(
         // OTP Input Row
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(if (otpLength > 6) 1f else 0.9f),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             otpValues.forEachIndexed { index, value ->
                 OtpDigitBox(
                     value = value,
                     onValueChange = { newValue ->
-                        if (newValue.length <= 1 && newValue.all { it.isDigit() }) {
-                            otpValues[index] = newValue
-                            if (newValue.isNotEmpty() && index < otpLength - 1) {
-                                focusRequesters[index + 1].requestFocus()
-                            }
+                        val char = newValue.lastOrNull()?.toString() ?: ""
+                        if (char.isNotEmpty() && char.all { it.isDigit() }) {
+                            viewModel.updateOtpDigit(index, char)
+                            if (index < otpLength - 1) focusRequesters[index + 1].requestFocus()
+                        } else if (char.isEmpty()) {
+                            viewModel.updateOtpDigit(index, "")
                         }
                     },
                     onBackspace = {
                         if (otpValues[index].isEmpty() && index > 0) {
-                            otpValues[index - 1] = ""
+                            viewModel.updateOtpDigit(index - 1, "")
                             focusRequesters[index - 1].requestFocus()
+                        } else {
+                            viewModel.updateOtpDigit(index, "")
                         }
                     },
                     modifier = Modifier
@@ -174,19 +196,29 @@ private fun VerifyOtpContent(
 
         Spacer(Modifier.height(24.dp))
 
-        // Timer and Resend
-        Text(
-            text = if (timeLeft > 0)
-                "Resend code in 00:${timeLeft.toString().padStart(2, '0')}"
-            else
-                "Resend code",
-            style = MaterialTheme.typography.labelLarge,
-            color = if (timeLeft > 0) Color.Gray else MaterialTheme.colorScheme.primary,
-            modifier = Modifier.clickable(enabled = timeLeft == 0) {
-                timeLeft = 45
-                onResend()
-            }
-        )
+        // Resend Logic with 3-attempt cap
+        if (canResend) {
+            Text(
+                text = if (timeLeft > 0)
+                    "Resend code in 00:${timeLeft.toString().padStart(2, '0')}"
+                else
+                    "Resend code (${maxResends - resendCount} left)",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (timeLeft > 0) Color.Gray else Color(0xFF006565),
+                fontWeight = if (timeLeft == 0) FontWeight.Bold else FontWeight.Normal,
+                modifier = Modifier.clickable(enabled = timeLeft == 0) {
+                    timeLeft = 45
+                    onResend()
+                }
+            )
+        } else {
+            Text(
+                "Maximum resend attempts reached. Please contact support.",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.Red.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center
+            )
+        }
 
         Spacer(Modifier.height(32.dp))
 
@@ -205,14 +237,11 @@ private fun VerifyOtpContent(
                 .fillMaxWidth()
                 .height(56.dp),
             enabled = otpValues.all { it.isNotEmpty() } && uiState !is SignupUiState.Loading,
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(28.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF006565))
         ) {
             if (uiState is SignupUiState.Loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = Color.White,
-                    strokeWidth = 2.dp
-                )
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
             } else {
                 Text("Verify & Create Account", fontWeight = FontWeight.Bold)
             }
@@ -233,27 +262,38 @@ private fun OtpDigitBox(
     onBackspace: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    OutlinedTextField(
+    BasicTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier
+            .aspectRatio(1f)
             .onKeyEvent {
-                if (it.type == KeyEventType.KeyDown && it.key == Key.Backspace) {
+                if (it.key == Key.Backspace && it.type == KeyEventType.KeyDown) {
                     onBackspace()
                     true
                 } else false
             },
         textStyle = LocalTextStyle.current.copy(
             textAlign = TextAlign.Center,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF006565)
         ),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-        shape = RoundedCornerShape(12.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-        )
+        decorationBox = { innerTextField ->
+            Box(
+                modifier = Modifier
+                    .background(Color(0xFFF6FAF9), RoundedCornerShape(8.dp))
+                    .border(
+                        width = 1.5.dp,
+                        color = if (value.isNotEmpty()) Color(0xFF006565) else Color(0xFFE0E0E0),
+                        shape = RoundedCornerShape(8.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                innerTextField()
+            }
+        }
     )
 }

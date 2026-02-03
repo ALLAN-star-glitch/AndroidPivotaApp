@@ -7,6 +7,7 @@ import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.domain.repository.AuthRepository
 import com.example.pivota.core.database.dao.UserDao
 import com.example.pivota.core.preferences.PivotaPreferences
+import io.ktor.client.call.body
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -42,6 +43,25 @@ class AuthRepositoryImpl @Inject constructor(
             apiService.verifyLoginOtp(VerifyLoginOtpDto(email, code))
         }
 
+
+    private suspend fun handleException(e: Exception): Throwable {
+        return when (e) {
+            is io.ktor.client.plugins.ResponseException -> {
+                try {
+                    // Ktor allows us to peek into the body of the error response
+                    val errorResponse = e.response.body<BaseResponseDto<Unit>>()
+                    Exception(errorResponse.message)
+                } catch (parseException: Exception) {
+                    Exception("An unexpected error occurred. Please try again.")
+                }
+            }
+            is java.io.IOException -> {
+                Exception("No internet connection. Please check your network.")
+            }
+            else -> e
+        }
+    }
+
     /**
      * Centralized Authentication Orchestrator
      * Logic: Maps the complex UserResponseDto (Account + User + Completion)
@@ -52,36 +72,22 @@ class AuthRepositoryImpl @Inject constructor(
     ): Result<User> = withContext(Dispatchers.IO) {
         try {
             val response = call()
-
-            // Handle the nested data structure from your backend response
             val data = response.data
+
+            // Even if status is 200, check the 'success' flag
             if (response.success && data != null) {
-
-                // 1. Map DTO components to Domain Model
-                // We pass 'data.account' and 'data.completion' into the mapper
-                // to populate fields like accountType and completionPercentage
-                val domainUser = data.user.toDomain(
-                    account = data.account,
-                    completion = data.completion
-                )
-
-                // 2. Local Database Sync
+                val domainUser = data.user.toDomain(data.account, data.completion)
                 saveAuthenticatedUser(domainUser)
-
-                // 3. Mark account-specific flags in Preferences
                 preferences.saveUserEmail(domainUser.email)
-
                 Result.success(domainUser)
             } else {
-                // Return server-side error message (e.g., "Signup successful" or errors)
                 Result.failure(Exception(response.message))
             }
         } catch (e: Exception) {
-            // Handle network or parsing exceptions
-            Result.failure(e)
+            // This is where Ktor's 400/401/500 errors land
+            Result.failure(handleException(e))
         }
     }
-
     override suspend fun saveAuthenticatedUser(user: User) {
         withContext(Dispatchers.IO) {
             // Persist the domain user as an Entity for offline access

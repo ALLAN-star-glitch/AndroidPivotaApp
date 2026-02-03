@@ -51,6 +51,14 @@ class SignupViewModel @Inject constructor(
     private val _formState = MutableStateFlow(RegistrationFormState())
     val formState: StateFlow<RegistrationFormState> = _formState.asStateFlow()
 
+    // State to hold the 6 OTP digits
+    private val _otpValues = MutableStateFlow(List(6) { "" })
+    val otpValues: StateFlow<List<String>> = _otpValues.asStateFlow()
+
+    // State for resend attempts (survives rotation)
+    private val _resendCount = MutableStateFlow(0)
+    val resendCount = _resendCount.asStateFlow()
+
     // --- Pending registration data for OTP ---
     private var pendingUser: User? = null
     private var pendingPassword = ""
@@ -163,6 +171,19 @@ class SignupViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Updates a specific index in the OTP list
+     */
+    fun updateOtpDigit(index: Int, value: String) {
+        val current = _otpValues.value.toMutableList()
+        current[index] = value
+        _otpValues.value = current
+    }
+
+    fun incrementResendCount() {
+        _resendCount.value += 1
+    }
+
     fun verifyAndRegister(code: String) {
         val user = pendingUser ?: run {
             _uiState.value = SignupUiState.Error("Session expired. Please register again.")
@@ -187,10 +208,13 @@ class SignupViewModel @Inject constructor(
         }
     }
 
+    // Update clearCache to also wipe the OTP values
     private fun clearCache() {
         pendingUser = null
         pendingPassword = ""
         pendingIsOrganization = false
+        _otpValues.value = List(6) { "" }
+        _resendCount.value = 0
     }
 
     fun resetState() {
