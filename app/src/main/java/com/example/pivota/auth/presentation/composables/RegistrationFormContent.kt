@@ -2,6 +2,7 @@ package com.example.pivota.auth.presentation.composables
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -21,10 +22,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.R
-import com.example.pivota.auth.domain.model.AccountType
 import com.example.pivota.auth.presentation.state.SignupUiState
 import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 
@@ -47,7 +48,7 @@ fun RegistrationFormContent(
         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer
     )
 
-    // Navigate to OTP on success
+    // Handle navigation to OTP screen
     LaunchedEffect(uiState) {
         if (uiState is SignupUiState.OtpSent) {
             onRegisterSuccess(viewModel.pendingEmail)
@@ -62,7 +63,6 @@ fun RegistrationFormContent(
             .verticalScroll(scrollState)
             .padding(horizontal = 24.dp)
     ) {
-
         /* ───────── BRANDING ───────── */
         Spacer(Modifier.height(48.dp))
         Column(
@@ -81,7 +81,7 @@ fun RegistrationFormContent(
 
         Spacer(Modifier.height(24.dp))
 
-        /* ───────── FORM ───────── */
+        /* ───────── FORM TYPE TOGGLE ───────── */
         CustomSegmentedToggle(
             options = listOf("Individual", "Organisation"),
             selected = formState.accountType,
@@ -90,7 +90,7 @@ fun RegistrationFormContent(
 
         Spacer(Modifier.height(16.dp))
 
-        /* ───────── INDIVIDUAL ───────── */
+        /* ───────── DYNAMIC FORM FIELDS ───────── */
         if (formState.accountType == "Individual") {
             OutlinedTextField(
                 value = formState.firstName,
@@ -131,10 +131,7 @@ fun RegistrationFormContent(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 shape = RoundedCornerShape(8.dp)
             )
-        }
-
-        /* ───────── ORGANISATION ───────── */
-        if (formState.accountType == "Organisation") {
+        } else {
             OutlinedTextField(
                 value = formState.orgName,
                 onValueChange = viewModel::updateOrgName,
@@ -160,15 +157,6 @@ fun RegistrationFormContent(
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                shape = RoundedCornerShape(8.dp)
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = formState.orgPhone,
-                onValueChange = viewModel::updateOrgPhone,
-                label = { Text("Official Phone (Optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = textFieldColors,
                 shape = RoundedCornerShape(8.dp)
             )
             Spacer(Modifier.height(12.dp))
@@ -233,21 +221,11 @@ fun RegistrationFormContent(
 
         Spacer(Modifier.height(24.dp))
 
-        /* ───────── REGISTER ───────── */
+        /* ───────── REGISTER BUTTON ───────── */
         Button(
-            onClick = {
-                viewModel.startSignup()
-            },
+            onClick = { viewModel.startSignup() },
             modifier = Modifier.fillMaxWidth().height(56.dp),
-            enabled = uiState !is SignupUiState.Loading &&
-                    formState.agreeTerms &&
-                    (if (formState.accountType == "Individual")
-                        viewModel.isEmailValid(formState.email) && viewModel.isPasswordValid(formState.password) &&
-                                formState.firstName.isNotBlank() && formState.lastName.isNotBlank()
-                    else
-                        viewModel.isEmailValid(formState.orgEmail) && viewModel.isPasswordValid(formState.password) &&
-                                formState.orgName.isNotBlank() && formState.adminFirstName.isNotBlank() && formState.adminLastName.isNotBlank()
-                            ),
+            enabled = uiState !is SignupUiState.Loading && formState.agreeTerms,
             shape = RoundedCornerShape(28.dp)
         ) {
             if (uiState is SignupUiState.Loading) {
@@ -257,18 +235,60 @@ fun RegistrationFormContent(
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(12.dp))
 
-        /* ───────── ERROR HANDLING ───────── */
+        /* ───────── SOCIAL DIVIDER ───────── */
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
+            Text(
+                text = " OR ",
+                modifier = Modifier.padding(horizontal = 12.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        /* ───────── GOOGLE SIGNUP ───────── */
+        OutlinedButton(
+            onClick = { /* TODO: Trigger Google Auth Flow */ },
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_google),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Text("Continue with Google", fontWeight = FontWeight.Medium)
+            }
+        }
+
+        /* ───────── ERROR MESSAGE ───────── */
         if (uiState is SignupUiState.Error) {
             Text(
                 text = (uiState as SignupUiState.Error).message,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 8.dp)
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp)
             )
         }
 
+        Spacer(Modifier.height(16.dp))
+
+        /* ───────── FOOTER ───────── */
         Row(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)

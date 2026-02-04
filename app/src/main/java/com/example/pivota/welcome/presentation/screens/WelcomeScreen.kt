@@ -7,8 +7,8 @@ fun WelcomeScreen(
     onNavigateToLoginScreen: () -> Unit
 ) {
     AdaptiveWelcomeLayout(
-        header = "PivotaConnect. Life Opportunities",
-        welcomeText = "PivotaConnect bridges the gap between talent and opportunity. Access verified jobs, quality housing, and essential services tailored for you.",
+        header = "Let's Connect You!",
+        welcomeText = "Your all-in-one platform for verified jobs, quality housing, and essential support services across Kenya.",
         onNavigateToGetStarted = onNavigateToGetStarted,
         onNavigateToLoginScreen = onNavigateToLoginScreen
     )

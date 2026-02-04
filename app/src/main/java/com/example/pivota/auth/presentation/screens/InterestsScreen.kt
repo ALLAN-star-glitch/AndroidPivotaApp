@@ -27,7 +27,8 @@ fun InterestsScreen(
     val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isWide = windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+    Box(modifier = Modifier.fillMaxSize()) {
+
         if (isWide) {
             /* ───────── TWO PANE LAYOUT (Tablet/Desktop) ───────── */
             Row(modifier = Modifier.fillMaxSize()) {
@@ -38,23 +39,51 @@ fun InterestsScreen(
                         desc1 = "Select your interests to customize your feed.",
                         showUpgradeButton = false,
                         enableCarousel = false,
-                        image = R.drawable.happy_people
+                        image = R.drawable.interests
                     )
                 }
 
-                Box(modifier = Modifier.weight(1f).background(Color.White)) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(Color.White)
+                ) {
                     InterestsContent(onBack = onBack, onSave = onSave)
                 }
             }
         } else {
             /* ───────── SINGLE PANE LAYOUT (Mobile Portrait) ───────── */
-            // Removed BackgroundImageAndOverlay and the Spacer layer
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.White)
-            ) {
-                InterestsContent(onBack = onBack, onSave = onSave)
+            Box(modifier = Modifier.fillMaxSize()) {
+
+                // Background image + teal overlay
+                BackgroundImageAndOverlay(
+                    isWideScreen = false,
+                    header = "Your Interests",
+                    desc1 = "Tell us what matters to you",
+                    showUpgradeButton = false,
+                    enableCarousel = false,
+                    image = R.drawable.interests
+                )
+
+                // Bottom content card (does NOT cover overlay)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 240.dp), // allows overlay to remain visible
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                        color = Color.White,
+                        shadowElevation = 8.dp
+                    ) {
+                        InterestsContent(
+                            onBack = onBack,
+                            onSave = onSave
+                        )
+                    }
+                }
             }
         }
     }

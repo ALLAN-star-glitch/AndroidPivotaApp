@@ -264,14 +264,21 @@ private fun OtpDigitBox(
 ) {
     BasicTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { newValue ->
+            // Accept only a single digit
+            if (newValue.length <= 1 && newValue.all { it.isDigit() }) {
+                onValueChange(newValue)
+            }
+        },
         modifier = modifier
             .aspectRatio(1f)
-            .onKeyEvent {
-                if (it.key == Key.Backspace && it.type == KeyEventType.KeyDown) {
+            .onKeyEvent { event ->
+                if (event.key == Key.Backspace && event.type == KeyEventType.KeyDown) {
                     onBackspace()
                     true
-                } else false
+                } else {
+                    false
+                }
             },
         textStyle = LocalTextStyle.current.copy(
             textAlign = TextAlign.Center,

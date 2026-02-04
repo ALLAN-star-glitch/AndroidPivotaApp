@@ -3,6 +3,10 @@ package com.example.pivota.auth.data.remote.dto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/* ======================================================
+   CORE WRAPPERS
+====================================================== */
+
 @Serializable
 data class BaseResponseDto<T>(
     @SerialName("success") val success: Boolean,
@@ -18,6 +22,10 @@ data class ApiErrorDto(
     val code: String? = null,
     val status: Int? = null
 )
+
+/* ======================================================
+   INDIVIDUAL USER RESPONSE (T = UserResponseDto)
+====================================================== */
 
 @Serializable
 data class UserResponseDto(
@@ -38,6 +46,41 @@ data class UserDto(
     @SerialName("roleName") val roleName: String,
     @SerialName("status") val status: String
 )
+
+/* ======================================================
+   ORGANIZATION SIGNUP RESPONSE (T = OrganisationSignupDataDto)
+====================================================== */
+
+@Serializable
+data class OrganisationSignupDataDto(
+    @SerialName("organization") val organization: OrgBaseDto,
+    @SerialName("admin") val admin: AdminUserResponseDto,
+    @SerialName("account") val account: AccountResponseDto
+)
+
+@Serializable
+data class OrgBaseDto(
+    @SerialName("id") val id: String,
+    @SerialName("uuid") val uuid: String,
+    @SerialName("name") val name: String,
+    @SerialName("orgCode") val orgCode: String,
+    @SerialName("verificationStatus") val verificationStatus: String
+)
+
+@Serializable
+data class AdminUserResponseDto(
+    @SerialName("uuid") val uuid: String,
+    @SerialName("userCode") val userCode: String,
+    @SerialName("email") val email: String,
+    @SerialName("firstName") val firstName: String,
+    @SerialName("lastName") val lastName: String,
+    @SerialName("roleName") val roleName: String,
+    @SerialName("phone") val phone: String
+)
+
+/* ======================================================
+   COMMON SHARED COMPONENTS
+====================================================== */
 
 @Serializable
 data class AccountResponseDto(
