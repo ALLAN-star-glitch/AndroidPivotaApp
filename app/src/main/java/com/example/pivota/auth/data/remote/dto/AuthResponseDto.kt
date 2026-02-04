@@ -48,7 +48,7 @@ data class UserDto(
     @SerialName("accessToken") val accessToken: String? = null,
     @SerialName("refreshToken") val refreshToken: String? = null,
     @SerialName("account") val account: AccountResponseDto, /// TODO ,
-    @SerialName("organization") val organization: OrganizationResponseDto? = null
+    //@SerialName("organization") val organization: OrganizationResponseDto? = null
 )
 
 /* ======================================================
