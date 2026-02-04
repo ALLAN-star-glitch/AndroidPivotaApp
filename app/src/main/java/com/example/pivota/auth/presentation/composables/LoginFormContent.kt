@@ -56,6 +56,7 @@ fun LoginFormContent(
             .background(MaterialTheme.colorScheme.surface)
             .verticalScroll(scrollState)
             .padding(horizontal = 24.dp)
+
     ) {
         Spacer(Modifier.height(48.dp))
 
@@ -162,6 +163,24 @@ fun LoginFormContent(
         ) {
             Text("Login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
+
+        Spacer(Modifier.height(12.dp))
+
+        /* ───────── SOCIAL DIVIDER ───────── */
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
+            Text(
+                text = " OR ",
+                modifier = Modifier.padding(horizontal = 12.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
+        }
+
 
         Spacer(Modifier.height(12.dp))
 

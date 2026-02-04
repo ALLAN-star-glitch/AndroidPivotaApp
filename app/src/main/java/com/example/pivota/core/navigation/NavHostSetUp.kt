@@ -121,7 +121,7 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                     navController.getBackStackEntry(AuthFlow)
                 }
                 val signupViewModel: SignupViewModel = hiltViewModel(parentEntry)
-                val args = backStackEntry.toRoute<VerifyOtp>()
+                val args = backStackEntry.toRoute<VerifyOtp>() // Extract args from route
 
                 VerifyOtpScreen(
                     email = args.email,

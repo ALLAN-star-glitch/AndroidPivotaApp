@@ -2,6 +2,7 @@ package com.example.pivota.auth.presentation.composables
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,49 +19,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.R
-import com.example.pivota.auth.domain.model.AccountType
 import com.example.pivota.auth.presentation.state.SignupUiState
 import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 
 @Composable
 fun RegistrationFormContent(
-    viewModel: SignupViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
-    onRegisterSuccess: (String) -> Unit, // Still hoisted to handle navigation to OTP
-    onLoginLinkClick: () -> Unit,
-
+    viewModel: SignupViewModel,
+    onRegisterSuccess: (String) -> Unit,
+    onLoginLinkClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     val uiState by viewModel.uiState.collectAsState()
+    val formState by viewModel.formState.collectAsState()
 
-    /* ───────── STATE ───────── */
-    var accountType by remember { mutableStateOf("Individual") }
-
-    // Individual
-    var firstName by remember { mutableStateOf("") }
-    var lastName by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-
-    // Organisation
-    var orgName by remember { mutableStateOf("") }
-    var orgType by remember { mutableStateOf("") }
-    var orgEmail by remember { mutableStateOf("") }
-    var orgPhone by remember { mutableStateOf("") }
-    var orgAddress by remember { mutableStateOf("") }
-    var adminFirstName by remember { mutableStateOf("") }
-    var adminLastName by remember { mutableStateOf("") }
-
-    // Shared
-    var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var agreeTerms by remember { mutableStateOf(false) }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -69,10 +48,9 @@ fun RegistrationFormContent(
         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer
     )
 
-    /* ───────── UI STATE HANDLING ───────── */
+    // Handle navigation to OTP screen
     LaunchedEffect(uiState) {
         if (uiState is SignupUiState.OtpSent) {
-            // Navigate to OTP screen using the email from VM
             onRegisterSuccess(viewModel.pendingEmail)
             viewModel.resetState()
         }
@@ -85,10 +63,8 @@ fun RegistrationFormContent(
             .verticalScroll(scrollState)
             .padding(horizontal = 24.dp)
     ) {
-
         /* ───────── BRANDING ───────── */
         Spacer(Modifier.height(48.dp))
-
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -98,37 +74,27 @@ fun RegistrationFormContent(
                 contentDescription = "Pivota Connect Logo",
                 modifier = Modifier.size(90.dp)
             )
-
             Spacer(Modifier.height(12.dp))
-
-            Text(
-                "PivotaConnect",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                "Connect, Discover, Grow",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
-            )
+            Text("PivotaConnect", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text("Connect, Discover, Grow", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
         }
 
         Spacer(Modifier.height(24.dp))
 
-        /* ───────── FORM ───────── */
+        /* ───────── FORM TYPE TOGGLE ───────── */
         CustomSegmentedToggle(
             options = listOf("Individual", "Organisation"),
-            selected = accountType,
-            onSelect = { accountType = it }
+            selected = formState.accountType,
+            onSelect = { viewModel.updateAccountType(it) }
         )
 
         Spacer(Modifier.height(16.dp))
 
-        /* ───────── INDIVIDUAL ───────── */
-        if (accountType == "Individual") {
+        /* ───────── DYNAMIC FORM FIELDS ───────── */
+        if (formState.accountType == "Individual") {
             OutlinedTextField(
-                value = firstName,
-                onValueChange = { firstName = it },
+                value = formState.firstName,
+                onValueChange = viewModel::updateFirstName,
                 label = { Text("First Name") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
@@ -137,8 +103,8 @@ fun RegistrationFormContent(
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
-                value = lastName,
-                onValueChange = { lastName = it },
+                value = formState.lastName,
+                onValueChange = viewModel::updateLastName,
                 label = { Text("Last Name") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
@@ -147,8 +113,8 @@ fun RegistrationFormContent(
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
-                value = phone,
-                onValueChange = { phone = it },
+                value = formState.phone,
+                onValueChange = viewModel::updatePhone,
                 label = { Text("Phone (Optional)") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
@@ -157,21 +123,18 @@ fun RegistrationFormContent(
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
+                value = formState.email,
+                onValueChange = viewModel::updateEmail,
                 label = { Text("Email") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 shape = RoundedCornerShape(8.dp)
             )
-        }
-
-        /* ───────── ORGANISATION ───────── */
-        if (accountType == "Organisation") {
+        } else {
             OutlinedTextField(
-                value = orgName,
-                onValueChange = { orgName = it },
+                value = formState.orgName,
+                onValueChange = viewModel::updateOrgName,
                 label = { Text("Organisation Name") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
@@ -179,8 +142,8 @@ fun RegistrationFormContent(
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
-                value = orgType,
-                onValueChange = { orgType = it },
+                value = formState.orgType,
+                onValueChange = viewModel::updateOrgType,
                 label = { Text("Organisation Type") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
@@ -188,8 +151,8 @@ fun RegistrationFormContent(
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
-                value = orgEmail,
-                onValueChange = { orgEmail = it },
+                value = formState.orgEmail,
+                onValueChange = viewModel::updateOrgEmail,
                 label = { Text("Official Email") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
@@ -198,17 +161,8 @@ fun RegistrationFormContent(
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
-                value = orgPhone,
-                onValueChange = { orgPhone = it },
-                label = { Text("Official Phone (Optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = textFieldColors,
-                shape = RoundedCornerShape(8.dp)
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = orgAddress,
-                onValueChange = { orgAddress = it },
+                value = formState.orgAddress,
+                onValueChange = viewModel::updateOrgAddress,
                 label = { Text("Physical Address") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
@@ -218,8 +172,8 @@ fun RegistrationFormContent(
             Text("Administrator Details", fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
-                value = adminFirstName,
-                onValueChange = { adminFirstName = it },
+                value = formState.adminFirstName,
+                onValueChange = viewModel::updateAdminFirstName,
                 label = { Text("Admin First Name") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
@@ -227,8 +181,8 @@ fun RegistrationFormContent(
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
-                value = adminLastName,
-                onValueChange = { adminLastName = it },
+                value = formState.adminLastName,
+                onValueChange = viewModel::updateAdminLastName,
                 label = { Text("Admin Last Name") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
@@ -240,8 +194,8 @@ fun RegistrationFormContent(
 
         /* ───────── PASSWORD ───────── */
         OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
+            value = formState.password,
+            onValueChange = viewModel::updatePassword,
             label = { Text("Password") },
             modifier = Modifier.fillMaxWidth(),
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -260,72 +214,81 @@ fun RegistrationFormContent(
         Spacer(Modifier.height(8.dp))
 
         PivotaCheckBox(
-            checked = agreeTerms,
-            onCheckedChange = { agreeTerms = it },
+            checked = formState.agreeTerms,
+            onCheckedChange = viewModel::updateAgreeTerms,
             text = "I agree to the terms and conditions"
         )
 
         Spacer(Modifier.height(24.dp))
 
-        /* ───────── REGISTER ───────── */
+        /* ───────── REGISTER BUTTON ───────── */
         Button(
-            onClick = {
-                if (accountType == "Organisation") {
-                    val organization = AccountType.Organization(
-                        orgUuid = "",
-                        orgName = orgName,
-                        orgType = orgType,
-                        orgEmail = orgEmail,
-                        orgPhone = orgPhone,
-                        orgAddress = orgAddress,
-                        adminFirstName = adminFirstName,
-                        adminLastName = adminLastName
-                    )
-                    viewModel.startSignup(
-                        email = orgEmail,
-                        password = password,
-                        phone = orgPhone,
-                        isOrganization = true,
-                        organization = organization
-                    )
-                } else {
-                    viewModel.startSignup(
-                        email = email,
-                        password = password,
-                        phone = phone,
-                        isOrganization = false,
-                        firstName = firstName,
-                        lastName = lastName
-                    )
-                }
-            },
+            onClick = { viewModel.startSignup() },
             modifier = Modifier.fillMaxWidth().height(56.dp),
-            enabled = uiState !is SignupUiState.Loading && agreeTerms,
+            enabled = uiState !is SignupUiState.Loading && formState.agreeTerms,
             shape = RoundedCornerShape(28.dp)
         ) {
             if (uiState is SignupUiState.Loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    strokeWidth = 2.dp,
-                    color = Color.White
-                )
+                CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = Color.White)
             } else {
                 Text("Register", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(12.dp))
 
-        /* ───────── ERROR HANDLING ───────── */
+        /* ───────── SOCIAL DIVIDER ───────── */
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
+            Text(
+                text = " OR ",
+                modifier = Modifier.padding(horizontal = 12.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        /* ───────── GOOGLE SIGNUP ───────── */
+        OutlinedButton(
+            onClick = { /* TODO: Trigger Google Auth Flow */ },
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_google),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Text("Continue with Google", fontWeight = FontWeight.Medium)
+            }
+        }
+
+        /* ───────── ERROR MESSAGE ───────── */
         if (uiState is SignupUiState.Error) {
             Text(
                 text = (uiState as SignupUiState.Error).message,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 8.dp)
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp)
             )
         }
 
+        Spacer(Modifier.height(16.dp))
+
+        /* ───────── FOOTER ───────── */
         Row(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
