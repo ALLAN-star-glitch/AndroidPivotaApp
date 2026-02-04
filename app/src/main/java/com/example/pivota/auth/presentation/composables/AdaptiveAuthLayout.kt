@@ -27,7 +27,6 @@ fun AdaptiveAuthLayout(
     viewModel: SignupViewModel?=null,
     onRegisterClick: () -> Unit = {},
     onLoginClick: () -> Unit = {},
-    onLoginSuccess: () -> Unit = {}, // Dashboard navigation
     onSuccess: (String) -> Unit = {}, // Registration/OTP navigation
     onForgotPasswordClick: () -> Unit = {},
     onGoogleLoginClick: () -> Unit = {}
@@ -66,7 +65,6 @@ fun AdaptiveAuthLayout(
                         isLoginScreen = isLoginScreen,
                         onRegisterClick = onRegisterClick,
                         onLoginClick = onLoginClick,
-                        onLoginSuccess = onLoginSuccess,
                         onSuccess = onSuccess,
                         onForgotPasswordClick = onForgotPasswordClick,
                         onGoogleLoginClick = onGoogleLoginClick,
@@ -87,7 +85,6 @@ fun AdaptiveAuthLayout(
                     isLoginScreen = isLoginScreen,
                     onRegisterClick = onRegisterClick,
                     onLoginClick = onLoginClick,
-                    onLoginSuccess = onLoginSuccess,
                     onSuccess = onSuccess,
                     onForgotPasswordClick = onForgotPasswordClick,
                     onGoogleLoginClick = onGoogleLoginClick,
@@ -104,7 +101,6 @@ private fun AuthFormSwitcher(
     viewModel: SignupViewModel?,
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
-    onLoginSuccess: () -> Unit,
     onSuccess: (String) -> Unit,
     onForgotPasswordClick: () -> Unit,
     onGoogleLoginClick: () -> Unit
@@ -112,9 +108,7 @@ private fun AuthFormSwitcher(
     Box(modifier = Modifier.fillMaxSize()) {
         if (isLoginScreen) {
             LoginFormContent(
-                onLoginClick = { email, password ->
-                    onLoginSuccess()
-                },
+                onLoginSuccess = onSuccess,
                 onGoogleLoginClick = onGoogleLoginClick,
                 onRegisterLinkClick = onRegisterClick,
                 onForgotPasswordClick = onForgotPasswordClick

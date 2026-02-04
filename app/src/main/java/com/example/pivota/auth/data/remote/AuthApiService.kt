@@ -49,7 +49,17 @@ class AuthApiService @Inject constructor(
      * Final step of the login flow.
      */
     suspend fun verifyLoginOtp(request: VerifyLoginOtpDto): BaseResponseDto<UserResponseDto> {
-        return client.post("v1/auth-module/auth/verify-mfa") {
+        return client.post("v1/auth-module/login/verify-mfa") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+    }
+
+    /**
+     * User login
+     */
+    suspend fun login(request: LoginRequestDto): BaseResponseDto<Unit> {
+        return client.post("v1/auth-module/login") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()

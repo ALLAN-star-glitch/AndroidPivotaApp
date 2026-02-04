@@ -43,8 +43,12 @@ data class UserDto(
     @SerialName("lastName") val lastName: String? = null,
     @SerialName("email") val email: String,
     @SerialName("phone") val phone: String? = null,
-    @SerialName("roleName") val roleName: String,
-    @SerialName("status") val status: String
+    @SerialName("roleName") val roleName: String? = "",
+    @SerialName("status") val status: String,
+    @SerialName("accessToken") val accessToken: String? = null,
+    @SerialName("refreshToken") val refreshToken: String? = null,
+    @SerialName("account") val account: AccountResponseDto, /// TODO ,
+    //@SerialName("organization") val organization: OrganizationResponseDto? = null
 )
 
 /* ======================================================

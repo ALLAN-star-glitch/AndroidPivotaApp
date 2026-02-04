@@ -1,6 +1,5 @@
 package com.example.pivota.core.navigation
 
-import DiscoveryScreen
 import WelcomeScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -16,6 +15,7 @@ import com.example.pivota.auth.presentation.screens.LoginScreen
 import com.example.pivota.auth.presentation.screens.RegisterScreen
 import com.example.pivota.auth.presentation.screens.SplashScreen
 import com.example.pivota.auth.presentation.screens.VerifyOtpScreen
+import com.example.pivota.auth.presentation.viewModel.LoginViewModel
 import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 import com.example.pivota.dashboard.presentation.screens.DashboardScaffold
 
@@ -75,14 +75,13 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
             /* ───────── LOGIN SCREEN ───────── */
             composable<Login> {
                 LoginScreen(
-                    onLoginSuccess = {
-                        // Successful login leads directly to the Authenticated Dashboard
-                        navController.navigate(Dashboard) {
-                            popUpTo(AuthFlow) { inclusive = true }
-                        }
+                    onSuccess = { email ->
+                        navController.navigate(VerifyOtp(email = email, isLogin = true))
                     },
                     onRegisterClick = {
-                        navController.navigate(Register)
+                        navController.navigate(Register) {
+                            popUpTo(Login) { inclusive = true }
+                        }
                     },
                     onForgotPasswordClick = {
                         // TODO: navController.navigate(ForgotPassword)
@@ -105,7 +104,7 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                     viewModel = signupViewModel,
                     onSuccess = { email ->
                         // After Step 1 (OTP Sent), navigate to Verification
-                        navController.navigate(VerifyOtp(email = email))
+                        navController.navigate(VerifyOtp(email = email, isLogin = false))
                     },
                     onLoginClick = {
                         navController.navigate(Login) {
@@ -121,11 +120,14 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                     navController.getBackStackEntry(AuthFlow)
                 }
                 val signupViewModel: SignupViewModel = hiltViewModel(parentEntry)
-                val args = backStackEntry.toRoute<VerifyOtp>() // Extract args from route
+                val loginViewModel: LoginViewModel = hiltViewModel(backStackEntry)
+                val args = backStackEntry.toRoute<VerifyOtp>()
 
                 VerifyOtpScreen(
                     email = args.email,
-                    viewModel = signupViewModel,
+                    isLoginFlow = args.isLogin,
+                    loginViewModel = loginViewModel,
+                    signupViewModel = signupViewModel,
                     onVerificationSuccess = {
                         // Final registration success: clear auth graph and go to Dashboard
                         navController.navigate(Dashboard) {
