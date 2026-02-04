@@ -1,6 +1,7 @@
 package com.example.pivota.auth.presentation.viewModel
 
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pivota.auth.domain.useCase.AuthUseCases
@@ -19,13 +20,28 @@ class LoginViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val uiState = _uiState.asStateFlow()
 
+    fun authenticateUser(email: String, password: String) {
+        _uiState.value = LoginUiState.Loading
+        viewModelScope.launch {
+            authUseCases.loginUser(email, password)
+                .onSuccess { _ -> _uiState.value = LoginUiState.OtpSent }
+                .onFailure {
+                    _uiState.value = LoginUiState.Error("Failed to login")
+                    Log.d("Error during signup: ", it.message ?: "Error", it)
+                }
+        }
+    }
+
     // Stage 1: Request 2FA OTP
     fun requestOtp(email: String) {
         _uiState.value = LoginUiState.Loading
         viewModelScope.launch {
             authUseCases.requestOtp(email, "2FA")
                 .onSuccess { _uiState.value = LoginUiState.OtpSent }
-                .onFailure { _uiState.value = LoginUiState.Error(it.message ?: "Request failed") }
+                .onFailure {
+                    _uiState.value = LoginUiState.Error("Request failed")
+                    Log.d("Error during signup: ", it.message ?: "Error", it)
+                }
         }
     }
 
@@ -33,9 +49,12 @@ class LoginViewModel @Inject constructor(
     fun verifyOtp(email: String, code: String) {
         _uiState.value = LoginUiState.Loading
         viewModelScope.launch {
-            authUseCases.loginWithMfa(email, code)
+            authUseCases.loginWithMfa(email, code, "2FA")
                 .onSuccess { user -> _uiState.value = LoginUiState.Success(user) }
-                .onFailure { _uiState.value = LoginUiState.Error(it.message ?: "Verification failed") }
+                .onFailure {
+                    _uiState.value = LoginUiState.Error("Verification failed")
+                    Log.d("Error during signup: ", it.message ?: "Error", it)
+                }
         }
     }
 

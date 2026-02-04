@@ -38,11 +38,21 @@ class AuthRepositoryImpl @Inject constructor(
             apiService.signupOrganization(user.toOrganisationRequest(code, password))
         }
 
-    override suspend fun loginWithMfa(email: String, code: String): Result<User> =
+    override suspend fun loginWithMfa(email: String, code: String, purpose: String): Result<User> =
         executeAuth {
-            apiService.verifyLoginOtp(VerifyLoginOtpDto(email, code))
+            apiService.verifyLoginOtp(VerifyLoginOtpDto(email, code, purpose))
         }
 
+    override suspend fun loginUser(email: String, password: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.login(LoginRequestDto(email, password))
+            if (response.success && response.data != null) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(response.message))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
 
     private suspend fun handleException(e: Exception): Throwable {
         return when (e) {

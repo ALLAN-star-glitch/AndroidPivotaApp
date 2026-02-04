@@ -23,19 +23,22 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.R
+import com.example.pivota.auth.presentation.state.LoginUiState
+import com.example.pivota.auth.presentation.viewModel.LoginViewModel
 
 @Composable
 fun LoginFormContent(
-    onLoginClick: (String, String) -> Unit, // Passes email and password
+    viewModel: LoginViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+    onLoginSuccess: (String) -> Unit,
     onGoogleLoginClick: () -> Unit,
     onRegisterLinkClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
+    val uiState by viewModel.uiState.collectAsState()
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -49,6 +52,13 @@ fun LoginFormContent(
         focusedContainerColor = MaterialTheme.colorScheme.surface,
         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer
     )
+
+    LaunchedEffect(uiState) {
+        if (uiState is LoginUiState.OtpSent) {
+            onLoginSuccess(email)
+            viewModel.resetState()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -156,12 +166,22 @@ fun LoginFormContent(
 
         /* ───────── ACTION BUTTONS ───────── */
         Button(
-            onClick = { onLoginClick(email, password) },
+            onClick = {
+                viewModel.authenticateUser(email, password)
+            },
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(28.dp),
             enabled = email.isNotEmpty() && password.isNotEmpty() && agreeTerms
         ) {
-            Text("Login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            if (uiState is LoginUiState.Loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.dp,
+                    color = Color.White
+                )
+            } else {
+                Text("Login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
         }
 
         Spacer(Modifier.height(12.dp))
@@ -198,6 +218,16 @@ fun LoginFormContent(
             )
             Spacer(Modifier.width(8.dp))
             Text("Login with Google", fontWeight = FontWeight.SemiBold)
+        }
+
+        /* ───────── ERROR HANDLING ───────── */
+        if (uiState is LoginUiState.Error) {
+            Text(
+                text = (uiState as LoginUiState.Error).message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
 
         Spacer(Modifier.height(24.dp))
