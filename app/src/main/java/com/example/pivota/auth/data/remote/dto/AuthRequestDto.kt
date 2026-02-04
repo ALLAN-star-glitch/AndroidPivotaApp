@@ -18,7 +18,8 @@ data class LoginRequestDto(
 @Serializable
 data class VerifyLoginOtpDto(
     @SerialName("email") val email: String,
-    @SerialName("code") val code: String // 2FA code
+    @SerialName("code") val code: String, // 2FA code
+    @SerialName("purpose") val purpose: String // e.g., "SIGNUP", "FORGOT_PASSWORD", "2FA"
 )
 
 @Serializable

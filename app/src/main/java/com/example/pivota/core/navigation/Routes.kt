@@ -16,4 +16,7 @@ import kotlinx.serialization.Serializable
 
 // This route needs to carry the email to the next screen
 @Serializable
-data class VerifyOtp(val email: String)
+data class VerifyOtp(
+    val email: String,
+    val isLogin: Boolean
+)

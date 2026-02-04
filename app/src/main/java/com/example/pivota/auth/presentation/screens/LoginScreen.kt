@@ -5,7 +5,7 @@ import com.example.pivota.auth.presentation.composables.AdaptiveAuthLayout
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
+    onSuccess: (String) -> Unit,
     onRegisterClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
     onBack: () -> Unit
@@ -19,10 +19,9 @@ fun LoginScreen(
         desc1 = "Access Opportunities in Kenya",
         desc2 = "Your Trusted Life Partner",
         isLoginScreen = true,
-        onLoginSuccess = onLoginSuccess,
         onRegisterClick = onRegisterClick,
         onForgotPasswordClick = onForgotPasswordClick,
         onLoginClick = { /* Already on login screen */ },
-        onSuccess = { /* Not used in login mode */ }
+        onSuccess = onSuccess
     )
 }

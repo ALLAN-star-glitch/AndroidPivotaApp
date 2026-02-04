@@ -5,6 +5,6 @@ data class AuthUseCases(
     val registerUser: RegisterUserUseCase,
     val loginWithMfa: LoginWithMfaUseCase,
     val setWelcomeSeen: SetWelcomeSeenUseCase,
-    val hasSeenWelcome: HasSeenWelcomeUseCase
-
+    val hasSeenWelcome: HasSeenWelcomeUseCase,
+    val loginUser: LoginUserUserUseCase
 )

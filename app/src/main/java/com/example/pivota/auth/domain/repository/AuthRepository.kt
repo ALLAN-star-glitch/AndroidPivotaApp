@@ -21,7 +21,9 @@ interface AuthRepository {
      * This is the single API call that validates the 2FA code and
      * returns the User with Access/Refresh tokens.
      */
-    suspend fun loginWithMfa(email: String, code: String): Result<User>
+    suspend fun loginWithMfa(email: String, code: String, purpose: String): Result<User>
+
+    suspend fun loginUser(email: String, password: String): Result<Unit>
 
     /**
      * Persistence & Navigation

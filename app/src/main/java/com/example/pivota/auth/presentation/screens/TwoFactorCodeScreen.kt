@@ -25,7 +25,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.example.pivota.R
+import com.example.pivota.auth.presentation.state.LoginUiState
 import com.example.pivota.auth.presentation.state.SignupUiState
+import com.example.pivota.auth.presentation.viewModel.LoginViewModel
 import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 import com.example.pivota.core.presentations.composables.background_image_and_overlay.BackgroundImageAndOverlay
 import kotlinx.coroutines.delay
@@ -33,17 +35,23 @@ import kotlinx.coroutines.delay
 @Composable
 fun VerifyOtpScreen(
     email: String,
-    viewModel: SignupViewModel = hiltViewModel(),
+    isLoginFlow: Boolean = true,
+    loginViewModel: LoginViewModel = hiltViewModel(),
+    signupViewModel: SignupViewModel = hiltViewModel(),
     onVerificationSuccess: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
     val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isWide = windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by if (isLoginFlow) {
+        loginViewModel.uiState.collectAsState()
+    } else {
+        signupViewModel.uiState.collectAsState()
+    }
 
     // Navigation logic: Go to dashboard once registration is complete
     LaunchedEffect(uiState) {
-        if (uiState is SignupUiState.Success) {
+        if (uiState is SignupUiState.Success || uiState is LoginUiState.Success) {
             onVerificationSuccess()
         }
     }
@@ -67,8 +75,17 @@ fun VerifyOtpScreen(
                     VerifyOtpContent(
                         email = email,
                         uiState = uiState,
-                        onVerify = { code -> viewModel.verifyAndRegister(code) },
-                        onResend = { viewModel.requestSignupOtp(email) },
+                        onVerify = { code ->
+                            if (isLoginFlow) {
+                                loginViewModel.verifyOtp(email, code)
+                            } else {
+                                signupViewModel.verifyAndRegister(code)
+                            }
+                        },
+                        onResend = {
+                            if (isLoginFlow) loginViewModel.requestOtp(email)
+                            else signupViewModel.requestSignupOtp(email)
+                        },
                         onNavigateBack = onNavigateBack
                     )
                 }
@@ -78,8 +95,14 @@ fun VerifyOtpScreen(
             VerifyOtpContent(
                 email = email,
                 uiState = uiState,
-                onVerify = { code -> viewModel.verifyAndRegister(code) },
-                onResend = { viewModel.requestSignupOtp(email) },
+                onVerify = { code ->
+                    if (isLoginFlow) {
+                        loginViewModel.verifyOtp(email, code)
+                    } else {
+                        signupViewModel.verifyAndRegister(code)
+                    }
+                },
+                onResend = { signupViewModel.requestSignupOtp(email) },
                 onNavigateBack = onNavigateBack
             )
         }
@@ -89,7 +112,7 @@ fun VerifyOtpScreen(
 @Composable
 private fun VerifyOtpContent(
     email: String,
-    uiState: SignupUiState,
+    uiState: Any,
     onVerify: (String) -> Unit,
     onResend: () -> Unit,
     onNavigateBack: () -> Unit
@@ -204,10 +227,10 @@ private fun VerifyOtpContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
-            enabled = otpValues.all { it.isNotEmpty() } && uiState !is SignupUiState.Loading,
+            enabled = otpValues.all { it.isNotEmpty() } && uiState !is SignupUiState.Loading && uiState !is LoginUiState.Loading,
             shape = RoundedCornerShape(12.dp)
         ) {
-            if (uiState is SignupUiState.Loading) {
+            if (uiState is SignupUiState.Loading || uiState is LoginUiState.Loading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
                     color = Color.White,

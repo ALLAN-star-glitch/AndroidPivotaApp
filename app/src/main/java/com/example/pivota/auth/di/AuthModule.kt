@@ -5,6 +5,7 @@ import com.example.pivota.auth.data.repository.AuthRepositoryImpl
 import com.example.pivota.auth.domain.repository.AuthRepository
 import com.example.pivota.auth.domain.useCase.AuthUseCases
 import com.example.pivota.auth.domain.useCase.HasSeenWelcomeUseCase
+import com.example.pivota.auth.domain.useCase.LoginUserUserUseCase
 import com.example.pivota.auth.domain.useCase.LoginWithMfaUseCase
 import com.example.pivota.auth.domain.useCase.RegisterUserUseCase
 import com.example.pivota.auth.domain.useCase.RequestOtpUseCase
@@ -41,7 +42,8 @@ abstract class AuthModule {
                 registerUser = RegisterUserUseCase(repository),
                 loginWithMfa = LoginWithMfaUseCase(repository),
                 setWelcomeSeen = SetWelcomeSeenUseCase(repository),
-                hasSeenWelcome = HasSeenWelcomeUseCase(repository)
+                hasSeenWelcome = HasSeenWelcomeUseCase(repository),
+                loginUser = LoginUserUserUseCase(repository)
             )
         }
     }

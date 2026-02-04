@@ -27,11 +27,11 @@ data class UserResponseDto(
     @SerialName("firstName") val firstName: String? = null,
     @SerialName("lastName") val lastName: String? = null,
     @SerialName("phone") val phone: String? = null,
-    @SerialName("roleName") val roleName: String,
+    @SerialName("roleName") val roleName: String? = "",
     @SerialName("status") val status: String,
     @SerialName("accessToken") val accessToken: String? = null,
     @SerialName("refreshToken") val refreshToken: String? = null,
-    @SerialName("account") val account: AccountResponseDto,
+    @SerialName("account") val account: AccountResponseDto, /// TODO ,
     @SerialName("organization") val organization: OrganizationResponseDto? = null
 )
 
