@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
@@ -15,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
 import androidx.window.core.layout.WindowSizeClass
 import com.example.pivota.R
+import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 import com.example.pivota.core.presentations.composables.background_image_and_overlay.BackgroundImageAndOverlay
 
 @Composable
@@ -22,6 +24,7 @@ fun AdaptiveAuthLayout(
     desc1: String,
     desc2: String,
     isLoginScreen: Boolean,
+    viewModel: SignupViewModel?=null,
     onRegisterClick: () -> Unit = {},
     onLoginClick: () -> Unit = {},
     onSuccess: (String) -> Unit = {}, // Registration/OTP navigation
@@ -64,7 +67,8 @@ fun AdaptiveAuthLayout(
                         onLoginClick = onLoginClick,
                         onSuccess = onSuccess,
                         onForgotPasswordClick = onForgotPasswordClick,
-                        onGoogleLoginClick = onGoogleLoginClick
+                        onGoogleLoginClick = onGoogleLoginClick,
+                        viewModel = viewModel
                     )
                 }
             }
@@ -75,6 +79,7 @@ fun AdaptiveAuthLayout(
                 .background(MaterialTheme.colorScheme.surface) // Solid professional background
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .imePadding() // ADD THIS: Lifts form above keyboard
             ) {
                 AuthFormSwitcher(
                     isLoginScreen = isLoginScreen,
@@ -82,7 +87,8 @@ fun AdaptiveAuthLayout(
                     onLoginClick = onLoginClick,
                     onSuccess = onSuccess,
                     onForgotPasswordClick = onForgotPasswordClick,
-                    onGoogleLoginClick = onGoogleLoginClick
+                    onGoogleLoginClick = onGoogleLoginClick,
+                    viewModel = viewModel
                 )
             }
         }
@@ -92,6 +98,7 @@ fun AdaptiveAuthLayout(
 @Composable
 private fun AuthFormSwitcher(
     isLoginScreen: Boolean,
+    viewModel: SignupViewModel?,
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
     onSuccess: (String) -> Unit,
@@ -107,10 +114,14 @@ private fun AuthFormSwitcher(
                 onForgotPasswordClick = onForgotPasswordClick
             )
         } else {
-            RegistrationFormContent(
-                onRegisterSuccess = onSuccess,
-                onLoginLinkClick = onLoginClick
-            )
+            // Only call if viewModel is not null
+            viewModel?.let { vm ->
+                RegistrationFormContent(
+                    viewModel = vm,
+                    onRegisterSuccess = onSuccess,
+                    onLoginLinkClick = onLoginClick
+                )
+            }
         }
     }
 }

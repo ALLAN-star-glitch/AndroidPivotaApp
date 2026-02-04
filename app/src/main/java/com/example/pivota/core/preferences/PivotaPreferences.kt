@@ -18,6 +18,8 @@ class PivotaPreferences @Inject constructor(
         private val REFRESH_TOKEN = stringPreferencesKey("refresh_token")
         private val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         private val SELECTED_LANGUAGE = stringPreferencesKey("selected_language")
+        // Added for session identification
+        private val USER_EMAIL = stringPreferencesKey("user_email")
     }
 
     // --- Navigation State ---
@@ -34,20 +36,26 @@ class PivotaPreferences @Inject constructor(
         dataStore.edit { it[ONBOARDING_COMPLETE] = complete }
     }
 
+    // --- User Info State ---
+
+    val userEmail: Flow<String?> = dataStore.data.map { it[USER_EMAIL] }
+
+    suspend fun saveUserEmail(email: String) {
+        dataStore.edit { it[USER_EMAIL] = email }
+    }
+
+    suspend fun getUserEmail(): String? {
+        return dataStore.data.map { it[USER_EMAIL] }.first()
+    }
+
     // --- Session State ---
 
     val authToken: Flow<String?> = dataStore.data.map { it[AUTH_TOKEN] }
 
-    /**
-     * Specifically added to resolve the repository's "saveAccessToken" call.
-     */
     suspend fun saveAccessToken(token: String) {
         dataStore.edit { it[AUTH_TOKEN] = token }
     }
 
-    /**
-     * Specifically added to resolve the repository's "saveRefreshToken" call.
-     */
     suspend fun saveRefreshToken(token: String) {
         dataStore.edit { it[REFRESH_TOKEN] = token }
     }
@@ -60,12 +68,13 @@ class PivotaPreferences @Inject constructor(
     }
 
     /**
-     * Clears only the Authentication tokens.
+     * Clears Authentication tokens and user specific info.
      */
     suspend fun clearSession() {
         dataStore.edit {
             it.remove(AUTH_TOKEN)
             it.remove(REFRESH_TOKEN)
+            it.remove(USER_EMAIL)
         }
     }
 

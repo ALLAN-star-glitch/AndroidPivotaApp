@@ -93,7 +93,7 @@ fun BackgroundImageAndOverlay(
 
             // Only add a bottom spacer on mobile to stop the image rendering behind content
             if (!isWideScreen) {
-                Spacer(modifier = Modifier.weight(0.5f))
+                Spacer(modifier = Modifier.weight(0.2f))
             }
         }
 
@@ -108,7 +108,7 @@ fun BackgroundImageAndOverlay(
                     .fillMaxWidth()
                     .weight(overlayWeight)
                     .clip(RoundedCornerShape(topStart = 50.dp, topEnd = 50.dp))
-                    .background(Color(0xAA008080)) // Teal overlay with transparency
+                    .background(MaterialTheme.colorScheme.primary.copy(0.5f)) // Teal overlay with transparency
                     .zIndex(1f)
             ) {
                 OverlayContent(

@@ -27,7 +27,7 @@ class AuthApiService @Inject constructor(
      * Maps to the individual signup endpoint.
      */
     suspend fun signupIndividual(request: UserSignupRequestDto): BaseResponseDto<UserResponseDto> {
-        return client.post("v1/auth-module/auth/signup") {
+        return client.post("v1/auth-module/signup") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()

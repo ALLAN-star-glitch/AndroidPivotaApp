@@ -27,7 +27,7 @@ fun PivotaSecondaryButton(
             containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondaryContainer)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
     ) {
         Text(
             text = text,
