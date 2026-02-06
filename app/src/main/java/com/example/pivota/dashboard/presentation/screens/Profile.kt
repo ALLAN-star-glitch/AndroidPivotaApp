@@ -12,8 +12,6 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun Profile(
-    isGuest: Boolean = false,
-    onLockedAction: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
@@ -36,19 +34,6 @@ fun Profile(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Button(
-            onClick = {
-                if (isGuest) onLockedAction() else {
-                    // Navigate to edit profile screen
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = if (isGuest) "Login to Access Profile" else "Edit Profile")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Add more sections like Account Details, Settings shortcuts, or Logout button
+        // You can add more sections here: Account Settings, Preferences, etc.
     }
 }

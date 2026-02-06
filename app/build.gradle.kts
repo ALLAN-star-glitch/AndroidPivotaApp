@@ -55,6 +55,7 @@ android {
 
 dependencies {
 
+    implementation(libs.androidx.compose.ui)
     val nav_version = "2.9.0"
     val room_version = "2.8.4"
     val ktorVersion = "3.0.0"
