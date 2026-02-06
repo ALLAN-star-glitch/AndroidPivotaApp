@@ -12,8 +12,6 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun Providers(
-    isGuest: Boolean = false,
-    onLockedAction: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
@@ -36,18 +34,6 @@ fun Providers(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Button(
-            onClick = {
-                if (isGuest) onLockedAction() else {
-                    // Navigate to provider details or booking
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = if (isGuest) "Login to Access Providers" else "View Providers")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         // You can add more sections here: Featured Providers, Top-rated, or Categories
     }

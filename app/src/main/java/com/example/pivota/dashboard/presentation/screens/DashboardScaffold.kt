@@ -1,15 +1,10 @@
 package com.example.pivota.dashboard.presentation.screens
 
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -17,16 +12,16 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import androidx.window.core.layout.WindowSizeClass
 import com.example.pivota.dashboard.presentation.composables.*
-import kotlinx.serialization.Serializable
+import com.example.pivota.listings.presentation.screens.JobPostScreen
+import topLevelRoutes
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScaffold(
-    isGuest: Boolean = false,
-    onLockedAction: () -> Unit = {}
-) {
+fun DashboardScaffold() {
     val navController = rememberNavController()
+    val sheetState = rememberModalBottomSheetState()
+    var showSheet by remember { mutableStateOf(false) }
 
-    // Custom navigation item colors
     val navigationItemColors = NavigationSuiteDefaults.itemColors(
         navigationBarItemColors = NavigationBarItemDefaults.colors(
             indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -63,16 +58,11 @@ fun DashboardScaffold(
                 item(
                     icon = { Icon(route.icon, contentDescription = route.contentDescription) },
                     label = { Text(route.label) },
-                    selected = currentDestination?.hierarchy?.any {
-                        it.route == route.route::class.qualifiedName
-                    } == true,
+                    selected = currentDestination?.hierarchy?.any { it.route == route.route::class.qualifiedName } == true,
                     onClick = {
                         if (currentDestination?.route != route.route) {
-                            // Guests can still see screens; lock only sensitive actions inside screens
                             navController.navigate(route.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -87,24 +77,46 @@ fun DashboardScaffold(
             navigationRailContainerColor = MaterialTheme.colorScheme.primary
         )
     ) {
-        NavHost(
-            navController = navController,
-            startDestination = Home,
-        ) {
-            composable<Home> {
-                HomeScreen(isGuest = isGuest, onLockedAction = onLockedAction)
+        Scaffold(
+            // Set insets to 0 to prevent the inner Scaffold from adding another layer of padding
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            floatingActionButton = {
+                PulsingPostFab(onClick = { showSheet = true })
             }
-            composable<Explore> {
-                Explore(isGuest = isGuest, onLockedAction = onLockedAction)
-            }
-            composable<Post> {
-                Post(isGuest = isGuest, onLockedAction = onLockedAction)
-            }
-            composable<Providers> {
-                Providers(isGuest = isGuest, onLockedAction = onLockedAction)
-            }
-            composable<Profile> {
-                Profile(isGuest = isGuest, onLockedAction = onLockedAction)
+        ) { innerPadding ->
+            Box(modifier = Modifier.fillMaxSize()
+                .padding(bottom = innerPadding.calculateBottomPadding())) {
+                NavHost(
+                    navController = navController,
+                    startDestination = Discover
+                ) {
+                    composable<Dashboard> { HomeScreen() }
+                    composable<Providers> { Explore() }
+                    composable<Discover> { DiscoverScreen() }
+                    composable<SmartMatch> { Providers() }
+                    composable<Profile> { Profile() }
+                    // Type-Safe Posting Flows
+                    composable<PostJob> {
+                        JobPostScreen.Content(onBack = { navController.popBackStack() })
+                    }
+                }
+
+                // Extracted Bottom Sheet
+                if (showSheet) {
+                    PostOptionsBottomSheet(
+                        sheetState = sheetState,
+                        onDismiss = { showSheet = false },
+                        onOptionSelected = { category ->
+                            showSheet = false
+                            when (category) {
+                                "jobs" -> navController.navigate(PostJob)
+                                "housing" -> navController.navigate(PostHousing)
+                                "support" -> navController.navigate(PostSupport)
+                                "service" -> navController.navigate(PostService)
+                            }
+                        }
+                    )
+                }
             }
         }
     }

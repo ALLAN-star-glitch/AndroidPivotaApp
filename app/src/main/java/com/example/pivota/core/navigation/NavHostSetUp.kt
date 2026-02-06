@@ -64,8 +64,6 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
         /* ───────── GUEST DASHBOARD ───────── */
         composable<GuestDashboard> {
             DashboardScaffold(
-                isGuest = true,
-                onLockedAction = { navController.navigate(AuthFlow) }
             )
         }
 
@@ -143,7 +141,7 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
 
         /* ───────── AUTHENTICATED DASHBOARD ───────── */
         composable<Dashboard> {
-            DashboardScaffold(isGuest = false)
+            DashboardScaffold()
         }
     }
 }

@@ -2,7 +2,6 @@ package com.example.pivota.auth.presentation.composables
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -10,6 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.example.pivota.R
 import com.example.pivota.auth.presentation.state.SignupUiState
 import com.example.pivota.auth.presentation.viewModel.SignupViewModel
+import com.example.pivota.core.presentations.composables.UniversalSegmentedToggle
 
 @Composable
 fun RegistrationFormContent(
@@ -41,14 +43,16 @@ fun RegistrationFormContent(
 
     var passwordVisible by remember { mutableStateOf(false) }
 
+    // Design-consistent field colors and shapes
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = MaterialTheme.colorScheme.primary,
         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
         focusedContainerColor = MaterialTheme.colorScheme.surface,
         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer
     )
+    val fieldShape = RoundedCornerShape(12.dp)
 
-    // Handle navigation to OTP screen
+    // Navigation logic for OTP
     LaunchedEffect(uiState) {
         if (uiState is SignupUiState.OtpSent) {
             onRegisterSuccess(viewModel.pendingEmail)
@@ -79,19 +83,28 @@ fun RegistrationFormContent(
             Text("Connect, Discover, Grow", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(32.dp))
 
-        /* ───────── FORM TYPE TOGGLE ───────── */
-        CustomSegmentedToggle(
+        /* ───────── REUSABLE CORE TOGGLE ───────── */
+        UniversalSegmentedToggle(
             options = listOf("Individual", "Organisation"),
             selected = formState.accountType,
-            onSelect = { viewModel.updateAccountType(it) }
+            onSelect = { viewModel.updateAccountType(it) },
+            iconProvider = { type, tint ->
+                Icon(
+                    imageVector = if (type == "Individual") Icons.Default.Person else Icons.Default.Business,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = tint
+                )
+            }
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(24.dp))
 
         /* ───────── DYNAMIC FORM FIELDS ───────── */
         if (formState.accountType == "Individual") {
+            // --- Individual Fields ---
             OutlinedTextField(
                 value = formState.firstName,
                 onValueChange = viewModel::updateFirstName,
@@ -99,7 +112,7 @@ fun RegistrationFormContent(
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
                 singleLine = true,
-                shape = RoundedCornerShape(8.dp)
+                shape = fieldShape
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
@@ -109,7 +122,7 @@ fun RegistrationFormContent(
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
                 singleLine = true,
-                shape = RoundedCornerShape(8.dp)
+                shape = fieldShape
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
@@ -119,7 +132,7 @@ fun RegistrationFormContent(
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                shape = RoundedCornerShape(8.dp)
+                shape = fieldShape
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
@@ -129,16 +142,17 @@ fun RegistrationFormContent(
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                shape = RoundedCornerShape(8.dp)
+                shape = fieldShape
             )
         } else {
+            // --- Organisation Fields ---
             OutlinedTextField(
                 value = formState.orgName,
                 onValueChange = viewModel::updateOrgName,
                 label = { Text("Organisation Name") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
-                shape = RoundedCornerShape(8.dp)
+                shape = fieldShape
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
@@ -147,7 +161,7 @@ fun RegistrationFormContent(
                 label = { Text("Organisation Type") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
-                shape = RoundedCornerShape(8.dp)
+                shape = fieldShape
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
@@ -157,7 +171,7 @@ fun RegistrationFormContent(
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                shape = RoundedCornerShape(8.dp)
+                shape = fieldShape
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
@@ -166,18 +180,18 @@ fun RegistrationFormContent(
                 label = { Text("Physical Address") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
-                shape = RoundedCornerShape(8.dp)
+                shape = fieldShape
             )
-            Spacer(Modifier.height(16.dp))
-            Text("Administrator Details", fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(20.dp))
+            Text("Administrator Details", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = formState.adminFirstName,
                 onValueChange = viewModel::updateAdminFirstName,
                 label = { Text("Admin First Name") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
-                shape = RoundedCornerShape(8.dp)
+                shape = fieldShape
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
@@ -186,7 +200,7 @@ fun RegistrationFormContent(
                 label = { Text("Admin Last Name") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = textFieldColors,
-                shape = RoundedCornerShape(8.dp)
+                shape = fieldShape
             )
         }
 
@@ -203,15 +217,16 @@ fun RegistrationFormContent(
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(
                         imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                        contentDescription = null
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             },
             colors = textFieldColors,
-            shape = RoundedCornerShape(8.dp)
+            shape = fieldShape
         )
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
 
         PivotaCheckBox(
             checked = formState.agreeTerms,
@@ -229,37 +244,36 @@ fun RegistrationFormContent(
             shape = RoundedCornerShape(28.dp)
         ) {
             if (uiState is SignupUiState.Loading) {
-                CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = Color.White)
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = Color.White)
             } else {
-                Text("Register", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Create Account", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(20.dp))
 
         /* ───────── SOCIAL DIVIDER ───────── */
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
+            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray.copy(alpha = 0.5f))
             Text(
                 text = " OR ",
                 modifier = Modifier.padding(horizontal = 12.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray
             )
-            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
+            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray.copy(alpha = 0.5f))
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(20.dp))
 
         /* ───────── GOOGLE SIGNUP ───────── */
         OutlinedButton(
-            onClick = { /* TODO: Trigger Google Auth Flow */ },
+            onClick = { /* Handle Google Auth */ },
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(28.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black),
             border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -269,7 +283,7 @@ fun RegistrationFormContent(
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(Modifier.width(12.dp))
-                Text("Continue with Google", fontWeight = FontWeight.Medium)
+                Text("Continue with Google", fontWeight = FontWeight.Medium, color = Color.Black)
             }
         }
 
@@ -280,20 +294,18 @@ fun RegistrationFormContent(
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(32.dp))
 
         /* ───────── FOOTER ───────── */
         Row(
             horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
+            modifier = Modifier.fillMaxWidth().padding(bottom = 40.dp)
         ) {
-            Text("Already have an account? ")
+            Text("Already have an account? ", color = Color.Gray)
             Text(
                 text = "Login",
                 fontWeight = FontWeight.Bold,
