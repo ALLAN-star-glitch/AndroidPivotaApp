@@ -90,11 +90,11 @@ fun DashboardScaffold() {
                     navController = navController,
                     startDestination = Discover
                 ) {
-                    composable<Dashboard> { HomeScreen() }
-                    composable<Providers> { Explore() }
+                    composable<Dashboard> { DashboardScreen() }
+                    composable<Providers> { ProvidersScreen() }
                     composable<Discover> { DiscoverScreen() }
-                    composable<SmartMatch> { Providers() }
-                    composable<Profile> { Profile() }
+                    composable<SmartMatch> { SmartMatchScreen() }
+                    composable<Profile> { ProfileScreen() }
                     // Type-Safe Posting Flows
                     composable<PostJob> {
                         JobPostScreen.Content(onBack = { navController.popBackStack() })
