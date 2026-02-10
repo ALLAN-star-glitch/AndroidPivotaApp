@@ -12,6 +12,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import androidx.window.core.layout.WindowSizeClass
 import com.example.pivota.dashboard.presentation.composables.*
+import com.example.pivota.listings.presentation.screens.HousingPostScreen
 import com.example.pivota.listings.presentation.screens.JobPostScreen
 import topLevelRoutes
 
@@ -98,6 +99,9 @@ fun DashboardScaffold() {
                     // Type-Safe Posting Flows
                     composable<PostJob> {
                         JobPostScreen.Content(onBack = { navController.popBackStack() })
+                    }
+                    composable<PostHousing> {
+                        HousingPostScreen.Content(onBack = { navController.popBackStack() })
                     }
                 }
 
