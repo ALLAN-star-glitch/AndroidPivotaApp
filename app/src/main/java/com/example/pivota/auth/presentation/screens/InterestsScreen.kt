@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.example.pivota.R
 import com.example.pivota.core.presentations.composables.background_image_and_overlay.BackgroundImageAndOverlay
@@ -24,8 +25,9 @@ fun InterestsScreen(
     onBack: () -> Unit = {},
     onSave: () -> Unit = {}
 ) {
-    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
-    val isWide = windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
+    val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND) ||
+            windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
 
     Box(modifier = Modifier.fillMaxSize()) {
 
