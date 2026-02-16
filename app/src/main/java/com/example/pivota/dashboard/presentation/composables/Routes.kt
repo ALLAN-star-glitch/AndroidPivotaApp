@@ -14,3 +14,6 @@ import kotlinx.serialization.Serializable
 @Serializable object PostHousing
 @Serializable object PostSupport
 @Serializable object PostService
+
+
+@Serializable object MyListings

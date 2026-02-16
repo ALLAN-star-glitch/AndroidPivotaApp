@@ -22,14 +22,34 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pivota.R
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartMatchScreen() {
     val primaryTeal = Color(0xFF006565)
     val goldenAccent = Color(0xFFE9C16C)
     val softBackground = Color(0xFFF6FAF9)
 
-    Scaffold(containerColor = softBackground, contentWindowInsets = WindowInsets(0,0,0,0)) { padding ->
+    // 📱 Orientation & Adaptive Logic
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val windowSizeClass = androidx.compose.material3.adaptive.currentWindowAdaptiveInfo().windowSizeClass
+
+    val isPortrait = configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+    val isTabletWidth = windowSizeClass.windowWidthSizeClass != androidx.window.core.layout.WindowWidthSizeClass.COMPACT
+
+    // 🎯 Logic: Sticky in Portrait, Scrolling in Landscape
+    val shouldScrollHeader = isTabletWidth && !isPortrait
+
+    Scaffold(
+        containerColor = softBackground,
+        topBar = {
+            if (!shouldScrollHeader) {
+                SmartMatchHeroHeader(primaryTeal, goldenAccent)
+            }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { padding ->
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 340.dp),
             modifier = Modifier
@@ -39,10 +59,15 @@ fun SmartMatchScreen() {
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-
-            // 🔝 Hero Header
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                SmartMatchHeroHeader(primaryTeal, goldenAccent)
+            // Adaptive Header Placement
+            if (shouldScrollHeader) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    SmartMatchHeroHeader(primaryTeal, goldenAccent)
+                }
+            } else {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
+                }
             }
 
             // 🧠 Context Banner
@@ -52,111 +77,136 @@ fun SmartMatchScreen() {
 
             // 📋 SmartMatch Listings
             val smartMatchListings = listOf(
-                SmartMatchListing(
-                    title = "2-Bedroom Apartment – Westlands",
-                    type = "Housing",
-                    location = "Nairobi",
-                    reason = "Matches your saved housing searches",
-                    isVerified = true
-                ),
-                SmartMatchListing(
-                    title = "Electrician Needed – Solar Install",
-                    type = "Jobs",
-                    location = "Kiambu",
-                    reason = "Based on your recent job views",
-                    isVerified = true
-                ),
-                SmartMatchListing(
-                    title = "NGO Legal Support Program",
-                    type = "Help & Support",
-                    location = "Nakuru",
-                    reason = "Relevant to your community interests",
-                    isVerified = false
-                )
+                SmartMatchListing("2-Bedroom Apartment – Westlands", "Housing", "Nairobi", "Matches your saved housing searches", true),
+                SmartMatchListing("Electrician Needed – Solar Install", "Jobs", "Kiambu", "Based on your recent job views", true),
+                SmartMatchListing("NGO Legal Support Program", "Help & Support", "Nakuru", "Relevant to your community interests", false)
             )
 
             items(smartMatchListings) { listing ->
                 SmartMatchListingCard(primaryTeal, goldenAccent, listing)
             }
+
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Spacer(modifier = Modifier.height(80.dp))
+            }
         }
     }
 }
-
-/* ────────────── UI COMPONENTS ────────────── */
 
 @Composable
 fun SmartMatchHeroHeader(teal: Color, gold: Color) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(180.dp)
+            .height(220.dp) // Matched to Discover & Providers Screen
     ) {
-        // 🖼️ Background Image (Same as Discover/Providers for consistency)
+        // 1. Background Image
         Image(
-            painter = painterResource(id = com.example.pivota.R.drawable.nairobi_city),
+            painter = painterResource(id = R.drawable.nairobi_city),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
 
-        // 🎨 Branded Teal Overlay (Slightly darker to make the gold SmartMatch icon pop)
+        // 2. Teal Overlay (Vertical)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(
-                            teal.copy(alpha = 0.95f),
-                            teal.copy(alpha = 0.80f)
-                        )
+                        colors = listOf(teal.copy(0.98f), teal.copy(0.7f), Color.Transparent)
                     )
                 )
         )
 
-        // ✍️ Content
+        // 3. Golden Accent (Horizontal Glow)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(gold.copy(0.15f), Color.Transparent),
+                        endX = 400f
+                    )
+                )
+        )
+
+        // 4. Content (Avatar, Greeting, Icons, and Branding)
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.Center
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // --- TOP ROW (Consistency with Discover) ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = null,
-                            tint = gold,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "SmartMatch™",
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = (-1).sp
-                            )
-                        )
+                Box {
+                    // Reusing avatar logic
+                    Box(
+                        modifier = Modifier
+                            .size(45.dp)
+                            .background(Color.White.copy(0.2f), CircleShape)
+                            .border(1.5.dp, Color.White.copy(0.5f), CircleShape)
+                            .clip(CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.PersonOutline, null, tint = Color.White, modifier = Modifier.size(24.dp))
                     }
-                    Text(
-                        text = "Curated opportunities for your profile",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(0.9f)
-                        )
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(gold, CircleShape)
+                            .border(2.dp, teal, CircleShape)
+                            .align(Alignment.BottomEnd)
                     )
                 }
 
-                // 🔔 Action Icons (Consistency across all dashboard tabs)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SmartMatchHeaderIcon(Icons.Default.Mail) { /* Open Messages */ }
-                    SmartMatchHeaderIcon(Icons.Default.Notifications) { /* Open Notifications */ }
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Hi, Guest",
+                        style = MaterialTheme.typography.titleMedium.copy(color = Color.White, fontWeight = FontWeight.Bold)
+                    )
+                    Text(
+                        text = "Your AI-Picks",
+                        style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(0.8f))
+                    )
                 }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SmartMatchHeaderIcon(Icons.Default.Mail) { }
+                    SmartMatchHeaderIcon(Icons.Default.Notifications) { }
+                }
+            }
+
+            // --- BOTTOM ROW ---
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = gold,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "SmartMatch",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            color = Color.White,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-1.5).sp
+                        )
+                    )
+                }
+                Text(
+                    text = "Opportunities tailored for you",
+                    style = MaterialTheme.typography.bodyMedium.copy(color = Color.White.copy(0.9f))
+                )
             }
         }
     }
