@@ -35,26 +35,35 @@ fun DiscoverScreen() {
     val goldenAccent = Color(0xFFE9C16C)
     val softBackground = Color(0xFFF6FAF9)
 
+    // 📱 Adaptive Logic (consistent with Dashboard)
+    val windowSizeClass = androidx.compose.material3.adaptive.currentWindowAdaptiveInfo().windowSizeClass
+    val isWide = windowSizeClass.windowWidthSizeClass != androidx.window.core.layout.WindowWidthSizeClass.COMPACT
+
     Scaffold(
         containerColor = softBackground,
+        // Sticky Header only on mobile
+        topBar = {
+            if (!isWide) {
+                DiscoverHeroHeader(primaryTeal, goldenAccent)
+            }
+        },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
-        // We ignore paddingValues.calculateTopPadding() to allow the header to hit the top edge
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
-            // 🔝 1. Hero Header (Now Edge-to-Edge with Avatar)
-            item { DiscoverHeroHeader(primaryTeal, goldenAccent) }
+            // 🔝 Header Placement: Scrolling for Tablet, Spacer for Mobile (to account for topBar)
+            if (isWide) {
+                item { DiscoverHeroHeader(primaryTeal, goldenAccent) }
+            } else {
+                item { Spacer(modifier = Modifier.height(paddingValues.calculateTopPadding())) }
+            }
 
-            //  Premium Upsell Banner (Small, high-visibility)
+            // --- ALL DISCOVER CONTENT ---
             item { UpgradePremiumBanner(primaryTeal, goldenAccent) }
-
-            // 🔍 2. Smart Search & Filter
             item { SmartSearchAndFilter(primaryTeal) }
-
-            // 🤖 3. SmartMatch™ Highlight Card
             item { SmartMatchHighlightCard(primaryTeal, goldenAccent) }
 
             // 📋 4.1 Jobs Near You
@@ -81,60 +90,23 @@ fun DiscoverScreen() {
                         status = "For Rent",
                         amenities = listOf("Wifi", "CCTV", "Water")
                     )
-                    HousingCard(
-                        teal = primaryTeal,
-                        price = "KSh 4.5M",
-                        type = "3 Bedroom Villa",
-                        loc = "Syokimau",
-                        status = "For Sale",
-                        amenities = listOf("Parking", "Gym", "Garden")
-                    )
                 }
             }
 
-            // 🛠️ 4.3 Verified Service Providers (Contractors)
+            // 🛠️ 4.3 Verified Service Providers
             item { SectionHeader("Service Providers") }
             item {
                 HorizontalListingRow {
-                    ServiceProviderCard(
-                        teal = primaryTeal,
-                        gold = goldenAccent,
-                        name = "QuickMovers Kenya",
-                        specialty = "Housing Support",
-                        service = "Professional Moving & Packing",
-                        rating = 4.9f,
-                        isCompany = true
-                    )
-                    ServiceProviderCard(
-                        teal = primaryTeal,
-                        gold = goldenAccent,
-                        name = "Fundi Digital",
-                        specialty = "Maintenance",
-                        service = "Electrical & Plumbing",
-                        rating = 4.7f,
-                        isCompany = false
-                    )
-                    ServiceProviderCard(
-                        teal = primaryTeal,
-                        gold = goldenAccent,
-                        name = "CareerPath Africa",
-                        specialty = "Job Support",
-                        service = "CV Review & Skill Training",
-                        rating = 4.8f,
-                        isCompany = true
-                    )
+                    ServiceProviderCard(primaryTeal, goldenAccent, "QuickMovers Kenya", "Housing Support", "Professional Moving", 4.9f, true)
+                    ServiceProviderCard(primaryTeal, goldenAccent, "Fundi Digital", "Maintenance", "Electrical & Plumbing", 4.7f, false)
                 }
             }
 
-// ⚡ 4.4 Quick Service Grid (Actionable Services)
+            // ⚡ 4.4 Quick Service Grid
             item { SectionHeader("Common Services") }
-            item {
-                ServiceGrid(primaryTeal, goldenAccent)
-            }
+            item { ServiceGrid(primaryTeal, goldenAccent) }
 
-
-
-            // 📋Social Support & Services
+            // 📋 Social Support
             item { SectionHeader("Social Support & Services") }
             items(2) { index ->
                 Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
@@ -776,115 +748,70 @@ fun ServiceGrid(teal: Color, gold: Color) {
 
 @Composable
 fun UpgradePremiumBanner(teal: Color, gold: Color) {
-    // A sophisticated deep gradient to represent "Premium"
-    val premiumGradient = Brush.horizontalGradient(
-        colors = listOf(
-            teal,
-            Color(0xFF004D4D), // Deeper teal
-            Color(0xFF008080)  // Lighter emerald teal
-        )
-    )
+    // We use a very soft teal or even a white-smoke background to reduce the "shout"
+    val subtleTeal = Color(0xFFF0F4F4)
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(24.dp),
-                spotColor = teal.copy(alpha = 0.5f)
-            ),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, gold.copy(alpha = 0.3f)) // Subtle golden border
+        color = Color.White, // Clean base
+        border = BorderStroke(1.dp, teal.copy(alpha = 0.1f)), // Breathable border
+        shadowElevation = 2.dp
     ) {
         Box(
             modifier = Modifier
-                .background(premiumGradient)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(Color.White, subtleTeal)
+                    )
+                )
                 .padding(20.dp)
         ) {
-            // Background Decorative Element (Abstract Circle)
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .graphicsLayer {
-                        translationX = 250f
-                        translationY = -80f
-                    }
-                    .background(gold.copy(alpha = 0.1f), CircleShape)
-            )
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    // Badge-style Tag
-                    Surface(
-                        color = gold.copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(50.dp),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = gold,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                "SMARTMATCH™ PREMIUM",
-                                color = gold,
-                                fontSize = 9.sp,
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.WorkspacePremium,
+                            contentDescription = null,
+                            tint = gold,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "PIVOTA PREMIUM",
+                            style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Black,
-                                letterSpacing = 1.sp
+                                letterSpacing = 1.sp,
+                                color = teal
                             )
-                        }
+                        )
                     }
-
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Unlock Pan-African Reach",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = (-0.5).sp
-                    )
-
-                    Text(
-                        text = "Get 5x more visibility & priority support.",
-                        color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                        modifier = Modifier.padding(top = 4.dp)
+                        "Get priority access to verified listings",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
                     )
                 }
 
-                Spacer(Modifier.width(16.dp))
-
-                // Elegant Button with "Gold Glow"
                 Button(
-                    onClick = { /* Navigate to Pricing */ },
-                    colors = ButtonDefaults.buttonColors(containerColor = gold),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
-                    modifier = Modifier
-                        .height(45.dp)
-                        .graphicsLayer {
-                            // Subtle pop-out effect
-                            scaleX = 1.05f
-                            scaleY = 1.05f
-                        },
-                    contentPadding = PaddingValues(horizontal = 20.dp)
+                    onClick = { /* Upgrade logic */ },
+                    colors = ButtonDefaults.buttonColors(containerColor = teal),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Text(
-                        "Go Pro",
-                        color = teal,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.ExtraBold
+                        "Upgrade",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }

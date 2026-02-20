@@ -19,12 +19,14 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pivota.R
 
 /* ─────────────────────────────────────────────
    Providers Screen
@@ -32,19 +34,29 @@ import androidx.compose.ui.unit.sp
    Tone: Trustworthy, calm, professional
    ───────────────────────────────────────────── */
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProvidersScreen() {
-
     val primaryTeal = Color(0xFF006565)
     val goldenAccent = Color(0xFFE9C16C)
     val softBackground = Color(0xFFF6FAF9)
 
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val windowSizeClass = androidx.compose.material3.adaptive.currentWindowAdaptiveInfo().windowSizeClass
+
+    val isPortrait = configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+    val isTabletWidth = windowSizeClass.windowWidthSizeClass != androidx.window.core.layout.WindowWidthSizeClass.COMPACT
+    val shouldScrollHeader = isTabletWidth && !isPortrait
+
     Scaffold(
         containerColor = softBackground,
-        contentWindowInsets = WindowInsets(0,0,0,0)
-
+        topBar = {
+            if (!shouldScrollHeader) {
+                PivotaProvidersHeroHeader(primaryTeal, goldenAccent)
+            }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
-
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 340.dp),
             modifier = Modifier
@@ -53,144 +65,167 @@ fun ProvidersScreen() {
             verticalArrangement = Arrangement.spacedBy(20.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
-            /* ── HERO HEADER ─────────────────────── */
-
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                PivotaProvidersHeroHeader(primaryTeal, goldenAccent)
+            // Adaptive Header Placement
+            if (shouldScrollHeader) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    PivotaProvidersHeroHeader(primaryTeal, goldenAccent)
+                }
+            } else {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
+                }
             }
-
-            /* ── SEARCH + FILTER ───────────────── */
 
             item(span = { GridItemSpan(maxLineSpan) }) {
                 ProvidersSearchSection(primaryTeal)
             }
 
-            /* ── SMART MATCH CALLOUT ───────────── */
-
             item(span = { GridItemSpan(maxLineSpan) }) {
                 SmartMatchProviderHighlight(primaryTeal, goldenAccent)
             }
 
-            /* ── PROVIDER LIST ─────────────────── */
-
+            // Providers Data...
             val providers = listOf(
-                ProviderData(
-                    name = "Musa Jallow",
-                    category = "Electrician • Solar Specialist",
-                    location = "Nairobi",
-                    isVerified = true,
-                    isSmartMatch = true
-                ),
-                ProviderData(
-                    name = "Sarah Wanjiku",
-                    category = "Interior Designer",
-                    location = "Kiambu",
-                    isVerified = true,
-                    isSmartMatch = false
-                ),
-                ProviderData(
-                    name = "Pivota Housing Ltd",
-                    category = "Property & Facility Management",
-                    location = "Mombasa",
-                    isVerified = true,
-                    isSmartMatch = true
-                ),
-                ProviderData(
-                    name = "Legal Aid Kenya",
-                    category = "Help & Support • NGO Partner",
-                    location = "Nakuru",
-                    isVerified = true,
-                    isSmartMatch = false
-                )
+                ProviderData("Musa Jallow", "Electrician • Solar Specialist", "Nairobi", true, true),
+                ProviderData("Sarah Wanjiku", "Interior Designer", "Kiambu", true, false),
+                ProviderData("Pivota Housing Ltd", "Property & Facility Management", "Mombasa", true, true),
+                ProviderData("Legal Aid Kenya", "Help & Support • NGO Partner", "Nakuru", true, false)
             )
 
             items(providers) { provider ->
-                ProviderCard(
-                    teal = primaryTeal,
-                    gold = goldenAccent,
-                    data = provider
-                )
+                ProviderCard(teal = primaryTeal, gold = goldenAccent, data = provider)
             }
+
+            item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(80.dp)) }
         }
     }
 }
-
-/* ─────────────────────────────────────────────
-   HERO HEADER
-   ───────────────────────────────────────────── */
 
 @Composable
 fun PivotaProvidersHeroHeader(teal: Color, gold: Color) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(180.dp)
+            .height(220.dp) // Matched to DiscoverScreen height
     ) {
-        // 🖼️ Background Image
+        // 1. Background Image
         Image(
-            painter = painterResource(id = com.example.pivota.R.drawable.nairobi_city),
+            painter = painterResource(id = R.drawable.nairobi_city),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
 
-        // 🎨 Branded Teal Overlay
+        // 2. Teal Overlay (Vertical)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(
-                            teal.copy(alpha = 0.92f),
-                            teal.copy(alpha = 0.70f)
-                        )
+                        colors = listOf(teal.copy(0.98f), teal.copy(0.7f), Color.Transparent)
                     )
                 )
         )
 
-        // ✍️ Content (Text & Icons)
+        // 3. Golden Accent (Horizontal Glow)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(gold.copy(0.15f), Color.Transparent),
+                        endX = 400f
+                    )
+                )
+        )
+
+        // 4. Content (Avatar, Greeting, Icons, and Branding)
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.Center
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // --- TOP ROW ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Box {
+                    HeaderAvatar(teal)
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(gold, CircleShape)
+                            .border(2.dp, teal, CircleShape)
+                            .align(Alignment.BottomEnd)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Discover",
-                        style = MaterialTheme.typography.headlineMedium.copy(
+                        text = "Hi, Guest",
+                        style = MaterialTheme.typography.titleMedium.copy(
                             color = Color.White,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = (-1).sp
+                            fontWeight = FontWeight.Bold
                         )
                     )
                     Text(
-                        text = "Life opportunities, tailored for you",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(0.9f)
+                        text = "Welcome to Pivota",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color.White.copy(0.8f)
                         )
                     )
                 }
 
-                // 🔔 Action Icons
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    // Message Icon
-                    HeaderActionIconButton(Icons.Default.Mail) { /* Navigate to Messages */ }
-                    // Notification Icon
-                    HeaderActionIconButton(Icons.Default.Notifications) { /* Navigate to Notifications */ }
+                    HeaderActionIcon(Icons.Default.Mail) { /* Open Messages */ }
+                    HeaderActionIcon(Icons.Default.Notifications) { /* Open Notifications */ }
                 }
+            }
+
+            // --- BOTTOM ROW ---
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Providers",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            color = Color.White,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-1.5).sp
+                        )
+                    )
+                    Spacer(Modifier.width(8.dp))
+
+                    Surface(
+                        color = gold,
+                        shape = RoundedCornerShape(4.dp),
+                        modifier = Modifier.graphicsLayer { translationY = 4f }
+                    ) {
+                        Text(
+                            text = "SmartMatch™",
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                color = teal,
+                                fontSize = 9.sp
+                            )
+                        )
+                    }
+                }
+                Text(
+                    text = "Professional partners you can trust",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color.White.copy(0.9f)
+                    )
+                )
             }
         }
     }
 }
-
 /**
  * Marked 'private' so it cannot conflict with other files in the same package
  */
