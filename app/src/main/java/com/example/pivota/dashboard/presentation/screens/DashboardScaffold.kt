@@ -12,8 +12,11 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import androidx.window.core.layout.WindowSizeClass
 import com.example.pivota.dashboard.presentation.composables.*
+import com.example.pivota.listings.presentation.composables.housing.PostHousing
+import com.example.pivota.listings.presentation.screens.BookServiceScreen
 import com.example.pivota.listings.presentation.screens.HousingPostScreen
 import com.example.pivota.listings.presentation.screens.JobPostScreen
+import com.example.pivota.listings.presentation.screens.PostServiceScreen
 import topLevelRoutes
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -121,6 +124,9 @@ fun DashboardScaffold() {
                                 showSheet = true
                             }
                         )
+                    }
+                    composable<PostService> {
+                        PostServiceScreen(onBack = { navController.popBackStack() })
                     }
                 }
 

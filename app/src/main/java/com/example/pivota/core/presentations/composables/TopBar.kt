@@ -1,10 +1,9 @@
-package com.example.pivota.listings.presentation.composables.housing
+package com.example.pivota.core.presentations.composables
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,7 +15,7 @@ import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HousingTopBar(
+fun TopBar(
     icon: ImageVector,
     title: String,
     onBack: () -> Unit

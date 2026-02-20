@@ -23,7 +23,6 @@ import androidx.compose.material.icons.outlined.Bathtub
 import androidx.compose.material.icons.outlined.Bed
 import androidx.compose.material.icons.outlined.Chair
 import androidx.compose.material.icons.outlined.ChatBubble
-import androidx.compose.material.icons.outlined.Help
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Verified
@@ -52,7 +51,7 @@ import coil3.compose.AsyncImage
 import com.example.pivota.R
 import com.example.pivota.core.presentations.composables.Chip
 import com.example.pivota.listings.domain.models.HousingPost
-import com.example.pivota.listings.presentation.composables.housing.HousingTopBar
+import com.example.pivota.core.presentations.composables.TopBar
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -79,7 +78,7 @@ fun HouseDetailsScreen() {
     )
     Scaffold(
         topBar = {
-            HousingTopBar(
+            TopBar(
                 title = "House details",
                 onBack = {
                     // TODO navigate back
