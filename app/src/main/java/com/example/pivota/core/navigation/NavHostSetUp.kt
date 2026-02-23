@@ -44,22 +44,11 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
         /* ───────── WELCOME ───────── */
         composable<Welcome> {
             WelcomeScreen(
-                onNavigateToGetStarted = { navController.navigate(Discovery) },
+                onNavigateToGetStarted = { navController.navigate(GuestDashboard) },
                 onNavigateToLoginScreen = { navController.navigate(AuthFlow) }
             )
         }
 
-        /* ───────── DISCOVERY / INTERESTS ───────── */
-        composable<Discovery> {
-            InterestsScreen(
-                onBack = { navController.popBackStack() },
-                onSave = {
-                    navController.navigate(GuestDashboard) {
-                        popUpTo(Welcome) { inclusive = true }
-                    }
-                }
-            )
-        }
 
         /* ───────── GUEST DASHBOARD ───────── */
         composable<GuestDashboard> {
