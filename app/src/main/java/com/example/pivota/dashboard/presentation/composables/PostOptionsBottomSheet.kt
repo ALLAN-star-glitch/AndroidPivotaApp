@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pivota.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,13 +29,15 @@ fun PostOptionsBottomSheet(
     onDismiss: () -> Unit,
     onOptionSelected: (String) -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color.White,
+        containerColor = colorScheme.surface,
         tonalElevation = 8.dp,
         dragHandle = {
-            BottomSheetDefaults.DragHandle(color = Color(0xFF008080).copy(alpha = 0.4f))
+            BottomSheetDefaults.DragHandle(color = colorScheme.primary.copy(alpha = 0.4f))
         }
     ) {
         Column(
@@ -50,13 +53,13 @@ fun PostOptionsBottomSheet(
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = (-0.5).sp,
-                    color = Color(0xFF008080) // Pivota Teal
+                    color = colorScheme.primary // Pivota Teal
                 )
             )
             Text(
                 text = "Select a category to connect with your audience",
                 style = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color.Gray,
+                    color = colorScheme.onSurfaceVariant,
                     letterSpacing = 0.2.sp
                 ),
                 modifier = Modifier.padding(bottom = 24.dp)
@@ -67,7 +70,8 @@ fun PostOptionsBottomSheet(
                 title = "Post a Job",
                 subtitle = "Find talent, interns, or offer training",
                 icon = Icons.Rounded.BusinessCenter,
-                onClick = { onOptionSelected("jobs") }
+                onClick = { onOptionSelected("jobs") },
+                colorScheme = colorScheme
             )
 
             // MVP1 Pillar: Housing
@@ -75,7 +79,8 @@ fun PostOptionsBottomSheet(
                 title = "Post a House",
                 subtitle = "List apartments, land plots, or rentals",
                 icon = Icons.Rounded.HomeWork,
-                onClick = { onOptionSelected("housing") }
+                onClick = { onOptionSelected("housing") },
+                colorScheme = colorScheme
             )
 
             // MVP1 Pillar: Help & Support
@@ -83,7 +88,8 @@ fun PostOptionsBottomSheet(
                 title = "Post for Help",
                 subtitle = "Social services, NGO programs, or aid",
                 icon = Icons.Rounded.Handshake,
-                onClick = { onOptionSelected("support") }
+                onClick = { onOptionSelected("support") },
+                colorScheme = colorScheme
             )
 
             // New: Service Offering (For Service Providers)
@@ -91,7 +97,8 @@ fun PostOptionsBottomSheet(
                 title = "Post a Service",
                 subtitle = "Plumbing, moving, legal, or professional help",
                 icon = Icons.Rounded.Plumbing,
-                onClick = { onOptionSelected("service") }
+                onClick = { onOptionSelected("service") },
+                colorScheme = colorScheme
             )
         }
     }
@@ -102,7 +109,8 @@ private fun PostOptionItem(
     title: String,
     subtitle: String,
     icon: ImageVector,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    colorScheme: androidx.compose.material3.ColorScheme
 ) {
     Surface(
         modifier = Modifier
@@ -110,7 +118,7 @@ private fun PostOptionItem(
             .padding(vertical = 6.dp)
             .clickable { onClick() },
         shape = MaterialTheme.shapes.large,
-        color = Color(0xFFF8FBFB), // Very light teal tint
+        color = colorScheme.primary.copy(alpha = 0.05f), // Very light teal tint
         border = null
     ) {
         Row(
@@ -124,7 +132,10 @@ private fun PostOptionItem(
                     .size(52.dp)
                     .background(
                         brush = Brush.linearGradient(
-                            colors = listOf(Color(0xFF008080), Color(0xFF005A5A))
+                            colors = listOf(
+                                colorScheme.primary,
+                                colorScheme.primary.copy(alpha = 0.8f) // Slightly darker version
+                            )
                         ),
                         shape = CircleShape
                     ),
@@ -133,7 +144,7 @@ private fun PostOptionItem(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = colorScheme.onPrimary,
                     modifier = Modifier.size(26.dp)
                 )
             }
@@ -145,13 +156,13 @@ private fun PostOptionItem(
                     text = title,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1A1A1A)
+                        color = colorScheme.onSurface
                     )
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = Color(0xFF666666),
+                        color = colorScheme.onSurfaceVariant,
                         lineHeight = 16.sp
                     )
                 )
@@ -161,7 +172,7 @@ private fun PostOptionItem(
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = Color(0xFF008080).copy(alpha = 0.3f)
+                tint = colorScheme.primary.copy(alpha = 0.3f)
             )
         }
     }

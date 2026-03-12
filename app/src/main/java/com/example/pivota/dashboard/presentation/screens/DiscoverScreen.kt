@@ -7,7 +7,6 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,44 +24,53 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.pivota.R
-import kotlin.math.max
+import com.example.pivota.dashboard.domain.EmployerType
+import com.example.pivota.dashboard.presentation.composables.ModernHousingCard
+import com.example.pivota.dashboard.presentation.composables.ModernJobCard
+import com.example.pivota.dashboard.presentation.composables.ModernProviderCard
 
-// Modern, elegant color palette - teal used sparingly as accent
-val DeepNavy = Color(0xFF0A1A2F)      // Professional dark blue
-val WarmGray = Color(0xFFF8F9FA)      // Soft background
-val SlateGray = Color(0xFF4A5568)     // Secondary text
-val SoftGold = Color(0xFFD4AF37)      // Premium accent
-val ForestGreen = Color(0xFF2E7D32)   // Success/Verified
-val CleanWhite = Color(0xFFFFFFFF)    // Pure white
-val LightBorder = Color(0xFFE2E8F0)   // Subtle borders
-val MutedTeal = Color(0xFF2C6E6E)     // Muted teal for accents
+
+
 
 @SuppressLint("FrequentlyChangingValue")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiscoverScreen() {
-    // 🎨 Brand Palette - Using teal sparingly as accent
-    val primaryTeal = MutedTeal
-    val goldenAccent = SoftGold
-    val softBackground = WarmGray
+    val colorScheme = MaterialTheme.colorScheme
+
+    // 🎨 Brand Palette - Using theme colors
+    val primaryColor = colorScheme.primary
+    val secondaryColor = colorScheme.secondary
+    val tertiaryColor = colorScheme.tertiary
+    val softBackground = colorScheme.background
 
     val listState = rememberLazyListState()
 
     // State for search
     var searchQuery by remember { mutableStateOf("") }
-
-    // State for audio recording
     var isRecording by remember { mutableStateOf(false) }
+
+    // Get screen width for responsive card sizing
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val isTablet = screenWidth > 600.dp
+
+    // Responsive card width based on screen size
+    val cardWidth = when {
+        isTablet -> 320.dp
+        screenWidth > 400.dp -> 300.dp
+        else -> 280.dp
+    }
 
     // 📏 Header sizes
     val maxHeight = 220.dp
@@ -110,12 +118,12 @@ fun DiscoverScreen() {
                 item {
                     Spacer(
                         modifier = Modifier.height(
-                            maxHeight + 120.dp // Height for header + search section
+                            maxHeight + 120.dp
                         )
                     )
                 }
 
-                // 📋 1. Jobs Near You - Enhanced
+                // 📋 1. Jobs Near You
                 item {
                     ModernSectionHeader("Jobs Near You", "View all jobs →")
                 }
@@ -130,7 +138,9 @@ fun DiscoverScreen() {
                                     salary = "KSh 3,500/day",
                                     type = "Contract",
                                     isVerified = true,
-                                    accentColor = primaryTeal
+                                    employerType = EmployerType.ORGANIZATION,
+                                    onViewClick = {},
+                                    onApplyClick = {}
                                 )
                             },
                             {
@@ -141,7 +151,9 @@ fun DiscoverScreen() {
                                     salary = "KSh 55,000/month",
                                     type = "Full-time",
                                     isVerified = true,
-                                    accentColor = primaryTeal
+                                    employerType = EmployerType.ORGANIZATION,
+                                    onViewClick = {},
+                                    onApplyClick = {}
                                 )
                             },
                             {
@@ -152,7 +164,9 @@ fun DiscoverScreen() {
                                     salary = "KSh 25,000/month",
                                     type = "Full-time",
                                     isVerified = false,
-                                    accentColor = primaryTeal
+                                    employerType = EmployerType.ORGANIZATION,
+                                    onViewClick = {},
+                                    onApplyClick = {}
                                 )
                             },
                             {
@@ -163,14 +177,17 @@ fun DiscoverScreen() {
                                     salary = "KSh 40,000/month",
                                     type = "Contract",
                                     isVerified = true,
-                                    accentColor = primaryTeal
+                                    employerType = EmployerType.ORGANIZATION,
+                                    onViewClick = {},
+                                    onApplyClick = {}
                                 )
                             }
-                        )
+                        ),
+                        cardWidth = cardWidth
                     )
                 }
 
-                // 📋 2. Housing - Enhanced
+                // 📋 2. Housing Opportunities
                 item {
                     ModernSectionHeader("Housing Opportunities", "Browse all →")
                 }
@@ -185,9 +202,11 @@ fun DiscoverScreen() {
                                     type = "Apartment",
                                     rating = 4.5,
                                     isVerified = true,
+                                    description = "Self-contained bedsitter with parking, near Tuskys",
                                     isForSale = false,
-                                    imageRes = R.drawable.nairobi_city,
-                                    accentColor = primaryTeal
+                                    imageRes = R.drawable.property_placeholder1,
+                                    onViewClick = {},
+                                    onBookClick = {}
                                 )
                             },
                             {
@@ -198,9 +217,11 @@ fun DiscoverScreen() {
                                     type = "Apartment",
                                     rating = 4.8,
                                     isVerified = true,
+                                    description = "Spacious 2BR with balcony, fitted kitchen, 24/7 security",
                                     isForSale = false,
-                                    imageRes = R.drawable.nairobi_city,
-                                    accentColor = primaryTeal
+                                    imageRes = R.drawable.property_placeholder2,
+                                    onViewClick = {},
+                                    onBookClick = {}
                                 )
                             },
                             {
@@ -211,9 +232,11 @@ fun DiscoverScreen() {
                                     type = "House",
                                     rating = 4.9,
                                     isVerified = true,
+                                    description = "4BR villa with garden, pool, and servant quarters",
                                     isForSale = true,
-                                    imageRes = R.drawable.nairobi_city,
-                                    accentColor = primaryTeal
+                                    imageRes = R.drawable.property_placeholder3,
+                                    onViewClick = {},
+                                    onBookClick = {}
                                 )
                             },
                             {
@@ -224,12 +247,15 @@ fun DiscoverScreen() {
                                     type = "Studio",
                                     rating = 4.3,
                                     isVerified = true,
+                                    description = "Modern studio, near Yaya Centre, water included",
                                     isForSale = false,
-                                    imageRes = R.drawable.nairobi_city,
-                                    accentColor = primaryTeal
+                                    imageRes = R.drawable.property_placeholder4,
+                                    onViewClick = {},
+                                    onBookClick = {}
                                 )
                             }
-                        )
+                        ),
+                        cardWidth = cardWidth
                     )
                 }
 
@@ -247,7 +273,10 @@ fun DiscoverScreen() {
                                     rating = 4.9f,
                                     jobs = 342,
                                     isVerified = true,
-                                    accentColor = primaryTeal
+                                    description = "Professional moving services across Nairobi",
+                                    onCardClick = {},
+                                    onViewClick = {},
+                                    onBookClick = {}
                                 )
                             },
                             {
@@ -257,7 +286,10 @@ fun DiscoverScreen() {
                                     rating = 4.7f,
                                     jobs = 256,
                                     isVerified = true,
-                                    accentColor = primaryTeal
+                                    description = "24/7 emergency electrical services",
+                                    onCardClick = {},
+                                    onViewClick = {},
+                                    onBookClick = {}
                                 )
                             },
                             {
@@ -267,7 +299,10 @@ fun DiscoverScreen() {
                                     rating = 4.8f,
                                     jobs = 189,
                                     isVerified = true,
-                                    accentColor = primaryTeal
+                                    description = "Professional cleaning for homes and offices",
+                                    onCardClick = {},
+                                    onViewClick = {},
+                                    onBookClick = {}
                                 )
                             },
                             {
@@ -277,22 +312,28 @@ fun DiscoverScreen() {
                                     rating = 4.6f,
                                     jobs = 112,
                                     isVerified = false,
-                                    accentColor = primaryTeal
+                                    description = "Solar panel installation and maintenance",
+                                    onCardClick = {},
+                                    onViewClick = {},
+                                    onBookClick = {}
                                 )
                             }
-                        )
+                        ),
+                        cardWidth = cardWidth
                     )
                 }
 
-                // ⚡ 4. Quick Services Grid - Enhanced
+                // ⚡ 4. Quick Services Grid
                 item {
                     ModernSectionHeader("Common Services", "Browse categories →")
                 }
                 item {
-                    ModernServiceGrid(primaryTeal, goldenAccent)
+                    ModernServiceGrid(
+                        colorScheme = colorScheme
+                    )
                 }
 
-                // 🤝 5. Social Support - Enhanced
+                // 🤝 5. Social Support
                 item {
                     ModernSectionHeader("Social Support & Services", "Get help →")
                 }
@@ -307,51 +348,47 @@ fun DiscoverScreen() {
                         service = supports[index].second,
                         location = supports[index].third,
                         isUrgent = index == 0,
-                        accentColor = primaryTeal
+                        colorScheme = colorScheme
                     )
                 }
 
                 item { Spacer(modifier = Modifier.height(100.dp)) }
             }
 
-            // 🏆 FIXED HEADER (always on top)
+            // 🏆 FIXED HEADER
             DiscoverHeroHeader(
-                teal = primaryTeal,
-                gold = goldenAccent,
+                teal = primaryColor,
+                gold = tertiaryColor,
                 height = animatedHeight,
                 collapseFraction = collapseFraction,
+                colorScheme = colorScheme,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .zIndex(2f) // Higher z-index to stay on top
+                    .zIndex(2f)
             )
 
-            // 📌 FIXED SEARCH SECTION (always visible below header)
+            // 📌 FIXED SEARCH SECTION
             FixedSearchSection(
                 query = searchQuery,
                 onQueryChange = { searchQuery = it },
                 onAudioClick = {
                     isRecording = !isRecording
-                    // Handle audio recording start/stop
-                    if (isRecording) {
-                        // Start recording
-                    } else {
-                        // Stop recording and process audio
-                    }
                 },
                 isRecording = isRecording,
-                accentColor = primaryTeal,
+                accentColor = primaryColor,
                 headerHeight = animatedHeight,
                 showShadow = isPastThreshold.value,
+                colorScheme = colorScheme,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .zIndex(1f) // Below header but above content
+                    .zIndex(1f)
             )
         }
     }
 }
 
 /* ─────────────────────────────────────────────
-   FIXED SEARCH SECTION (always visible)
+   FIXED SEARCH SECTION
    ───────────────────────────────────────────── */
 
 @Composable
@@ -363,9 +400,9 @@ fun FixedSearchSection(
     accentColor: Color,
     headerHeight: Dp,
     showShadow: Boolean,
+    colorScheme: androidx.compose.material3.ColorScheme,
     modifier: Modifier = Modifier
 ) {
-    // Animate shadow based on scroll position
     val elevation by animateDpAsState(
         targetValue = if (showShadow) 8.dp else 0.dp,
         animationSpec = tween(durationMillis = 200)
@@ -374,7 +411,7 @@ fun FixedSearchSection(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = headerHeight) // Position right below header
+            .padding(top = headerHeight)
     ) {
         Surface(
             modifier = Modifier
@@ -382,8 +419,7 @@ fun FixedSearchSection(
                 .shadow(
                     elevation = elevation,
                     shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
-                    ambientColor = Color.Black.copy(0.08f),
-                    spotColor = Color.Black.copy(0.08f)
+                    ambientColor = Color.Black.copy(0.08f)
                 ),
             shape = RoundedCornerShape(
                 topStart = 0.dp,
@@ -391,7 +427,7 @@ fun FixedSearchSection(
                 bottomStart = 20.dp,
                 bottomEnd = 20.dp
             ),
-            color = CleanWhite,
+            color = colorScheme.surface,
             tonalElevation = if (showShadow) 4.dp else 0.dp
         ) {
             Column(
@@ -405,7 +441,8 @@ fun FixedSearchSection(
                     onQueryChange = onQueryChange,
                     onAudioClick = onAudioClick,
                     isRecording = isRecording,
-                    accentColor = accentColor
+                    accentColor = accentColor,
+                    colorScheme = colorScheme
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -413,8 +450,9 @@ fun FixedSearchSection(
                 // Filter Pills
                 FilterPillsRow(
                     selectedFilters = emptySet(),
-                    onFilterSelected = { /* Handle pill selection */ },
-                    accentColor = accentColor
+                    onFilterSelected = { },
+                    accentColor = accentColor,
+                    colorScheme = colorScheme
                 )
             }
         }
@@ -431,7 +469,8 @@ fun SearchBarWithAudio(
     onQueryChange: (String) -> Unit,
     onAudioClick: () -> Unit,
     isRecording: Boolean,
-    accentColor: Color
+    accentColor: Color,
+    colorScheme: androidx.compose.material3.ColorScheme
 ) {
     Surface(
         modifier = Modifier
@@ -439,11 +478,10 @@ fun SearchBarWithAudio(
             .shadow(
                 elevation = 2.dp,
                 shape = RoundedCornerShape(16.dp),
-                ambientColor = Color.Black.copy(0.05f),
-                spotColor = Color.Black.copy(0.05f)
+                ambientColor = Color.Black.copy(0.05f)
             ),
         shape = RoundedCornerShape(16.dp),
-        color = CleanWhite,
+        color = colorScheme.surface,
     ) {
         Row(
             modifier = Modifier
@@ -454,7 +492,7 @@ fun SearchBarWithAudio(
             Icon(
                 Icons.Outlined.Search,
                 contentDescription = null,
-                tint = SlateGray.copy(0.6f),
+                tint = colorScheme.onSurfaceVariant.copy(0.6f),
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -468,7 +506,7 @@ fun SearchBarWithAudio(
                         if (query.isEmpty()) {
                             Text(
                                 "Search jobs, houses, services...",
-                                color = SlateGray.copy(0.5f),
+                                color = colorScheme.onSurfaceVariant.copy(0.5f),
                                 fontSize = 14.sp
                             )
                         }
@@ -477,7 +515,7 @@ fun SearchBarWithAudio(
                 },
                 textStyle = LocalTextStyle.current.copy(
                     fontSize = 14.sp,
-                    color = DeepNavy
+                    color = colorScheme.onSurface
                 )
             )
 
@@ -489,12 +527,12 @@ fun SearchBarWithAudio(
                     Icon(
                         Icons.Outlined.Close,
                         contentDescription = "Clear",
-                        tint = SlateGray.copy(0.6f),
+                        tint = colorScheme.onSurfaceVariant.copy(0.6f),
                         modifier = Modifier.size(16.dp)
                     )
                 }
             } else {
-                // Audio Icon with recording animation
+                // Audio Icon
                 IconButton(
                     onClick = onAudioClick,
                     modifier = Modifier
@@ -516,19 +554,18 @@ fun SearchBarWithAudio(
                         else
                             Icons.Outlined.Mic,
                         contentDescription = if (isRecording) "Stop recording" else "Start voice search",
-                        tint = if (isRecording) accentColor else SlateGray.copy(0.6f),
+                        tint = if (isRecording) accentColor else colorScheme.onSurfaceVariant.copy(0.6f),
                         modifier = Modifier.size(20.dp)
                     )
                 }
 
-                // Recording indicator (pulsing dot)
                 if (isRecording) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Box(
                         modifier = Modifier
                             .size(8.dp)
                             .background(
-                                color = Color.Red,
+                                color = colorScheme.error,
                                 shape = CircleShape
                             )
                     )
@@ -546,7 +583,8 @@ fun SearchBarWithAudio(
 fun FilterPillsRow(
     selectedFilters: Set<String>,
     onFilterSelected: (String) -> Unit,
-    accentColor: Color
+    accentColor: Color,
+    colorScheme: androidx.compose.material3.ColorScheme
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -567,8 +605,8 @@ fun FilterPillsRow(
 
             Surface(
                 shape = RoundedCornerShape(30.dp),
-                color = if (isSelected) accentColor else CleanWhite,
-                border = if (!isSelected) BorderStroke(1.dp, LightBorder) else null,
+                color = if (isSelected) accentColor else colorScheme.surface,
+                border = if (!isSelected) BorderStroke(1.dp, colorScheme.outlineVariant) else null,
                 modifier = Modifier
                     .clickable { onFilterSelected(filter) }
                     .shadow(
@@ -585,14 +623,14 @@ fun FilterPillsRow(
                         Icon(
                             icon,
                             contentDescription = null,
-                            tint = if (isSelected) CleanWhite else SlateGray,
+                            tint = if (isSelected) colorScheme.onPrimary else colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                     }
                     Text(
                         text = filter,
-                        color = if (isSelected) CleanWhite else SlateGray,
+                        color = if (isSelected) colorScheme.onPrimary else colorScheme.onSurfaceVariant,
                         fontSize = 13.sp,
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                     )
@@ -602,10 +640,12 @@ fun FilterPillsRow(
     }
 }
 
-/* ────────────── EXISTING COMPONENTS (unchanged) ────────────── */
+/* ────────────── MODIFIED COMPONENTS ────────────── */
 
 @Composable
 fun ModernSectionHeader(title: String, actionText: String) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -617,22 +657,26 @@ fun ModernSectionHeader(title: String, actionText: String) {
             text = title,
             style = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight.SemiBold,
-                color = DeepNavy,
+                color = colorScheme.onSurface,
                 fontSize = 16.sp,
                 letterSpacing = 0.5.sp
             )
         )
         Text(
             text = actionText,
-            color = MutedTeal,
+            color = colorScheme.primary,
             fontSize = 13.sp,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.clickable { /* Navigate to all */ }
         )
     }
 }
 
 @Composable
-fun ModernHorizontalList(items: List<@Composable () -> Unit>) {
+fun ModernHorizontalList(
+    items: List<@Composable () -> Unit>,
+    cardWidth: Dp
+) {
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -640,497 +684,12 @@ fun ModernHorizontalList(items: List<@Composable () -> Unit>) {
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(items.size) { index ->
-            items[index]()
-        }
-    }
-}
-
-@Composable
-fun ModernJobCard(
-    title: String,
-    company: String,
-    location: String,
-    salary: String,
-    type: String,
-    isVerified: Boolean,
-    accentColor: Color
-) {
-    Card(
-        modifier = Modifier
-            .width(260.dp)
-            .clickable { /* Navigate to job details */ },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CleanWhite),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 2.dp
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            // Header with company and verification
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Company initial avatar
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(accentColor.copy(0.08f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = company.take(1),
-                        color = accentColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
-                        color = DeepNavy,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = company,
-                        fontSize = 12.sp,
-                        color = SlateGray,
-                        maxLines = 1
-                    )
-                }
-
-                if (isVerified) {
-                    Icon(
-                        Icons.Outlined.Verified,
-                        contentDescription = "Verified",
-                        tint = ForestGreen,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Location
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Outlined.LocationOn,
-                    contentDescription = null,
-                    tint = SlateGray.copy(0.5f),
-                    modifier = Modifier.size(14.dp)
-                )
-                Text(
-                    text = location,
-                    fontSize = 12.sp,
-                    color = SlateGray,
-                    modifier = Modifier.padding(start = 4.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Salary and type
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = salary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = DeepNavy
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = accentColor.copy(0.08f)
-                ) {
-                    Text(
-                        text = type,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        fontSize = 10.sp,
-                        color = accentColor,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Apply button - Minimal
-            OutlinedButton(
-                onClick = { /* Apply */ },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, accentColor.copy(0.3f)),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = accentColor
-                )
-            ) {
-                Text(
-                    "Quick Apply",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun ModernHousingCard(
-    price: String,
-    title: String,
-    location: String,
-    type: String,
-    rating: Double,
-    isVerified: Boolean,
-    isForSale: Boolean = false,
-    imageRes: Int,
-    accentColor: Color
-) {
-    Card(
-        modifier = Modifier
-            .width(300.dp)
-            .clickable { /* Navigate to details */ },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CleanWhite),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp,
-            pressedElevation = 4.dp
-        )
-    ) {
-        Column {
-            // Image with overlay
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp)
+                    .width(cardWidth)
+                    .animateItem()
             ) {
-                Image(
-                    painter = painterResource(id = imageRes),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                // Gradient overlay
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color.Black.copy(0.4f)
-                                )
-                            )
-                        )
-                )
-
-                // Status Badge (For Sale / For Rent)
-                Surface(
-                    color = if (isForSale) SoftGold else accentColor,
-                    shape = RoundedCornerShape(topEnd = 0.dp, bottomEnd = 12.dp),
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                ) {
-                    Text(
-                        text = if (isForSale) "FOR SALE" else "FOR RENT",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (isForSale) DeepNavy else CleanWhite
-                    )
-                }
-
-                // Verification badge
-                if (isVerified) {
-                    Surface(
-                        color = CleanWhite,
-                        shape = CircleShape,
-                        modifier = Modifier
-                            .padding(12.dp)
-                            .align(Alignment.TopEnd)
-                            .size(32.dp)
-                    ) {
-                        Icon(
-                            Icons.Outlined.Verified,
-                            contentDescription = "Verified",
-                            tint = ForestGreen,
-                            modifier = Modifier.padding(6.dp)
-                        )
-                    }
-                }
-
-                // Type badge (Apartment, House, etc.)
-                Surface(
-                    color = CleanWhite.copy(0.95f),
-                    shape = RoundedCornerShape(4.dp),
-                    modifier = Modifier
-                        .padding(12.dp)
-                        .align(Alignment.BottomStart)
-                ) {
-                    Text(
-                        text = type,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        fontSize = 11.sp,
-                        color = DeepNavy,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            // Content
-            Column(
-                modifier = Modifier.padding(20.dp)
-            ) {
-                Text(
-                    text = price,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp,
-                    color = accentColor
-                )
-
-                Text(
-                    text = title,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp,
-                    color = DeepNavy,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 6.dp)
-                ) {
-                    Icon(
-                        Icons.Outlined.LocationOn,
-                        contentDescription = null,
-                        tint = SlateGray.copy(0.5f),
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Text(
-                        text = location,
-                        fontSize = 13.sp,
-                        color = SlateGray,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Outlined.Star,
-                            contentDescription = null,
-                            tint = SoftGold,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = String.format("%.1f", rating),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = SlateGray,
-                            modifier = Modifier.padding(start = 4.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // View House Button
-                Button(
-                    onClick = { /* View house details */ },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = accentColor,
-                        contentColor = CleanWhite
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 2.dp
-                    )
-                ) {
-                    Icon(
-                        Icons.Outlined.Visibility,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "View House",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ModernProviderCard(
-    name: String,
-    specialty: String,
-    rating: Float,
-    jobs: Int,
-    isVerified: Boolean,
-    accentColor: Color
-) {
-    Card(
-        modifier = Modifier
-            .width(240.dp)
-            .clickable { /* View provider */ },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CleanWhite),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 2.dp
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // Header with avatar
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(accentColor.copy(0.08f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = name.take(1),
-                        color = accentColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = name,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                            color = DeepNavy,
-                            maxLines = 1
-                        )
-                        if (isVerified) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                Icons.Outlined.Verified,
-                                contentDescription = null,
-                                tint = ForestGreen,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                    }
-                    Text(
-                        text = specialty,
-                        fontSize = 12.sp,
-                        color = SlateGray,
-                        maxLines = 1
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Stats
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                // Rating
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Outlined.Star,
-                            contentDescription = null,
-                            tint = SoftGold,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = rating.toString(),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = DeepNavy,
-                            modifier = Modifier.padding(start = 2.dp)
-                        )
-                    }
-                    Text(
-                        text = "Rating",
-                        fontSize = 10.sp,
-                        color = SlateGray
-                    )
-                }
-
-                // Jobs completed
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "$jobs+",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = DeepNavy
-                    )
-                    Text(
-                        text = "Jobs",
-                        fontSize = 10.sp,
-                        color = SlateGray
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Contact button
-            Button(
-                onClick = { /* Contact */ },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = accentColor.copy(0.08f),
-                    contentColor = accentColor
-                ),
-                elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 0.dp
-                )
-            ) {
-                Text(
-                    "Contact",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                items[index]()
             }
         }
     }
@@ -1142,15 +701,18 @@ fun ModernSupportCard(
     service: String,
     location: String,
     isUrgent: Boolean,
-    accentColor: Color
+    colorScheme: androidx.compose.material3.ColorScheme
 ) {
+    val primaryColor = colorScheme.primary
+    val tertiaryColor = colorScheme.tertiary
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable { /* View details */ },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CleanWhite),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
         elevation = CardDefaults.cardElevation(
             defaultElevation = 0.dp,
             pressedElevation = 2.dp
@@ -1167,7 +729,7 @@ fun ModernSupportCard(
                 modifier = Modifier
                     .size(48.dp)
                     .background(
-                        if (isUrgent) SoftGold.copy(0.1f) else accentColor.copy(0.08f),
+                        if (isUrgent) tertiaryColor.copy(0.1f) else primaryColor.copy(0.08f),
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -1175,7 +737,7 @@ fun ModernSupportCard(
                 Icon(
                     imageVector = if (isUrgent) Icons.Outlined.Emergency else Icons.Outlined.VolunteerActivism,
                     contentDescription = null,
-                    tint = if (isUrgent) SoftGold else accentColor,
+                    tint = if (isUrgent) tertiaryColor else primaryColor,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -1190,12 +752,14 @@ fun ModernSupportCard(
                     text = name,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp,
-                    color = DeepNavy
+                    color = colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleSmall
                 )
                 Text(
                     text = service,
                     fontSize = 13.sp,
-                    color = SlateGray,
+                    color = colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 2.dp)
                 )
                 Row(
@@ -1205,13 +769,14 @@ fun ModernSupportCard(
                     Icon(
                         Icons.Outlined.LocationOn,
                         contentDescription = null,
-                        tint = SlateGray.copy(0.5f),
+                        tint = colorScheme.onSurfaceVariant.copy(0.5f),
                         modifier = Modifier.size(12.dp)
                     )
                     Text(
                         text = location,
                         fontSize = 11.sp,
-                        color = SlateGray.copy(0.7f),
+                        color = colorScheme.onSurfaceVariant.copy(0.7f),
+                        style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(start = 2.dp)
                     )
                 }
@@ -1221,14 +786,17 @@ fun ModernSupportCard(
             Icon(
                 Icons.Outlined.ChevronRight,
                 contentDescription = "View",
-                tint = SlateGray.copy(0.5f)
+                tint = colorScheme.onSurfaceVariant.copy(0.5f),
+                modifier = Modifier.size(20.dp)
             )
         }
     }
 }
 
 @Composable
-fun ModernServiceGrid(teal: Color, gold: Color) {
+fun ModernServiceGrid(
+    colorScheme: androidx.compose.material3.ColorScheme
+) {
     val services = listOf(
         "Movers" to Icons.Outlined.LocalShipping,
         "Plumbers" to Icons.Outlined.Plumbing,
@@ -1245,7 +813,6 @@ fun ModernServiceGrid(teal: Color, gold: Color) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
     ) {
-        // Split into rows of 4
         services.chunked(4).forEach { rowItems ->
             Row(
                 modifier = Modifier
@@ -1259,8 +826,8 @@ fun ModernServiceGrid(teal: Color, gold: Color) {
                             .weight(1f)
                             .clickable { /* Navigate to service */ },
                         shape = RoundedCornerShape(12.dp),
-                        color = CleanWhite,
-                        border = BorderStroke(1.dp, LightBorder),
+                        color = colorScheme.surface,
+                        border = BorderStroke(1.dp, colorScheme.outlineVariant),
                         shadowElevation = 0.dp
                     ) {
                         Column(
@@ -1272,7 +839,7 @@ fun ModernServiceGrid(teal: Color, gold: Color) {
                             Icon(
                                 icon,
                                 contentDescription = null,
-                                tint = SlateGray,
+                                tint = colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(22.dp)
                             )
                             Spacer(modifier = Modifier.height(6.dp))
@@ -1280,7 +847,8 @@ fun ModernServiceGrid(teal: Color, gold: Color) {
                                 text = name,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = DeepNavy
+                                color = colorScheme.onSurface,
+                                style = MaterialTheme.typography.labelSmall
                             )
                         }
                     }
@@ -1290,28 +858,25 @@ fun ModernServiceGrid(teal: Color, gold: Color) {
     }
 }
 
-// Keep existing header and helper composables
 @Composable
 fun DiscoverHeroHeader(
     teal: Color,
     gold: Color,
     height: Dp,
     collapseFraction: Float,
+    colorScheme: androidx.compose.material3.ColorScheme,
     modifier: Modifier = Modifier
 ) {
-
     val collapsed = collapseFraction > 0.85f
 
     val maxFontSize = 34.sp
     val minFontSize = 24.sp
 
-    // Animate background color based on collapse state
     val backgroundColor by animateColorAsState(
-        targetValue = if (collapsed) teal.copy(alpha = 0.95f) else Color.Transparent,
+        targetValue = if (collapsed) colorScheme.primary.copy(alpha = 0.95f) else Color.Transparent,
         animationSpec = tween(durationMillis = 300)
     )
 
-    // Animate font size based on collapseFraction
     val discoverFontSize = ((maxFontSize.value - collapseFraction * (maxFontSize.value - minFontSize.value))).sp
 
     Surface(
@@ -1324,30 +889,25 @@ fun DiscoverHeroHeader(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            // Background Image - fades out when collapsed
             AnimatedVisibility(
                 visible = !collapsed,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
                 Image(
-                    painter = painterResource(
-                        id = com.example.pivota.R.drawable.nairobi_city
-                    ),
+                    painter = painterResource(id = R.drawable.nairobi_city),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
             }
 
-            // Solid color background for collapsed state
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(backgroundColor)
             )
 
-            // Gradient overlay - only visible when not collapsed
             AnimatedVisibility(
                 visible = !collapsed,
                 enter = fadeIn(),
@@ -1359,8 +919,8 @@ fun DiscoverHeroHeader(
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    teal.copy(0.95f),
-                                    teal.copy(0.75f),
+                                    colorScheme.primary.copy(0.95f),
+                                    colorScheme.primary.copy(0.75f),
                                     Color.Transparent
                                 )
                             )
@@ -1368,7 +928,6 @@ fun DiscoverHeroHeader(
                 )
             }
 
-            // Golden Accent - only visible when not collapsed
             AnimatedVisibility(
                 visible = !collapsed,
                 enter = fadeIn(),
@@ -1379,20 +938,18 @@ fun DiscoverHeroHeader(
                         .fillMaxSize()
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(gold.copy(0.15f), Color.Transparent),
+                                colors = listOf(colorScheme.tertiary.copy(0.15f), Color.Transparent),
                                 endX = 400f
                             )
                         )
                 )
             }
 
-            // Main content container
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .statusBarsPadding()
             ) {
-                // TOP ROW - Only visible when NOT collapsed
                 AnimatedVisibility(
                     visible = !collapsed,
                     enter = fadeIn() + slideInVertically(),
@@ -1405,17 +962,16 @@ fun DiscoverHeroHeader(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 👤 AVATAR SECTION
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box {
-                                HeaderAvatar(teal)
+                                HeaderAvatar(colorScheme)
                                 Box(
                                     modifier = Modifier
                                         .size(12.dp)
-                                        .background(gold, CircleShape)
-                                        .border(2.dp, teal, CircleShape)
+                                        .background(colorScheme.tertiary, CircleShape)
+                                        .border(2.dp, colorScheme.primary, CircleShape)
                                         .align(Alignment.BottomEnd)
                                 )
                             }
@@ -1436,7 +992,6 @@ fun DiscoverHeroHeader(
                             }
                         }
 
-                        // 🔔 ICON ROW
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -1454,15 +1009,12 @@ fun DiscoverHeroHeader(
                     }
                 }
 
-                // Spacer to push content down when not collapsed
                 if (!collapsed) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
             }
 
-            // Main content area - Changes based on collapse state
             if (collapsed) {
-                // COLLAPSED STATE - All elements in one horizontal row, lowered
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1472,7 +1024,6 @@ fun DiscoverHeroHeader(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Left side - Discover text only (no button)
                     Text(
                         text = "Discover",
                         style = MaterialTheme.typography.headlineLarge.copy(
@@ -1483,7 +1034,6 @@ fun DiscoverHeroHeader(
                         )
                     )
 
-                    // Right side - Icons
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
@@ -1500,14 +1050,12 @@ fun DiscoverHeroHeader(
                     }
                 }
             } else {
-                // EXPANDED STATE
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(start = 20.dp, bottom = 32.dp)
                         .statusBarsPadding()
                 ) {
-                    // Discover text only (no button)
                     Text(
                         text = "Discover",
                         style = MaterialTheme.typography.headlineLarge.copy(
@@ -1518,7 +1066,6 @@ fun DiscoverHeroHeader(
                         )
                     )
 
-                    // 📝 Subtitle Text
                     Text(
                         text = "Life opportunities, tailored for you",
                         style = MaterialTheme.typography.bodyMedium.copy(
@@ -1561,7 +1108,7 @@ fun HeaderActionIcon(
 }
 
 @Composable
-fun HeaderAvatar(teal: Color) {
+fun HeaderAvatar(colorScheme: androidx.compose.material3.ColorScheme) {
     Box(
         modifier = Modifier
             .size(45.dp)

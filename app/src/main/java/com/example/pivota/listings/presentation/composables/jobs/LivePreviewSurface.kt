@@ -21,9 +21,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.listings.domain.models.JobType
 import com.example.pivota.listings.presentation.viewmodel.PostJobViewModel
+import com.example.pivota.ui.theme.*
 
 @Composable
 fun LivePreviewSurface(viewModel: PostJobViewModel) {
+    val colorScheme = MaterialTheme.colorScheme
     val uiState by viewModel.uiState.collectAsState()
 
     // The Preview Container
@@ -35,7 +37,7 @@ fun LivePreviewSurface(viewModel: PostJobViewModel) {
         Text(
             text = "PREVIEW",
             style = MaterialTheme.typography.labelLarge,
-            color = Color.Gray,
+            color = colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
@@ -43,7 +45,9 @@ fun LivePreviewSurface(viewModel: PostJobViewModel) {
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = colorScheme.surface
+            ),
             elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
@@ -53,12 +57,12 @@ fun LivePreviewSurface(viewModel: PostJobViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    PreviewBadge(type = uiState.jobType)
+                    PreviewBadge(type = uiState.jobType, colorScheme = colorScheme)
 
                     Icon(
                         imageVector = Icons.Default.Verified,
                         contentDescription = "Verified Org",
-                        tint = Color(0xFF006565),
+                        tint = colorScheme.primary, // African Sapphire
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -70,7 +74,7 @@ fun LivePreviewSurface(viewModel: PostJobViewModel) {
                     text = uiState.title.ifBlank { "Your Job Title Here" },
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = if (uiState.title.isBlank()) Color.LightGray else Color.Black,
+                    color = if (uiState.title.isBlank()) colorScheme.onSurfaceVariant.copy(alpha = 0.3f) else colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -80,16 +84,25 @@ fun LivePreviewSurface(viewModel: PostJobViewModel) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
-                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
+                    Icon(
+                        Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = if (uiState.locationCity.isBlank()) "Location" else "${uiState.locationCity}, ${uiState.locationNeighborhood}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
+                        color = colorScheme.onSurfaceVariant
                     )
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), thickness = 0.5.dp)
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 16.dp),
+                    thickness = 0.5.dp,
+                    color = colorScheme.outlineVariant
+                )
 
                 // Compensation Highlight
                 Row(
@@ -102,25 +115,25 @@ fun LivePreviewSurface(viewModel: PostJobViewModel) {
                             text = "KES ${uiState.payAmount}",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Black,
-                            color = Color(0xFF006565)
+                            color = colorScheme.primary // African Sapphire
                         )
                         Text(
                             text = "per ${uiState.payRate.name.lowercase()}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
+                            color = colorScheme.onSurfaceVariant
                         )
                     }
 
                     if (uiState.isNegotiable) {
                         Surface(
-                            color = Color(0xFFFFC107).copy(alpha = 0.1f),
+                            color = colorScheme.tertiary.copy(alpha = 0.1f), // Baobab Gold with opacity
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Text(
                                 text = "Negotiable",
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFF856404),
+                                color = colorScheme.tertiary, // Baobab Gold
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -132,11 +145,20 @@ fun LivePreviewSurface(viewModel: PostJobViewModel) {
 }
 
 @Composable
-fun PreviewBadge(type: JobType) {
+fun PreviewBadge(
+    type: JobType,
+    colorScheme: androidx.compose.material3.ColorScheme
+) {
     val backgroundColor by animateColorAsState(
-        if (type == JobType.INFORMAL) Color(0xFFF0F4F4) else Color(0xFF006565).copy(alpha = 0.1f)
+        if (type == JobType.INFORMAL)
+            colorScheme.primary.copy(alpha = 0.05f)
+        else
+            colorScheme.primary.copy(alpha = 0.1f)
     )
-    val textColor = if (type == JobType.INFORMAL) Color.DarkGray else Color(0xFF006565)
+    val textColor = if (type == JobType.INFORMAL)
+        colorScheme.onSurfaceVariant
+    else
+        colorScheme.primary
 
     Box(
         modifier = Modifier

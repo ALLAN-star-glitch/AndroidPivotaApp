@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.AutoAwesome // Material 3 Sparkle/AI Icon
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,9 +18,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pivota.ui.theme.*
 
 @Composable
 fun SmartMatchGuidanceBanner() {
+    val colorScheme = MaterialTheme.colorScheme
+
     // Local state to handle dismissal within the session
     var isVisible by remember { mutableStateOf(true) }
 
@@ -32,7 +35,7 @@ fun SmartMatchGuidanceBanner() {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 20.dp),
-            color = Color(0xFF006565), // Pivota Teal
+            color = colorScheme.primary, // Pivota Teal / African Sapphire
             shape = RoundedCornerShape(12.dp),
             tonalElevation = 2.dp
         ) {
@@ -42,12 +45,12 @@ fun SmartMatchGuidanceBanner() {
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Gold SmartMatch Badge Icon
+                // Gold SmartMatch Badge Icon - Using tertiary color (Baobab Gold)
                 Box(
                     modifier = Modifier
                         .size(36.dp)
                         .background(
-                            color = Color(0xFFE9C16C).copy(alpha = 0.2f),
+                            color = colorScheme.tertiary.copy(alpha = 0.2f),
                             shape = RoundedCornerShape(8.dp)
                         ),
                     contentAlignment = Alignment.Center
@@ -55,7 +58,7 @@ fun SmartMatchGuidanceBanner() {
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
                         contentDescription = "SmartMatch Insight",
-                        tint = Color(0xFFE9C16C), // Golden Yellow
+                        tint = colorScheme.tertiary, // Baobab Gold
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -66,14 +69,14 @@ fun SmartMatchGuidanceBanner() {
                     Text(
                         text = "SmartMatch™ Tip",
                         style = MaterialTheme.typography.labelLarge,
-                        color = Color(0xFFE9C16C),
+                        color = colorScheme.tertiary, // Baobab Gold
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )
                     Text(
                         text = "Jobs with clear pay, location & benefits get 3x more responses from verified workers.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.9f),
+                        color = colorScheme.onPrimary.copy(alpha = 0.9f),
                         lineHeight = 20.sp
                     )
                 }
@@ -85,7 +88,7 @@ fun SmartMatchGuidanceBanner() {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Dismiss",
-                        tint = Color.White.copy(alpha = 0.6f),
+                        tint = colorScheme.onPrimary.copy(alpha = 0.6f),
                         modifier = Modifier.size(18.dp)
                     )
                 }
