@@ -11,6 +11,7 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.window.core.layout.WindowSizeClass
+import com.example.pivota.core.presentations.composables.TopBar
 
 @Composable
 fun AdaptiveHousingPostLayout(
@@ -23,7 +24,7 @@ fun AdaptiveHousingPostLayout(
 
     Scaffold(
         topBar = {
-            HousingTopBar(
+            TopBar(
                 title = "Post a House",
                 onBack = onBack,
                 icon = Icons.Outlined.Info
