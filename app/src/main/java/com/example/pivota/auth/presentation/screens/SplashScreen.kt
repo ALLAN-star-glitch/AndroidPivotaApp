@@ -5,12 +5,15 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
@@ -20,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.R
 import com.example.pivota.auth.presentation.viewModel.SplashViewModel
+import com.example.pivota.ui.theme.*
 import kotlinx.coroutines.delay
 
 /**
@@ -49,9 +53,11 @@ fun SplashScreen(
  */
 @Composable
 fun SplashContent() {
-    val foundationGrey = Color(0xFFF6FAF9)
-    val pivotaTeal = Color(0xFF006565)
-    val opportunityGold = Color(0xFFE9C16C)
+    // Use theme colors
+    val primaryColor = MaterialTheme.colorScheme.primary // African Sapphire
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary // Baobab Gold
+    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant // Soft Sand background
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant // Warm Gray for text
 
     // Set startAnimation to TRUE immediately to avoid the "first-frame lag"
     var startAnimation by remember { mutableStateOf(true) }
@@ -70,7 +76,7 @@ fun SplashContent() {
         label = "logo_scale"
     )
 
-    // Infinite pulse logic stays the same...
+    // Infinite pulse for wave effect
     val infiniteTransition = rememberInfiniteTransition(label = "wave_pulse")
     val waveScale by infiniteTransition.animateFloat(
         initialValue = 0.85f, targetValue = 1.25f,
@@ -103,8 +109,11 @@ fun SplashContent() {
         modifier = Modifier
             .fillMaxSize()
             .background(
-                brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                    colors = listOf(Color.White, foundationGrey),
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color.White,
+                        surfaceVariant // Soft Sand
+                    ),
                     radius = 900f
                 )
             ),
@@ -113,14 +122,18 @@ fun SplashContent() {
         // ===== WAVES =====
         Canvas(modifier = Modifier.size(220.dp)) {
             val baseRadius = size.minDimension / 2
+
+            // Outer wave - Baobab Gold (tertiary)
             drawCircle(
-                color = opportunityGold,
+                color = tertiaryColor,
                 radius = baseRadius * waveScale,
                 alpha = waveAlpha,
                 style = Stroke(width = 4.dp.toPx())
             )
+
+            // Inner wave - African Sapphire (primary)
             drawCircle(
-                color = pivotaTeal,
+                color = primaryColor,
                 radius = baseRadius * (waveScale * 0.75f),
                 alpha = waveAlpha * 0.6f,
                 style = Stroke(width = 3.dp.toPx())
@@ -135,14 +148,14 @@ fun SplashContent() {
                 modifier = Modifier
                     .size(140.dp)
                     .scale(logoScale)
-                    .alpha(logoAlpha) // This will now start animating from frame 1
+                    .alpha(logoAlpha)
             )
 
             Spacer(modifier = Modifier.height(18.dp))
 
             Text(
                 text = "Connecting life opportunities",
-                color = pivotaTeal,
+                color = onSurfaceVariant, // Warm Gray
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 0.6.sp,
@@ -151,11 +164,15 @@ fun SplashContent() {
         }
     }
 }
+
 /**
  * 3. PREVIEW: Top-level declaration.
  */
 @Preview(showBackground = true)
 @Composable
 fun SplashScreenPreview() {
-    SplashContent()
+    // Wrap preview in theme for accurate colors
+    PivotaConnectTheme {
+        SplashContent()
+    }
 }
