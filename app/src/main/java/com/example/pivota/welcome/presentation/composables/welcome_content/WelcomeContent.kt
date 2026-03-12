@@ -1,7 +1,4 @@
-package com.example.pivota.welcome.presentation.composables.welcome_content
-
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,150 +9,120 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import coil3.compose.AsyncImage
-import com.example.pivota.R
 import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
-import com.example.pivota.ui.theme.InfoBlue
-
+import com.example.pivota.core.presentations.composables.buttons.PivotaSecondaryButton
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun WelcomeContent(
     topPadding: Dp,
-    header: String = "Your Gateway to Life Opportunities",
-    welcomeText: String = "Find Jobs, Housing, Services & Support Across Africa",
-    onNavigateToContinueSetup: () -> Unit,
-    onNavigateToLogin: () -> Unit,
+    header: String = "Welcome to Pivota",
+    welcomeText: String = "Jobs, Housing & Support Across Africa",
+    onNavigateToRegistrationScreen: () -> Unit,
+    onNavigateToLoginScreen: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(top = topPadding)
-            .clip(RoundedCornerShape(topEnd = 80.dp))
-            .background(MaterialTheme.colorScheme.background) // Using theme background
+            .clip(RoundedCornerShape(topEnd = 150.dp))
+            .background(Color.White)
             .zIndex(2f),
         contentAlignment = Alignment.TopCenter
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp), // Reduced from 12dp to 8dp
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(top = 24.dp, bottom = 32.dp)
+                .padding(top = 16.dp, bottom = 24.dp) // Reduced top padding from 24dp to 16dp
         ) {
-            /* ───── LOGO ───── */
-            AsyncImage(
-                model = R.drawable.transparentpivlogo,
-                contentDescription = "PivotaConnect Logo",
-                modifier = Modifier.size(120.dp)
-            )
 
-            /* ───── HEADLINE ───── */
+            /* ───── LOGO & BRAND NAME ───── */
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp) // Reduced from 4dp to 2dp
+            ) {
+                coil3.compose.AsyncImage(
+                    model = com.example.pivota.R.drawable.pivotaconnect_logo_transparent,
+                    contentDescription = "Pivota Logo",
+                    modifier = Modifier.size(200.dp)
+                )
+                Text(
+                    text = "Pivotaconnect",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                        letterSpacing = 1.sp
+                    )
+                )
+            }
+
+            // Removed the Spacer here - letting the 8dp from Arrangement handle it
+
+            /* ───── Header & Welcome ───── */
             Text(
                 text = header,
                 style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp,
                     color = MaterialTheme.colorScheme.primary,
-                    lineHeight = 36.sp
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 ),
                 textAlign = TextAlign.Center
             )
 
-            /* ───── BODY TEXT ───── */
             Text(
                 text = welcomeText,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 22.sp
-                ),
+                style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            // Removed the Spacer here - letting the 8dp from Arrangement handle it
 
-            /* ───── Get Started Button ───── */
+            /* ───── Buttons & Divider ───── */
             PivotaPrimaryButton(
                 text = "Get Started",
-                onClick = onNavigateToContinueSetup,
-                modifier = Modifier.fillMaxWidth(),
-                icon = ImageVector.vectorResource(R.drawable.ic_person)
+                onClick = onNavigateToRegistrationScreen,
+                modifier = Modifier.fillMaxWidth(0.85f)
             )
 
-
-            /* ───── LOGIN TEXT ───── */
+            /* ───────── SOCIAL DIVIDER ───────── */
             Row(
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(0.7f)
             ) {
+                HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
                 Text(
-                    text = "Already have an account? ",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    text = " OR ",
+                    modifier = Modifier.padding(horizontal = 8.dp), // Reduced from 12dp to 8dp
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
                 )
-                Text(
-                    text = "Log in",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = InfoBlue  // Using brand Info Blue
-                    ),
-                    modifier = Modifier.clickable { onNavigateToLogin() }
-                )
+                HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            /* ───── FOOTER LINKS ───── */
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Terms of Service",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier.clickable { /* Navigate to Terms */ }
-                )
-                Text(
-                    text = " • ",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.tertiaryContainer
-                    )
-                )
-                Text(
-                    text = "Privacy Policy",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier.clickable { /* Navigate to Privacy */ }
-                )
-            }
+            PivotaSecondaryButton(
+                text = "Login",
+                onclick = onNavigateToLoginScreen,
+                modifier = Modifier.fillMaxWidth(0.85f)
+            )
         }
     }
 }

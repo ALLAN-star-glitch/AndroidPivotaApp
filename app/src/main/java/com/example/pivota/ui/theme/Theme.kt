@@ -1,5 +1,4 @@
 package com.example.pivota.ui.theme
-
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -258,18 +257,24 @@ val unspecified_scheme = ColorFamily(
 @Composable
 fun PivotaConnectTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    useMediumContrast: Boolean = false,
-    useHighContrast: Boolean = false,
+    // Dynamic color is available on Android 12+
+    dynamicColor: Boolean = true,
     content: @Composable() () -> Unit
 ) {
-    val colorScheme = when {
-        // Disable dynamic color - always use lightScheme
-        else -> lightScheme
-    }
+  val colorScheme = when {
+      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+          val context = LocalContext.current
+          if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+      }
+      
+      darkTheme -> darkScheme
+      else -> lightScheme
+  }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = AppTypography,
-        content = content
-    )
+  MaterialTheme(
+    colorScheme = colorScheme,
+    typography = AppTypography,
+    content = content
+  )
 }
+
