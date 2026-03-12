@@ -1,276 +1,128 @@
-package com.example.pivota.welcome.presentation.composables.welcome_content
-
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import com.example.pivota.R
+import androidx.compose.ui.zIndex
 import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
-import com.example.pivota.ui.theme.InfoBlue
-import kotlinx.coroutines.delay
+import com.example.pivota.core.presentations.composables.buttons.PivotaSecondaryButton
+import androidx.compose.ui.unit.sp
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun EnhancedWelcomeContent(
-    header: String,
-    welcomeText: String,
-    onNavigateToContinueSetup: () -> Unit,
-    onNavigateToLogin: () -> Unit,
-    modifier: Modifier = Modifier,
-    isCompact: Boolean = true,
-    hasWhiteBackground: Boolean = false
+fun WelcomeContent(
+    topPadding: Dp,
+    header: String = "Welcome to Pivota",
+    welcomeText: String = "Jobs, Housing & Support Across Africa",
+    onNavigateToRegistrationScreen: () -> Unit,
+    onNavigateToLoginScreen: () -> Unit
 ) {
-    var showContent by remember { mutableStateOf(false) }
-
-    // Slower entrance animation
-    LaunchedEffect(Unit) {
-        delay(300)
-        showContent = true
-    }
-
-    // Use appropriate colors based on background
-    val textColor = if (hasWhiteBackground) {
-        MaterialTheme.colorScheme.onSurface
-    } else {
-        Color.White
-    }
-
-    val secondaryTextColor = if (hasWhiteBackground) {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    } else {
-        Color.White.copy(alpha = 0.9f)
-    }
-
-    Column(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .padding(
-                horizontal = if (isCompact) 24.dp else 32.dp,
-                vertical = if (isCompact) 32.dp else 48.dp
-            ),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // Logo animation - fade and scale
-        AnimatedVisibility(
-            visible = showContent,
-            enter = fadeIn(
-                animationSpec = tween(
-                    durationMillis = 600,
-                    easing = FastOutSlowInEasing
-                )
-            ) + scaleIn(
-                initialScale = 0.9f,
-                animationSpec = tween(
-                    durationMillis = 600,
-                    easing = FastOutSlowInEasing
-                )
-            )
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                AnimatedLogo()
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-        }
-
-        // Header animation - fade only (no vertical movement to avoid compression)
-        AnimatedVisibility(
-            visible = showContent,
-            enter = fadeIn(
-                animationSpec = tween(
-                    durationMillis = 600,
-                    delayMillis = 150,
-                    easing = FastOutSlowInEasing
-                )
-            )
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = header,
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = if (isCompact) 24.sp else 28.sp,
-                        color = if (hasWhiteBackground) MaterialTheme.colorScheme.primary else Color.White
-                    ),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-        }
-
-        // Welcome text animation - fade only
-        AnimatedVisibility(
-            visible = showContent,
-            enter = fadeIn(
-                animationSpec = tween(
-                    durationMillis = 600,
-                    delayMillis = 300,
-                    easing = FastOutSlowInEasing
-                )
-            )
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = welcomeText,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = if (isCompact) 14.sp else 16.sp,
-                        color = secondaryTextColor,
-                        lineHeight = 22.sp
-                    ),
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Button animation - fade only
-        AnimatedVisibility(
-            visible = showContent,
-            enter = fadeIn(
-                animationSpec = tween(
-                    durationMillis = 600,
-                    delayMillis = 500,
-                    easing = FastOutSlowInEasing
-                )
-            )
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                PivotaPrimaryButton(
-                    text = "Get Started",
-                    onClick = onNavigateToContinueSetup,
-                    modifier = Modifier.fillMaxWidth(),
-                    icon = ImageVector.vectorResource(R.drawable.ic_person)
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-        }
-
-        // Login link animation
-        AnimatedVisibility(
-            visible = showContent,
-            enter = fadeIn(
-                animationSpec = tween(
-                    durationMillis = 600,
-                    delayMillis = 650,
-                    easing = FastOutSlowInEasing
-                )
-            )
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Already have an account? ",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = secondaryTextColor
-                        )
-                    )
-                    Text(
-                        text = "Log in",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = InfoBlue
-                        ),
-                        modifier = Modifier.clickable { onNavigateToLogin() }
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        }
-
-        // Footer links animation
-        AnimatedVisibility(
-            visible = showContent,
-            enter = fadeIn(
-                animationSpec = tween(
-                    durationMillis = 600,
-                    delayMillis = 800,
-                    easing = FastOutSlowInEasing
-                )
-            )
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Terms of Service",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = secondaryTextColor.copy(alpha = 0.7f)
-                    ),
-                    modifier = Modifier.clickable { /* Navigate to Terms */ }
-                )
-                Text(
-                    text = " • ",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = secondaryTextColor.copy(alpha = 0.4f)
-                    )
-                )
-                Text(
-                    text = "Privacy Policy",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = secondaryTextColor.copy(alpha = 0.7f)
-                    ),
-                    modifier = Modifier.clickable { /* Navigate to Privacy */ }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun AnimatedLogo() {
-    val infiniteTransition = rememberInfiniteTransition()
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 3000,
-                easing = FastOutSlowInEasing
-            ),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
-
     Box(
         modifier = Modifier
-            .size(120.dp * scale)
-            .clip(RoundedCornerShape(60.dp))
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+            .fillMaxSize()
+            .padding(top = topPadding)
+            .clip(RoundedCornerShape(topEnd = 150.dp))
+            .background(Color.White)
+            .zIndex(2f),
+        contentAlignment = Alignment.TopCenter
     ) {
-        AsyncImage(
-            model = R.drawable.transparentpivlogo,
-            contentDescription = "PivotaConnect Logo",
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp), // Reduced from 12dp to 8dp
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        )
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(top = 16.dp, bottom = 24.dp) // Reduced top padding from 24dp to 16dp
+        ) {
+
+            /* ───── LOGO & BRAND NAME ───── */
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp) // Reduced from 4dp to 2dp
+            ) {
+                coil3.compose.AsyncImage(
+                    model = com.example.pivota.R.drawable.pivotaconnect_logo_transparent,
+                    contentDescription = "Pivota Logo",
+                    modifier = Modifier.size(200.dp)
+                )
+                Text(
+                    text = "Pivotaconnect",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                        letterSpacing = 1.sp
+                    )
+                )
+            }
+
+            // Removed the Spacer here - letting the 8dp from Arrangement handle it
+
+            /* ───── Header & Welcome ───── */
+            Text(
+                text = header,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                ),
+                textAlign = TextAlign.Center
+            )
+
+            Text(
+                text = welcomeText,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center
+            )
+
+            // Removed the Spacer here - letting the 8dp from Arrangement handle it
+
+            /* ───── Buttons & Divider ───── */
+            PivotaPrimaryButton(
+                text = "Get Started",
+                onClick = onNavigateToRegistrationScreen,
+                modifier = Modifier.fillMaxWidth(0.85f)
+            )
+
+            /* ───────── SOCIAL DIVIDER ───────── */
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(0.7f)
+            ) {
+                HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
+                Text(
+                    text = " OR ",
+                    modifier = Modifier.padding(horizontal = 8.dp), // Reduced from 12dp to 8dp
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
+            }
+
+            PivotaSecondaryButton(
+                text = "Login",
+                onclick = onNavigateToLoginScreen,
+                modifier = Modifier.fillMaxWidth(0.85f)
+            )
+        }
     }
 }
