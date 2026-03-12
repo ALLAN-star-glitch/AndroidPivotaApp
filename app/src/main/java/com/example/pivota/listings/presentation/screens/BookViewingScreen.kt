@@ -51,45 +51,39 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.R
-import com.example.pivota.dashboard.domain.ListingStatus
 import com.example.pivota.listings.domain.models.HousingPost
 import com.example.pivota.core.presentations.composables.TopBar
-import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
 import java.text.NumberFormat
 import java.util.Date
 import java.util.Locale
 
+@Preview(showBackground = true)
 @Composable
-fun BookViewingScreen(
-    housingListing: HousingListingUiModel,
-    onNavigateBack: () -> Unit
-) {
-    // Convert HousingListingUiModel to a format we can use
-    val housingPost = remember(housingListing) {
-        HousingPost(
-            images = housingListing.imageRes?.let { listOf(it.toString()) } ?: emptyList(),
-            price = extractPriceValue(housingListing.price),
-            currency = "KES",
-            priceRate = if (housingListing.isForSale) "one-time" else "monthly",
-            title = housingListing.title,
-            description = housingListing.description,
-            country = "Kenya",
-            city = housingListing.location.split(",").getOrNull(0)?.trim() ?: "Nairobi",
-            neighbourhood = housingListing.location.split(",").getOrNull(1)?.trim() ?: housingListing.location,
-            address = housingListing.location,
-            bedrooms = housingListing.bedrooms,
-            bathrooms = housingListing.bathrooms,
-            furnished = true,
-            type = housingListing.propertyType,
-            amenities = emptyList()
-        )
-    }
+fun BookViewingScreen() {
+    val housingPost = HousingPost( // sample data
+        images = listOf("test", "test"),
+        price = 45000,
+        currency = "KES",
+        priceRate = "monthly",
+        title = "Modern 2-Bedroom Apartment in Westlands",
+        description = "Spacious and well-lit apartment located in the heart of westlands. Features a large living area, modern kitchen with fitted " +
+                "cabinets, and a master ensuite. The building offers 24/7 security and high-speed lifts. Close to Sarit Center.",
+        country = "Kenya",
+        city = "Nairobi",
+        neighbourhood = "Westlands",
+        address = "Pepani Road",
+        bedrooms = 2,
+        bathrooms = 2,
+        furnished = true,
+        type = "Apt",
+        amenities =  listOf("Water Backup", "Electricity", "Parking", "Fiber Ready", "24/7 Security"),
+    )
 
     var date by remember { mutableStateOf(Date().toString()) }
     var preferredTime by remember { mutableStateOf("Afternoon") }
     var noteToOwner: String? by remember { mutableStateOf(null) }
 
-    // Sample user details (replace with actual user data from ViewModel)
+    // Sample user details
     val name = "Allan Njoroge"
     val phone = "+254712345678"
 
@@ -103,12 +97,15 @@ fun BookViewingScreen(
     Scaffold(
         topBar = {
             TopBar(
-                title = "Book Viewing",
-                onBack = onNavigateBack,
+                title = "House details",
+                onBack = {
+                    // TODO navigate back
+                },
                 icon = Icons.Outlined.Share
             )
         },
     ) { innerPadding ->
+
         Column(
             modifier = Modifier
                 .padding(innerPadding)
@@ -141,7 +138,7 @@ fun BookViewingScreen(
                 ) {
                     Text("Preferred Date")
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
+                    OutlinedTextField( // TODO handle get and display date
                         value = date,
                         onValueChange = { date = it },
                         modifier = Modifier.fillMaxWidth(),
@@ -189,7 +186,7 @@ fun BookViewingScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     OutlinedTextField(
-                        value = noteToOwner ?: "",
+                        value = if (noteToOwner == null) "" else noteToOwner!!,
                         onValueChange = { noteToOwner = it.ifBlank { null } },
                         label = { Text("Any questions or specific time preference?") },
                         modifier = Modifier.fillMaxWidth(),
@@ -219,7 +216,7 @@ fun BookViewingScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = name,
-                        onValueChange = { },
+                        onValueChange = {  },
                         modifier = Modifier.fillMaxWidth(),
                         colors = textFieldColors,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
@@ -234,7 +231,7 @@ fun BookViewingScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = phone,
-                        onValueChange = { },
+                        onValueChange = {  },
                         modifier = Modifier.fillMaxWidth(),
                         colors = textFieldColors,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
@@ -251,39 +248,28 @@ fun BookViewingScreen(
 
             // Action buttons
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
+                modifier = Modifier.padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
                     onClick = {
-                        // TODO: Handle Request Viewing
-                        // You can access all the form data here:
-                        // - housingListing: The property being booked
-                        // - date: Selected date
-                        // - preferredTime: Selected time
-                        // - noteToOwner: Optional note
-                        // After successful booking, navigate back
-                        onNavigateBack()
+                        // TODO handle Request Viewing
                     }
                 ) {
                     Text(
-                        text = "Request Viewing",
+                        text ="Request Viewing",
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
                 }
                 OutlinedButton(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    onClick = onNavigateBack
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    onClick = {
+                        // TODO handle cancel button click
+                    }
                 ) {
                     Text(
                         text = "Cancel",
@@ -297,57 +283,20 @@ fun BookViewingScreen(
     }
 }
 
-// Preview composable for development - FIXED THE TODO() ISSUES
-@Preview(showBackground = true)
-@Composable
-fun BookViewingScreenPreview() {
-    val sampleListing = HousingListingUiModel(
-        id = "1",
-        title = "Modern 2-Bedroom Apartment in Westlands",
-        price = "KES 45,000",
-        location = "Westlands, Nairobi",
-        propertyType = "Apartment",
-        description = "Spacious and well-lit apartment located in the heart of westlands.",
-        isVerified = true,
-        isForSale = false,
-        rating = 4.5,
-        bedrooms = 2,
-        bathrooms = 2,
-        squareMeters = 85,
-        imageRes = R.drawable.property_placeholder1,
-        status = ListingStatus.AVAILABLE, // Fixed: Added proper enum value
-        views = 120, // Fixed: Added sample value
-        messages = 5, // Fixed: Added sample value
-        requests = 3 // Fixed: Added sample value
-    )
-
-    BookViewingScreen(
-        housingListing = sampleListing,
-        onNavigateBack = {}
-    )
-}
-
 @Composable
 fun PreferredTime(modifier: Modifier, period: String, time: String, preferred: String, onSelect: (String) -> Unit) {
     val selected = preferred == period
     Card(
         modifier = modifier.clickable { onSelect(period) },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected)
-                MaterialTheme.colorScheme.primary
-            else
-                MaterialTheme.colorScheme.surfaceContainer
-        ),
+        colors = CardDefaults.cardColors(containerColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
+        Column (
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        ){
             Text(
                 text = period,
                 color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
@@ -371,8 +320,7 @@ fun Housing(housingPost: HousingPost) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxWidth()
                 .padding(16.dp)
         ) {
             Image(
@@ -439,31 +387,5 @@ fun Housing(housingPost: HousingPost) {
                 }
             }
         }
-    }
-}
-
-// Helper function to extract price value (copied from your listings screen)
-private fun extractPriceValue(priceString: String): Int {
-    return try {
-        val cleaned = priceString
-            .replace("KES", "")
-            .replace("KSh", "")
-            .replace(",", "")
-            .replace(" ", "")
-            .trim()
-
-        when {
-            cleaned.endsWith("M", ignoreCase = true) -> {
-                val number = cleaned.dropLast(1).toDouble()
-                (number * 1_000_000).toInt()
-            }
-            cleaned.endsWith("K", ignoreCase = true) -> {
-                val number = cleaned.dropLast(1).toDouble()
-                (number * 1_000).toInt()
-            }
-            else -> cleaned.toIntOrNull() ?: 0
-        }
-    } catch (e: Exception) {
-        0
     }
 }
