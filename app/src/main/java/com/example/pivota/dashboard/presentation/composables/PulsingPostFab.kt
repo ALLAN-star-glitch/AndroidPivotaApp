@@ -15,11 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.example.pivota.ui.theme.*
 
 @Composable
 fun PulsingPostFab(
     onClick: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -32,21 +35,21 @@ fun PulsingPostFab(
     )
 
     Box(contentAlignment = Alignment.Center) {
-        // Pulse Effect (The "Glow" behind)
+        // Pulse Effect (The "Glow" behind) - Using primary color with opacity
         Surface(
             modifier = Modifier
                 .size(60.dp)
                 .scale(scale),
             shape = CircleShape,
-            color = Color(0xFF008080).copy(alpha = 0.3f)
+            color = colorScheme.primary.copy(alpha = 0.3f)
         ) {}
 
         // Main FAB with Border via Surface wrapper
         Surface(
             modifier = Modifier.size(64.dp),
             shape = CircleShape,
-            color = Color(0xFF008080), // Teal background
-            border = BorderStroke(3.dp, Color(0xFFE9C16C)), // Golden yellow outline
+            color = colorScheme.primary, // Primary color for background
+            border = BorderStroke(3.dp, colorScheme.tertiary), // Tertiary for gold/yellow outline
             tonalElevation = 4.dp,
             shadowElevation = 6.dp,
             onClick = onClick
@@ -55,7 +58,7 @@ fun PulsingPostFab(
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Post",
-                    tint = Color.White, // White plus
+                    tint = colorScheme.onPrimary, // onPrimary for white/contrasting plus
                     modifier = Modifier.size(32.dp)
                 )
             }

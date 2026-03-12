@@ -15,6 +15,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.example.pivota.listings.presentation.viewmodel.PostJobViewModel
+import com.example.pivota.ui.theme.*
 
 /**
  * Orchestrator for the Post Job experience.
@@ -26,11 +27,12 @@ fun AdaptiveJobPostLayout(
     onBack: () -> Unit,
     viewModel: PostJobViewModel = hiltViewModel()
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
 
-    // Pivota Professional Surface Color (Soft Mint/Grey)
-    val surfaceColor = Color(0xFFF6FAF9)
+    // Pivota Professional Surface Color - Using theme background
+    val surfaceColor = colorScheme.background
 
     Scaffold(
         topBar = {
@@ -50,7 +52,7 @@ fun AdaptiveJobPostLayout(
                     modifier = Modifier
                         .weight(1.2f)
                         .fillMaxHeight(),
-                    color = Color.White,
+                    color = colorScheme.surface,
                     tonalElevation = 2.dp
                 ) {
                     JobPostFormContent(viewModel = viewModel)
@@ -61,7 +63,7 @@ fun AdaptiveJobPostLayout(
                     modifier = Modifier
                         .weight(0.8f)
                         .fillMaxHeight()
-                        .background(surfaceColor)
+                        .background(colorScheme.background)
                         .padding(32.dp),
                     contentAlignment = Alignment.TopCenter
                 ) {
@@ -87,17 +89,27 @@ fun AdaptiveJobPostLayout(
 @Preview(name = "Post Job - Tablet Split", device = Devices.PIXEL_TABLET, showSystemUi = true)
 @Composable
 fun PreviewJobPostTablet() {
-    // Note: In a real environment, you'd use a MockViewModel or Stateless version
-    // to see the actual UI here if Hilt isn't initialized.
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF6FAF9))) {
-        Text("Tablet Preview: Split View Active", Modifier.align(Alignment.Center))
+    MaterialTheme {
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            Text(
+                "Tablet Preview: Split View Active",
+                Modifier.align(Alignment.Center),
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
     }
 }
 
 @Preview(name = "Post Job - Mobile", device = Devices.PIXEL_7, showSystemUi = true)
 @Composable
 fun PreviewJobPostMobile() {
-    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
-        Text("Mobile Preview: Single Column Active", Modifier.align(Alignment.Center))
+    MaterialTheme {
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+            Text(
+                "Mobile Preview: Single Column Active",
+                Modifier.align(Alignment.Center),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }

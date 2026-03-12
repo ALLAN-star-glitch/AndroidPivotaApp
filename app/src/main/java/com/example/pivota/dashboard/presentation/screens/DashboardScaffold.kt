@@ -1,5 +1,6 @@
 package com.example.pivota.dashboard.presentation.screens
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -12,13 +13,12 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import androidx.window.core.layout.WindowSizeClass
 import com.example.pivota.dashboard.presentation.composables.*
-import com.example.pivota.listings.presentation.composables.housing.PostHousing
-import com.example.pivota.listings.presentation.screens.BookServiceScreen
+import com.example.pivota.dashboard.presentation.viewmodels.MyListingsViewModel
 import com.example.pivota.listings.presentation.screens.HousingPostScreen
 import com.example.pivota.listings.presentation.screens.JobPostScreen
-import com.example.pivota.listings.presentation.screens.PostServiceScreen
 import topLevelRoutes
 
+@SuppressLint("ViewModelConstructorInComposable")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScaffold() {
@@ -115,18 +115,18 @@ fun DashboardScaffold() {
                     composable<MyListings> {
                         // We don't need to manually pass listings or filters here anymore.
                         // The MyListingsScreen will internally collect them from the ViewModel.
-                        MyListingsScreen(
+                             MyListingsScreen(
                             onListingClick = { listingUiModel ->
                                 // Example: navController.navigate("listing_details/${listingUiModel.id}")
                             },
                             onPostListingClick = {
                                 // This interacts with the showSheet state in your DashboardScaffold
                                 showSheet = true
-                            }
+                            },
+                            viewModel = MyListingsViewModel()
+                        ,
+                            onNavigateBack = {}
                         )
-                    }
-                    composable<PostService> {
-                        PostServiceScreen(onBack = { navController.popBackStack() })
                     }
                 }
 

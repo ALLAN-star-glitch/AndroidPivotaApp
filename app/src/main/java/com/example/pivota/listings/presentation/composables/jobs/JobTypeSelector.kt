@@ -11,18 +11,21 @@ import androidx.compose.ui.unit.dp
 import com.example.pivota.R
 import com.example.pivota.core.presentations.composables.UniversalSegmentedToggle
 import com.example.pivota.listings.domain.models.JobType
+import com.example.pivota.ui.theme.*
 
 @Composable
 fun JobTypeSelector(
     selectedType: JobType,
     onTypeSelected: (JobType) -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
         Text(
             text = "What kind of role are you hiring for?",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF006565) // Pivota Teal
+            color = colorScheme.primary // Pivota Teal / African Sapphire
         )
         Spacer(modifier = Modifier.height(12.dp))
 

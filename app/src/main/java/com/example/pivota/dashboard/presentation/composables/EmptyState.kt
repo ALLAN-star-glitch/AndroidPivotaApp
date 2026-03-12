@@ -18,9 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.pivota.ui.theme.*
 
 @Composable
-fun EmptyState(onPostListingClick: () -> Unit) {
+fun EmptyState(
+    onPostListingClick: () -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
 
     Column(
         modifier = Modifier
@@ -32,7 +36,7 @@ fun EmptyState(onPostListingClick: () -> Unit) {
         Icon(
             imageVector = Icons.Default.Inventory2,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.outline,
+            tint = colorScheme.outline,
             modifier = Modifier.size(64.dp)
         )
 
@@ -40,13 +44,14 @@ fun EmptyState(onPostListingClick: () -> Unit) {
 
         Text(
             text = "No listings yet",
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            color = colorScheme.onSurface
         )
 
         Text(
             text = "Post your first job, service, or request",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = colorScheme.onSurfaceVariant
         )
 
         Spacer(Modifier.height(24.dp))
@@ -55,14 +60,18 @@ fun EmptyState(onPostListingClick: () -> Unit) {
             onClick = onPostListingClick,
             shape = RoundedCornerShape(50)
         ) {
-            Text("Post Listing")
+            Text(
+                text = "Post Listing",
+                color = colorScheme.onPrimaryContainer
+            )
         }
     }
 }
 
-
 @Preview(showBackground = true)
 @Composable
 fun EmptyStatePreview() {
-    EmptyState(onPostListingClick = {})
+    PivotaConnectTheme {
+        EmptyState(onPostListingClick = {})
+    }
 }

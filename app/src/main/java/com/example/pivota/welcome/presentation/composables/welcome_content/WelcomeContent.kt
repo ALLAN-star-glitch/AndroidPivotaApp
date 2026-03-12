@@ -40,44 +40,45 @@ fun WelcomeContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = topPadding) // This creates the "gap" where Teal shows
+            .padding(top = topPadding)
             .clip(RoundedCornerShape(topEnd = 150.dp))
             .background(Color.White)
-            .padding(24.dp)
             .zIndex(2f),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.TopCenter
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp), // Reduced slightly for better grouping
+            verticalArrangement = Arrangement.spacedBy(8.dp), // Reduced from 12dp to 8dp
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .padding(horizontal = 24.dp)
+                .padding(top = 16.dp, bottom = 24.dp) // Reduced top padding from 24dp to 16dp
         ) {
 
-            /* ───── 0. LOGO & BRAND NAME ───── */
-            /* ───── 0. LOGO & BRAND NAME ───── */
+            /* ───── LOGO & BRAND NAME ───── */
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp) // Tight spacing between logo and text
+                verticalArrangement = Arrangement.spacedBy(2.dp) // Reduced from 4dp to 2dp
             ) {
                 coil3.compose.AsyncImage(
-                    model = com.example.pivota.R.drawable.logo,
+                    model = com.example.pivota.R.drawable.pivotaconnect_logo_transparent,
                     contentDescription = "Pivota Logo",
-                    modifier = Modifier.size(80.dp)
+                    modifier = Modifier.size(200.dp)
                 )
                 Text(
                     text = "Pivotaconnect",
                     style = MaterialTheme.typography.titleLarge.copy(
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                        // Now 'sp' will work with the import above
                         letterSpacing = 1.sp
                     )
                 )
             }
 
-            /* ───── 2. Header & Welcome ───── */
+            // Removed the Spacer here - letting the 8dp from Arrangement handle it
+
+            /* ───── Header & Welcome ───── */
             Text(
                 text = header,
                 style = MaterialTheme.typography.headlineMedium.copy(
@@ -93,22 +94,24 @@ fun WelcomeContent(
                 textAlign = TextAlign.Center
             )
 
-            /* ───── 3. Buttons & Divider ───── */
+            // Removed the Spacer here - letting the 8dp from Arrangement handle it
+
+            /* ───── Buttons & Divider ───── */
             PivotaPrimaryButton(
                 text = "Get Started",
                 onClick = onNavigateToRegistrationScreen,
                 modifier = Modifier.fillMaxWidth(0.85f)
             )
 
-            /* ───────── ADJUSTED SOCIAL DIVIDER ───────── */
+            /* ───────── SOCIAL DIVIDER ───────── */
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(0.7f) // Reduced width to make it look professional
+                modifier = Modifier.fillMaxWidth(0.7f)
             ) {
                 HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
                 Text(
                     text = " OR ",
-                    modifier = Modifier.padding(horizontal = 12.dp),
+                    modifier = Modifier.padding(horizontal = 8.dp), // Reduced from 12dp to 8dp
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
