@@ -1,6 +1,7 @@
 package com.example.pivota.dashboard.presentation.composables
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,17 +43,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
-import com.example.pivota.R
 import com.example.pivota.dashboard.domain.EmployerType
 
 @Composable
@@ -62,16 +57,14 @@ fun ModernJobCard(
     location: String,
     salary: String,
     type: String,
-    description: String,  // Added description parameter
     isVerified: Boolean,
     employerType: EmployerType = EmployerType.ORGANIZATION,
-    profileImageRes: Any? = null,
-    companyLogoRes: Any? = null,
+    profileImageRes: Int? = null,
+    companyLogoRes: Int? = null,
     isFavorite: Boolean = false,
     onFavoriteClick: (Boolean) -> Unit = {},
-    onViewClick: () -> Unit = {},
-    onApplyClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onViewClick: () -> Unit = {}, // Renamed from onViewJobClick
+    onApplyClick: () -> Unit = {} // New parameter for Apply button
 ) {
     // Using MaterialTheme colors from your theme
     val primaryColor = MaterialTheme.colorScheme.primary      // African Sapphire
@@ -85,21 +78,11 @@ fun ModernJobCard(
     var favoriteState by remember { mutableStateOf(isFavorite) }
 
     // Determine which image resource to use
-    val imageRes = remember(profileImageRes, companyLogoRes) {
-        profileImageRes ?: companyLogoRes
-    }
-
-    // Determine shape and size based on employer type
-    val (shape, containerSize) = remember(employerType) {
-        if (employerType == EmployerType.INDIVIDUAL) {
-            Pair(CircleShape, 60.dp)
-        } else {
-            Pair(RoundedCornerShape(10.dp), 70.dp)
-        }
-    }
+    val imageRes = profileImageRes ?: companyLogoRes
 
     Card(
-        modifier = modifier
+        modifier = Modifier
+            .width(280.dp)
             .clickable { onViewClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -115,22 +98,25 @@ fun ModernJobCard(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                // Profile/Logo Image Section with Coil
-                Box(
-                    modifier = Modifier
-                        .size(containerSize)
-                        .clip(shape)
-                        .background(primaryColor.copy(0.05f))
-                        .align(if (employerType == EmployerType.INDIVIDUAL)
-                            Alignment.CenterHorizontally else Alignment.Start)
-                ) {
-                    if (imageRes != null) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(imageRes)
-                                .crossfade(true)
-                                .size(containerSize.roundToPx())
-                                .build(),
+                // Profile/Logo Image Section
+                if (imageRes != null) {
+                    val shape = if (employerType == EmployerType.INDIVIDUAL)
+                        CircleShape
+                    else
+                        RoundedCornerShape(10.dp)
+
+                    val containerSize = if (employerType == EmployerType.INDIVIDUAL)
+                        60.dp else 70.dp
+
+                    Box(
+                        modifier = Modifier
+                            .size(containerSize)
+                            .clip(shape)
+                            .background(primaryColor.copy(0.05f))
+                            .align(if (employerType == EmployerType.INDIVIDUAL) Alignment.CenterHorizontally else Alignment.Start)
+                    ) {
+                        Image(
+                            painter = painterResource(id = imageRes),
                             contentDescription = when (employerType) {
                                 EmployerType.INDIVIDUAL -> "$company profile picture"
                                 EmployerType.ORGANIZATION -> "$company logo"
@@ -139,33 +125,32 @@ fun ModernJobCard(
                                 ContentScale.Crop
                             else
                                 ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize(),
-                            error = painterResource(id = R.drawable.job_placeholder1)
+                            modifier = Modifier.fillMaxSize()
                         )
-                    } else {
-                        // Fallback when no image is provided
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(primaryColor.copy(0.08f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = if (employerType == EmployerType.INDIVIDUAL)
-                                    Icons.Default.Person
-                                else
-                                    Icons.Default.Work,
-                                contentDescription = null,
-                                tint = primaryColor,
-                                modifier = Modifier.size(30.dp)
-                            )
-                        }
                     }
+                    Spacer(modifier = Modifier.height(if (employerType == EmployerType.INDIVIDUAL) 12.dp else 10.dp))
+                } else {
+                    // Fallback when no image is provided
+                    Box(
+                        modifier = Modifier
+                            .size(if (employerType == EmployerType.INDIVIDUAL) 60.dp else 70.dp)
+                            .clip(if (employerType == EmployerType.INDIVIDUAL) CircleShape else RoundedCornerShape(10.dp))
+                            .background(primaryColor.copy(0.08f))
+                            .align(if (employerType == EmployerType.INDIVIDUAL) Alignment.CenterHorizontally else Alignment.Start),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (employerType == EmployerType.INDIVIDUAL)
+                                Icons.Default.Person
+                            else
+                                Icons.Default.Work,
+                            contentDescription = null,
+                            tint = primaryColor,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(if (employerType == EmployerType.INDIVIDUAL) 12.dp else 10.dp))
                 }
-
-                Spacer(modifier = Modifier.height(
-                    if (employerType == EmployerType.INDIVIDUAL) 12.dp else 10.dp
-                ))
 
                 // Title and company
                 Row(
@@ -228,17 +213,6 @@ fun ModernJobCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Description - NEW SECTION
-                Text(
-                    text = description,
-                    fontSize = 12.sp,
-                    color = onSurfaceVariantColor,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-
                 // Salary and type
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -271,12 +245,12 @@ fun ModernJobCard(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Action Buttons Row
+                // Action Buttons Row - Following 60-30-10 rule
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // View Button
+                    // View Button - Primary (African Sapphire) - 60% dominance
                     Button(
                         onClick = onViewClick,
                         modifier = Modifier.weight(1f),
@@ -305,7 +279,7 @@ fun ModernJobCard(
                         }
                     }
 
-                    // Apply Button
+                    // Apply Button - Secondary (Warm Terracotta) - 30% support
                     OutlinedButton(
                         onClick = onApplyClick,
                         modifier = Modifier.weight(1f),
@@ -320,7 +294,7 @@ fun ModernJobCard(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Work,
+                                imageVector = Icons.Filled.Work, // Using Work icon for Apply
                                 contentDescription = null,
                                 tint = secondaryColor,
                                 modifier = Modifier.size(16.dp)
@@ -362,7 +336,3 @@ fun ModernJobCard(
         }
     }
 }
-
-// Extension function to convert Dp to Pixels
-@Composable
-private fun Dp.roundToPx(): Int = (this.value * androidx.compose.ui.platform.LocalDensity.current.density).toInt()
