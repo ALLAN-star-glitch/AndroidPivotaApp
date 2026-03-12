@@ -30,23 +30,17 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.example.pivota.R
+import com.example.pivota.dashboard.domain.EmployerType
+import com.example.pivota.dashboard.presentation.composables.ModernJobCard
+import com.example.pivota.dashboard.presentation.composables.ModernHousingCard
+import com.example.pivota.dashboard.presentation.composables.ModernProviderCard
 import kotlinx.coroutines.delay
-
-// Modern, elegant color palette - teal used sparingly as accent
-val DeepNavySmart = Color(0xFF0A1A2F)      // Professional dark blue
-val WarmGraySmart = Color(0xFFF8F9FA)      // Soft background
-val SlateGraySmart = Color(0xFF4A5568)     // Secondary text
-val SoftGoldSmart = Color(0xFFD4AF37)      // Premium accent
-val ForestGreenSmart = Color(0xFF2E7D32)   // Success/Verified
-val CleanWhiteSmart = Color(0xFFFFFFFF)    // Pure white
-val LightBorderSmart = Color(0xFFE2E8F0)   // Subtle borders
-val MutedTealSmart = Color(0xFF2C6E6E)     // Muted teal for accents
 
 // Updated data classes for different content types
 sealed class SmartMatchItem {
@@ -90,24 +84,10 @@ sealed class SmartMatchItem {
         val bedrooms: Int,
         val bathrooms: Int,
         val squareMeters: Int,
-        val imageUrl: String?,
+        val imageRes: Int? = null,
         val matchScore: Int,
         val matchReason: String,
         val isFurnished: Boolean
-    ) : SmartMatchItem()
-
-    data class Support(
-        val id: String,
-        val serviceName: String,
-        val providerName: String,
-        val category: String,
-        val location: String,
-        val distance: String,
-        val rating: Double,
-        val reviewCount: Int,
-        val isAvailable247: Boolean,
-        val matchScore: Int,
-        val matchReason: String
     ) : SmartMatchItem()
 }
 
@@ -123,10 +103,17 @@ data class TraySection(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartMatchScreen() {
-    // 🎨 Brand Palette - Using teal as accent
-    val primaryTeal = MutedTealProviders
-    val goldenAccent = SoftGoldProviders
-    val softBackground = WarmGraySmartProviders
+    val colorScheme = MaterialTheme.colorScheme
+
+    // 🎨 Brand Palette - Using theme colors with better contrast
+    val primaryColor = colorScheme.primary          // African Sapphire
+    val secondaryColor = colorScheme.secondary      // Warm Terracotta
+    val tertiaryColor = colorScheme.tertiary        // Baobab Gold
+    val softBackground = colorScheme.background
+    val surfaceColor = colorScheme.surface
+    val onSurfaceColor = colorScheme.onSurface
+    val onSurfaceVariantColor = colorScheme.onSurfaceVariant
+    val outlineVariantColor = colorScheme.outlineVariant
 
     val listState = rememberLazyListState()
 
@@ -151,19 +138,27 @@ fun SmartMatchScreen() {
     val animatedHeight =
         lerp(maxHeight, minHeight, collapseFraction)
 
+    // Track if we're past the threshold to show shadow
+    val isPastThreshold = remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 100
+        }
+    }
+
     // State for filters and search
     var searchQuery by remember { mutableStateOf("") }
     var showFilterModal by remember { mutableStateOf(false) }
     var selectedFilterChips by remember { mutableStateOf(setOf<String>()) }
     var activeFilterCount by remember { mutableStateOf(0) }
     var isSearching by remember { mutableStateOf(false) }
+    var isRecording by remember { mutableStateOf(false) }
 
     // Debounce search to avoid too many updates
     val debouncedQuery = remember { mutableStateOf("") }
     LaunchedEffect(searchQuery) {
         if (searchQuery.length >= 2) {
             isSearching = true
-            delay(300) // Debounce for 300ms
+            delay(300)
             debouncedQuery.value = searchQuery.lowercase()
             isSearching = false
         } else if (searchQuery.isEmpty()) {
@@ -172,7 +167,7 @@ fun SmartMatchScreen() {
         }
     }
 
-    // Mock data for different trays
+    // Mock data for different trays - REMOVED "Near Your Location" section
     val allTraySections = remember {
         listOf(
             // "Top Picks for You" - Mixed (Jobs + Houses)
@@ -202,7 +197,7 @@ fun SmartMatchScreen() {
                         bedrooms = 2,
                         bathrooms = 2,
                         squareMeters = 85,
-                        imageUrl = null,
+                        imageRes = R.drawable.property_placeholder1,
                         matchScore = 95,
                         matchReason = "In your preferred area",
                         isFurnished = true
@@ -262,34 +257,6 @@ fun SmartMatchScreen() {
                 viewAllAction = {}
             ),
 
-            // "Near Your Location" - Support & Services
-            TraySection(
-                title = "Near Your Location",
-                subtitle = "Services in Kilimani area",
-                icon = Icons.Outlined.LocationOn,
-                items = List(4) { index ->
-                    SmartMatchItem.Support(
-                        id = "support${index + 1}",
-                        serviceName = listOf("Emergency Plumbing", "24/7 Electrician", "Cleaning Service", "Security Installer")[index],
-                        providerName = listOf("Pipemasters Ltd", "Musa Electricals", "Sparkle Clean", "SecureTech")[index],
-                        category = listOf("Plumbing", "Electrical", "Cleaning", "Security")[index],
-                        location = "Kilimani",
-                        distance = listOf("0.8 km", "1.2 km", "2.1 km", "1.5 km")[index],
-                        rating = listOf(4.8, 4.9, 4.7, 4.6)[index],
-                        reviewCount = listOf(45, 89, 67, 23)[index],
-                        isAvailable247 = index % 2 == 0,
-                        matchScore = listOf(94, 92, 88, 85)[index],
-                        matchReason = listOf(
-                            "Nearby & available now",
-                            "High-rated in your area",
-                            "Popular in your building",
-                            "Emergency response nearby"
-                        )[index]
-                    )
-                },
-                viewAllAction = {}
-            ),
-
             // "House Opportunities" - Housing & Decor
             TraySection(
                 title = "House Opportunities",
@@ -310,7 +277,7 @@ fun SmartMatchScreen() {
                         bedrooms = 0,
                         bathrooms = 0,
                         squareMeters = 0,
-                        imageUrl = null,
+                        imageRes = R.drawable.property_placeholder1,
                         matchScore = listOf(96, 91, 89, 87)[index],
                         matchReason = listOf(
                             "Perfect for your apartment",
@@ -335,8 +302,7 @@ fun SmartMatchScreen() {
                 when {
                     selectedFilterChips.contains("Jobs") && section.title.contains("Work") -> true
                     selectedFilterChips.contains("Housing") && (section.title.contains("House") || section.title.contains("Picks") && section.items.any { it is SmartMatchItem.Housing }) -> true
-                    selectedFilterChips.contains("Services") && (section.title.contains("Location") || section.title.contains("Picks") && section.items.any { it is SmartMatchItem.Support }) -> true
-                    selectedFilterChips.contains("Support") && section.title.contains("Location") -> true
+                    selectedFilterChips.contains("Providers") && section.title.contains("Picks") && section.items.any { it is SmartMatchItem.Provider } -> true
                     else -> false
                 }
             }
@@ -354,7 +320,8 @@ fun SmartMatchScreen() {
                         is SmartMatchItem.Job ->
                             item.title.lowercase().contains(debouncedQuery.value) ||
                                     item.company.lowercase().contains(debouncedQuery.value) ||
-                                    item.location.lowercase().contains(debouncedQuery.value)
+                                    item.location.lowercase().contains(debouncedQuery.value) ||
+                                    item.jobType.lowercase().contains(debouncedQuery.value)
                         is SmartMatchItem.Housing ->
                             item.title.lowercase().contains(debouncedQuery.value) ||
                                     item.location.lowercase().contains(debouncedQuery.value) ||
@@ -364,10 +331,6 @@ fun SmartMatchScreen() {
                                     item.businessName?.lowercase()?.contains(debouncedQuery.value) == true ||
                                     item.category.lowercase().contains(debouncedQuery.value) ||
                                     item.location.lowercase().contains(debouncedQuery.value)
-                        is SmartMatchItem.Support ->
-                            item.serviceName.lowercase().contains(debouncedQuery.value) ||
-                                    item.providerName.lowercase().contains(debouncedQuery.value) ||
-                                    item.category.lowercase().contains(debouncedQuery.value)
                     }
                 }
                 section.copy(items = filteredItems)
@@ -378,12 +341,12 @@ fun SmartMatchScreen() {
     Scaffold(
         containerColor = softBackground,
         topBar = {
-            // Collapsible Header (unchanged)
             SmartMatchHeroHeader(
-                teal = primaryTeal,
-                gold = goldenAccent,
+                teal = primaryColor,
+                gold = tertiaryColor,
                 height = animatedHeight,
-                collapseFraction = collapseFraction
+                collapseFraction = collapseFraction,
+                colorScheme = colorScheme
             )
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -397,7 +360,7 @@ fun SmartMatchScreen() {
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
-                    top = maxHeight + 72.dp // Add space for sticky search bar
+                    top = maxHeight + 72.dp
                 )
             ) {
                 // Search results info
@@ -413,20 +376,20 @@ fun SmartMatchScreen() {
                             Text(
                                 text = "Search results for \"${searchQuery}\"",
                                 fontSize = 14.sp,
-                                color = SlateGrayProviders,
+                                color = onSurfaceVariantColor,
                                 fontWeight = FontWeight.Medium
                             )
                             if (isSearching) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
                                     strokeWidth = 2.dp,
-                                    color = primaryTeal
+                                    color = primaryColor
                                 )
                             } else {
                                 Text(
                                     text = "${filteredTraySections.sumOf { it.items.size }} items found",
                                     fontSize = 13.sp,
-                                    color = primaryTeal,
+                                    color = primaryColor,
                                     fontWeight = FontWeight.Medium
                                 )
                             }
@@ -449,7 +412,7 @@ fun SmartMatchScreen() {
                                 Icon(
                                     Icons.Outlined.SearchOff,
                                     contentDescription = null,
-                                    tint = SlateGrayProviders.copy(0.5f),
+                                    tint = onSurfaceVariantColor.copy(0.5f),
                                     modifier = Modifier.size(48.dp)
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
@@ -457,13 +420,13 @@ fun SmartMatchScreen() {
                                     text = "No results found",
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = DeepNavyProviders
+                                    color = onSurfaceColor
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = "Try different keywords or clear filters",
                                     fontSize = 14.sp,
-                                    color = SlateGrayProviders,
+                                    color = onSurfaceVariantColor,
                                     textAlign = TextAlign.Center
                                 )
                             }
@@ -476,8 +439,10 @@ fun SmartMatchScreen() {
                     val section = filteredTraySections[index]
                     SmartMatchTraySection(
                         section = section,
-                        accentColor = primaryTeal,
-                        goldAccent = goldenAccent,
+                        primaryColor = primaryColor,
+                        secondaryColor = secondaryColor,
+                        tertiaryColor = tertiaryColor,
+                        colorScheme = colorScheme,
                         onItemClick = { item ->
                             // Handle item click based on type
                         },
@@ -489,21 +454,28 @@ fun SmartMatchScreen() {
                 item { Spacer(Modifier.height(80.dp)) }
             }
 
-            // 📌 Sticky Search Bar - Positioned just below header
+            // 📌 Sticky Search Bar (Providers style)
             StickySearchBar(
                 query = searchQuery,
                 onQueryChange = { searchQuery = it },
                 onFilterClick = { showFilterModal = true },
-                onVoiceClick = { /* Handle voice search */ },
+                onAudioClick = {
+                    isRecording = !isRecording
+                },
+                isRecording = isRecording,
                 activeFilterCount = activeFilterCount,
-                accentColor = primaryTeal,
+                accentColor = primaryColor,
                 headerHeight = animatedHeight,
-                modifier = Modifier.align(Alignment.TopCenter)
+                showShadow = isPastThreshold.value,
+                colorScheme = colorScheme,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .zIndex(1f)
             )
         }
     }
 
-    // Filter Modal Bottom Sheet - Simplified with just Content Type
+    // Filter Modal Bottom Sheet
     if (showFilterModal) {
         FilterBottomSheet(
             onDismiss = { showFilterModal = false },
@@ -518,13 +490,14 @@ fun SmartMatchScreen() {
                 activeFilterCount = 0
                 showFilterModal = false
             },
-            accentColor = primaryTeal
+            accentColor = primaryColor,
+            colorScheme = colorScheme
         )
     }
 }
 
 /* ─────────────────────────────────────────────
-   STICKY SEARCH BAR (just below header)
+   STICKY SEARCH BAR (Providers style with audio and shadow)
    ───────────────────────────────────────────── */
 
 @Composable
@@ -532,31 +505,38 @@ fun StickySearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onFilterClick: () -> Unit,
-    onVoiceClick: () -> Unit,
+    onAudioClick: () -> Unit,
+    isRecording: Boolean,
     activeFilterCount: Int,
     accentColor: Color,
     headerHeight: Dp,
+    showShadow: Boolean,
+    colorScheme: androidx.compose.material3.ColorScheme,
     modifier: Modifier = Modifier
 ) {
-    // Calculate the top position based on header height
+    val elevation by animateDpAsState(
+        targetValue = if (showShadow) 8.dp else 0.dp,
+        animationSpec = tween(durationMillis = 200)
+    )
+
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .offset(y = headerHeight)
+            .padding(top = headerHeight)
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .shadow(
-                    elevation = 4.dp,
+                    elevation = elevation,
                     shape = RoundedCornerShape(16.dp),
                     ambientColor = Color.Black.copy(0.08f),
                     spotColor = Color.Black.copy(0.08f)
                 ),
             shape = RoundedCornerShape(16.dp),
-            color = CleanWhiteProviders,
-            tonalElevation = 2.dp
+            color = colorScheme.surface,
+            tonalElevation = if (showShadow) 4.dp else 0.dp
         ) {
             Row(
                 modifier = Modifier
@@ -567,7 +547,7 @@ fun StickySearchBar(
                 Icon(
                     Icons.Outlined.Search,
                     contentDescription = "Search",
-                    tint = SlateGrayProviders.copy(0.6f),
+                    tint = colorScheme.onSurfaceVariant.copy(0.6f),
                     modifier = Modifier.size(20.dp)
                 )
 
@@ -581,8 +561,8 @@ fun StickySearchBar(
                         Box {
                             if (query.isEmpty()) {
                                 Text(
-                                    text = "Search listings ... ",
-                                    color = SlateGrayProviders.copy(0.5f),
+                                    text = "Search jobs, houses, services...",
+                                    color = colorScheme.onSurfaceVariant.copy(0.5f),
                                     fontSize = 14.sp
                                 )
                             }
@@ -591,7 +571,7 @@ fun StickySearchBar(
                     },
                     textStyle = LocalTextStyle.current.copy(
                         fontSize = 14.sp,
-                        color = DeepNavyProviders
+                        color = colorScheme.onSurface
                     )
                 )
 
@@ -603,11 +583,52 @@ fun StickySearchBar(
                         Icon(
                             Icons.Outlined.Close,
                             contentDescription = "Clear",
-                            tint = SlateGrayProviders.copy(0.6f),
+                            tint = colorScheme.onSurfaceVariant.copy(0.6f),
                             modifier = Modifier.size(16.dp)
                         )
                     }
                 } else {
+                    // Audio Icon
+                    IconButton(
+                        onClick = onAudioClick,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .then(
+                                if (isRecording) {
+                                    Modifier.background(
+                                        color = accentColor.copy(0.1f),
+                                        shape = CircleShape
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
+                    ) {
+                        Icon(
+                            imageVector = if (isRecording)
+                                Icons.Filled.Mic
+                            else
+                                Icons.Outlined.Mic,
+                            contentDescription = if (isRecording) "Stop recording" else "Start voice search",
+                            tint = if (isRecording) accentColor else colorScheme.onSurfaceVariant.copy(0.6f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    if (isRecording) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(
+                                    color = colorScheme.error,
+                                    shape = CircleShape
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+
                     // Filter button with badge
                     BadgedBox(
                         badge = {
@@ -621,7 +642,7 @@ fun StickySearchBar(
                                 ) {
                                     Text(
                                         text = activeFilterCount.toString(),
-                                        color = Color.White,
+                                        color = colorScheme.onPrimary,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.align(Alignment.Center)
@@ -656,21 +677,6 @@ fun StickySearchBar(
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Voice search icon
-                    IconButton(
-                        onClick = onVoiceClick,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            Icons.Outlined.Mic,
-                            contentDescription = "Voice search",
-                            tint = SlateGrayProviders.copy(0.6f),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
                 }
             }
         }
@@ -678,14 +684,16 @@ fun StickySearchBar(
 }
 
 /* ─────────────────────────────────────────────
-   SMART MATCH TRAY SECTION
+   SMART MATCH TRAY SECTION - Using reusable cards
    ───────────────────────────────────────────── */
 
 @Composable
 fun SmartMatchTraySection(
     section: TraySection,
-    accentColor: Color,
-    goldAccent: Color,
+    primaryColor: Color,
+    secondaryColor: Color,
+    tertiaryColor: Color,
+    colorScheme: androidx.compose.material3.ColorScheme,
     onItemClick: (SmartMatchItem) -> Unit,
     onViewAllClick: (() -> Unit)?
 ) {
@@ -708,7 +716,7 @@ fun SmartMatchTraySection(
                     Icon(
                         it,
                         contentDescription = null,
-                        tint = goldAccent,
+                        tint = tertiaryColor,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -717,13 +725,15 @@ fun SmartMatchTraySection(
                         text = section.title,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = DeepNavyProviders
+                        color = colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleMedium
                     )
                     section.subtitle?.let {
                         Text(
                             text = it,
                             fontSize = 12.sp,
-                            color = SlateGrayProviders
+                            color = colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
@@ -737,8 +747,9 @@ fun SmartMatchTraySection(
                     Text(
                         "View All",
                         fontSize = 12.sp,
-                        color = accentColor,
-                        fontWeight = FontWeight.Medium
+                        color = primaryColor,
+                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.labelLarge
                     )
                 }
             }
@@ -756,34 +767,50 @@ fun SmartMatchTraySection(
                 val item = section.items[index]
                 when (item) {
                     is SmartMatchItem.Provider -> {
-                        ProviderTrayCard(
-                            provider = item,
-                            accentColor = accentColor,
-                            goldAccent = goldAccent,
-                            onClick = { onItemClick(item) }
+                        ModernProviderCard(
+                            name = item.name,
+                            specialty = item.category,
+                            rating = item.rating.toFloat(),
+                            jobs = item.reviewCount,
+                            isVerified = item.isVerified,
+                            onCardClick = { onItemClick(item) },
+                            onViewClick = { /* View provider */ },
+                            onBookClick = { /* Book provider */ },
+                            onMessageClick = { /* Send message */ },
+                            onWhatsAppClick = { /* WhatsApp */ },
+                            onPhoneClick = { /* Call */ }
                         )
                     }
                     is SmartMatchItem.Job -> {
-                        JobTrayCard(
-                            job = item,
-                            accentColor = accentColor,
-                            goldAccent = goldAccent,
-                            onClick = { onItemClick(item) }
+                        ModernJobCard(
+                            title = item.title,
+                            company = item.company,
+                            location = item.location,
+                            salary = item.salary,
+                            type = item.jobType,
+                            isVerified = true,
+                            employerType = EmployerType.ORGANIZATION,
+                            isFavorite = false,
+                            onFavoriteClick = {},
+                            onViewClick = { onItemClick(item) },
+                            onApplyClick = { /* Handle apply */ }
                         )
                     }
                     is SmartMatchItem.Housing -> {
-                        HousingTrayCard(
-                            housing = item,
-                            accentColor = accentColor,
-                            goldAccent = goldAccent,
-                            onClick = { onItemClick(item) }
-                        )
-                    }
-                    is SmartMatchItem.Support -> {
-                        SupportTrayCard(
-                            support = item,
-                            accentColor = accentColor,
-                            goldAccent = goldAccent,
+                        ModernHousingCard(
+                            price = "KES ${item.price}",
+                            title = item.title,
+                            location = item.location,
+                            type = item.propertyType,
+                            rating = item.matchScore.toDouble(),
+                            isVerified = true,
+                            isForSale = false,
+                            imageRes = item.imageRes ?: R.drawable.property_placeholder1,
+                            onViewClick = { onItemClick(item) },
+                            onBookClick = { /* Handle book */ },
+                            onMessageClick = { /* Handle message */ },
+                            onWhatsAppClick = { /* Handle WhatsApp */ },
+                            onPhoneClick = { /* Handle phone */ },
                             onClick = { onItemClick(item) }
                         )
                     }
@@ -794,563 +821,7 @@ fun SmartMatchTraySection(
 }
 
 /* ─────────────────────────────────────────────
-   TRAY CARD COMPONENTS
-   ───────────────────────────────────────────── */
-
-@Composable
-fun ProviderTrayCard(
-    provider: SmartMatchItem.Provider,
-    accentColor: Color,
-    goldAccent: Color,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .width(240.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CleanWhiteProviders),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 2.dp
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            // Match Score Badge
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = goldAccent.copy(0.15f),
-                modifier = Modifier.align(Alignment.End)
-            ) {
-                Text(
-                    text = "${provider.matchScore}% Match",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = goldAccent,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Provider Info
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    modifier = Modifier.size(40.dp),
-                    shape = CircleShape,
-                    color = accentColor.copy(0.1f)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            provider.name.take(1),
-                            color = accentColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            provider.name,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                            color = DeepNavyProviders,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (provider.isVerified) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                Icons.Outlined.Verified,
-                                contentDescription = "Verified",
-                                tint = ForestGreenProviders,
-                                modifier = Modifier.size(12.dp)
-                            )
-                        }
-                    }
-                    provider.businessName?.let {
-                        Text(
-                            it,
-                            fontSize = 10.sp,
-                            color = SlateGrayProviders,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Category and Price
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    color = accentColor.copy(0.1f),
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        provider.category,
-                        fontSize = 9.sp,
-                        color = accentColor,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                    )
-                }
-
-                Text(
-                    "KES ${provider.startingPrice}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    color = DeepNavyProviders
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Match Reason
-            Text(
-                provider.matchReason,
-                fontSize = 10.sp,
-                color = SlateGrayProviders,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Rating
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Outlined.Star,
-                    contentDescription = null,
-                    tint = goldAccent,
-                    modifier = Modifier.size(12.dp)
-                )
-                Text(
-                    " ${provider.rating} (${provider.reviewCount})",
-                    fontSize = 10.sp,
-                    color = SlateGrayProviders
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    "⚡ ${provider.responseTime}",
-                    fontSize = 9.sp,
-                    color = SlateGrayProviders.copy(0.7f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun JobTrayCard(
-    job: SmartMatchItem.Job,
-    accentColor: Color,
-    goldAccent: Color,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .width(240.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CleanWhiteProviders),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 2.dp
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            // Header with Match Score and Remote Badge
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = goldAccent.copy(0.15f)
-                ) {
-                    Text(
-                        text = "${job.matchScore}% Match",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = goldAccent,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-
-                if (job.isRemote) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = accentColor.copy(0.1f)
-                    ) {
-                        Text(
-                            "Remote",
-                            fontSize = 9.sp,
-                            color = accentColor,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Job Title and Company
-            Text(
-                job.title,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp,
-                color = DeepNavyProviders,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                job.company,
-                fontSize = 12.sp,
-                color = SlateGrayProviders
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Location and Salary
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Outlined.LocationOn,
-                    contentDescription = null,
-                    tint = SlateGrayProviders.copy(0.5f),
-                    modifier = Modifier.size(12.dp)
-                )
-                Text(
-                    " ${job.location}",
-                    fontSize = 10.sp,
-                    color = SlateGrayProviders,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Text(
-                job.salary,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                color = DeepNavyProviders,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Match Reason
-            Text(
-                job.matchReason,
-                fontSize = 10.sp,
-                color = SlateGrayProviders,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Posted Time
-            Text(
-                "⏱ ${job.postedTime}",
-                fontSize = 9.sp,
-                color = SlateGrayProviders.copy(0.7f)
-            )
-        }
-    }
-}
-
-@Composable
-fun HousingTrayCard(
-    housing: SmartMatchItem.Housing,
-    accentColor: Color,
-    goldAccent: Color,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .width(240.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CleanWhiteProviders),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 2.dp
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            // Match Score
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = goldAccent.copy(0.15f),
-                modifier = Modifier.align(Alignment.End)
-            ) {
-                Text(
-                    text = "${housing.matchScore}% Match",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = goldAccent,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Property Image Placeholder
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp),
-                color = accentColor.copy(0.1f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Outlined.Home,
-                        contentDescription = null,
-                        tint = accentColor.copy(0.3f),
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Title and Type
-            Text(
-                housing.title,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp,
-                color = DeepNavyProviders,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    color = accentColor.copy(0.1f),
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        housing.propertyType,
-                        fontSize = 9.sp,
-                        color = accentColor,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(4.dp))
-
-                if (housing.isFurnished) {
-                    Surface(
-                        color = goldAccent.copy(0.15f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            "Furnished",
-                            fontSize = 9.sp,
-                            color = goldAccent,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Price
-            Text(
-                "KES ${housing.price}/mo",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                color = DeepNavyProviders
-            )
-
-            // Location
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 4.dp)
-            ) {
-                Icon(
-                    Icons.Outlined.LocationOn,
-                    contentDescription = null,
-                    tint = SlateGrayProviders.copy(0.5f),
-                    modifier = Modifier.size(10.dp)
-                )
-                Text(
-                    " ${housing.location}",
-                    fontSize = 10.sp,
-                    color = SlateGrayProviders
-                )
-            }
-
-            // Match Reason
-            Text(
-                housing.matchReason,
-                fontSize = 10.sp,
-                color = SlateGrayProviders,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun SupportTrayCard(
-    support: SmartMatchItem.Support,
-    accentColor: Color,
-    goldAccent: Color,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .width(220.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CleanWhiteProviders),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 2.dp
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            // Header with Match and Availability
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = goldAccent.copy(0.15f)
-                ) {
-                    Text(
-                        text = "${support.matchScore}% Match",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = goldAccent,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-
-                if (support.isAvailable247) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = accentColor.copy(0.1f)
-                    ) {
-                        Text(
-                            "24/7",
-                            fontSize = 9.sp,
-                            color = accentColor,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Service and Provider
-            Text(
-                support.serviceName,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp,
-                color = DeepNavyProviders,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                support.providerName,
-                fontSize = 12.sp,
-                color = SlateGrayProviders
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Distance and Rating
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Outlined.LocationOn,
-                        contentDescription = null,
-                        tint = SlateGrayProviders.copy(0.5f),
-                        modifier = Modifier.size(10.dp)
-                    )
-                    Text(
-                        " ${support.distance}",
-                        fontSize = 10.sp,
-                        color = SlateGrayProviders
-                    )
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Outlined.Star,
-                        contentDescription = null,
-                        tint = goldAccent,
-                        modifier = Modifier.size(10.dp)
-                    )
-                    Text(
-                        " ${support.rating}",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = DeepNavyProviders
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Match Reason
-            Text(
-                support.matchReason,
-                fontSize = 10.sp,
-                color = SlateGrayProviders,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-/* ─────────────────────────────────────────────
-   SIMPLIFIED FILTER BOTTOM SHEET - Improved Design
+   SIMPLIFIED FILTER BOTTOM SHEET
    ───────────────────────────────────────────── */
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1359,24 +830,24 @@ fun FilterBottomSheet(
     onDismiss: () -> Unit,
     onApply: (Map<String, Any>) -> Unit,
     onReset: () -> Unit,
-    accentColor: Color
+    accentColor: Color,
+    colorScheme: androidx.compose.material3.ColorScheme
 ) {
-    // Filter states - only Content Type
     var selectedCategories by remember { mutableStateOf(setOf<String>()) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        containerColor = CleanWhiteProviders,
+        containerColor = colorScheme.surface,
         tonalElevation = 8.dp,
-        dragHandle = { BottomSheetDefaults.DragHandle(color = LightBorderProviders) }
+        dragHandle = { BottomSheetDefaults.DragHandle(color = colorScheme.outlineVariant) }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
         ) {
-            // Header with title and close button
+            // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1388,7 +859,7 @@ fun FilterBottomSheet(
                     text = "Filter Content",
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        color = DeepNavyProviders
+                        color = colorScheme.onSurface
                     )
                 )
 
@@ -1398,14 +869,14 @@ fun FilterBottomSheet(
                 ) {
                     Surface(
                         shape = CircleShape,
-                        color = LightBorderProviders.copy(0.5f),
+                        color = colorScheme.outlineVariant.copy(0.5f),
                         modifier = Modifier.size(36.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 Icons.Outlined.Close,
                                 contentDescription = "Close",
-                                tint = SlateGrayProviders,
+                                tint = colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -1413,24 +884,23 @@ fun FilterBottomSheet(
                 }
             }
 
-            // Content Type Label
             Text(
                 text = "Show me:",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
-                color = DeepNavyProviders,
+                color = colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            // Filter Chips - Compact and well-spaced
-            val contentTypes = listOf("Jobs", "Services", "Housing", "Support")
+            // Filter Chips
+            val contentTypes = listOf("Jobs", "Housing", "Providers")
 
-            // First row of chips
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                contentTypes.take(2).forEach { type ->
+                contentTypes.forEach { type ->
                     val isSelected = selectedCategories.contains(type)
                     FilterChip(
                         selected = isSelected,
@@ -1448,63 +918,21 @@ fun FilterBottomSheet(
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                         },
-                        modifier = Modifier.weight(1f),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = accentColor,
-                            selectedLabelColor = CleanWhiteProviders,
-                            containerColor = CleanWhiteProviders,
-                            labelColor = SlateGrayProviders
+                            selectedLabelColor = colorScheme.onPrimary,
+                            containerColor = colorScheme.surface,
+                            labelColor = colorScheme.onSurfaceVariant
                         ),
                         border = BorderStroke(
                             1.dp,
-                            if (isSelected) accentColor else LightBorderProviders
+                            if (isSelected) accentColor else colorScheme.outlineVariant
                         ),
                         shape = RoundedCornerShape(30.dp)
                     )
                 }
             }
 
-            // Second row of chips
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                contentTypes.drop(2).forEach { type ->
-                    val isSelected = selectedCategories.contains(type)
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = {
-                            selectedCategories = if (isSelected) {
-                                selectedCategories - type
-                            } else {
-                                selectedCategories + type
-                            }
-                        },
-                        label = {
-                            Text(
-                                type,
-                                fontSize = 14.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = accentColor,
-                            selectedLabelColor = CleanWhiteProviders,
-                            containerColor = CleanWhiteProviders,
-                            labelColor = SlateGrayProviders
-                        ),
-                        border = BorderStroke(
-                            1.dp,
-                            if (isSelected) accentColor else LightBorderProviders
-                        ),
-                        shape = RoundedCornerShape(30.dp)
-                    )
-                }
-            }
-
-            // Selected count indicator (compact)
             if (selectedCategories.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Surface(
@@ -1526,14 +954,12 @@ fun FilterBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Bottom Action Buttons - Fixed spacing
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Clear Button
                 OutlinedButton(
                     onClick = {
                         selectedCategories = setOf()
@@ -1543,9 +969,9 @@ fun FilterBottomSheet(
                         .weight(1f)
                         .height(52.dp),
                     shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, LightBorderProviders),
+                    border = BorderStroke(1.dp, colorScheme.outlineVariant),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = SlateGrayProviders
+                        contentColor = colorScheme.onSurfaceVariant
                     )
                 ) {
                     Text(
@@ -1555,7 +981,6 @@ fun FilterBottomSheet(
                     )
                 }
 
-                // Apply Button - Prominent
                 Button(
                     onClick = {
                         val filters = mapOf("categories" to selectedCategories)
@@ -1567,7 +992,7 @@ fun FilterBottomSheet(
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = accentColor,
-                        contentColor = CleanWhiteProviders
+                        contentColor = colorScheme.onPrimary
                     ),
                     elevation = ButtonDefaults.buttonElevation(
                         defaultElevation = 2.dp,
@@ -1585,13 +1010,14 @@ fun FilterBottomSheet(
     }
 }
 
-// Keep the original header (unchanged)
+// Keep the original header (updated with theme)
 @Composable
 fun SmartMatchHeroHeader(
     teal: Color,
     gold: Color,
     height: Dp,
     collapseFraction: Float,
+    colorScheme: androidx.compose.material3.ColorScheme,
     modifier: Modifier = Modifier
 ) {
     val collapsed = collapseFraction > 0.85f
@@ -1599,13 +1025,11 @@ fun SmartMatchHeroHeader(
     val maxFontSize = 34.sp
     val minFontSize = 24.sp
 
-    // Animate background color based on collapse state
     val backgroundColor by animateColorAsState(
-        targetValue = if (collapsed) teal.copy(alpha = 0.95f) else Color.Transparent,
+        targetValue = if (collapsed) colorScheme.primary.copy(alpha = 0.95f) else Color.Transparent,
         animationSpec = tween(durationMillis = 300)
     )
 
-    // Animate font size based on collapseFraction
     val titleFontSize = ((maxFontSize.value - collapseFraction * (maxFontSize.value - minFontSize.value))).sp
 
     Surface(
@@ -1618,28 +1042,25 @@ fun SmartMatchHeroHeader(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            // Background Image - fades out when collapsed
             AnimatedVisibility(
                 visible = !collapsed,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.happy_clients),
+                    painter = painterResource(id = R.drawable.smart),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
             }
 
-            // Solid color background for collapsed state
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(backgroundColor)
             )
 
-            // Gradient overlay - only visible when not collapsed
             AnimatedVisibility(
                 visible = !collapsed,
                 enter = fadeIn(),
@@ -1651,8 +1072,8 @@ fun SmartMatchHeroHeader(
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    teal.copy(0.95f),
-                                    teal.copy(0.75f),
+                                    colorScheme.primary.copy(0.95f),
+                                    colorScheme.primary.copy(0.75f),
                                     Color.Transparent
                                 )
                             )
@@ -1660,7 +1081,6 @@ fun SmartMatchHeroHeader(
                 )
             }
 
-            // Golden Accent (Horizontal Glow) - only visible when not collapsed
             AnimatedVisibility(
                 visible = !collapsed,
                 enter = fadeIn(),
@@ -1671,20 +1091,18 @@ fun SmartMatchHeroHeader(
                         .fillMaxSize()
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(gold.copy(0.15f), Color.Transparent),
+                                colors = listOf(colorScheme.tertiary.copy(0.15f), Color.Transparent),
                                 endX = 400f
                             )
                         )
                 )
             }
 
-            // Main content container
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .statusBarsPadding()
             ) {
-                // TOP ROW - Only visible when NOT collapsed
                 AnimatedVisibility(
                     visible = !collapsed,
                     enter = fadeIn() + slideInVertically(),
@@ -1697,17 +1115,16 @@ fun SmartMatchHeroHeader(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 👤 AVATAR SECTION
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box {
-                                HeaderAvatarSmartMatch(teal)
+                                HeaderAvatarSmartMatch(colorScheme)
                                 Box(
                                     modifier = Modifier
                                         .size(12.dp)
-                                        .background(gold, CircleShape)
-                                        .border(2.dp, teal, CircleShape)
+                                        .background(colorScheme.tertiary, CircleShape)
+                                        .border(2.dp, colorScheme.primary, CircleShape)
                                         .align(Alignment.BottomEnd)
                                 )
                             }
@@ -1728,7 +1145,6 @@ fun SmartMatchHeroHeader(
                             }
                         }
 
-                        // 🔔 ICON ROW
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -1748,15 +1164,12 @@ fun SmartMatchHeroHeader(
                     }
                 }
 
-                // Spacer to push content down when not collapsed
                 if (!collapsed) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
             }
 
-            // Main content area - Changes based on collapse state
             if (collapsed) {
-                // COLLAPSED STATE - All elements in one horizontal row, lowered
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1766,7 +1179,6 @@ fun SmartMatchHeroHeader(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Left side - SmartMatch text with icon
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1774,7 +1186,7 @@ fun SmartMatchHeroHeader(
                         Icon(
                             imageVector = Icons.Default.AutoAwesome,
                             contentDescription = null,
-                            tint = gold,
+                            tint = colorScheme.tertiary,
                             modifier = Modifier.size(24.dp)
                         )
                         Text(
@@ -1788,7 +1200,6 @@ fun SmartMatchHeroHeader(
                         )
                     }
 
-                    // Right side - Icons
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
@@ -1807,14 +1218,12 @@ fun SmartMatchHeroHeader(
                     }
                 }
             } else {
-                // EXPANDED STATE
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(start = 20.dp, bottom = 32.dp)
                         .statusBarsPadding()
                 ) {
-                    // SmartMatch text with icon
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1823,7 +1232,7 @@ fun SmartMatchHeroHeader(
                         Icon(
                             imageVector = Icons.Default.AutoAwesome,
                             contentDescription = null,
-                            tint = gold,
+                            tint = colorScheme.tertiary,
                             modifier = Modifier.size(28.dp)
                         )
                         Text(
@@ -1837,7 +1246,6 @@ fun SmartMatchHeroHeader(
                         )
                     }
 
-                    // 📝 Subtitle Text
                     Text(
                         text = "Opportunities tailored for you",
                         style = MaterialTheme.typography.bodyMedium.copy(
@@ -1852,7 +1260,7 @@ fun SmartMatchHeroHeader(
 }
 
 @Composable
-fun HeaderAvatarSmartMatch(teal: Color) {
+fun HeaderAvatarSmartMatch(colorScheme: androidx.compose.material3.ColorScheme) {
     Box(
         modifier = Modifier
             .size(45.dp)
@@ -1898,7 +1306,7 @@ fun HeaderActionIconSmartMatch(
     }
 }
 
-// Fixed FlowRow utility with proper constraints
+// FlowRow utility for wrapping chips
 @Composable
 fun FlowRow(
     modifier: Modifier = Modifier,
@@ -1910,40 +1318,19 @@ fun FlowRow(
         content = content,
         modifier = modifier
     ) { measurables, constraints ->
-        // Ensure we don't get infinite constraints
-        val maxWidth = if (constraints.maxWidth == Constraints.Infinity) {
-            // If infinite, use a reasonable max (screen width)
-            constraints.maxWidth
-        } else {
-            constraints.maxWidth
-        }
+        val placeables = measurables.map { it.measure(constraints) }
 
-        // Cap the max height to prevent overflow
-        val maxHeight = if (constraints.maxHeight == Constraints.Infinity) {
-            Int.MAX_VALUE.coerceAtMost(10000) // Reasonable max
-        } else {
-            constraints.maxHeight
-        }
+        var xPosition = 0
+        var yPosition = 0
+        var rowMaxHeight = 0
 
-        val looseConstraints = constraints.copy(
-            maxWidth = maxWidth,
-            maxHeight = maxHeight
-        )
-
-        val placeables = measurables.map { it.measure(looseConstraints) }
-
-        layout(maxWidth, maxHeight) {
-            var xPosition = 0
-            var yPosition = 0
-            var rowMaxHeight = 0
-
+        layout(constraints.maxWidth, constraints.maxHeight) {
             placeables.forEach { placeable ->
-                if (xPosition + placeable.width > maxWidth) {
+                if (xPosition + placeable.width > constraints.maxWidth) {
                     xPosition = 0
                     yPosition += rowMaxHeight
                     rowMaxHeight = 0
                 }
-
                 placeable.placeRelative(x = xPosition, y = yPosition)
                 xPosition += placeable.width
                 rowMaxHeight = maxOf(rowMaxHeight, placeable.height)

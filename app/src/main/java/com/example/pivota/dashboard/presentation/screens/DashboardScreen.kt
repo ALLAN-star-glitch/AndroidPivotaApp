@@ -42,12 +42,6 @@ import androidx.window.core.layout.WindowSizeClass
 import com.example.pivota.R
 import com.example.pivota.ui.theme.*
 
-// Additional color definitions
-val successLight = Color(0xFF2E7D32)      // Success green
-val errorLight = Color(0xFFD32F2F)        // Error red
-val warningLight = Color(0xFFED6C02)      // Warning orange
-val infoLight = Color(0xFF0288D1)         // Info blue
-
 // Data classes
 data class KPI(
     val title: String,
@@ -74,14 +68,7 @@ data class Activity(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(onNavigateToListings: () -> Unit) {
-    // 🎨 Brand Palette using theme colors
-    val primaryColor = primaryLight
-    val accentColor = tertiaryLight
-    val backgroundColor = backgroundLight
-    val surfaceColor = surfaceLight
-    val textPrimary = onSurfaceLight
-    val textSecondary = onSurfaceVariantLight
-    val borderColor = outlineVariantLight
+    val colorScheme = MaterialTheme.colorScheme
 
     // 📱 Orientation & Window Size Logic
     val configuration = LocalConfiguration.current
@@ -123,14 +110,14 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
     )
 
     Scaffold(
-        containerColor = backgroundColor,
+        containerColor = colorScheme.background,
         topBar = {
             DashboardHeroHeader(
-                primaryColor = primaryColor,
-                accentColor = accentColor,
+                primaryColor = colorScheme.primary,
+                accentColor = colorScheme.tertiary,
                 height = animatedHeight,
                 collapseFraction = collapseFraction,
-                onSurfaceColor = onSurfaceLight
+                onSurfaceColor = colorScheme.onSurface
             )
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -151,7 +138,12 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                 // 📊 1. KPI Cards Section
                 item {
                     DashboardSectionWrapper(isTabletWidth) {
-                        KpiCardsSection(kpiData, primaryColor, textPrimary, textSecondary)
+                        KpiCardsSection(
+                            kpiData,
+                            colorScheme.primary,
+                            colorScheme.onSurface,
+                            colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 
@@ -159,11 +151,11 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                 item {
                     DashboardSectionWrapper(isTabletWidth) {
                         AnalyticsGraphSection(
-                            primaryColor = primaryColor,
-                            accentColor = accentColor,
-                            textPrimary = textPrimary,
-                            textSecondary = textSecondary,
-                            borderColor = borderColor
+                            primaryColor = colorScheme.primary,
+                            accentColor = colorScheme.tertiary,
+                            textPrimary = colorScheme.onSurface,
+                            textSecondary = colorScheme.onSurfaceVariant,
+                            borderColor = colorScheme.outlineVariant
                         )
                     }
                 }
@@ -172,9 +164,9 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                 item {
                     DashboardSectionWrapper(isTabletWidth) {
                         QuickActionsSection(
-                            primaryColor = primaryColor,
-                            textPrimary = textPrimary,
-                            textSecondary = textSecondary
+                            primaryColor = colorScheme.primary,
+                            textPrimary = colorScheme.onSurface,
+                            textSecondary = colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -183,10 +175,10 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                 item {
                     DashboardSectionWrapper(isTabletWidth) {
                         SmartMatchInsightSection(
-                            primaryColor = primaryColor,
-                            accentColor = accentColor,
-                            textPrimary = textPrimary,
-                            textSecondary = textSecondary
+                            primaryColor = colorScheme.primary,
+                            accentColor = colorScheme.tertiary,
+                            textPrimary = colorScheme.onSurface,
+                            textSecondary = colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -195,10 +187,10 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                 item {
                     DashboardSectionWrapper(isTabletWidth) {
                         BusinessManagementSection(
-                            primaryColor = primaryColor,
-                            textPrimary = textPrimary,
-                            textSecondary = textSecondary,
-                            borderColor = borderColor,
+                            primaryColor = colorScheme.primary,
+                            textPrimary = colorScheme.onSurface,
+                            textSecondary = colorScheme.onSurfaceVariant,
+                            borderColor = colorScheme.outlineVariant,
                             onMyListingsClick = onNavigateToListings
                         )
                     }
@@ -208,11 +200,11 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                 item {
                     DashboardSectionWrapper(isTabletWidth) {
                         RecentActivitySection(
-                            primaryColor = primaryColor,
-                            accentColor = accentColor,
-                            textPrimary = textPrimary,
-                            textSecondary = textSecondary,
-                            borderColor = borderColor
+                            primaryColor = colorScheme.primary,
+                            accentColor = colorScheme.tertiary,
+                            textPrimary = colorScheme.onSurface,
+                            textSecondary = colorScheme.onSurfaceVariant,
+                            borderColor = colorScheme.outlineVariant
                         )
                     }
                 }
@@ -221,10 +213,10 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                 item {
                     DashboardSectionWrapper(isTabletWidth) {
                         WalletTrustSection(
-                            primaryColor = primaryColor,
-                            textPrimary = textPrimary,
-                            textSecondary = textSecondary,
-                            borderColor = borderColor
+                            primaryColor = colorScheme.primary,
+                            textPrimary = colorScheme.onSurface,
+                            textSecondary = colorScheme.onSurfaceVariant,
+                            borderColor = colorScheme.outlineVariant
                         )
                     }
                 }
@@ -254,6 +246,8 @@ fun KpiCardsSection(
     textPrimary: Color,
     textSecondary: Color
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Column {
         SectionHeader("Performance Overview", "Last 30 days", textPrimary, textSecondary)
         Spacer(modifier = Modifier.height(16.dp))
@@ -269,7 +263,13 @@ fun KpiCardsSection(
             ) {
                 kpis.take(2).forEach { kpi ->
                     Box(modifier = Modifier.weight(1f)) {
-                        CompactKpiCard(kpi, primaryColor, textPrimary, textSecondary)
+                        CompactKpiCard(
+                            kpi,
+                            primaryColor,
+                            textPrimary,
+                            textSecondary,
+                            colorScheme
+                        )
                     }
                 }
             }
@@ -282,7 +282,13 @@ fun KpiCardsSection(
                 ) {
                     kpis.drop(2).forEach { kpi ->
                         Box(modifier = Modifier.weight(1f)) {
-                            CompactKpiCard(kpi, primaryColor, textPrimary, textSecondary)
+                            CompactKpiCard(
+                                kpi,
+                                primaryColor,
+                                textPrimary,
+                                textSecondary,
+                                colorScheme
+                            )
                         }
                     }
                 }
@@ -296,11 +302,12 @@ fun CompactKpiCard(
     kpi: KPI,
     primaryColor: Color,
     textPrimary: Color,
-    textSecondary: Color
+    textSecondary: Color,
+    colorScheme: androidx.compose.material3.ColorScheme
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = surfaceContainerLowLight),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(1.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -357,13 +364,13 @@ fun CompactKpiCard(
             // Trend indicator - more compact
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = if (kpi.trend.startsWith("+")) successLight.copy(0.1f) else errorLight.copy(0.1f)
+                color = if (kpi.trend.startsWith("+")) colorScheme.primary.copy(0.1f) else colorScheme.error.copy(0.1f)
             ) {
                 Text(
                     text = kpi.trend,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = if (kpi.trend.startsWith("+")) successLight else errorLight,
+                        color = if (kpi.trend.startsWith("+")) colorScheme.primary else colorScheme.error,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp
                     )
@@ -382,9 +389,11 @@ fun AnalyticsGraphSection(
     textSecondary: Color,
     borderColor: Color
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Card(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = surfaceContainerLowLight),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -431,9 +440,18 @@ fun AnalyticsGraphSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatItem("Views", "1,284", "+18%", textPrimary, textSecondary)
-                StatItem("Leads", "342", "+24%", textPrimary, textSecondary)
-                StatItem("CTR", "4.2%", "-2%", textPrimary, textSecondary)
+                StatItem(
+                    "Views", "1,284", "+18%",
+                    textPrimary, textSecondary, colorScheme
+                )
+                StatItem(
+                    "Leads", "342", "+24%",
+                    textPrimary, textSecondary, colorScheme
+                )
+                StatItem(
+                    "CTR", "4.2%", "-2%",
+                    textPrimary, textSecondary, colorScheme
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -476,7 +494,8 @@ fun StatItem(
     value: String,
     change: String,
     textPrimary: Color,
-    textSecondary: Color
+    textSecondary: Color,
+    colorScheme: androidx.compose.material3.ColorScheme
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -500,7 +519,7 @@ fun StatItem(
         Text(
             text = change,
             style = MaterialTheme.typography.labelSmall.copy(
-                color = if (change.startsWith("+")) successLight else errorLight,
+                color = if (change.startsWith("+")) colorScheme.primary else colorScheme.error,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 10.sp
             )
@@ -530,6 +549,8 @@ fun QuickActionsSection(
     textPrimary: Color,
     textSecondary: Color
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Column {
         SectionHeader("Quick Actions", "Post new", textPrimary, textSecondary)
         Spacer(modifier = Modifier.height(16.dp))
@@ -542,7 +563,12 @@ fun QuickActionsSection(
                 QuickAction(Icons.Rounded.Handshake, "List Service", "Contractor", primaryColor)
             )
             items(actions.size) { index ->
-                QuickActionCard(actions[index], textPrimary, textSecondary)
+                QuickActionCard(
+                    actions[index],
+                    textPrimary,
+                    textSecondary,
+                    colorScheme
+                )
             }
         }
     }
@@ -552,12 +578,13 @@ fun QuickActionsSection(
 fun QuickActionCard(
     action: QuickAction,
     textPrimary: Color,
-    textSecondary: Color
+    textSecondary: Color,
+    colorScheme: androidx.compose.material3.ColorScheme
 ) {
     Card(
         onClick = { /* Navigate to post form */ },
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = surfaceContainerLowLight),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier.width(140.dp)
     ) {
@@ -659,7 +686,7 @@ fun SmartMatchInsightSection(
                 onClick = { /* Navigate to SmartMatch */ },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = accentColor,
-                    contentColor = Color.White
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
@@ -678,13 +705,15 @@ fun BusinessManagementSection(
     borderColor: Color,
     onMyListingsClick: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Column {
         SectionHeader("Business Management", "3 active listings", textPrimary, textSecondary)
         Spacer(modifier = Modifier.height(12.dp))
 
         Card(
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = surfaceContainerLowLight),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainerLow),
             elevation = CardDefaults.cardElevation(2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -697,6 +726,7 @@ fun BusinessManagementSection(
                     color = primaryColor,
                     textPrimary = textPrimary,
                     textSecondary = textSecondary,
+                    colorScheme = colorScheme,
                     onClick = onMyListingsClick
                 )
 
@@ -712,7 +742,8 @@ fun BusinessManagementSection(
                     value = "12 pending",
                     color = primaryColor,
                     textPrimary = textPrimary,
-                    textSecondary = textSecondary
+                    textSecondary = textSecondary,
+                    colorScheme = colorScheme
                 )
 
                 HorizontalDivider(
@@ -727,7 +758,8 @@ fun BusinessManagementSection(
                     value = "8 unread",
                     color = primaryColor,
                     textPrimary = textPrimary,
-                    textSecondary = textSecondary
+                    textSecondary = textSecondary,
+                    colorScheme = colorScheme
                 )
 
                 HorizontalDivider(
@@ -742,7 +774,8 @@ fun BusinessManagementSection(
                     value = "2 escrow",
                     color = primaryColor,
                     textPrimary = textPrimary,
-                    textSecondary = textSecondary
+                    textSecondary = textSecondary,
+                    colorScheme = colorScheme
                 )
             }
         }
@@ -758,6 +791,7 @@ fun BusinessItem(
     color: Color,
     textPrimary: Color,
     textSecondary: Color,
+    colorScheme: androidx.compose.material3.ColorScheme,
     badge: String? = null,
     onClick: () -> Unit = {}
 ) {
@@ -847,9 +881,11 @@ fun WalletTrustSection(
     textSecondary: Color,
     borderColor: Color
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Card(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = surfaceContainerLowLight),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -879,14 +915,14 @@ fun WalletTrustSection(
                     Icon(
                         Icons.Outlined.Verified,
                         contentDescription = null,
-                        tint = successLight,
+                        tint = colorScheme.primary,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         "Trust Score: 98",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = successLight,
+                            color = colorScheme.primary,
                             fontWeight = FontWeight.Medium
                         )
                     )
@@ -897,12 +933,13 @@ fun WalletTrustSection(
                 Button(
                     onClick = { /* Deposit */ },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = primaryColor
+                        containerColor = primaryColor,
+                        contentColor = colorScheme.onPrimary
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.width(100.dp)
                 ) {
-                    Text("Deposit", fontSize = 12.sp, color = onPrimaryLight)
+                    Text("Deposit", fontSize = 12.sp)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
@@ -930,6 +967,8 @@ fun RecentActivitySection(
     textSecondary: Color,
     borderColor: Color
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -945,12 +984,12 @@ fun RecentActivitySection(
             Activity("New application", "Electrician needed • 12 Applied", Icons.Outlined.Description, primaryColor),
             Activity("Message received", "Sarah responded to your inquiry", Icons.Outlined.Chat, accentColor),
             Activity("Booking confirmed", "Moving service • Tomorrow 10AM", Icons.Outlined.Event, primaryColor),
-            Activity("Payment received", "KES 3,500 • Job completed", Icons.Outlined.Payment, successLight)
+            Activity("Payment received", "KES 3,500 • Job completed", Icons.Outlined.Payment, colorScheme.primary)
         )
 
         Card(
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = surfaceContainerLowLight),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainerLow),
             elevation = CardDefaults.cardElevation(2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -1056,7 +1095,6 @@ fun SectionHeader(
 }
 
 /* ────────────── COLLAPSIBLE HEADER ────────────── */
-/* ────────────── COLLAPSIBLE HEADER ────────────── */
 @Composable
 fun DashboardHeroHeader(
     primaryColor: Color,
@@ -1066,14 +1104,15 @@ fun DashboardHeroHeader(
     onSurfaceColor: Color,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     val collapsed = collapseFraction > 0.85f
 
     val maxFontSize = 34.sp
     val minFontSize = 24.sp
 
-    // Animate background color based on collapse state - using the same teal color
+    // Animate background color based on collapse state
     val backgroundColor by animateColorAsState(
-        targetValue = if (collapsed) primaryColor.copy(alpha = 0.95f) else Color.Transparent,
+        targetValue = if (collapsed) colorScheme.primary.copy(alpha = 0.95f) else Color.Transparent,
         animationSpec = tween(durationMillis = 300)
     )
 
@@ -1104,14 +1143,14 @@ fun DashboardHeroHeader(
                 )
             }
 
-            // Solid color background for collapsed state - using primaryColor (teal)
+            // Solid color background for collapsed state
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(backgroundColor)
             )
 
-            // Gradient overlay - only visible when not collapsed - using teal gradient
+            // Gradient overlay - only visible when not collapsed
             AnimatedVisibility(
                 visible = !collapsed,
                 enter = fadeIn(),
@@ -1123,8 +1162,8 @@ fun DashboardHeroHeader(
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    primaryColor.copy(0.95f),
-                                    primaryColor.copy(0.75f),
+                                    colorScheme.primary.copy(0.95f),
+                                    colorScheme.primary.copy(0.75f),
                                     Color.Transparent
                                 )
                             )
@@ -1132,7 +1171,7 @@ fun DashboardHeroHeader(
                 )
             }
 
-            // Golden Accent - only visible when not collapsed - using accentColor (gold)
+            // Golden Accent - only visible when not collapsed
             AnimatedVisibility(
                 visible = !collapsed,
                 enter = fadeIn(),
@@ -1143,7 +1182,7 @@ fun DashboardHeroHeader(
                         .fillMaxSize()
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(accentColor.copy(0.15f), Color.Transparent),
+                                colors = listOf(colorScheme.tertiary.copy(0.15f), Color.Transparent),
                                 endX = 400f
                             )
                         )
@@ -1174,12 +1213,12 @@ fun DashboardHeroHeader(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box {
-                                HeaderAvatarDashboard(primaryColor)
+                                HeaderAvatarDashboard(colorScheme)
                                 Box(
                                     modifier = Modifier
                                         .size(12.dp)
-                                        .background(accentColor, CircleShape)
-                                        .border(2.dp, primaryColor, CircleShape)
+                                        .background(colorScheme.tertiary, CircleShape)
+                                        .border(2.dp, colorScheme.primary, CircleShape)
                                         .align(Alignment.BottomEnd)
                                 )
                             }
@@ -1299,8 +1338,8 @@ fun DashboardHeroHeader(
 @Composable
 fun HeaderActionIconDashboard(
     icon: ImageVector,
-    iconTint: Color = onSurfaceLight,
-    backgroundTint: Color = onSurfaceLight.copy(alpha = 0.2f),
+    iconTint: Color = MaterialTheme.colorScheme.onSurface,
+    backgroundTint: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
     onClick: () -> Unit
 ) {
     IconButton(
@@ -1325,19 +1364,19 @@ fun HeaderActionIconDashboard(
 }
 
 @Composable
-fun HeaderAvatarDashboard(primaryColor: Color) {
+fun HeaderAvatarDashboard(colorScheme: androidx.compose.material3.ColorScheme) {
     Box(
         modifier = Modifier
             .size(45.dp)
-            .background(onSurfaceLight.copy(0.2f), CircleShape)
-            .border(1.5.dp, onSurfaceLight.copy(0.5f), CircleShape)
+            .background(colorScheme.onSurface.copy(0.2f), CircleShape)
+            .border(1.5.dp, colorScheme.onSurface.copy(0.5f), CircleShape)
             .clip(CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Default.PersonOutline,
             contentDescription = "User Avatar",
-            tint = onSurfaceLight,
+            tint = colorScheme.onSurface,
             modifier = Modifier.size(24.dp)
         )
     }

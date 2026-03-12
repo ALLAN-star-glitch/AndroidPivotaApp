@@ -12,12 +12,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.pivota.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PostJobTopBar(
     onBack: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     CenterAlignedTopAppBar(
         title = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -25,12 +28,12 @@ fun PostJobTopBar(
                     text = "Create Job Post",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF006565) // Pivota Teal
+                    color = colorScheme.primary // Pivota Teal / African Sapphire
                 )
                 Text(
                     text = "Step 1 of 1", // Simplified for MVP1
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray
+                    color = colorScheme.onSurfaceVariant
                 )
             }
         },
@@ -39,7 +42,7 @@ fun PostJobTopBar(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color(0xFF006565)
+                    tint = colorScheme.primary
                 )
             }
         },
@@ -49,14 +52,14 @@ fun PostJobTopBar(
                 Icon(
                     imageVector = Icons.Outlined.HelpOutline,
                     contentDescription = "Help",
-                    tint = Color.Gray,
+                    tint = colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(22.dp)
                 )
             }
         },
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = Color.White,
-            scrolledContainerColor = Color.White
+            containerColor = colorScheme.surface,
+            scrolledContainerColor = colorScheme.surface
         )
     )
 }

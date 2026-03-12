@@ -76,9 +76,9 @@ fun LoginFormContent(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                painter = painterResource(id = R.drawable.logo),
+                painter = painterResource(id = R.drawable.pivotaconnect_logo_transparent),
                 contentDescription = "Pivota Connect Logo",
-                modifier = Modifier.size(100.dp)
+                modifier = Modifier.size(200.dp)
             )
             Spacer(Modifier.height(16.dp))
             Text(

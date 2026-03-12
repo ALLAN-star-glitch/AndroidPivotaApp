@@ -3,16 +3,19 @@ package com.example.pivota.listings.presentation.composables.jobs
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.pivota.listings.presentation.viewmodel.PostJobViewModel
+import com.example.pivota.ui.theme.*
 
 @Composable
 fun JobPostFormContent(
     viewModel: PostJobViewModel
 ) {
     val scrollState = rememberScrollState()
+    val colorScheme = MaterialTheme.colorScheme
 
     // We use a Column with verticalScroll for the form editor
     Column(
@@ -23,6 +26,8 @@ fun JobPostFormContent(
     ) {
         // Section 1: Guidance Banner (Sticky-ish)
         SmartMatchGuidanceBanner()
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Section 2: Job Type Selection (Informal vs Formal)
         // This drives the visibility of other sections
