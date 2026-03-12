@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bathtub
 import androidx.compose.material.icons.outlined.Bed
 import androidx.compose.material.icons.outlined.CalendarToday
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Share
@@ -53,7 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.R
 import com.example.pivota.listings.domain.models.HousingPost
-import com.example.pivota.listings.presentation.composables.housing.HousingTopBar
+import com.example.pivota.core.presentations.composables.TopBar
 import java.text.NumberFormat
 import java.util.Date
 import java.util.Locale
@@ -97,7 +96,7 @@ fun BookViewingScreen() {
 
     Scaffold(
         topBar = {
-            HousingTopBar(
+            TopBar(
                 title = "House details",
                 onBack = {
                     // TODO navigate back
