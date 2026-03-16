@@ -2,8 +2,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import com.example.pivota.dashboard.presentation.composables.Dashboard
 import com.example.pivota.dashboard.presentation.composables.Discover
+import com.example.pivota.dashboard.presentation.composables.Professionals
 import com.example.pivota.dashboard.presentation.composables.Profile
-import com.example.pivota.dashboard.presentation.composables.Providers
 import com.example.pivota.dashboard.presentation.composables.SmartMatch
 
 import com.example.pivota.dashboard.presentation.composables.TopLevelRoute
@@ -18,8 +18,8 @@ val topLevelRoutes = listOf(
         requiresAuth = true
     ),
     TopLevelRoute(
-        route = Providers,
-        label = "Providers",
+        route = Professionals,
+        label = "Pros",
         icon = Icons.Default.Groups,
         contentDescription = "Browse Service Providers",
         requiresAuth = false

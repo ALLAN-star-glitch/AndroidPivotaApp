@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 // Top-level dashboard routes
 @Serializable object Dashboard
-@Serializable object Providers
+@Serializable object Professionals
 @Serializable object Discover
 @Serializable object SmartMatch
 @Serializable object Profile
@@ -17,3 +17,7 @@ import kotlinx.serialization.Serializable
 
 
 @Serializable object MyListings
+
+@Serializable object HouseListings
+
+@Serializable object JobListings

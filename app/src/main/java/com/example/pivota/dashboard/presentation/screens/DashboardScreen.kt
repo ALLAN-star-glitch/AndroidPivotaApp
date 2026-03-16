@@ -114,7 +114,7 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
         topBar = {
             DashboardHeroHeader(
                 primaryColor = colorScheme.primary,
-                accentColor = colorScheme.tertiary,
+                accentColor = colorScheme.tertiaryContainer,
                 height = animatedHeight,
                 collapseFraction = collapseFraction,
                 onSurfaceColor = colorScheme.onSurface
