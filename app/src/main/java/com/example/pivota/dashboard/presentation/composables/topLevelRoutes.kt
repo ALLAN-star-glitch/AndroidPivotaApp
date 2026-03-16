@@ -19,7 +19,7 @@ val topLevelRoutes = listOf(
     ),
     TopLevelRoute(
         route = Professionals,
-        label = "Pros",
+        label = "Pros", // short form
         icon = Icons.Default.Groups,
         contentDescription = "Browse Service Providers",
         requiresAuth = false
