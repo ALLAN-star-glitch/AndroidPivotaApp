@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable object Dashboard
 @Serializable object Professionals
 @Serializable object Discover
-@Serializable object Favorites
+@Serializable object SmartMatch
 @Serializable object Profile
 
 // Specific Posting Flow routes (Type-Safe)
@@ -16,29 +16,8 @@ import kotlinx.serialization.Serializable
 @Serializable object PostService
 
 
-
 @Serializable object MyListings
 
 @Serializable object HouseListings
 
 @Serializable object JobListings
-
-@Serializable
-data object BookViewing
-
-@Serializable
-data object  HouseDetails
-
-@Serializable
-data object AdminHouseDetails
-
-@Serializable
-object JobDetails
-
-@Serializable
-object JobApplicationForm // Optional - if you want an application form screen
-
-@Serializable
-object AdminJobDetails
-
-// Add more routes as needed
