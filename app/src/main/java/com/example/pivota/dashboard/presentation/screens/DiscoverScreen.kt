@@ -37,21 +37,26 @@ import com.example.pivota.R
 import com.example.pivota.dashboard.domain.EmployerType
 import com.example.pivota.dashboard.presentation.composables.ModernHousingCard
 import com.example.pivota.dashboard.presentation.composables.ModernJobCard
-import com.example.pivota.dashboard.presentation.composables.ModernProviderCard
-
-
-
+import com.example.pivota.dashboard.presentation.composables.ModernProfessionalCard
 
 @SuppressLint("FrequentlyChangingValue")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DiscoverScreen() {
+fun DiscoverScreen(
+    onNavigateToHouseListings: () -> Unit = {},
+    onNavigateToJobListings: () -> Unit = {},
+    onNavigateToAllJobs: () -> Unit = {},
+    onNavigateToAllHousing: () -> Unit = {},
+    onNavigateToAllProviders: () -> Unit = {},
+    onNavigateToAllServices: () -> Unit = {},
+    onNavigateToAllSupport: () -> Unit = {}
+) {
     val colorScheme = MaterialTheme.colorScheme
 
     // 🎨 Brand Palette - Using theme colors
     val primaryColor = colorScheme.primary
     val secondaryColor = colorScheme.secondary
-    val tertiaryColor = colorScheme.tertiary
+    val tertiaryColor = colorScheme.tertiaryContainer
     val softBackground = colorScheme.background
 
     val listState = rememberLazyListState()
@@ -59,6 +64,9 @@ fun DiscoverScreen() {
     // State for search
     var searchQuery by remember { mutableStateOf("") }
     var isRecording by remember { mutableStateOf(false) }
+
+    // State for selected filters
+    var selectedFilters by remember { mutableStateOf(setOf<String>()) }
 
     // Get screen width for responsive card sizing
     val configuration = LocalConfiguration.current
@@ -100,6 +108,20 @@ fun DiscoverScreen() {
         }
     }
 
+    // Watch for filter selection to trigger navigation
+    LaunchedEffect(selectedFilters) {
+        when {
+            selectedFilters.contains("Houses") -> {
+                onNavigateToHouseListings()
+                selectedFilters = selectedFilters - "Houses"
+            }
+            selectedFilters.contains("Jobs") -> {
+                onNavigateToJobListings()
+                selectedFilters = selectedFilters - "Jobs"
+            }
+        }
+    }
+
     Scaffold(
         containerColor = softBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -123,9 +145,15 @@ fun DiscoverScreen() {
                     )
                 }
 
-                // 📋 1. Jobs Near You
+                // In your DiscoverScreen, update all ModernJobCard calls to include description:
+
+// 📋 1. Jobs Near You
                 item {
-                    ModernSectionHeader("Jobs Near You", "View all jobs →")
+                    ModernSectionHeader(
+                        title = "Jobs Near You",
+                        actionText = "View all jobs →",
+                        onActionClick = onNavigateToAllJobs
+                    )
                 }
                 item {
                     ModernHorizontalList(
@@ -137,10 +165,12 @@ fun DiscoverScreen() {
                                     location = "Upper Hill",
                                     salary = "KSh 3,500/day",
                                     type = "Contract",
+                                    description = "Experienced foreman needed for high-rise construction project. Must have 5+ years experience.", // Added description
                                     isVerified = true,
                                     employerType = EmployerType.ORGANIZATION,
-                                    onViewClick = {},
-                                    onApplyClick = {}
+                                    profileImageRes = R.drawable.job_placeholder3, // Optional: add image
+                                    onViewClick = { /* Navigate to job details */ },
+                                    onApplyClick = { /* Handle apply */ }
                                 )
                             },
                             {
@@ -150,10 +180,12 @@ fun DiscoverScreen() {
                                     location = "Westlands",
                                     salary = "KSh 55,000/month",
                                     type = "Full-time",
+                                    description = "CPA qualified accountant with 2+ years experience in financial reporting.", // Added description
                                     isVerified = true,
                                     employerType = EmployerType.ORGANIZATION,
-                                    onViewClick = {},
-                                    onApplyClick = {}
+                                    profileImageRes = R.drawable.job_placeholder2, // Optional: add image
+                                    onViewClick = { /* Navigate to job details */ },
+                                    onApplyClick = { /* Handle apply */ }
                                 )
                             },
                             {
@@ -163,10 +195,12 @@ fun DiscoverScreen() {
                                     location = "Mombasa Rd",
                                     salary = "KSh 25,000/month",
                                     type = "Full-time",
+                                    description = "Inventory management, stock taking, and supply chain coordination.", // Added description
                                     isVerified = false,
                                     employerType = EmployerType.ORGANIZATION,
-                                    onViewClick = {},
-                                    onApplyClick = {}
+                                    profileImageRes = R.drawable.job_placeholder4, // Optional: add image
+                                    onViewClick = { /* Navigate to job details */ },
+                                    onApplyClick = { /* Handle apply */ }
                                 )
                             },
                             {
@@ -176,10 +210,12 @@ fun DiscoverScreen() {
                                     location = "Karen",
                                     salary = "KSh 40,000/month",
                                     type = "Contract",
+                                    description = "Solar panel installation and maintenance. Technical certification required.", // Added description
                                     isVerified = true,
                                     employerType = EmployerType.ORGANIZATION,
-                                    onViewClick = {},
-                                    onApplyClick = {}
+                                    profileImageRes = R.drawable.job_placeholder5, // Optional: add image
+                                    onViewClick = { /* Navigate to job details */ },
+                                    onApplyClick = { /* Handle apply */ }
                                 )
                             }
                         ),
@@ -189,7 +225,11 @@ fun DiscoverScreen() {
 
                 // 📋 2. Housing Opportunities
                 item {
-                    ModernSectionHeader("Housing Opportunities", "Browse all →")
+                    ModernSectionHeader(
+                        title = "Housing Opportunities",
+                        actionText = "Browse all →",
+                        onActionClick = onNavigateToAllHousing
+                    )
                 }
                 item {
                     ModernHorizontalList(
@@ -205,8 +245,12 @@ fun DiscoverScreen() {
                                     description = "Self-contained bedsitter with parking, near Tuskys",
                                     isForSale = false,
                                     imageRes = R.drawable.property_placeholder1,
-                                    onViewClick = {},
-                                    onBookClick = {}
+                                    onViewClick = { /* Navigate to property details */ },
+                                    onBookClick = { /* Handle booking */ },
+                                    bedrooms = 1,
+                                    bathrooms = 1,
+                                    squareMeters = 70,
+                                    onClick = { /* Handle click */ }
                                 )
                             },
                             {
@@ -220,8 +264,12 @@ fun DiscoverScreen() {
                                     description = "Spacious 2BR with balcony, fitted kitchen, 24/7 security",
                                     isForSale = false,
                                     imageRes = R.drawable.property_placeholder2,
-                                    onViewClick = {},
-                                    onBookClick = {}
+                                    onViewClick = { /* Navigate to property details */ },
+                                    onBookClick = { /* Handle booking */ },
+                                    bedrooms = 2,
+                                    bathrooms = 2,
+                                    squareMeters = 85,
+                                    onClick = {}
                                 )
                             },
                             {
@@ -235,8 +283,12 @@ fun DiscoverScreen() {
                                     description = "4BR villa with garden, pool, and servant quarters",
                                     isForSale = true,
                                     imageRes = R.drawable.property_placeholder3,
-                                    onViewClick = {},
-                                    onBookClick = {}
+                                    onViewClick = { /* Navigate to property details */ },
+                                    onBookClick = { /* Handle booking */ },
+                                    bedrooms = 4,
+                                    bathrooms = 4,
+                                    squareMeters = 350,
+                                    onClick = {}
                                 )
                             },
                             {
@@ -250,8 +302,12 @@ fun DiscoverScreen() {
                                     description = "Modern studio, near Yaya Centre, water included",
                                     isForSale = false,
                                     imageRes = R.drawable.property_placeholder4,
-                                    onViewClick = {},
-                                    onBookClick = {}
+                                    onViewClick = { /* Navigate to property details */ },
+                                    onBookClick = { /* Handle booking */ },
+                                    bedrooms = 1,
+                                    bathrooms = 1,
+                                    squareMeters = 45,
+                                    onClick = {}
                                 )
                             }
                         ),
@@ -261,61 +317,65 @@ fun DiscoverScreen() {
 
                 // 🛠️ 3. Trusted Service Providers
                 item {
-                    ModernSectionHeader("Trusted Service Providers", "See all →")
+                    ModernSectionHeader(
+                        title = "Trusted Service Providers",
+                        actionText = "See all →",
+                        onActionClick = onNavigateToAllProviders
+                    )
                 }
                 item {
                     ModernHorizontalList(
                         items = listOf(
                             {
-                                ModernProviderCard(
+                                ModernProfessionalCard(
                                     name = "QuickMovers Kenya",
                                     specialty = "Moving & Logistics",
                                     rating = 4.9f,
                                     jobs = 342,
                                     isVerified = true,
                                     description = "Professional moving services across Nairobi",
-                                    onCardClick = {},
-                                    onViewClick = {},
-                                    onBookClick = {}
+                                    onCardClick = { /* Navigate to provider details */ },
+                                    onViewClick = { /* Handle view */ },
+                                    onBookClick = { /* Handle booking */ }
                                 )
                             },
                             {
-                                ModernProviderCard(
+                                ModernProfessionalCard(
                                     name = "Fundi Digital",
                                     specialty = "Electrical & Plumbing",
                                     rating = 4.7f,
                                     jobs = 256,
                                     isVerified = true,
                                     description = "24/7 emergency electrical services",
-                                    onCardClick = {},
-                                    onViewClick = {},
-                                    onBookClick = {}
+                                    onCardClick = { /* Navigate to provider details */ },
+                                    onViewClick = { /* Handle view */ },
+                                    onBookClick = { /* Handle booking */ }
                                 )
                             },
                             {
-                                ModernProviderCard(
+                                ModernProfessionalCard(
                                     name = "CleanPro Services",
                                     specialty = "Cleaning & Maintenance",
                                     rating = 4.8f,
                                     jobs = 189,
                                     isVerified = true,
                                     description = "Professional cleaning for homes and offices",
-                                    onCardClick = {},
-                                    onViewClick = {},
-                                    onBookClick = {}
+                                    onCardClick = { /* Navigate to provider details */ },
+                                    onViewClick = { /* Handle view */ },
+                                    onBookClick = { /* Handle booking */ }
                                 )
                             },
                             {
-                                ModernProviderCard(
+                                ModernProfessionalCard(
                                     name = "SolarTech",
                                     specialty = "Solar Installation",
                                     rating = 4.6f,
                                     jobs = 112,
                                     isVerified = false,
                                     description = "Solar panel installation and maintenance",
-                                    onCardClick = {},
-                                    onViewClick = {},
-                                    onBookClick = {}
+                                    onCardClick = { /* Navigate to provider details */ },
+                                    onViewClick = { /* Handle view */ },
+                                    onBookClick = { /* Handle booking */ }
                                 )
                             }
                         ),
@@ -325,7 +385,11 @@ fun DiscoverScreen() {
 
                 // ⚡ 4. Quick Services Grid
                 item {
-                    ModernSectionHeader("Common Services", "Browse categories →")
+                    ModernSectionHeader(
+                        title = "Common Services",
+                        actionText = "Browse categories →",
+                        onActionClick = onNavigateToAllServices
+                    )
                 }
                 item {
                     ModernServiceGrid(
@@ -335,7 +399,11 @@ fun DiscoverScreen() {
 
                 // 🤝 5. Social Support
                 item {
-                    ModernSectionHeader("Social Support & Services", "Get help →")
+                    ModernSectionHeader(
+                        title = "Social Support & Services",
+                        actionText = "Get help →",
+                        onActionClick = onNavigateToAllSupport
+                    )
                 }
                 items(3) { index ->
                     val supports = listOf(
@@ -379,6 +447,14 @@ fun DiscoverScreen() {
                 headerHeight = animatedHeight,
                 showShadow = isPastThreshold.value,
                 colorScheme = colorScheme,
+                selectedFilters = selectedFilters,
+                onFilterSelected = { filter ->
+                    selectedFilters = if (selectedFilters.contains(filter)) {
+                        selectedFilters - filter
+                    } else {
+                        selectedFilters + filter
+                    }
+                },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .zIndex(1f)
@@ -400,7 +476,9 @@ fun FixedSearchSection(
     accentColor: Color,
     headerHeight: Dp,
     showShadow: Boolean,
-    colorScheme: androidx.compose.material3.ColorScheme,
+    colorScheme: ColorScheme,
+    selectedFilters: Set<String>,
+    onFilterSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val elevation by animateDpAsState(
@@ -449,8 +527,8 @@ fun FixedSearchSection(
 
                 // Filter Pills
                 FilterPillsRow(
-                    selectedFilters = emptySet(),
-                    onFilterSelected = { },
+                    selectedFilters = selectedFilters,
+                    onFilterSelected = onFilterSelected,
                     accentColor = accentColor,
                     colorScheme = colorScheme
                 )
@@ -470,7 +548,7 @@ fun SearchBarWithAudio(
     onAudioClick: () -> Unit,
     isRecording: Boolean,
     accentColor: Color,
-    colorScheme: androidx.compose.material3.ColorScheme
+    colorScheme: ColorScheme
 ) {
     Surface(
         modifier = Modifier
@@ -584,7 +662,7 @@ fun FilterPillsRow(
     selectedFilters: Set<String>,
     onFilterSelected: (String) -> Unit,
     accentColor: Color,
-    colorScheme: androidx.compose.material3.ColorScheme
+    colorScheme: ColorScheme
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -643,7 +721,11 @@ fun FilterPillsRow(
 /* ────────────── MODIFIED COMPONENTS ────────────── */
 
 @Composable
-fun ModernSectionHeader(title: String, actionText: String) {
+fun ModernSectionHeader(
+    title: String,
+    actionText: String,
+    onActionClick: () -> Unit = {}
+) {
     val colorScheme = MaterialTheme.colorScheme
 
     Row(
@@ -667,7 +749,7 @@ fun ModernSectionHeader(title: String, actionText: String) {
             color = colorScheme.primary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
-            modifier = Modifier.clickable { /* Navigate to all */ }
+            modifier = Modifier.clickable { onActionClick() }
         )
     }
 }
@@ -701,7 +783,7 @@ fun ModernSupportCard(
     service: String,
     location: String,
     isUrgent: Boolean,
-    colorScheme: androidx.compose.material3.ColorScheme
+    colorScheme: ColorScheme
 ) {
     val primaryColor = colorScheme.primary
     val tertiaryColor = colorScheme.tertiary
@@ -795,7 +877,7 @@ fun ModernSupportCard(
 
 @Composable
 fun ModernServiceGrid(
-    colorScheme: androidx.compose.material3.ColorScheme
+    colorScheme: ColorScheme
 ) {
     val services = listOf(
         "Movers" to Icons.Outlined.LocalShipping,
@@ -864,7 +946,7 @@ fun DiscoverHeroHeader(
     gold: Color,
     height: Dp,
     collapseFraction: Float,
-    colorScheme: androidx.compose.material3.ColorScheme,
+    colorScheme: ColorScheme,
     modifier: Modifier = Modifier
 ) {
     val collapsed = collapseFraction > 0.85f
@@ -970,7 +1052,7 @@ fun DiscoverHeroHeader(
                                 Box(
                                     modifier = Modifier
                                         .size(12.dp)
-                                        .background(colorScheme.tertiary, CircleShape)
+                                        .background(colorScheme.tertiaryContainer, CircleShape)
                                         .border(2.dp, colorScheme.primary, CircleShape)
                                         .align(Alignment.BottomEnd)
                                 )
@@ -1108,7 +1190,7 @@ fun HeaderActionIcon(
 }
 
 @Composable
-fun HeaderAvatar(colorScheme: androidx.compose.material3.ColorScheme) {
+fun HeaderAvatar(colorScheme: ColorScheme) {
     Box(
         modifier = Modifier
             .size(45.dp)

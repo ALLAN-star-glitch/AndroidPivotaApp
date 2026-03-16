@@ -82,7 +82,6 @@ fun DashboardScaffold() {
         )
     ) {
         Scaffold(
-            // Set insets to 0 to prevent the inner Scaffold from adding another layer of padding
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             floatingActionButton = {
                 PulsingPostFab(onClick = { showSheet = true })
@@ -101,10 +100,70 @@ fun DashboardScaffold() {
                             }
                         )
                     }
-                    composable<Providers> { ProvidersScreen() }
-                    composable<Discover> { DiscoverScreen() }
+                    composable<Professionals> { ProfessionalsScreen() }
+                    composable<Discover> {
+                        DiscoverScreen(
+                            onNavigateToHouseListings = {
+                                navController.navigate(HouseListings)
+                            },
+                            onNavigateToJobListings = {
+                                navController.navigate(JobListings)
+                            },
+                            onNavigateToAllJobs = {
+                                navController.navigate(JobListings)
+                            },
+                            onNavigateToAllHousing = {
+                                navController.navigate(HouseListings)
+                            },
+                            onNavigateToAllProviders = {
+                                // Navigate to professionals listing screen when created
+                                // navController.navigate(ProvidersListings)
+                            },
+                            onNavigateToAllServices = {
+                                // Navigate to services listing screen when created
+                                // navController.navigate(ServicesListings)
+                            },
+                            onNavigateToAllSupport = {
+                                // Navigate to support listing screen when created
+                                // navController.navigate(SupportListings)
+                            }
+                        )
+                    }
                     composable<SmartMatch> { SmartMatchScreen() }
                     composable<Profile> { ProfileScreen() }
+
+                    // Add HouseListings route
+                    composable<HouseListings> {
+                        HouseListingsScreen(
+                            onListingClick = { housingListing ->
+                                // Navigate to listing details if needed
+                                // navController.navigate("house_details/${housingListing.id}")
+                            },
+                            onPostListingClick = {
+                                showSheet = true
+                            },
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    // Add JobListings route
+                    composable<JobListings> {
+                        JobListingsScreen(
+                            onListingClick = { jobListing ->
+                                // Navigate to listing details if needed
+                                // navController.navigate("job_details/${jobListing.id}")
+                            },
+                            onPostListingClick = {
+                                showSheet = true
+                            },
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+
                     // Type-Safe Posting Flows
                     composable<PostJob> {
                         JobPostScreen.Content(onBack = { navController.popBackStack() })
@@ -113,18 +172,14 @@ fun DashboardScaffold() {
                         HousingPostScreen.Content(onBack = { navController.popBackStack() })
                     }
                     composable<MyListings> {
-                        // We don't need to manually pass listings or filters here anymore.
-                        // The MyListingsScreen will internally collect them from the ViewModel.
-                             MyListingsScreen(
+                        MyListingsScreen(
                             onListingClick = { listingUiModel ->
                                 // Example: navController.navigate("listing_details/${listingUiModel.id}")
                             },
                             onPostListingClick = {
-                                // This interacts with the showSheet state in your DashboardScaffold
                                 showSheet = true
                             },
-                            viewModel = MyListingsViewModel()
-                        ,
+                            viewModel = MyListingsViewModel(),
                             onNavigateBack = {}
                         )
                     }

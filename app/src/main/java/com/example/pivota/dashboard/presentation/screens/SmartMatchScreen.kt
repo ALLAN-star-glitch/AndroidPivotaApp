@@ -29,7 +29,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
@@ -39,7 +38,7 @@ import com.example.pivota.R
 import com.example.pivota.dashboard.domain.EmployerType
 import com.example.pivota.dashboard.presentation.composables.ModernJobCard
 import com.example.pivota.dashboard.presentation.composables.ModernHousingCard
-import com.example.pivota.dashboard.presentation.composables.ModernProviderCard
+import com.example.pivota.dashboard.presentation.composables.ModernProfessionalCard
 import kotlinx.coroutines.delay
 
 // Updated data classes for different content types
@@ -49,6 +48,7 @@ sealed class SmartMatchItem {
         val name: String,
         val businessName: String?,
         val profileImageUrl: String?,
+        val profileImageRes: Int? = null, // Added for drawable resources
         val rating: Double,
         val reviewCount: Int,
         val description: String,
@@ -69,10 +69,12 @@ sealed class SmartMatchItem {
         val location: String,
         val salary: String,
         val jobType: String,
+        val description: String, // Added description field
         val postedTime: String,
         val matchScore: Int,
         val matchReason: String,
-        val isRemote: Boolean
+        val isRemote: Boolean,
+        val imageRes: Int? = null // Added for job images
     ) : SmartMatchItem()
 
     data class Housing(
@@ -96,7 +98,7 @@ data class TraySection(
     val subtitle: String?,
     val icon: ImageVector?,
     val items: List<SmartMatchItem>,
-    val viewAllAction: (() -> Unit)? = null
+    val viewAllAction: (() -> Unit)? = null,
 )
 
 @SuppressLint("FrequentlyChangingValue")
@@ -105,10 +107,10 @@ data class TraySection(
 fun SmartMatchScreen() {
     val colorScheme = MaterialTheme.colorScheme
 
-    // 🎨 Brand Palette - Using theme colors with better contrast
+    // 🎨 Brand Palette - Using theme colors
     val primaryColor = colorScheme.primary          // African Sapphire
     val secondaryColor = colorScheme.secondary      // Warm Terracotta
-    val tertiaryColor = colorScheme.tertiary        // Baobab Gold
+    val tertiaryColor = colorScheme.tertiary        // Baobab Gold (Golden Yellow)
     val softBackground = colorScheme.background
     val surfaceColor = colorScheme.surface
     val onSurfaceColor = colorScheme.onSurface
@@ -167,125 +169,134 @@ fun SmartMatchScreen() {
         }
     }
 
-    // Mock data for different trays - REMOVED "Near Your Location" section
+    // Categorized listings - REMOVED "Top Picks" section
     val allTraySections = remember {
         listOf(
-            // "Top Picks for You" - Mixed (Jobs + Houses)
+            // Jobs Section
             TraySection(
-                title = "✨ Top Picks for You",
-                subtitle = "Based on your activity",
-                icon = Icons.Outlined.AutoAwesome,
-                items = listOf(
-                    SmartMatchItem.Job(
-                        id = "job1",
-                        title = "Senior Social Worker",
-                        company = "Nairobi Children's Foundation",
-                        location = "Nairobi",
-                        salary = "KES 65K - 85K",
-                        jobType = "Full-time",
-                        postedTime = "2h ago",
-                        matchScore = 98,
-                        matchReason = "Matches your social work experience",
-                        isRemote = false
-                    ),
-                    SmartMatchItem.Housing(
-                        id = "house1",
-                        title = "Modern 2BR Apartment",
-                        propertyType = "Apartment",
-                        location = "Westlands, Nairobi",
-                        price = 45000,
-                        bedrooms = 2,
-                        bathrooms = 2,
-                        squareMeters = 85,
-                        imageRes = R.drawable.property_placeholder1,
-                        matchScore = 95,
-                        matchReason = "In your preferred area",
-                        isFurnished = true
-                    ),
-                    SmartMatchItem.Provider(
-                        id = "provider1",
-                        name = "Musa Jallow",
-                        businessName = "Musa Electrical Services",
-                        profileImageUrl = null,
-                        rating = 4.8,
-                        reviewCount = 32,
-                        description = "Expert electrical installations",
-                        experienceYears = 8,
-                        location = "Westlands",
-                        startingPrice = 1500,
-                        isVerified = true,
-                        responseTime = "10 mins",
-                        category = "Electrician",
-                        matchReason = "Top-rated in your area",
-                        matchScore = 94
-                    )
-                ),
-                viewAllAction = {}
-            ),
-
-            // "Work Opportunities" - Job Listings
-            TraySection(
-                title = "Work Opportunities",
-                subtitle = "Jobs matched to your skills",
+                title = "Jobs for You",
+                subtitle = "Matched to your skills",
                 icon = Icons.Outlined.Work,
                 items = List(5) { index ->
                     SmartMatchItem.Job(
-                        id = "job${index + 2}",
+                        id = "job${index + 1}",
                         title = when (index) {
                             0 -> "Community Health Worker"
                             1 -> "Project Manager - NGO"
-                            2 -> "Customer Support Lead"
-                            3 -> "Sales Representative"
+                            2 -> "Senior Social Worker"
+                            3 -> "Customer Support Lead"
                             else -> "Graphic Designer"
                         },
-                        company = listOf("Amref", "Save the Children", "Safaricom", "KCB", "UNICEF")[index],
-                        location = listOf("Nairobi", "Mombasa", "Kisumu", "Nakuru", "Remote")[index],
-                        salary = listOf("KES 45K", "KES 120K", "KES 55K", "KES 40K + Commission", "KES 60K")[index],
-                        jobType = listOf("Full-time", "Contract", "Full-time", "Part-time", "Remote")[index],
-                        postedTime = listOf("1d ago", "3h ago", "Just now", "2d ago", "5h ago")[index],
-                        matchScore = listOf(92, 88, 85, 82, 79)[index],
+                        company = listOf("Amref", "Save the Children", "Nairobi Children's Foundation", "Safaricom", "UNICEF")[index],
+                        location = listOf("Nairobi", "Mombasa", "Nairobi", "Kisumu", "Remote")[index],
+                        salary = listOf("KES 45K", "KES 120K", "KES 65K - 85K", "KES 55K", "KES 60K")[index],
+                        jobType = listOf("Full-time", "Contract", "Full-time", "Full-time", "Remote")[index],
+                        description = listOf(
+                            "Community health worker needed for outreach programs in informal settlements. Must speak Swahili and English.",
+                            "Experienced project manager needed for humanitarian programs. 5+ years experience required.",
+                            "Senior social worker to handle child protection cases. Must have counseling certification.",
+                            "Lead customer support team for mobile money services. Tech-savvy with leadership skills.",
+                            "Creative graphic designer for UNICEF Kenya communications team. Portfolio required."
+                        )[index],
+                        postedTime = listOf("1d ago", "3h ago", "2h ago", "Just now", "5h ago")[index],
+                        matchScore = listOf(92, 88, 98, 85, 79)[index],
                         matchReason = listOf(
                             "Healthcare background match",
                             "Leadership experience",
+                            "Social work experience",
                             "Customer service skills",
-                            "Sales experience",
                             "Portfolio review"
                         )[index],
-                        isRemote = index == 4
+                        isRemote = index == 4,
+                        imageRes = when(index) {
+                            0 -> R.drawable.job_placeholder2
+                            1 -> R.drawable.job_placeholder5
+                            2 -> R.drawable.job_placeholder5
+                            3 -> R.drawable.job_placeholder3
+                            else -> R.drawable.job_placeholder1
+                        }
                     )
                 },
                 viewAllAction = {}
             ),
 
-            // "House Opportunities" - Housing & Decor
+            // Housing Section
             TraySection(
-                title = "House Opportunities",
-                subtitle = "Based on your current housing",
+                title = "Housing Matches",
+                subtitle = "Based on your preferences",
                 icon = Icons.Outlined.Home,
                 items = List(4) { index ->
                     SmartMatchItem.Housing(
-                        id = "upgrade${index + 1}",
+                        id = "house${index + 1}",
                         title = listOf(
-                            "Interior Design Consultation",
-                            "Modern Furniture Package",
-                            "Smart Home Installation",
-                            "Paint & Renovation Services"
+                            "Modern 2BR Apartment",
+                            "Studio Apartment",
+                            "Luxury 3BR Villa",
+                            "1BR Bedsitter"
                         )[index],
-                        propertyType = listOf("Service", "Package", "Installation", "Service")[index],
-                        location = "Nairobi",
-                        price = listOf(5000, 75000, 35000, 25000)[index],
-                        bedrooms = 0,
-                        bathrooms = 0,
-                        squareMeters = 0,
-                        imageRes = R.drawable.property_placeholder1,
-                        matchScore = listOf(96, 91, 89, 87)[index],
+                        propertyType = listOf("Apartment", "Studio", "House", "Bedsitter")[index],
+                        location = listOf("Westlands", "Kilimani", "Karen", "Ruiru")[index],
+                        price = listOf(45000, 35000, 120000, 22000)[index],
+                        bedrooms = listOf(2, 0, 3, 1)[index],
+                        bathrooms = listOf(2, 1, 3, 1)[index],
+                        squareMeters = listOf(85, 40, 200, 50)[index],
+                        imageRes = when(index) {
+                            0 -> R.drawable.property_placeholder1
+                            1 -> R.drawable.property_placeholder2
+                            2 -> R.drawable.property_placeholder3
+                            else -> R.drawable.property_placeholder4
+                        },
+                        matchScore = listOf(95, 93, 90, 88)[index],
                         matchReason = listOf(
-                            "Perfect for your apartment",
-                            "Matches your style preferences",
-                            "Security upgrade",
-                            "Quick transformation"
+                            "In your preferred area",
+                            "Great location",
+                            "Perfect for families",
+                            "Affordable option"
                         )[index],
-                        isFurnished = index == 1
+                        isFurnished = index == 0
+                    )
+                },
+                viewAllAction = {}
+            ),
+
+            // Providers Section
+            TraySection(
+                title = "Recommended Providers",
+                subtitle = "Trusted partners near you",
+                icon = Icons.Outlined.Build,
+                items = List(4) { index ->
+                    SmartMatchItem.Provider(
+                        id = "provider${index + 1}",
+                        name = listOf("Musa Jallow", "Sarah Wanjiku", "James Omondi", "Pipemasters Ltd")[index],
+                        businessName = listOf("Musa Electrical Services", "Sarah Interior Designs", "Pipemasters Plumbing", null)[index],
+                        profileImageUrl = null,
+                        profileImageRes = when(index) {
+                            0 -> R.drawable.job_placeholder1
+                            1 -> R.drawable.job_placeholder3
+                            2 -> R.drawable.job_placeholder2
+                            else -> R.drawable.job_placeholder5
+                        },
+                        rating = listOf(4.8, 4.9, 4.7, 4.6)[index],
+                        reviewCount = listOf(32, 47, 28, 89)[index],
+                        description = listOf(
+                            "Expert electrical installations and repairs. Available 24/7 for emergencies.",
+                            "Award-winning interior design for homes and offices. Free consultation.",
+                            "Professional plumbing services - leaks, installations, and maintenance.",
+                            "Full-service property management for landlords and tenants."
+                        )[index],
+                        experienceYears = listOf(8, 6, 5, 10)[index],
+                        location = listOf("Westlands", "Kilimani", "Kilimani", "Mombasa")[index],
+                        startingPrice = listOf(1500, 2500, 1200, 5000)[index],
+                        isVerified = listOf(true, true, true, true)[index],
+                        responseTime = listOf("10 mins", "30 mins", "15 mins", "1 hour")[index],
+                        category = listOf("Electrician", "Designer", "Plumber", "Management")[index],
+                        matchReason = listOf(
+                            "Top-rated in your area",
+                            "Highly recommended",
+                            "Emergency services available",
+                            "Trusted partner"
+                        )[index],
+                        matchScore = listOf(94, 92, 90, 88)[index]
                     )
                 },
                 viewAllAction = {}
@@ -300,9 +311,9 @@ fun SmartMatchScreen() {
         } else {
             allTraySections.filter { section ->
                 when {
-                    selectedFilterChips.contains("Jobs") && section.title.contains("Work") -> true
-                    selectedFilterChips.contains("Housing") && (section.title.contains("House") || section.title.contains("Picks") && section.items.any { it is SmartMatchItem.Housing }) -> true
-                    selectedFilterChips.contains("Providers") && section.title.contains("Picks") && section.items.any { it is SmartMatchItem.Provider } -> true
+                    selectedFilterChips.contains("Jobs") && section.title.contains("Jobs") -> true
+                    selectedFilterChips.contains("Housing") && section.title.contains("Housing") -> true
+                    selectedFilterChips.contains("Providers") && section.title.contains("Providers") -> true
                     else -> false
                 }
             }
@@ -321,7 +332,8 @@ fun SmartMatchScreen() {
                             item.title.lowercase().contains(debouncedQuery.value) ||
                                     item.company.lowercase().contains(debouncedQuery.value) ||
                                     item.location.lowercase().contains(debouncedQuery.value) ||
-                                    item.jobType.lowercase().contains(debouncedQuery.value)
+                                    item.jobType.lowercase().contains(debouncedQuery.value) ||
+                                    item.description.lowercase().contains(debouncedQuery.value)
                         is SmartMatchItem.Housing ->
                             item.title.lowercase().contains(debouncedQuery.value) ||
                                     item.location.lowercase().contains(debouncedQuery.value) ||
@@ -330,7 +342,8 @@ fun SmartMatchScreen() {
                             item.name.lowercase().contains(debouncedQuery.value) ||
                                     item.businessName?.lowercase()?.contains(debouncedQuery.value) == true ||
                                     item.category.lowercase().contains(debouncedQuery.value) ||
-                                    item.location.lowercase().contains(debouncedQuery.value)
+                                    item.location.lowercase().contains(debouncedQuery.value) ||
+                                    item.description.lowercase().contains(debouncedQuery.value)
                     }
                 }
                 section.copy(items = filteredItems)
@@ -342,8 +355,8 @@ fun SmartMatchScreen() {
         containerColor = softBackground,
         topBar = {
             SmartMatchHeroHeader(
-                teal = primaryColor,
-                gold = tertiaryColor,
+                primaryColor = primaryColor,
+                tertiaryColor = tertiaryColor,
                 height = animatedHeight,
                 collapseFraction = collapseFraction,
                 colorScheme = colorScheme
@@ -363,6 +376,15 @@ fun SmartMatchScreen() {
                     top = maxHeight + 72.dp
                 )
             ) {
+                // SmartMatch Highlight - Using tertiary (golden yellow)
+                item {
+                    SmartMatchHighlight(
+                        tertiaryColor = tertiaryColor,
+                        primaryColor = primaryColor,
+                        colorScheme = colorScheme
+                    )
+                }
+
                 // Search results info
                 if (debouncedQuery.value.isNotEmpty()) {
                     item {
@@ -497,7 +519,74 @@ fun SmartMatchScreen() {
 }
 
 /* ─────────────────────────────────────────────
-   STICKY SEARCH BAR (Providers style with audio and shadow)
+   SMART MATCH HIGHLIGHT - Using tertiary (golden yellow)
+   ───────────────────────────────────────────── */
+
+@Composable
+fun SmartMatchHighlight(
+    tertiaryColor: Color,
+    primaryColor: Color,
+    colorScheme: ColorScheme
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = tertiaryColor.copy(0.08f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Golden yellow icon
+            Icon(
+                imageVector = Icons.Outlined.AutoAwesome,
+                contentDescription = null,
+                tint = tertiaryColor,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "SmartMatch™ Recommendations",
+                    color = tertiaryColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Text(
+                    text = "Personalized for you based on your activity",
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            TextButton(
+                onClick = { /* View all recommendations */ },
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = primaryColor
+                )
+            ) {
+                Text(
+                    text = "View All",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+/* ─────────────────────────────────────────────
+   STICKY SEARCH BAR
    ───────────────────────────────────────────── */
 
 @Composable
@@ -511,7 +600,7 @@ fun StickySearchBar(
     accentColor: Color,
     headerHeight: Dp,
     showShadow: Boolean,
-    colorScheme: androidx.compose.material3.ColorScheme,
+    colorScheme: ColorScheme,
     modifier: Modifier = Modifier
 ) {
     val elevation by animateDpAsState(
@@ -561,7 +650,7 @@ fun StickySearchBar(
                         Box {
                             if (query.isEmpty()) {
                                 Text(
-                                    text = "Search jobs, houses, services...",
+                                    text = "Search listings...",
                                     color = colorScheme.onSurfaceVariant.copy(0.5f),
                                     fontSize = 14.sp
                                 )
@@ -693,14 +782,14 @@ fun SmartMatchTraySection(
     primaryColor: Color,
     secondaryColor: Color,
     tertiaryColor: Color,
-    colorScheme: androidx.compose.material3.ColorScheme,
+    colorScheme: ColorScheme,
     onItemClick: (SmartMatchItem) -> Unit,
     onViewAllClick: (() -> Unit)?
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Section Header
+        // Section Header - Using tertiary (golden yellow) for icons
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -716,7 +805,7 @@ fun SmartMatchTraySection(
                     Icon(
                         it,
                         contentDescription = null,
-                        tint = tertiaryColor,
+                        tint = tertiaryColor, // Golden yellow icons
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -767,18 +856,17 @@ fun SmartMatchTraySection(
                 val item = section.items[index]
                 when (item) {
                     is SmartMatchItem.Provider -> {
-                        ModernProviderCard(
+                        ModernProfessionalCard(
                             name = item.name,
                             specialty = item.category,
                             rating = item.rating.toFloat(),
                             jobs = item.reviewCount,
                             isVerified = item.isVerified,
+                            description = item.description,
+                            profileImageRes = item.profileImageRes, // Pass the image resource
                             onCardClick = { onItemClick(item) },
-                            onViewClick = { /* View provider */ },
+                            onViewClick = { onItemClick(item) },
                             onBookClick = { /* Book provider */ },
-                            onMessageClick = { /* Send message */ },
-                            onWhatsAppClick = { /* WhatsApp */ },
-                            onPhoneClick = { /* Call */ }
                         )
                     }
                     is SmartMatchItem.Job -> {
@@ -788,8 +876,10 @@ fun SmartMatchTraySection(
                             location = item.location,
                             salary = item.salary,
                             type = item.jobType,
+                            description = item.description, // Added description
                             isVerified = true,
                             employerType = EmployerType.ORGANIZATION,
+                            profileImageRes = item.imageRes, // Added image if available
                             isFavorite = false,
                             onFavoriteClick = {},
                             onViewClick = { onItemClick(item) },
@@ -806,11 +896,12 @@ fun SmartMatchTraySection(
                             isVerified = true,
                             isForSale = false,
                             imageRes = item.imageRes ?: R.drawable.property_placeholder1,
+                            description = item.matchReason,
+                            bedrooms = item.bedrooms,
+                            bathrooms = item.bathrooms,
+                            squareMeters = item.squareMeters,
                             onViewClick = { onItemClick(item) },
                             onBookClick = { /* Handle book */ },
-                            onMessageClick = { /* Handle message */ },
-                            onWhatsAppClick = { /* Handle WhatsApp */ },
-                            onPhoneClick = { /* Handle phone */ },
                             onClick = { onItemClick(item) }
                         )
                     }
@@ -831,7 +922,7 @@ fun FilterBottomSheet(
     onApply: (Map<String, Any>) -> Unit,
     onReset: () -> Unit,
     accentColor: Color,
-    colorScheme: androidx.compose.material3.ColorScheme
+    colorScheme: ColorScheme
 ) {
     var selectedCategories by remember { mutableStateOf(setOf<String>()) }
 
@@ -1013,11 +1104,11 @@ fun FilterBottomSheet(
 // Keep the original header (updated with theme)
 @Composable
 fun SmartMatchHeroHeader(
-    teal: Color,
-    gold: Color,
+    primaryColor: Color,
+    tertiaryColor: Color,
     height: Dp,
     collapseFraction: Float,
-    colorScheme: androidx.compose.material3.ColorScheme,
+    colorScheme: ColorScheme,
     modifier: Modifier = Modifier
 ) {
     val collapsed = collapseFraction > 0.85f
@@ -1091,7 +1182,7 @@ fun SmartMatchHeroHeader(
                         .fillMaxSize()
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(colorScheme.tertiary.copy(0.15f), Color.Transparent),
+                                colors = listOf(tertiaryColor.copy(0.15f), Color.Transparent),
                                 endX = 400f
                             )
                         )
@@ -1119,12 +1210,15 @@ fun SmartMatchHeroHeader(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box {
-                                HeaderAvatarSmartMatch(colorScheme)
+                                HeaderAvatarSmartMatch(
+                                    colorScheme = colorScheme,
+                                    tertiaryColor = tertiaryColor
+                                )
                                 Box(
                                     modifier = Modifier
                                         .size(12.dp)
-                                        .background(colorScheme.tertiary, CircleShape)
-                                        .border(2.dp, colorScheme.primary, CircleShape)
+                                        .background(tertiaryColor, CircleShape)
+                                        .border(2.dp, primaryColor, CircleShape)
                                         .align(Alignment.BottomEnd)
                                 )
                             }
@@ -1186,7 +1280,7 @@ fun SmartMatchHeroHeader(
                         Icon(
                             imageVector = Icons.Default.AutoAwesome,
                             contentDescription = null,
-                            tint = colorScheme.tertiary,
+                            tint = tertiaryColor,
                             modifier = Modifier.size(24.dp)
                         )
                         Text(
@@ -1232,7 +1326,7 @@ fun SmartMatchHeroHeader(
                         Icon(
                             imageVector = Icons.Default.AutoAwesome,
                             contentDescription = null,
-                            tint = colorScheme.tertiary,
+                            tint = tertiaryColor,
                             modifier = Modifier.size(28.dp)
                         )
                         Text(
@@ -1260,20 +1354,38 @@ fun SmartMatchHeroHeader(
 }
 
 @Composable
-fun HeaderAvatarSmartMatch(colorScheme: androidx.compose.material3.ColorScheme) {
+fun HeaderAvatarSmartMatch(
+    colorScheme: ColorScheme,
+    tertiaryColor: Color
+) {
     Box(
         modifier = Modifier
             .size(45.dp)
-            .background(Color.White.copy(0.2f), CircleShape)
-            .border(1.5.dp, Color.White.copy(0.5f), CircleShape)
-            .clip(CircleShape),
-        contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = Icons.Default.PersonOutline,
-            contentDescription = "User Avatar",
-            tint = Color.White,
-            modifier = Modifier.size(24.dp)
+        // Avatar background
+        Box(
+            modifier = Modifier
+                .size(45.dp)
+                .background(Color.White.copy(0.2f), CircleShape)
+                .border(1.5.dp, Color.White.copy(0.5f), CircleShape)
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.PersonOutline,
+                contentDescription = "User Avatar",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        // Online indicator - Golden yellow
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(tertiaryColor, CircleShape)
+                .border(2.dp, colorScheme.primary, CircleShape)
+                .align(Alignment.BottomEnd)
         )
     }
 }

@@ -74,7 +74,7 @@ fun RegistrationFormContent(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                painter = painterResource(id = R.drawable.pivotaconnect_logo_transparent),
+                painter = painterResource(id = R.drawable.logofinaletransp),
                 contentDescription = "Pivota Connect Logo",
                 modifier = Modifier.size(200.dp)
             )
