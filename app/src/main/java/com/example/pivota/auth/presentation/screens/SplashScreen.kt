@@ -12,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -56,7 +55,7 @@ fun SplashContent() {
     // Use theme colors
     val primaryColor = MaterialTheme.colorScheme.primary // African Sapphire
     val tertiaryColor = MaterialTheme.colorScheme.tertiary // Baobab Gold
-    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant // Soft Sand background
+    val whiteSurface = MaterialTheme.colorScheme.surface // Soft Sand background
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant // Warm Gray for text
 
     // Set startAnimation to TRUE immediately to avoid the "first-frame lag"
@@ -112,7 +111,7 @@ fun SplashContent() {
                 brush = Brush.radialGradient(
                     colors = listOf(
                         Color.White,
-                        surfaceVariant // Soft Sand
+                        whiteSurface // Soft Sand
                     ),
                     radius = 900f
                 )
@@ -143,7 +142,7 @@ fun SplashContent() {
         // ===== LOGO + TEXT =====
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Image(
-                painter = painterResource(id = R.drawable.pivotaconnect_logo_transparent),
+                painter = painterResource(id = R.drawable.logofinale),
                 contentDescription = "PivotaConnect Logo",
                 modifier = Modifier
                     .size(140.dp)

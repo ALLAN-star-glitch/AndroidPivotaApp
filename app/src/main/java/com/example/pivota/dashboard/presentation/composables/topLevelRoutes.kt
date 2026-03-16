@@ -2,10 +2,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import com.example.pivota.dashboard.presentation.composables.Dashboard
 import com.example.pivota.dashboard.presentation.composables.Discover
-import com.example.pivota.dashboard.presentation.composables.Favorites
 import com.example.pivota.dashboard.presentation.composables.Professionals
 import com.example.pivota.dashboard.presentation.composables.Profile
-
+import com.example.pivota.dashboard.presentation.composables.SmartMatch
 
 import com.example.pivota.dashboard.presentation.composables.TopLevelRoute
 
@@ -13,14 +12,14 @@ import com.example.pivota.dashboard.presentation.composables.TopLevelRoute
 val topLevelRoutes = listOf(
     TopLevelRoute(
         route = Dashboard,
-        label = "Board",
+        label = "Dashboard",
         icon = Icons.Default.Dashboard,
         contentDescription = "Dashboard Overview",
         requiresAuth = true
     ),
     TopLevelRoute(
         route = Professionals,
-        label = "Pros", // short form
+        label = "Pros",
         icon = Icons.Default.Groups,
         contentDescription = "Browse Service Providers",
         requiresAuth = false
@@ -33,9 +32,9 @@ val topLevelRoutes = listOf(
         requiresAuth = false
     ),
     TopLevelRoute(
-        route = Favorites,
-        label = "Fav",
-        icon = Icons.Default.Favorite,
+        route = SmartMatch,
+        label = "SmartMatch",
+        icon = Icons.Default.AutoAwesome,
         contentDescription = "Personalized Matches",
         requiresAuth = true
     ),

@@ -62,17 +62,9 @@ fun WelcomeContent(
                 verticalArrangement = Arrangement.spacedBy(2.dp) // Reduced from 4dp to 2dp
             ) {
                 coil3.compose.AsyncImage(
-                    model = com.example.pivota.R.drawable.pivotaconnect_logo_transparent,
+                    model = com.example.pivota.R.drawable.logofinale,
                     contentDescription = "Pivota Logo",
-                    modifier = Modifier.size(200.dp)
-                )
-                Text(
-                    text = "Pivotaconnect",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                        letterSpacing = 1.sp
-                    )
+                    modifier = Modifier.size(150.dp)
                 )
             }
 
