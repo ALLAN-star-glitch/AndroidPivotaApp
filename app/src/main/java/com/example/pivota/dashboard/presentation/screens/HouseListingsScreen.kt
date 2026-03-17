@@ -68,6 +68,7 @@ data class HousePriceRange(
 fun HouseListingsScreen(
     viewModel: HouseListingsViewModel = hiltViewModel(),
     onListingClick: (HousingListingUiModel) -> Unit,
+    onBookClick: (HousingListingUiModel) -> Unit, // Add this parameter
     onPostListingClick: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
@@ -230,7 +231,7 @@ fun HouseListingsScreen(
                             bathrooms = listing.bathrooms,
                             squareMeters = listing.squareMeters,
                             onViewClick = { onListingClick(listing) },
-                            onBookClick = { /* Handle book action */ },
+                            onBookClick = { onBookClick(listing) },
                             onClick = { onListingClick(listing) }
                         )
                     }
