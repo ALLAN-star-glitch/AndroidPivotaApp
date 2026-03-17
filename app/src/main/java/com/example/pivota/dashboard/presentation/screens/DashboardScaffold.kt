@@ -8,14 +8,20 @@ import androidx.compose.material3.adaptive.navigationsuite.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import androidx.window.core.layout.WindowSizeClass
 import com.example.pivota.dashboard.presentation.composables.*
+import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
 import com.example.pivota.dashboard.presentation.viewmodels.MyListingsViewModel
+import com.example.pivota.admin.presentation.screens.AdminHouseDetailsScreen
+import com.example.pivota.listings.presentation.screens.BookViewingScreen
+import com.example.pivota.listings.presentation.screens.HouseDetailsScreen
 import com.example.pivota.listings.presentation.screens.HousingPostScreen
 import com.example.pivota.listings.presentation.screens.JobPostScreen
+import com.example.pivota.listings.presentation.screens.PostServiceScreen
 import topLevelRoutes
 
 @SuppressLint("ViewModelConstructorInComposable")
@@ -25,6 +31,11 @@ fun DashboardScaffold() {
     val navController = rememberNavController()
     val sheetState = rememberModalBottomSheetState()
     var showSheet by remember { mutableStateOf(false) }
+
+    // Separate state for different navigation flows
+    var selectedListingForBooking by remember { mutableStateOf<HousingListingUiModel?>(null) }
+    var selectedListingForViewing by remember { mutableStateOf<HousingListingUiModel?>(null) }
+    var selectedListingForAdminView by remember { mutableStateOf<HousingListingUiModel?>(null) }
 
     val navigationItemColors = NavigationSuiteDefaults.itemColors(
         navigationBarItemColors = NavigationBarItemDefaults.colors(
@@ -87,7 +98,8 @@ fun DashboardScaffold() {
                 PulsingPostFab(onClick = { showSheet = true })
             }
         ) { innerPadding ->
-            Box(modifier = Modifier.fillMaxSize()
+            Box(modifier = Modifier
+                .fillMaxSize()
                 .padding(bottom = innerPadding.calculateBottomPadding())) {
                 NavHost(
                     navController = navController,
@@ -117,27 +129,121 @@ fun DashboardScaffold() {
                             },
                             onNavigateToAllProviders = {
                                 // Navigate to professionals listing screen when created
-                                // navController.navigate(ProvidersListings)
                             },
                             onNavigateToAllServices = {
                                 // Navigate to services listing screen when created
-                                // navController.navigate(ServicesListings)
                             },
                             onNavigateToAllSupport = {
                                 // Navigate to support listing screen when created
-                                // navController.navigate(SupportListings)
+                            },
+                            onBookHousingClick = { housingListing ->
+                                selectedListingForBooking = housingListing
+                                navController.navigate(BookViewing)
+                            },
+                            onViewHousingClick = { housingListing ->
+                                selectedListingForViewing = housingListing
+                                navController.navigate(HouseDetails)
                             }
                         )
                     }
+
+                    // User-facing House Details Route (for regular users)
+                    composable<HouseDetails> {
+                        val listing = selectedListingForViewing
+
+                        if (listing != null) {
+                            HouseDetailsScreen(
+                                housingListing = listing,
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                    selectedListingForViewing = null
+                                },
+                                onBookClick = { housingListing ->
+                                    selectedListingForBooking = housingListing
+                                    navController.navigate(BookViewing)
+                                }
+                            )
+                        } else {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+
+                    // Admin-facing House Details Route (for admin users)
+                    composable<AdminHouseDetails> {
+                        val listing = selectedListingForAdminView
+
+                        if (listing != null) {
+                            AdminHouseDetailsScreen(
+                                housingListing = listing,
+                                onBack = {
+                                    navController.popBackStack()
+                                    selectedListingForAdminView = null
+                                },
+                                onApprove = { id ->
+                                    // Handle approve action
+                                    println("Approve listing: $id")
+                                    navController.popBackStack()
+                                    selectedListingForAdminView = null
+                                },
+                                onReject = { id ->
+                                    // Handle reject action
+                                    println("Reject listing: $id")
+                                    navController.popBackStack()
+                                    selectedListingForAdminView = null
+                                },
+                                onEdit = { id ->
+                                    // Handle edit action
+                                    println("Edit listing: $id")
+                                },
+                                onDelete = { id ->
+                                    // Handle delete action
+                                    println("Delete listing: $id")
+                                    navController.popBackStack()
+                                    selectedListingForAdminView = null
+                                }
+                            )
+                        } else {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+
+                    // Book Viewing Route
+                    composable<BookViewing> {
+                        selectedListingForBooking?.let { listing ->
+                            BookViewingScreen(
+                                housingListing = listing,
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                    selectedListingForBooking = null
+                                }
+                            )
+                        } ?: run {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+
                     composable<SmartMatch> { SmartMatchScreen() }
                     composable<Profile> { ProfileScreen() }
 
-                    // Add HouseListings route
+                    // HouseListings route
                     composable<HouseListings> {
+                        val viewModel: com.example.pivota.dashboard.presentation.viewmodels.HouseListingsViewModel = hiltViewModel()
+
                         HouseListingsScreen(
+                            viewModel = viewModel,
                             onListingClick = { housingListing ->
-                                // Navigate to listing details if needed
-                                // navController.navigate("house_details/${housingListing.id}")
+                                selectedListingForViewing = housingListing
+                                navController.navigate(HouseDetails)
+                            },
+                            onBookClick = { housingListing ->
+                                selectedListingForBooking = housingListing
+                                navController.navigate(BookViewing)
                             },
                             onPostListingClick = {
                                 showSheet = true
@@ -152,8 +258,7 @@ fun DashboardScaffold() {
                     composable<JobListings> {
                         JobListingsScreen(
                             onListingClick = { jobListing ->
-                                // Navigate to listing details if needed
-                                // navController.navigate("job_details/${jobListing.id}")
+                                // Navigate to job details if needed
                             },
                             onPostListingClick = {
                                 showSheet = true
@@ -168,19 +273,30 @@ fun DashboardScaffold() {
                     composable<PostJob> {
                         JobPostScreen.Content(onBack = { navController.popBackStack() })
                     }
+                    composable<PostService> {
+                        PostServiceScreen(onBack = { navController.popBackStack() })
+                    }
                     composable<PostHousing> {
                         HousingPostScreen.Content(onBack = { navController.popBackStack() })
                     }
+
+                    // My Listings route with housing view support
                     composable<MyListings> {
                         MyListingsScreen(
                             onListingClick = { listingUiModel ->
-                                // Example: navController.navigate("listing_details/${listingUiModel.id}")
+                                // Handle non-housing listing clicks
+                            },
+                            onHousingViewClick = { housingListing ->
+                                selectedListingForAdminView = housingListing
+                                navController.navigate(AdminHouseDetails)
                             },
                             onPostListingClick = {
                                 showSheet = true
                             },
                             viewModel = MyListingsViewModel(),
-                            onNavigateBack = {}
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
                         )
                     }
                 }

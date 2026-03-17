@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.pivota.core.presentations.composables.TopBar
 import com.example.pivota.listings.domain.models.Service
@@ -359,4 +360,10 @@ fun LabelText(text: String, optional: Boolean = false) {
 
 fun formatPrice(price: Double): String {
     return "%,.0f".format(price)
+}
+
+@Preview
+@Composable
+fun BookServiceScreenPreview() {
+    BookServiceScreen()
 }

@@ -7,6 +7,9 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -16,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -38,12 +43,15 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.window.core.layout.WindowSizeClass
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.dashboard.presentation.composables.ModernProfessionalCard
 import com.example.pivota.dashboard.domain.ProfessionalType
 import com.example.pivota.dashboard.presentation.viewmodels.ProfessionalsViewModel
 import kotlinx.coroutines.delay
-
 
 // Category type for professional filtering
 enum class ProfessionalCategoryType {
@@ -56,13 +64,13 @@ enum class ProfessionalCategoryType {
     CARPENTER
 }
 
-// Price range filter (like SalaryRange in jobs)
+// Price range filter
 data class PriceRange(
     val min: Int? = null,
     val max: Int? = null
 )
 
-// Status filter state for bottom sheet
+// Filter state for bottom sheet
 data class ProfessionalFilterState(
     val minRating: Double = 0.0,
     val isVerifiedOnly: Boolean = false,
@@ -102,23 +110,10 @@ fun ProfessionalsScreen(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val professionals by viewModel.filteredProfessionals.collectAsStateWithLifecycle()
-    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
 
-    // State for search and filters
-    var searchQueryLocal by remember { mutableStateOf(searchQuery) }
+    // State for search and filters - exactly like DiscoverScreen
+    var searchQuery by remember { mutableStateOf("") }
     var selectedPill by remember { mutableStateOf("All") }
-    var selectedCategoryLocal by remember { mutableStateOf(
-        when (selectedCategory) {
-            "Electrician" -> ProfessionalCategoryType.ELECTRICIAN
-            "Plumber" -> ProfessionalCategoryType.PLUMBER
-            "Designer" -> ProfessionalCategoryType.DESIGNER
-            "Legal Services" -> ProfessionalCategoryType.LEGAL
-            "Property Management" -> ProfessionalCategoryType.PROPERTY
-            "Carpenter" -> ProfessionalCategoryType.CARPENTER
-            else -> ProfessionalCategoryType.ALL
-        }
-    ) }
     var filterState by remember { mutableStateOf(ProfessionalFilterState()) }
     var priceRange by remember { mutableStateOf(PriceRange()) }
     var showFilterModal by remember { mutableStateOf(false) }
@@ -173,74 +168,33 @@ fun ProfessionalsScreen(
 
     // Debounce search
     val debouncedQuery = remember { mutableStateOf("") }
-    LaunchedEffect(searchQueryLocal) {
-        if (searchQueryLocal.length >= 2) {
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.length >= 2) {
             isSearching = true
             delay(300)
-            debouncedQuery.value = searchQueryLocal.lowercase()
+            debouncedQuery.value = searchQuery.lowercase()
             isSearching = false
-        } else if (searchQueryLocal.isEmpty()) {
+        } else if (searchQuery.isEmpty()) {
             debouncedQuery.value = ""
             isSearching = false
         }
     }
 
-    // Update ViewModel when search query changes
-    LaunchedEffect(searchQueryLocal) {
-        viewModel.updateSearchQuery(searchQueryLocal)
-    }
-
-    // Update ViewModel when category changes
-    LaunchedEffect(selectedCategoryLocal) {
-        val categoryString = when (selectedCategoryLocal) {
-            ProfessionalCategoryType.ALL -> "All"
-            ProfessionalCategoryType.ELECTRICIAN -> "Electrician"
-            ProfessionalCategoryType.PLUMBER -> "Plumber"
-            ProfessionalCategoryType.DESIGNER -> "Designer"
-            ProfessionalCategoryType.LEGAL -> "Legal Services"
-            ProfessionalCategoryType.PROPERTY -> "Property Management"
-            ProfessionalCategoryType.CARPENTER -> "Carpenter"
-        }
-        viewModel.updateCategory(categoryString)
-    }
-
-    // Apply filters when filter state changes
-    LaunchedEffect(filterState) {
-        viewModel.updateMinRating(filterState.minRating)
-        viewModel.updateVerifiedOnly(filterState.isVerifiedOnly)
-        if (filterState.isSmartMatchOnly) {
-            // Handle SmartMatch filter if needed
-        }
-    }
-
-    // Update category when pill changes
-    LaunchedEffect(selectedPill) {
-        val categoryType = when (selectedPill) {
-            "Electrician" -> ProfessionalCategoryType.ELECTRICIAN
-            "Plumber" -> ProfessionalCategoryType.PLUMBER
-            "Designer" -> ProfessionalCategoryType.DESIGNER
-            "Legal" -> ProfessionalCategoryType.LEGAL
-            "Property" -> ProfessionalCategoryType.PROPERTY
-            "Carpenter" -> ProfessionalCategoryType.CARPENTER
-            else -> ProfessionalCategoryType.ALL
-        }
-        selectedCategoryLocal = categoryType
-    }
-
-    // Filter listings based on category, filters, price, and search
-    val filteredListings = remember(debouncedQuery.value, selectedCategoryLocal, filterState, priceRange, professionals) {
+    // Filter professionals based on category, filters, price, and search
+    val filteredProfessionals = remember(debouncedQuery.value, selectedPill, filterState, priceRange, professionals) {
         professionals.filter { professional ->
             var matches = true
 
-            // Apply category filter
-            when (selectedCategoryLocal) {
-                ProfessionalCategoryType.ALL -> matches = true
-                ProfessionalCategoryType.ELECTRICIAN -> matches = professional.category == "Electrician"
-                ProfessionalCategoryType.PLUMBER -> matches = professional.category == "Plumber"
-                ProfessionalCategoryType.DESIGNER -> matches = professional.category == "Designer"
-                ProfessionalCategoryType.LEGAL -> matches = professional.category == "Legal Services"
-                ProfessionalCategoryType.PROPERTY -> matches = professional.category == "Property Management"
-                ProfessionalCategoryType.CARPENTER -> matches = professional.category == "Carpenter"
+            // Apply category filter based on selected pill
+            when (selectedPill) {
+                "All" -> matches = true
+                "Electrician" -> matches = professional.category == "Electrician"
+                "Plumber" -> matches = professional.category == "Plumber"
+                "Designer" -> matches = professional.category == "Designer"
+                "Legal" -> matches = professional.category == "Legal Services"
+                "Property" -> matches = professional.category == "Property Management"
+                "Carpenter" -> matches = professional.category == "Carpenter"
+                else -> matches = true
             }
 
             // Apply rating filter
@@ -309,20 +263,14 @@ fun ProfessionalsScreen(
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
-            // 📜 SCROLL CONTENT
+            // 📜 SCROLL CONTENT - Using contentPadding like DiscoverScreen
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = maxHeight + 180.dp // Combined height of header + search + pills
+                )
             ) {
-                // Spacer for the fixed header and search bar
-                item {
-                    Spacer(
-                        modifier = Modifier.height(
-                            maxHeight + 120.dp
-                        )
-                    )
-                }
-
                 // Search results info
                 if (debouncedQuery.value.isNotEmpty()) {
                     item {
@@ -334,7 +282,7 @@ fun ProfessionalsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Search results for \"${searchQueryLocal}\"",
+                                text = "Search results for \"${searchQuery}\"",
                                 fontSize = 14.sp,
                                 color = colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Medium
@@ -347,7 +295,7 @@ fun ProfessionalsScreen(
                                 )
                             } else {
                                 Text(
-                                    text = "${filteredListings.size} professionals found",
+                                    text = "${filteredProfessionals.size} professionals found",
                                     fontSize = 13.sp,
                                     color = colorScheme.primary,
                                     fontWeight = FontWeight.Medium
@@ -358,7 +306,7 @@ fun ProfessionalsScreen(
                 }
 
                 // Empty state when no professionals match search/filters
-                if (filteredListings.isEmpty() && !isSearching) {
+                if (filteredProfessionals.isEmpty() && !isSearching) {
                     item {
                         Box(
                             modifier = Modifier
@@ -369,43 +317,38 @@ fun ProfessionalsScreen(
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Icon(
-                                    Icons.Outlined.SearchOff,
-                                    contentDescription = null,
-                                    tint = colorScheme.onSurfaceVariant.copy(0.5f),
-                                    modifier = Modifier.size(48.dp)
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "No professionals found",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colorScheme.onSurface
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = if (searchQueryLocal.isNotEmpty() || selectedCategoryLocal != ProfessionalCategoryType.ALL ||
-                                        filterState.minRating > 0 || filterState.isVerifiedOnly || filterState.isSmartMatchOnly ||
-                                        priceRange.min != null || priceRange.max != null)
-                                        "Try different filters or search terms"
-                                    else
-                                        "No professionals available",
-                                    fontSize = 14.sp,
-                                    color = colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center
-                                )
-                                if (searchQueryLocal.isNotEmpty() || selectedCategoryLocal != ProfessionalCategoryType.ALL ||
+                                if (searchQuery.isNotEmpty() || selectedPill != "All" ||
                                     filterState.minRating > 0 || filterState.isVerifiedOnly || filterState.isSmartMatchOnly ||
-                                    priceRange.min != null || priceRange.max != null || selectedPill != "All") {
+                                    priceRange.min != null || priceRange.max != null) {
+                                    // No results for current filters
+                                    Icon(
+                                        Icons.Outlined.SearchOff,
+                                        contentDescription = null,
+                                        tint = colorScheme.onSurfaceVariant.copy(0.5f),
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "No professionals found",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Try adjusting your filters or search terms",
+                                        fontSize = 14.sp,
+                                        color = colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
                                     Spacer(modifier = Modifier.height(16.dp))
                                     Button(
                                         onClick = {
-                                            viewModel.resetFilters()
+                                            searchQuery = ""
+                                            selectedPill = "All"
                                             filterState = ProfessionalFilterState()
                                             priceRange = PriceRange()
-                                            selectedPill = "All"
-                                            searchQueryLocal = ""
-                                            selectedCategoryLocal = ProfessionalCategoryType.ALL
+                                            activeFilterCount = 0
                                             focusManager.clearFocus()
                                         },
                                         colors = ButtonDefaults.buttonColors(
@@ -415,6 +358,28 @@ fun ProfessionalsScreen(
                                     ) {
                                         Text("Clear Filters")
                                     }
+                                } else {
+                                    // No professionals at all
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_work),
+                                        contentDescription = null,
+                                        tint = colorScheme.primary.copy(0.5f),
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "No professionals yet",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Check back later for professionals in your area",
+                                        fontSize = 14.sp,
+                                        color = colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
                                 }
                             }
                         }
@@ -422,9 +387,9 @@ fun ProfessionalsScreen(
                 }
 
                 // Professional Cards Grid
-                if (filteredListings.isNotEmpty()) {
+                if (filteredProfessionals.isNotEmpty()) {
                     // Split the professionals into chunks for grid display
-                    val chunkedProfessionals = filteredListings.chunked(gridColumns)
+                    val chunkedProfessionals = filteredProfessionals.chunked(gridColumns)
 
                     items(chunkedProfessionals) { rowProfessionals ->
                         Row(
@@ -452,7 +417,7 @@ fun ProfessionalsScreen(
                                         profileImageRes = professional.profileImageRes,
                                         onCardClick = { onProfessionalClick(professional) },
                                         onViewClick = { onProfessionalClick(professional) },
-                                        onBookClick = { /* Book professional */ },
+                                        onHireClick = { /* Handle hire */ },
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .animateItem()
@@ -472,7 +437,7 @@ fun ProfessionalsScreen(
                 item { Spacer(Modifier.height(80.dp)) }
             }
 
-            // 🏆 FIXED HEADER
+            // 🏆 FIXED HEADER - Like DiscoverScreen
             ProfessionalsHeroHeader(
                 primaryColor = colorScheme.primary,
                 tertiaryColor = colorScheme.tertiary,
@@ -481,31 +446,62 @@ fun ProfessionalsScreen(
                 colorScheme = colorScheme,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .zIndex(2f)
+                    .zIndex(3f)
             )
 
-            // 📌 FIXED SEARCH SECTION
-            ProfessionalsFixedSearchSection(
-                query = searchQueryLocal,
-                onQueryChange = { searchQueryLocal = it },
-                onAudioClick = {
-                    isRecording = !isRecording
-                },
-                isRecording = isRecording,
-                accentColor = colorScheme.primary,
-                headerHeight = animatedHeight,
-                showShadow = isPastThreshold.value,
-                colorScheme = colorScheme,
-                selectedPill = selectedPill,
-                onPillSelected = { pill ->
-                    selectedPill = pill
-                },
-                activeFilterCount = activeFilterCount,
-                onFilterClick = { showFilterModal = true },
+            // 📌 FIXED SEARCH + PILLS SECTION - Exactly like DiscoverScreen
+            Surface(
                 modifier = Modifier
+                    .fillMaxWidth()
                     .align(Alignment.TopCenter)
-                    .zIndex(1f)
-            )
+                    .padding(top = animatedHeight)
+                    .shadow(
+                        elevation = if (isPastThreshold.value) 8.dp else 0.dp,
+                        shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
+                        ambientColor = Color.Black.copy(0.08f)
+                    )
+                    .zIndex(2f),
+                shape = RoundedCornerShape(
+                    topStart = 0.dp,
+                    topEnd = 0.dp,
+                    bottomStart = 20.dp,
+                    bottomEnd = 20.dp
+                ),
+                color = colorScheme.surface,
+                tonalElevation = if (isPastThreshold.value) 4.dp else 0.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    // Search Bar with Audio Icon - Like DiscoverScreen
+                    ProfessionalsSearchBarWithAudio(
+                        query = searchQuery,
+                        onQueryChange = { searchQuery = it },
+                        onAudioClick = {
+                            isRecording = !isRecording
+                        },
+                        isRecording = isRecording,
+                        accentColor = colorScheme.primary,
+                        colorScheme = colorScheme,
+                        activeFilterCount = activeFilterCount,
+                        onFilterClick = { showFilterModal = true }
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Filter Pills - Like DiscoverScreen
+                    ProfessionalsFilterPillsRow(
+                        selectedPill = selectedPill,
+                        onPillSelected = { pill ->
+                            selectedPill = pill
+                        },
+                        accentColor = colorScheme.primary,
+                        colorScheme = colorScheme
+                    )
+                }
+            }
         }
     }
 
@@ -531,85 +527,7 @@ fun ProfessionalsScreen(
 }
 
 /* ─────────────────────────────────────────────
-   FIXED SEARCH SECTION
-   ───────────────────────────────────────────── */
-
-@Composable
-fun ProfessionalsFixedSearchSection(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onAudioClick: () -> Unit,
-    isRecording: Boolean,
-    accentColor: Color,
-    headerHeight: Dp,
-    showShadow: Boolean,
-    colorScheme: ColorScheme,
-    selectedPill: String,
-    onPillSelected: (String) -> Unit,
-    activeFilterCount: Int,
-    onFilterClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val elevation by animateDpAsState(
-        targetValue = if (showShadow) 8.dp else 0.dp,
-        animationSpec = tween(durationMillis = 200)
-    )
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = headerHeight)
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(
-                    elevation = elevation,
-                    shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
-                    ambientColor = Color.Black.copy(0.08f)
-                ),
-            shape = RoundedCornerShape(
-                topStart = 0.dp,
-                topEnd = 0.dp,
-                bottomStart = 20.dp,
-                bottomEnd = 20.dp
-            ),
-            color = colorScheme.surface,
-            tonalElevation = if (showShadow) 4.dp else 0.dp
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                // Search Bar with Audio Icon and Filter Button
-                ProfessionalsSearchBarWithAudio(
-                    query = query,
-                    onQueryChange = onQueryChange,
-                    onAudioClick = onAudioClick,
-                    isRecording = isRecording,
-                    accentColor = accentColor,
-                    colorScheme = colorScheme,
-                    activeFilterCount = activeFilterCount,
-                    onFilterClick = onFilterClick
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Filter Pills
-                ProfessionalsFilterPillsRow(
-                    selectedPill = selectedPill,
-                    onPillSelected = onPillSelected,
-                    accentColor = accentColor,
-                    colorScheme = colorScheme
-                )
-            }
-        }
-    }
-}
-
-/* ─────────────────────────────────────────────
-   SEARCH BAR WITH AUDIO ICON
+   SEARCH BAR WITH AUDIO ICON - Like DiscoverScreen
    ───────────────────────────────────────────── */
 
 @Composable
@@ -656,7 +574,7 @@ fun ProfessionalsSearchBarWithAudio(
                     Box {
                         if (query.isEmpty()) {
                             Text(
-                                "Search professionals...",
+                                "Search...",
                                 color = colorScheme.onSurfaceVariant.copy(0.5f),
                                 fontSize = 14.sp
                             )
@@ -724,7 +642,7 @@ fun ProfessionalsSearchBarWithAudio(
                     Spacer(modifier = Modifier.width(4.dp))
                 }
 
-                // Filter button with badge
+                // Filter button with badge - Like DiscoverScreen
                 BadgedBox(
                     badge = {
                         if (activeFilterCount > 0) {
@@ -778,7 +696,7 @@ fun ProfessionalsSearchBarWithAudio(
 }
 
 /* ─────────────────────────────────────────────
-   FILTER PILLS ROW
+   FILTER PILLS ROW - Like DiscoverScreen
    ───────────────────────────────────────────── */
 
 @Composable
@@ -804,14 +722,14 @@ fun ProfessionalsFilterPillsRow(
 
         items(filters.size) { index ->
             val (filter, icon) = filters[index]
-            val isSelected = selectedPill == filter
+            val isSelected = selectedPill == filter || (filter == "All" && selectedPill == "All")
 
             Surface(
-                onClick = { onPillSelected(filter) },
                 shape = RoundedCornerShape(30.dp),
                 color = if (isSelected) accentColor else colorScheme.surface,
                 border = if (!isSelected) BorderStroke(1.dp, colorScheme.outlineVariant) else null,
                 modifier = Modifier
+                    .clickable { onPillSelected(filter) }
                     .shadow(
                         elevation = if (isSelected) 2.dp else 0.dp,
                         shape = RoundedCornerShape(30.dp),
@@ -1228,11 +1146,17 @@ fun ProfessionalsHeroHeader(
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.happypeople),
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(R.drawable.happypeople)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    onLoading = {},
+                    onSuccess = {},
+                    onError = {}
                 )
             }
 

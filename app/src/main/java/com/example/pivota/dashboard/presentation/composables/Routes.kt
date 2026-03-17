@@ -16,8 +16,20 @@ import kotlinx.serialization.Serializable
 @Serializable object PostService
 
 
+
 @Serializable object MyListings
 
 @Serializable object HouseListings
 
 @Serializable object JobListings
+
+@Serializable
+data object BookViewing
+
+@Serializable
+data object  HouseDetails
+
+@Serializable
+data object AdminHouseDetails
+
+// Add more routes as needed
