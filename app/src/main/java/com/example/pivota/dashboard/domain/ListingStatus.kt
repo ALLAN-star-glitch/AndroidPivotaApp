@@ -11,17 +11,7 @@ enum class ListingStatus {
 
     INACTIVE,
 
-    SOLD,
-
-    PAUSED,
-
-    REJECTED,
-
-    EXPIRED,
-
-    ARCHIVED,
-
-    DRAFT
+    SOLD
 
 
 }

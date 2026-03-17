@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +35,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.dashboard.domain.EmployerType
 import com.example.pivota.dashboard.presentation.composables.ModernJobCard
@@ -650,7 +654,7 @@ fun StickySearchBar(
                         Box {
                             if (query.isEmpty()) {
                                 Text(
-                                    text = "Search listings...",
+                                    text = "Search...",
                                     color = colorScheme.onSurfaceVariant.copy(0.5f),
                                     fontSize = 14.sp
                                 )
@@ -866,8 +870,7 @@ fun SmartMatchTraySection(
                             profileImageRes = item.profileImageRes, // Pass the image resource
                             onCardClick = { onItemClick(item) },
                             onViewClick = { onItemClick(item) },
-                            onBookClick = { /* Book provider */ },
-                        )
+                        ) { /* Book provider */ }
                     }
                     is SmartMatchItem.Job -> {
                         ModernJobCard(
@@ -1138,11 +1141,25 @@ fun SmartMatchHeroHeader(
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.smart),
+                // Using Coil for image loading
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(R.drawable.smart)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    // Optional state handlers
+                    onLoading = {
+                        // Handle loading state if needed
+                    },
+                    onSuccess = {
+                        // Handle success state if needed
+                    },
+                    onError = {
+                        // Handle error state if needed
+                    }
                 )
             }
 

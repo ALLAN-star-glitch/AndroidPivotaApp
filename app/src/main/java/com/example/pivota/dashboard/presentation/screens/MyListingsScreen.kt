@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import com.example.pivota.dashboard.domain.*
 import com.example.pivota.dashboard.presentation.model.*
+import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
 import kotlinx.coroutines.delay
 
 // Category type for filtering
@@ -64,7 +65,8 @@ fun MyListingsScreen(
     viewModel: MyListingsViewModel = hiltViewModel(),
     onListingClick: (ListingUiModel) -> Unit,
     onPostListingClick: () -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onHousingViewClick: (HousingListingUiModel) -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val listings by viewModel.filteredListings.collectAsStateWithLifecycle()
@@ -102,7 +104,7 @@ fun MyListingsScreen(
             when (selectedCategory) {
                 CategoryType.ALL -> matches = true
                 CategoryType.JOB -> matches = listing.category.label.equals("Job", ignoreCase = true)
-                CategoryType.HOUSING -> matches = listing.category.label.equals("Housing", ignoreCase = true)
+                CategoryType.HOUSING -> matches = listing.category.label.equals("House", ignoreCase = true)
                 CategoryType.SERVICE -> matches = listing.category.label.equals("Service", ignoreCase = true)
             }
 
@@ -195,7 +197,35 @@ fun MyListingsScreen(
                     items(filteredListings, key = { it.id }) { listing ->
                         ListingCard(
                             listing = listing,
-                            onClick = { onListingClick(listing) },
+                            onClick = {
+                                // Check if it's a housing listing using the label
+                                if (listing.category.label.equals("House", ignoreCase = true)) {
+                                    // Since we don't have full housing data, we'll create a basic HousingListingUiModel
+                                    // You can enhance this with more data from your repository when available
+                                    val housingListing = HousingListingUiModel(
+                                        id = listing.id,
+                                        title = listing.title,
+                                        price = "KES 0", // Default price
+                                        location = "Nairobi", // Default location
+                                        propertyType = "Apartment", // Default type
+                                        description = listing.descriptionPreview,
+                                        isVerified = false,
+                                        isForSale = false,
+                                        rating = 0.0,
+                                        bedrooms = 0,
+                                        bathrooms = 0,
+                                        squareMeters = 0,
+                                        imageRes = null,
+                                        status = listing.status,
+                                        views = listing.views,
+                                        messages = listing.messages,
+                                        requests = listing.requests
+                                    )
+                                    onHousingViewClick(housingListing)
+                                } else {
+                                    onListingClick(listing)
+                                }
+                            },
                             colorScheme = colorScheme
                         )
                     }
@@ -305,7 +335,6 @@ private fun MyListingsHeader(
                     }
                 }
 
-                // Removed sort/filter icon from here - it's now in search bar
                 Spacer(modifier = Modifier.width(40.dp))
             }
 
@@ -347,7 +376,7 @@ private fun MyListingsHeader(
                             Box {
                                 if (searchQuery.isEmpty()) {
                                     Text(
-                                        text = "Search your listings...",
+                                        text = "Search...",
                                         color = colorScheme.onSurfaceVariant.copy(0.5f),
                                         fontSize = 14.sp,
                                         style = MaterialTheme.typography.bodyMedium
@@ -1069,5 +1098,3 @@ private fun ElegantEmptyState(
         }
     }
 }
-
-// FlowRowStatus has been removed - using manual row layout instead

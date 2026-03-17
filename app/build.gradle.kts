@@ -57,8 +57,6 @@ dependencies {
 
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.foundation.layout)
-    implementation(libs.androidx.compose.runtime)
-    implementation(libs.androidx.compose.ui.unit)
     val nav_version = "2.9.0"
     val room_version = "2.8.4"
     val ktorVersion = "3.0.0"
@@ -128,8 +126,6 @@ dependencies {
 
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
-
-    implementation("com.airbnb.android:lottie-compose:6.4.0")
 
     implementation("io.ktor:ktor-client-android:${ktorVersion}")
     implementation("io.ktor:ktor-client-content-negotiation:${ktorVersion}")

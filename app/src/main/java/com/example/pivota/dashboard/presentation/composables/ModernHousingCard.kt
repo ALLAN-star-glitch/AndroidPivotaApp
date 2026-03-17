@@ -66,6 +66,7 @@ fun ModernHousingCard(
     bedrooms: Int,              // Required parameter
     bathrooms: Int,              // Required parameter
     squareMeters: Int,           // Required parameter
+    modifier: Modifier = Modifier, // Added modifier parameter
     description: String = "",
     isForSale: Boolean = false,
     imageRes: Any,
@@ -88,8 +89,8 @@ fun ModernHousingCard(
     val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
 
     Card(
-        modifier = Modifier
-            .width(300.dp)
+        modifier = modifier
+            .width(300.dp) // Keep default width but allow overriding via modifier
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
