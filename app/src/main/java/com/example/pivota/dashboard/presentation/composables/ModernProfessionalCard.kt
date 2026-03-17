@@ -59,7 +59,7 @@ enum class ProviderType {
 
 @Composable
 fun ModernProfessionalCard(
-    modifier : Modifier = Modifier,
+    modifier: Modifier = Modifier,
     name: String,
     specialty: String,
     rating: Float,
@@ -72,6 +72,7 @@ fun ModernProfessionalCard(
     onCardClick: () -> Unit = {},
     onViewClick: () -> Unit = {},
     onBookClick: () -> Unit = {},
+    onHireClick: () -> Unit,
 
     ) {
     // Using MaterialTheme colors from your theme

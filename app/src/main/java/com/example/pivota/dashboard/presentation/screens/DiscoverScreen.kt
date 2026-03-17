@@ -1,12 +1,16 @@
 package com.example.pivota.dashboard.presentation.screens
 
+import HorizontalSmartMatchBadge
+import SmartMatchBadge
 import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,30 +18,223 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.*
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.window.core.layout.WindowSizeClass
+import androidx.window.core.layout.WindowWidthSizeClass
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.dashboard.domain.EmployerType
+import com.example.pivota.dashboard.domain.ListingStatus
 import com.example.pivota.dashboard.presentation.composables.ModernHousingCard
 import com.example.pivota.dashboard.presentation.composables.ModernJobCard
 import com.example.pivota.dashboard.presentation.composables.ModernProfessionalCard
+import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
+
+// ========== SMARTMATCH BADGE COMPOSABLES ==========
+
+/**
+ * Responsive SmartMatch badge that adapts to different screen sizes
+ * Shows AI-powered match count with animated gradient background
+ */
+@Composable
+fun SmartMatchBadge(
+    matchCount: Int,
+    modifier: Modifier = Modifier,
+    windowSizeClass: WindowSizeClass,
+    showLabel: Boolean = true,
+    onClick: (() -> Unit)? = null,
+    animate: Boolean = true,
+    backgroundColor: Color? = null,
+    contentColor: Color = Color.White,
+    shape: RoundedCornerShape? = null,
+    icon: ImageVector = Icons.Outlined.AutoAwesome,
+    iconSize: Dp? = null,
+    fontSize: TextUnit? = null,
+    horizontalPadding: Dp? = null,
+    verticalPadding: Dp? = null,
+    maxCount: Int = 150,
+    animationDuration: Int = 3000
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val primaryColor = colorScheme.primary
+    val tertiaryColor = colorScheme.tertiary
+
+    // Responsive sizing based on window width class
+    val isExpanded = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val isTablet = isExpanded || isMedium
+
+    val defaultIconSize = if (isTablet) 22.dp else 18.dp
+    val defaultFontSize = if (isTablet) 13.sp else 11.sp
+    val defaultHorizontalPadding = when {
+        horizontalPadding != null -> horizontalPadding
+        showLabel -> (if (isTablet) 16.dp else 12.dp)
+        else -> 8.dp
+    }
+    val defaultVerticalPadding = if (isTablet) 10.dp else 6.dp
+    val defaultShape = shape ?: RoundedCornerShape(if (isTablet) 24.dp else 20.dp)
+
+    // Format count with max limit
+    val displayCount = if (matchCount > maxCount) "$maxCount+" else matchCount.toString()
+
+    // Animation for gradient shift
+    val infiniteTransition = rememberInfiniteTransition()
+    val gradientOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 100f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(animationDuration, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
+    // State for press animation
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && onClick != null) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f),
+        label = "press_scale"
+    )
+
+    val badgeModifier = if (onClick != null) {
+        Modifier
+            .scale(scale)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        try {
+                            awaitRelease()
+                        } finally {
+                            isPressed = false
+                        }
+                    },
+                    onTap = {
+                        onClick()
+                    }
+                )
+            }
+    } else {
+        Modifier
+    }
+
+    Row(
+        modifier = modifier
+            .then(badgeModifier)
+            .clip(defaultShape)
+            .then(
+                if (backgroundColor != null) {
+                    Modifier.background(backgroundColor, defaultShape)
+                } else {
+                    Modifier.background(
+                        if (animate) {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    primaryColor,
+                                    tertiaryColor,
+                                    primaryColor.copy(0.8f),
+                                    tertiaryColor.copy(0.8f)
+                                ),
+                                start = Offset(gradientOffset, 0f),
+                                end = Offset(gradientOffset + 100f, 100f),
+                                tileMode = TileMode.Mirror
+                            )
+                        } else {
+                            Brush.linearGradient(
+                                colors = listOf(primaryColor, tertiaryColor)
+                            )
+                        },
+                        shape = defaultShape
+                    )
+                }
+            )
+            .padding(
+                horizontal = defaultHorizontalPadding,
+                vertical = verticalPadding ?: defaultVerticalPadding
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        // Icon with micro-animation
+        Box(
+            modifier = Modifier
+                .size(iconSize ?: defaultIconSize)
+                .then(
+                    if (animate && onClick != null) {
+                        Modifier.graphicsLayer {
+                            rotationZ = if (isPressed) 0f else gradientOffset / 3
+                        }
+                    } else Modifier
+                )
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = "SmartMatch",
+                tint = contentColor,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        if (showLabel) {
+            Spacer(modifier = Modifier.width(if (isTablet) 8.dp else 6.dp))
+
+            Text(
+                text = "$displayCount SmartMatch${if (matchCount != 1) "es" else ""}",
+                color = contentColor,
+                fontSize = fontSize ?: defaultFontSize,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = if (animate) {
+                    Modifier.graphicsLayer {
+                        alpha = 1f - (gradientOffset / 200f).coerceIn(0.8f, 1f)
+                    }
+                } else Modifier
+            )
+        } else {
+            Text(
+                text = displayCount,
+                color = contentColor,
+                fontSize = fontSize ?: defaultFontSize,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 2.dp)
+            )
+        }
+    }
+}
+
+
+// ========== END OF SMARTMATCH BADGE COMPOSABLES ==========
 
 @SuppressLint("FrequentlyChangingValue")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,9 +246,18 @@ fun DiscoverScreen(
     onNavigateToAllHousing: () -> Unit = {},
     onNavigateToAllProviders: () -> Unit = {},
     onNavigateToAllServices: () -> Unit = {},
-    onNavigateToAllSupport: () -> Unit = {}
+    onNavigateToAllSupport: () -> Unit = {},
+    onNavigateToSmartMatch: () -> Unit = {}, // Navigation for SmartMatch
+    onBookHousingClick: (HousingListingUiModel) -> Unit = {},
+    onViewHousingClick: (HousingListingUiModel) -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
+
+    // 🎯 Get window size class for responsive design
+    val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isExpanded = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val isTablet = isExpanded || isMedium
 
     // 🎨 Brand Palette - Using theme colors
     val primaryColor = colorScheme.primary
@@ -68,21 +274,23 @@ fun DiscoverScreen(
     // State for selected filters
     var selectedFilters by remember { mutableStateOf(setOf<String>()) }
 
-    // Get screen width for responsive card sizing
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
-    val isTablet = screenWidth > 600.dp
-
-    // Responsive card width based on screen size
+    // Responsive card width based on window size class
     val cardWidth = when {
-        isTablet -> 320.dp
-        screenWidth > 400.dp -> 300.dp
+        isExpanded -> 360.dp
+        isMedium -> 320.dp
         else -> 280.dp
     }
 
-    // 📏 Header sizes
-    val maxHeight = 220.dp
-    val minHeight = 90.dp
+    // Responsive horizontal padding
+    val horizontalPadding = when {
+        isExpanded -> 32.dp
+        isMedium -> 24.dp
+        else -> 16.dp
+    }
+
+    // 📏 Header sizes - slightly larger on tablets
+    val maxHeight = if (isTablet) 260.dp else 220.dp
+    val minHeight = if (isTablet) 100.dp else 90.dp
 
     val density = LocalDensity.current
     val collapseRangePx = with(density) {
@@ -134,25 +342,31 @@ fun DiscoverScreen(
             // 📜 SCROLL CONTENT
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = maxHeight + 130.dp
+                ),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Spacer for the fixed header and search bar
+                // 🤖 SmartMatch Highlight Section - Using the version with isTablet
                 item {
-                    Spacer(
-                        modifier = Modifier.height(
-                            maxHeight + 120.dp
-                        )
+                    HorizontalSmartMatchBadge(
+                        matchCount = 156,
+                        isTablet = isTablet,
+                        onClick = onNavigateToSmartMatch,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = horizontalPadding, vertical = 8.dp)
                     )
                 }
 
-                // In your DiscoverScreen, update all ModernJobCard calls to include description:
-
-// 📋 1. Jobs Near You
+                // 📋 1. Jobs Near You
                 item {
                     ModernSectionHeader(
                         title = "Jobs Near You",
                         actionText = "View all jobs →",
-                        onActionClick = onNavigateToAllJobs
+                        onActionClick = onNavigateToAllJobs,
+                        horizontalPadding = horizontalPadding
                     )
                 }
                 item {
@@ -165,12 +379,13 @@ fun DiscoverScreen(
                                     location = "Upper Hill",
                                     salary = "KSh 3,500/day",
                                     type = "Contract",
-                                    description = "Experienced foreman needed for high-rise construction project. Must have 5+ years experience.", // Added description
+                                    description = "Experienced foreman needed for high-rise construction project.",
                                     isVerified = true,
                                     employerType = EmployerType.ORGANIZATION,
-                                    profileImageRes = R.drawable.job_placeholder3, // Optional: add image
+                                    profileImageRes = R.drawable.job_placeholder3,
                                     onViewClick = { /* Navigate to job details */ },
-                                    onApplyClick = { /* Handle apply */ }
+                                    onApplyClick = { /* Handle apply */ },
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             },
                             {
@@ -180,12 +395,13 @@ fun DiscoverScreen(
                                     location = "Westlands",
                                     salary = "KSh 55,000/month",
                                     type = "Full-time",
-                                    description = "CPA qualified accountant with 2+ years experience in financial reporting.", // Added description
+                                    description = "CPA qualified accountant with 2+ years experience.",
                                     isVerified = true,
                                     employerType = EmployerType.ORGANIZATION,
-                                    profileImageRes = R.drawable.job_placeholder2, // Optional: add image
+                                    profileImageRes = R.drawable.job_placeholder2,
                                     onViewClick = { /* Navigate to job details */ },
-                                    onApplyClick = { /* Handle apply */ }
+                                    onApplyClick = { /* Handle apply */ },
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             },
                             {
@@ -195,12 +411,13 @@ fun DiscoverScreen(
                                     location = "Mombasa Rd",
                                     salary = "KSh 25,000/month",
                                     type = "Full-time",
-                                    description = "Inventory management, stock taking, and supply chain coordination.", // Added description
+                                    description = "Inventory management and stock coordination.",
                                     isVerified = false,
                                     employerType = EmployerType.ORGANIZATION,
-                                    profileImageRes = R.drawable.job_placeholder4, // Optional: add image
+                                    profileImageRes = R.drawable.job_placeholder4,
                                     onViewClick = { /* Navigate to job details */ },
-                                    onApplyClick = { /* Handle apply */ }
+                                    onApplyClick = { /* Handle apply */ },
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             },
                             {
@@ -210,16 +427,18 @@ fun DiscoverScreen(
                                     location = "Karen",
                                     salary = "KSh 40,000/month",
                                     type = "Contract",
-                                    description = "Solar panel installation and maintenance. Technical certification required.", // Added description
+                                    description = "Solar panel installation and maintenance.",
                                     isVerified = true,
                                     employerType = EmployerType.ORGANIZATION,
-                                    profileImageRes = R.drawable.job_placeholder5, // Optional: add image
+                                    profileImageRes = R.drawable.job_placeholder5,
                                     onViewClick = { /* Navigate to job details */ },
-                                    onApplyClick = { /* Handle apply */ }
+                                    onApplyClick = { /* Handle apply */ },
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         ),
-                        cardWidth = cardWidth
+                        cardWidth = cardWidth,
+                        horizontalPadding = horizontalPadding
                     )
                 }
 
@@ -228,7 +447,8 @@ fun DiscoverScreen(
                     ModernSectionHeader(
                         title = "Housing Opportunities",
                         actionText = "Browse all →",
-                        onActionClick = onNavigateToAllHousing
+                        onActionClick = onNavigateToAllHousing,
+                        horizontalPadding = horizontalPadding
                     )
                 }
                 item {
@@ -242,15 +462,58 @@ fun DiscoverScreen(
                                     type = "Apartment",
                                     rating = 4.5,
                                     isVerified = true,
-                                    description = "Self-contained bedsitter with parking, near Tuskys",
+                                    description = "Self-contained bedsitter with parking",
                                     isForSale = false,
                                     imageRes = R.drawable.property_placeholder1,
-                                    onViewClick = { /* Navigate to property details */ },
-                                    onBookClick = { /* Handle booking */ },
                                     bedrooms = 1,
                                     bathrooms = 1,
                                     squareMeters = 70,
-                                    onClick = { /* Handle click */ }
+                                    onViewClick = {
+                                        val listing = HousingListingUiModel(
+                                            id = "1",
+                                            title = "Modern Bedsitter",
+                                            price = "KSh 22,000",
+                                            location = "Ruiru",
+                                            propertyType = "Apartment",
+                                            description = "Self-contained bedsitter with parking",
+                                            isVerified = true,
+                                            isForSale = false,
+                                            rating = 4.5,
+                                            bedrooms = 1,
+                                            bathrooms = 1,
+                                            squareMeters = 70,
+                                            imageRes = R.drawable.property_placeholder1,
+                                            status = ListingStatus.AVAILABLE,
+                                            views = 0,
+                                            messages = 0,
+                                            requests = 0
+                                        )
+                                        onViewHousingClick(listing)
+                                    },
+                                    onBookClick = {
+                                        val listing = HousingListingUiModel(
+                                            id = "1",
+                                            title = "Modern Bedsitter",
+                                            price = "KSh 22,000",
+                                            location = "Ruiru",
+                                            propertyType = "Apartment",
+                                            description = "Self-contained bedsitter with parking",
+                                            isVerified = true,
+                                            isForSale = false,
+                                            rating = 4.5,
+                                            bedrooms = 1,
+                                            bathrooms = 1,
+                                            squareMeters = 70,
+                                            imageRes = R.drawable.property_placeholder1,
+                                            status = ListingStatus.AVAILABLE,
+                                            views = 0,
+                                            messages = 0,
+                                            requests = 0
+                                        )
+                                        onBookHousingClick(listing)
+                                    },
+                                    onClick = { /* Handle click */ },
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             },
                             {
@@ -261,15 +524,58 @@ fun DiscoverScreen(
                                     type = "Apartment",
                                     rating = 4.8,
                                     isVerified = true,
-                                    description = "Spacious 2BR with balcony, fitted kitchen, 24/7 security",
+                                    description = "Spacious 2BR with balcony",
                                     isForSale = false,
                                     imageRes = R.drawable.property_placeholder2,
-                                    onViewClick = { /* Navigate to property details */ },
-                                    onBookClick = { /* Handle booking */ },
                                     bedrooms = 2,
                                     bathrooms = 2,
                                     squareMeters = 85,
-                                    onClick = {}
+                                    onViewClick = {
+                                        val listing = HousingListingUiModel(
+                                            id = "2",
+                                            title = "2 Bedroom Apartment",
+                                            price = "KSh 45,000",
+                                            location = "Syokimau",
+                                            propertyType = "Apartment",
+                                            description = "Spacious 2BR with balcony",
+                                            isVerified = true,
+                                            isForSale = false,
+                                            rating = 4.8,
+                                            bedrooms = 2,
+                                            bathrooms = 2,
+                                            squareMeters = 85,
+                                            imageRes = R.drawable.property_placeholder2,
+                                            status = ListingStatus.AVAILABLE,
+                                            views = 0,
+                                            messages = 0,
+                                            requests = 0
+                                        )
+                                        onViewHousingClick(listing)
+                                    },
+                                    onBookClick = {
+                                        val listing = HousingListingUiModel(
+                                            id = "2",
+                                            title = "2 Bedroom Apartment",
+                                            price = "KSh 45,000",
+                                            location = "Syokimau",
+                                            propertyType = "Apartment",
+                                            description = "Spacious 2BR with balcony",
+                                            isVerified = true,
+                                            isForSale = false,
+                                            rating = 4.8,
+                                            bedrooms = 2,
+                                            bathrooms = 2,
+                                            squareMeters = 85,
+                                            imageRes = R.drawable.property_placeholder2,
+                                            status = ListingStatus.AVAILABLE,
+                                            views = 0,
+                                            messages = 0,
+                                            requests = 0
+                                        )
+                                        onBookHousingClick(listing)
+                                    },
+                                    onClick = {},
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             },
                             {
@@ -280,15 +586,58 @@ fun DiscoverScreen(
                                     type = "House",
                                     rating = 4.9,
                                     isVerified = true,
-                                    description = "4BR villa with garden, pool, and servant quarters",
+                                    description = "4BR villa with garden and pool",
                                     isForSale = true,
                                     imageRes = R.drawable.property_placeholder3,
-                                    onViewClick = { /* Navigate to property details */ },
-                                    onBookClick = { /* Handle booking */ },
                                     bedrooms = 4,
                                     bathrooms = 4,
                                     squareMeters = 350,
-                                    onClick = {}
+                                    onViewClick = {
+                                        val listing = HousingListingUiModel(
+                                            id = "3",
+                                            title = "Luxury Villa",
+                                            price = "KSh 4.5M",
+                                            location = "Karen",
+                                            propertyType = "House",
+                                            description = "4BR villa with garden and pool",
+                                            isVerified = true,
+                                            isForSale = true,
+                                            rating = 4.9,
+                                            bedrooms = 4,
+                                            bathrooms = 4,
+                                            squareMeters = 350,
+                                            imageRes = R.drawable.property_placeholder3,
+                                            status = ListingStatus.AVAILABLE,
+                                            views = 0,
+                                            messages = 0,
+                                            requests = 0
+                                        )
+                                        onViewHousingClick(listing)
+                                    },
+                                    onBookClick = {
+                                        val listing = HousingListingUiModel(
+                                            id = "3",
+                                            title = "Luxury Villa",
+                                            price = "KSh 4.5M",
+                                            location = "Karen",
+                                            propertyType = "House",
+                                            description = "4BR villa with garden and pool",
+                                            isVerified = true,
+                                            isForSale = true,
+                                            rating = 4.9,
+                                            bedrooms = 4,
+                                            bathrooms = 4,
+                                            squareMeters = 350,
+                                            imageRes = R.drawable.property_placeholder3,
+                                            status = ListingStatus.AVAILABLE,
+                                            views = 0,
+                                            messages = 0,
+                                            requests = 0
+                                        )
+                                        onBookHousingClick(listing)
+                                    },
+                                    onClick = {},
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             },
                             {
@@ -299,28 +648,73 @@ fun DiscoverScreen(
                                     type = "Studio",
                                     rating = 4.3,
                                     isVerified = true,
-                                    description = "Modern studio, near Yaya Centre, water included",
+                                    description = "Modern studio near Yaya Centre",
                                     isForSale = false,
                                     imageRes = R.drawable.property_placeholder4,
-                                    onViewClick = { /* Navigate to property details */ },
-                                    onBookClick = { /* Handle booking */ },
                                     bedrooms = 1,
                                     bathrooms = 1,
                                     squareMeters = 45,
-                                    onClick = {}
+                                    onViewClick = {
+                                        val listing = HousingListingUiModel(
+                                            id = "4",
+                                            title = "Studio Apartment",
+                                            price = "KSh 35,000",
+                                            location = "Kilimani",
+                                            propertyType = "Studio",
+                                            description = "Modern studio near Yaya Centre",
+                                            isVerified = true,
+                                            isForSale = false,
+                                            rating = 4.3,
+                                            bedrooms = 1,
+                                            bathrooms = 1,
+                                            squareMeters = 45,
+                                            imageRes = R.drawable.property_placeholder4,
+                                            status = ListingStatus.AVAILABLE,
+                                            views = 0,
+                                            messages = 0,
+                                            requests = 0
+                                        )
+                                        onViewHousingClick(listing)
+                                    },
+                                    onBookClick = {
+                                        val listing = HousingListingUiModel(
+                                            id = "4",
+                                            title = "Studio Apartment",
+                                            price = "KSh 35,000",
+                                            location = "Kilimani",
+                                            propertyType = "Studio",
+                                            description = "Modern studio near Yaya Centre",
+                                            isVerified = true,
+                                            isForSale = false,
+                                            rating = 4.3,
+                                            bedrooms = 1,
+                                            bathrooms = 1,
+                                            squareMeters = 45,
+                                            imageRes = R.drawable.property_placeholder4,
+                                            status = ListingStatus.AVAILABLE,
+                                            views = 0,
+                                            messages = 0,
+                                            requests = 0
+                                        )
+                                        onBookHousingClick(listing)
+                                    },
+                                    onClick = {},
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         ),
-                        cardWidth = cardWidth
+                        cardWidth = cardWidth,
+                        horizontalPadding = horizontalPadding
                     )
                 }
 
                 // 🛠️ 3. Trusted Service Providers
                 item {
                     ModernSectionHeader(
-                        title = "Trusted Service Providers",
+                        title = "Trusted Professionals",
                         actionText = "See all →",
-                        onActionClick = onNavigateToAllProviders
+                        onActionClick = onNavigateToAllProviders,
+                        horizontalPadding = horizontalPadding
                     )
                 }
                 item {
@@ -336,7 +730,8 @@ fun DiscoverScreen(
                                     description = "Professional moving services across Nairobi",
                                     onCardClick = { /* Navigate to provider details */ },
                                     onViewClick = { /* Handle view */ },
-                                    onBookClick = { /* Handle booking */ }
+                                    onHireClick = { /* Handle hire */ },
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             },
                             {
@@ -349,7 +744,8 @@ fun DiscoverScreen(
                                     description = "24/7 emergency electrical services",
                                     onCardClick = { /* Navigate to provider details */ },
                                     onViewClick = { /* Handle view */ },
-                                    onBookClick = { /* Handle booking */ }
+                                    onHireClick = { /* Handle hire */ },
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             },
                             {
@@ -362,7 +758,8 @@ fun DiscoverScreen(
                                     description = "Professional cleaning for homes and offices",
                                     onCardClick = { /* Navigate to provider details */ },
                                     onViewClick = { /* Handle view */ },
-                                    onBookClick = { /* Handle booking */ }
+                                    onHireClick = { /* Handle hire */ },
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             },
                             {
@@ -375,11 +772,13 @@ fun DiscoverScreen(
                                     description = "Solar panel installation and maintenance",
                                     onCardClick = { /* Navigate to provider details */ },
                                     onViewClick = { /* Handle view */ },
-                                    onBookClick = { /* Handle booking */ }
+                                    onHireClick = { /* Handle hire */ },
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         ),
-                        cardWidth = cardWidth
+                        cardWidth = cardWidth,
+                        horizontalPadding = horizontalPadding
                     )
                 }
 
@@ -388,12 +787,15 @@ fun DiscoverScreen(
                     ModernSectionHeader(
                         title = "Common Services",
                         actionText = "Browse categories →",
-                        onActionClick = onNavigateToAllServices
+                        onActionClick = onNavigateToAllServices,
+                        horizontalPadding = horizontalPadding
                     )
                 }
                 item {
                     ModernServiceGrid(
-                        colorScheme = colorScheme
+                        colorScheme = colorScheme,
+                        horizontalPadding = horizontalPadding,
+                        isTablet = isTablet
                     )
                 }
 
@@ -402,7 +804,8 @@ fun DiscoverScreen(
                     ModernSectionHeader(
                         title = "Social Support & Services",
                         actionText = "Get help →",
-                        onActionClick = onNavigateToAllSupport
+                        onActionClick = onNavigateToAllSupport,
+                        horizontalPadding = horizontalPadding
                     )
                 }
                 items(3) { index ->
@@ -416,7 +819,8 @@ fun DiscoverScreen(
                         service = supports[index].second,
                         location = supports[index].third,
                         isUrgent = index == 0,
-                        colorScheme = colorScheme
+                        colorScheme = colorScheme,
+                        horizontalPadding = horizontalPadding
                     )
                 }
 
@@ -432,220 +836,63 @@ fun DiscoverScreen(
                 colorScheme = colorScheme,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .zIndex(2f)
+                    .zIndex(3f)
             )
 
-            // 📌 FIXED SEARCH SECTION
-            FixedSearchSection(
-                query = searchQuery,
-                onQueryChange = { searchQuery = it },
-                onAudioClick = {
-                    isRecording = !isRecording
-                },
-                isRecording = isRecording,
-                accentColor = primaryColor,
-                headerHeight = animatedHeight,
-                showShadow = isPastThreshold.value,
-                colorScheme = colorScheme,
-                selectedFilters = selectedFilters,
-                onFilterSelected = { filter ->
-                    selectedFilters = if (selectedFilters.contains(filter)) {
-                        selectedFilters - filter
-                    } else {
-                        selectedFilters + filter
-                    }
-                },
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .zIndex(1f)
-            )
-        }
-    }
-}
-
-/* ─────────────────────────────────────────────
-   FIXED SEARCH SECTION
-   ───────────────────────────────────────────── */
-
-@Composable
-fun FixedSearchSection(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onAudioClick: () -> Unit,
-    isRecording: Boolean,
-    accentColor: Color,
-    headerHeight: Dp,
-    showShadow: Boolean,
-    colorScheme: ColorScheme,
-    selectedFilters: Set<String>,
-    onFilterSelected: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val elevation by animateDpAsState(
-        targetValue = if (showShadow) 8.dp else 0.dp,
-        animationSpec = tween(durationMillis = 200)
-    )
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = headerHeight)
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(
-                    elevation = elevation,
-                    shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
-                    ambientColor = Color.Black.copy(0.08f)
-                ),
-            shape = RoundedCornerShape(
-                topStart = 0.dp,
-                topEnd = 0.dp,
-                bottomStart = 20.dp,
-                bottomEnd = 20.dp
-            ),
-            color = colorScheme.surface,
-            tonalElevation = if (showShadow) 4.dp else 0.dp
-        ) {
-            Column(
+            // 📌 FIXED SEARCH + PILLS SECTION
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .align(Alignment.TopCenter)
+                    .padding(top = animatedHeight)
+                    .shadow(
+                        elevation = if (isPastThreshold.value) 8.dp else 0.dp,
+                        shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
+                        ambientColor = Color.Black.copy(0.08f)
+                    )
+                    .zIndex(2f),
+                shape = RoundedCornerShape(
+                    topStart = 0.dp,
+                    topEnd = 0.dp,
+                    bottomStart = 20.dp,
+                    bottomEnd = 20.dp
+                ),
+                color = colorScheme.surface,
+                tonalElevation = if (isPastThreshold.value) 4.dp else 0.dp
             ) {
-                // Search Bar with Audio Icon
-                SearchBarWithAudio(
-                    query = query,
-                    onQueryChange = onQueryChange,
-                    onAudioClick = onAudioClick,
-                    isRecording = isRecording,
-                    accentColor = accentColor,
-                    colorScheme = colorScheme
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Filter Pills
-                FilterPillsRow(
-                    selectedFilters = selectedFilters,
-                    onFilterSelected = onFilterSelected,
-                    accentColor = accentColor,
-                    colorScheme = colorScheme
-                )
-            }
-        }
-    }
-}
-
-/* ─────────────────────────────────────────────
-   SEARCH BAR WITH AUDIO ICON
-   ───────────────────────────────────────────── */
-
-@Composable
-fun SearchBarWithAudio(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onAudioClick: () -> Unit,
-    isRecording: Boolean,
-    accentColor: Color,
-    colorScheme: ColorScheme
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 2.dp,
-                shape = RoundedCornerShape(16.dp),
-                ambientColor = Color.Black.copy(0.05f)
-            ),
-        shape = RoundedCornerShape(16.dp),
-        color = colorScheme.surface,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Outlined.Search,
-                contentDescription = null,
-                tint = colorScheme.onSurfaceVariant.copy(0.6f),
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-
-            BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                modifier = Modifier.weight(1f),
-                decorationBox = { innerTextField ->
-                    Box {
-                        if (query.isEmpty()) {
-                            Text(
-                                "Search jobs, houses, services...",
-                                color = colorScheme.onSurfaceVariant.copy(0.5f),
-                                fontSize = 14.sp
-                            )
-                        }
-                        innerTextField()
-                    }
-                },
-                textStyle = LocalTextStyle.current.copy(
-                    fontSize = 14.sp,
-                    color = colorScheme.onSurface
-                )
-            )
-
-            if (query.isNotEmpty()) {
-                IconButton(
-                    onClick = { onQueryChange("") },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        Icons.Outlined.Close,
-                        contentDescription = "Clear",
-                        tint = colorScheme.onSurfaceVariant.copy(0.6f),
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            } else {
-                // Audio Icon
-                IconButton(
-                    onClick = onAudioClick,
+                Column(
                     modifier = Modifier
-                        .size(40.dp)
-                        .then(
-                            if (isRecording) {
-                                Modifier.background(
-                                    color = accentColor.copy(0.1f),
-                                    shape = CircleShape
-                                )
-                            } else {
-                                Modifier
-                            }
-                        )
+                        .fillMaxWidth()
+                        .padding(horizontal = horizontalPadding, vertical = 12.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isRecording)
-                            Icons.Filled.Mic
-                        else
-                            Icons.Outlined.Mic,
-                        contentDescription = if (isRecording) "Stop recording" else "Start voice search",
-                        tint = if (isRecording) accentColor else colorScheme.onSurfaceVariant.copy(0.6f),
-                        modifier = Modifier.size(20.dp)
+                    // Search Bar with Audio Icon
+                    SearchBarWithAudio(
+                        query = searchQuery,
+                        onQueryChange = { searchQuery = it },
+                        onAudioClick = {
+                            isRecording = !isRecording
+                        },
+                        isRecording = isRecording,
+                        accentColor = primaryColor,
+                        colorScheme = colorScheme
                     )
-                }
 
-                if (isRecording) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(
-                                color = colorScheme.error,
-                                shape = CircleShape
-                            )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Filter Pills with SmartMatch badge at the beginning
+                    FilterPillsRow(
+                        selectedFilters = selectedFilters,
+                        onFilterSelected = { filter ->
+                            selectedFilters = if (selectedFilters.contains(filter)) {
+                                selectedFilters - filter
+                            } else {
+                                selectedFilters + filter
+                            }
+                        },
+                        accentColor = primaryColor,
+                        colorScheme = colorScheme,
+                        isTablet = isTablet, // Pass isTablet instead of windowSizeClass
+                        onSmartMatchClick = onNavigateToSmartMatch
                     )
                 }
             }
@@ -654,7 +901,7 @@ fun SearchBarWithAudio(
 }
 
 /* ─────────────────────────────────────────────
-   FILTER PILLS ROW
+   FILTER PILLS ROW (SmartMatch badge removed)
    ───────────────────────────────────────────── */
 
 @Composable
@@ -662,17 +909,21 @@ fun FilterPillsRow(
     selectedFilters: Set<String>,
     onFilterSelected: (String) -> Unit,
     accentColor: Color,
-    colorScheme: ColorScheme
+    colorScheme: ColorScheme,
+    isTablet: Boolean,
+    onSmartMatchClick: () -> Unit // Keep parameter but don't use it
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
+        // SmartMatch badge REMOVED from here
+
         val filters = listOf(
             "All" to null,
             "Jobs" to Icons.Outlined.Work,
             "Houses" to Icons.Outlined.Home,
-            "Service providers" to Icons.Outlined.Build,
+            "Professionals" to Icons.Outlined.Build,
             "Support" to Icons.Outlined.VolunteerActivism,
             "Verified" to Icons.Outlined.Verified
         )
@@ -718,20 +969,216 @@ fun FilterPillsRow(
     }
 }
 
-/* ────────────── MODIFIED COMPONENTS ────────────── */
+/* ─────────────────────────────────────────────
+   SEARCH BAR WITH AUDIO ICON (SmartMatch badge removed)
+   ───────────────────────────────────────────── */
+
+@Composable
+fun SearchBarWithAudio(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onAudioClick: () -> Unit,
+    isRecording: Boolean,
+    accentColor: Color,
+    colorScheme: ColorScheme
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = Color.Black.copy(0.05f)
+            ),
+        shape = RoundedCornerShape(16.dp),
+        color = colorScheme.surface,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Outlined.Search,
+                contentDescription = null,
+                tint = colorScheme.onSurfaceVariant.copy(0.6f),
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.weight(1f),
+                decorationBox = { innerTextField ->
+                    Box {
+                        if (query.isEmpty()) {
+                            Text(
+                                "Search...",
+                                color = colorScheme.onSurfaceVariant.copy(0.5f),
+                                fontSize = 14.sp
+                            )
+                        }
+                        innerTextField()
+                    }
+                },
+                textStyle = LocalTextStyle.current.copy(
+                    fontSize = 14.sp,
+                    color = colorScheme.onSurface
+                )
+            )
+
+            if (query.isNotEmpty()) {
+                IconButton(
+                    onClick = { onQueryChange("") },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.Close,
+                        contentDescription = "Clear",
+                        tint = colorScheme.onSurfaceVariant.copy(0.6f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            } else {
+                // Audio Icon only - SmartMatch badge removed
+                IconButton(
+                    onClick = onAudioClick,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .then(
+                            if (isRecording) {
+                                Modifier.background(
+                                    color = accentColor.copy(0.1f),
+                                    shape = CircleShape
+                                )
+                            } else {
+                                Modifier
+                            }
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (isRecording)
+                            Icons.Filled.Mic
+                        else
+                            Icons.Outlined.Mic,
+                        contentDescription = if (isRecording) "Stop recording" else "Start voice search",
+                        tint = if (isRecording) accentColor else colorScheme.onSurfaceVariant.copy(0.6f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                if (isRecording) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(
+                                color = colorScheme.error,
+                                shape = CircleShape
+                            )
+                    )
+                }
+            }
+        }
+    }
+}
+
+/* ─────────────────────────────────────────────
+   FILTER PILLS ROW (SmartMatch badge first, proper spacing)
+   ───────────────────────────────────────────── */
+
+@Composable
+fun FilterPillsRow(
+    selectedFilters: Set<String>,
+    onFilterSelected: (String) -> Unit,
+    accentColor: Color,
+    colorScheme: ColorScheme,
+    windowSizeClass: WindowSizeClass,
+    onSmartMatchClick: () -> Unit
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // SmartMatch badge as the FIRST item
+        item {
+            SmartMatchBadge(
+                matchCount = 156,
+                windowSizeClass = windowSizeClass,
+                showLabel = false,
+                onClick = onSmartMatchClick,
+                modifier = Modifier
+                    .padding(end = 4.dp) // Small padding after the badge
+            )
+        }
+
+        val filters = listOf(
+            "All" to null,
+            "Jobs" to Icons.Outlined.Work,
+            "Houses" to Icons.Outlined.Home,
+            "Professionals" to Icons.Outlined.Groups,
+            "Support" to Icons.Outlined.VolunteerActivism,
+            "Verified" to Icons.Outlined.Verified
+        )
+
+        items(filters.size) { index ->
+            val (filter, icon) = filters[index]
+            val isSelected = selectedFilters.contains(filter) || (filter == "All" && selectedFilters.isEmpty())
+
+            Surface(
+                shape = RoundedCornerShape(30.dp),
+                color = if (isSelected) accentColor else colorScheme.surface,
+                border = if (!isSelected) BorderStroke(1.dp, colorScheme.outlineVariant) else null,
+                modifier = Modifier
+                    .clickable { onFilterSelected(filter) }
+                    .shadow(
+                        elevation = if (isSelected) 2.dp else 0.dp,
+                        shape = RoundedCornerShape(30.dp),
+                        ambientColor = Color.Black.copy(0.05f)
+                    )
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (icon != null) {
+                        Icon(
+                            icon,
+                            contentDescription = null,
+                            tint = if (isSelected) colorScheme.onPrimary else colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = filter,
+                        color = if (isSelected) colorScheme.onPrimary else colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                }
+            }
+        }
+    }
+}
+
+/* ────────────── UPDATED COMPONENTS WITH HORIZONTAL PADDING ────────────── */
 
 @Composable
 fun ModernSectionHeader(
     title: String,
     actionText: String,
-    onActionClick: () -> Unit = {}
+    onActionClick: () -> Unit = {},
+    horizontalPadding: Dp = 16.dp
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 12.dp),
+            .padding(start = horizontalPadding, end = horizontalPadding, top = 24.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -757,12 +1204,13 @@ fun ModernSectionHeader(
 @Composable
 fun ModernHorizontalList(
     items: List<@Composable () -> Unit>,
-    cardWidth: Dp
+    cardWidth: Dp,
+    horizontalPadding: Dp = 16.dp
 ) {
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = horizontalPadding),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(items.size) { index ->
@@ -783,7 +1231,8 @@ fun ModernSupportCard(
     service: String,
     location: String,
     isUrgent: Boolean,
-    colorScheme: ColorScheme
+    colorScheme: ColorScheme,
+    horizontalPadding: Dp = 16.dp
 ) {
     val primaryColor = colorScheme.primary
     val tertiaryColor = colorScheme.tertiary
@@ -791,7 +1240,7 @@ fun ModernSupportCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .padding(horizontal = horizontalPadding, vertical = 6.dp)
             .clickable { /* View details */ },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
@@ -877,7 +1326,9 @@ fun ModernSupportCard(
 
 @Composable
 fun ModernServiceGrid(
-    colorScheme: ColorScheme
+    colorScheme: ColorScheme,
+    horizontalPadding: Dp = 16.dp,
+    isTablet: Boolean = false
 ) {
     val services = listOf(
         "Movers" to Icons.Outlined.LocalShipping,
@@ -890,12 +1341,15 @@ fun ModernServiceGrid(
         "Painters" to Icons.Outlined.FormatPaint
     )
 
+    // Adjust grid columns based on tablet
+    val columnsPerRow = if (isTablet) 6 else 4
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = horizontalPadding)
     ) {
-        services.chunked(4).forEach { rowItems ->
+        services.chunked(columnsPerRow).forEach { rowItems ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -976,11 +1430,16 @@ fun DiscoverHeroHeader(
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.nairobi_city),
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(R.drawable.nairobi_city)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    placeholder = painterResource(R.drawable.nairobi_city),
+                    error = painterResource(R.drawable.nairobi_city)
                 )
             }
 
@@ -1005,23 +1464,6 @@ fun DiscoverHeroHeader(
                                     colorScheme.primary.copy(0.75f),
                                     Color.Transparent
                                 )
-                            )
-                        )
-                )
-            }
-
-            AnimatedVisibility(
-                visible = !collapsed,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(colorScheme.tertiary.copy(0.15f), Color.Transparent),
-                                endX = 400f
                             )
                         )
                 )
@@ -1077,6 +1519,7 @@ fun DiscoverHeroHeader(
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            // SmartMatch badge removed from header
                             HeaderActionIcon(
                                 icon = Icons.Default.Mail,
                                 iconTint = Color.White,
@@ -1119,6 +1562,7 @@ fun DiscoverHeroHeader(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        // SmartMatch badge removed from header
                         HeaderActionIcon(
                             icon = Icons.Default.Mail,
                             iconTint = Color.White,

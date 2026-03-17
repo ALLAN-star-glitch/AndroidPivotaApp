@@ -3,5 +3,15 @@ package com.example.pivota.dashboard.domain
 enum class ListingStatus {
     ACTIVE,
     PENDING,
-    CLOSED
+    CLOSED,
+
+    AVAILABLE,
+
+    RENTED,
+
+    INACTIVE,
+
+    SOLD
+
+
 }

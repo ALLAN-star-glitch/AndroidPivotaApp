@@ -14,18 +14,30 @@ fun StatusChip(status: ListingStatus) {
         ListingStatus.ACTIVE -> MaterialTheme.colorScheme.primaryContainer
         ListingStatus.PENDING -> MaterialTheme.colorScheme.tertiaryContainer
         ListingStatus.CLOSED -> MaterialTheme.colorScheme.surfaceContainerHigh
+        ListingStatus.AVAILABLE -> MaterialTheme.colorScheme.surfaceContainerHigh
+        ListingStatus.RENTED -> MaterialTheme.colorScheme.surfaceContainerHigh
+        ListingStatus.INACTIVE -> MaterialTheme.colorScheme.surfaceContainerHigh
+        ListingStatus.SOLD -> MaterialTheme.colorScheme.surfaceContainerHigh
     }
 
     val contentColor = when (status) {
         ListingStatus.ACTIVE -> MaterialTheme.colorScheme.onPrimaryContainer
         ListingStatus.PENDING -> MaterialTheme.colorScheme.onTertiaryContainer
         ListingStatus.CLOSED -> MaterialTheme.colorScheme.onSurfaceVariant
+        ListingStatus.AVAILABLE -> MaterialTheme.colorScheme.onSurfaceVariant
+        ListingStatus.RENTED -> MaterialTheme.colorScheme.onSurfaceVariant
+        ListingStatus.INACTIVE -> MaterialTheme.colorScheme.onSurfaceVariant
+        ListingStatus.SOLD -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     val label = when (status) {
         ListingStatus.ACTIVE -> "Active"
         ListingStatus.PENDING -> "Pending"
         ListingStatus.CLOSED -> "Closed"
+        ListingStatus.AVAILABLE -> "Available"
+        ListingStatus.RENTED -> "Rented"
+        ListingStatus.INACTIVE -> "Inactive"
+        ListingStatus.SOLD -> "Sold"
     }
 
     AssistChip(
