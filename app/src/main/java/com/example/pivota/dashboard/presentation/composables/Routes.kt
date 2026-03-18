@@ -38,4 +38,7 @@ object JobDetails
 @Serializable
 object JobApplicationForm // Optional - if you want an application form screen
 
+@Serializable
+object AdminJobDetails
+
 // Add more routes as needed
