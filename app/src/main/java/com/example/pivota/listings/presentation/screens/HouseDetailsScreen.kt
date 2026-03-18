@@ -67,9 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.window.core.layout.WindowSizeClass
-import coil3.compose.AsyncImage
 import com.example.pivota.R
-import com.example.pivota.admin.presentation.screens.DetailItem
 import com.example.pivota.core.presentations.composables.TopBar
 import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
 import java.text.NumberFormat
