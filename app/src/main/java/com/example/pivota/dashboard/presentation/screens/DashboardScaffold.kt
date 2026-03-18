@@ -18,6 +18,9 @@ import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
 import com.example.pivota.dashboard.presentation.state.JobListingUiModel as DashboardJobListingUiModel
 import com.example.pivota.dashboard.presentation.viewmodels.MyListingsViewModel
 import com.example.pivota.admin.presentation.screens.AdminHouseDetailsScreen
+import com.example.pivota.admin.presentation.screens.AdminJobDetailsScreen
+import com.example.pivota.admin.presentation.screens.AdminJobListingUiModel
+import com.example.pivota.admin.presentation.screens.JobStatus
 import com.example.pivota.listings.presentation.screens.BookViewingScreen
 import com.example.pivota.listings.presentation.screens.HouseDetailsScreen
 import com.example.pivota.listings.presentation.screens.HousingPostScreen
@@ -33,7 +36,7 @@ import topLevelRoutes
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
-// Quick conversion function - just enough to see the UI
+// Quick conversion function - for user-facing job details
 private fun quickConvertToDetailsJob(dashboardJob: DashboardJobListingUiModel): DetailsJobListingUiModel {
     // Parse salary to get a number (simplified)
     val salaryValue = try {
@@ -108,6 +111,45 @@ private fun quickConvertToDetailsJob(dashboardJob: DashboardJobListingUiModel): 
     )
 }
 
+// NEW: Conversion function for admin job details
+private fun convertToAdminJobListing(dashboardJob: DashboardJobListingUiModel): AdminJobListingUiModel {
+    // Map to admin job status
+    val jobStatus = JobStatus.ACTIVE // Default, you can map based on your data
+
+    return AdminJobListingUiModel(
+        id = dashboardJob.id,
+        title = dashboardJob.title,
+        companyName = dashboardJob.company,
+        companyLogoUrl = null,
+        location = dashboardJob.location,
+        exactLocation = dashboardJob.location,
+        jobType = dashboardJob.jobType,
+        status = jobStatus,
+        postedDate = Date(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(3)),
+        expiryDate = Date(System.currentTimeMillis() + TimeUnit.DAYS.toMillis(25)),
+        views = 0,
+        applications = 0,
+        newApplications = 0,
+        reviewedApplications = 0,
+        description = dashboardJob.description,
+        requirements = listOf(
+            "Bachelor's degree in Computer Science or related field",
+            "5+ years of experience"
+        ),
+        skills = listOf("Kotlin", "Android", "REST APIs"),
+        benefits = listOf("Health Insurance", "Transport allowance"),
+        isVerified = dashboardJob.isVerified,
+        employerName = dashboardJob.company,
+        employerVerified = true,
+        averageTimeToApply = 3.2,
+        applicationFunnel = com.example.pivota.admin.presentation.screens.ApplicationFunnel(
+            viewed = 100,
+            applied = 24,
+            reviewed = 12
+        )
+    )
+}
+
 @SuppressLint("ViewModelConstructorInComposable")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -121,8 +163,11 @@ fun DashboardScaffold() {
     var selectedListingForViewing by remember { mutableStateOf<HousingListingUiModel?>(null) }
     var selectedListingForAdminView by remember { mutableStateOf<HousingListingUiModel?>(null) }
 
-    // State for job details navigation - using the details screen's model type
+    // State for user-facing job details navigation
     var selectedJobForViewing by remember { mutableStateOf<DetailsJobListingUiModel?>(null) }
+
+    // NEW: State for admin job details navigation
+    var selectedAdminJobForViewing by remember { mutableStateOf<AdminJobListingUiModel?>(null) }
 
     val navigationItemColors = NavigationSuiteDefaults.itemColors(
         navigationBarItemColors = NavigationBarItemDefaults.colors(
@@ -264,31 +309,52 @@ fun DashboardScaffold() {
                         if (listing != null) {
                             AdminHouseDetailsScreen(
                                 housingListing = listing,
-                                onBack = {
+                                onNavigateBack = {
                                     navController.popBackStack()
                                     selectedListingForAdminView = null
                                 },
-                                onApprove = { id ->
-                                    // Handle approve action
-                                    println("Approve listing: $id")
-                                    navController.popBackStack()
-                                    selectedListingForAdminView = null
-                                },
-                                onReject = { id ->
-                                    // Handle reject action
-                                    println("Reject listing: $id")
-                                    navController.popBackStack()
-                                    selectedListingForAdminView = null
-                                },
-                                onEdit = { id ->
+                                onEditListing = { id ->
                                     // Handle edit action
                                     println("Edit listing: $id")
                                 },
-                                onDelete = { id ->
+                                onDuplicateListing = { id ->
+                                    println("Duplicate listing: $id")
+                                },
+                                onArchiveListing = { id ->
+                                    println("Archive listing: $id")
+                                },
+                                onDeleteListing = { id ->
                                     // Handle delete action
                                     println("Delete listing: $id")
                                     navController.popBackStack()
                                     selectedListingForAdminView = null
+                                },
+                                onPauseListing = { id ->
+                                    println("Pause listing: $id")
+                                },
+                                onResumeListing = { id ->
+                                    println("Resume listing: $id")
+                                },
+                                onMarkAvailable = { id ->
+                                    println("Mark available: $id")
+                                },
+                                onMarkRented = { id ->
+                                    println("Mark rented: $id")
+                                },
+                                onMarkSold = { id ->
+                                    println("Mark sold: $id")
+                                },
+                                onViewInquiries = { id ->
+                                    println("View inquiries: $id")
+                                },
+                                onShareListing = { id ->
+                                    println("Share listing: $id")
+                                },
+                                onViewLogs = { id ->
+                                    println("View logs: $id")
+                                },
+                                onCopyListingLink = { id ->
+                                    println("Copy link: $id")
                                 }
                             )
                         } else {
@@ -341,11 +407,11 @@ fun DashboardScaffold() {
                         )
                     }
 
-                    // UPDATED: JobListings route with quick conversion
+                    // JobListings route - user-facing job listings
                     composable<JobListings> {
                         JobListingsScreen(
                             onListingClick = { dashboardJob ->
-                                // Quick convert and navigate
+                                // Quick convert and navigate to user-facing job details
                                 val detailsJob = quickConvertToDetailsJob(dashboardJob)
                                 selectedJobForViewing = detailsJob
                                 navController.navigate(JobDetails)
@@ -359,7 +425,7 @@ fun DashboardScaffold() {
                         )
                     }
 
-                    // ADD THIS: Job Details Route
+                    // User-facing Job Details Route
                     composable<JobDetails> {
                         val jobListing = selectedJobForViewing
 
@@ -392,6 +458,69 @@ fun DashboardScaffold() {
                         }
                     }
 
+                    // NEW: Admin Job Details Route
+                    composable<AdminJobDetails> {
+                        val jobListing = selectedAdminJobForViewing
+
+                        if (jobListing != null) {
+                            AdminJobDetailsScreen(
+                                jobListing = jobListing,
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                    selectedAdminJobForViewing = null
+                                },
+                                onEditJob = { jobId ->
+                                    println("Edit job: $jobId")
+                                    // Navigate to edit screen or open edit modal
+                                },
+                                onDuplicateJob = { jobId ->
+                                    println("Duplicate job: $jobId")
+                                    // Handle duplicate
+                                },
+                                onArchiveJob = { jobId ->
+                                    println("Archive job: $jobId")
+                                    // Handle archive
+                                },
+                                onDeleteJob = { jobId ->
+                                    println("Delete job: $jobId")
+                                    // Handle delete
+                                },
+                                onPauseJob = { jobId ->
+                                    println("Pause job: $jobId")
+                                    // Handle pause
+                                },
+                                onResumeJob = { jobId ->
+                                    println("Resume job: $jobId")
+                                    // Handle resume
+                                },
+                                onCloseJob = { jobId ->
+                                    println("Close job: $jobId")
+                                    // Handle close
+                                },
+                                onViewApplicants = { jobId ->
+                                    println("View applicants for: $jobId")
+                                    // Navigate to applicants list
+                                },
+                                onShareJob = { jobId ->
+                                    println("Share job: $jobId")
+                                    // Handle share
+                                },
+                                onViewLogs = { jobId ->
+                                    println("View logs for: $jobId")
+                                    // Navigate to logs screen
+                                },
+                                onCopyJobLink = { jobId ->
+                                    println("Copy link for: $jobId")
+                                    // Handle copy link
+                                }
+                            )
+                        } else {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+
                     // Type-Safe Posting Flows
                     composable<PostJob> {
                         JobPostScreen.Content(onBack = { navController.popBackStack() })
@@ -403,11 +532,17 @@ fun DashboardScaffold() {
                         HousingPostScreen.Content(onBack = { navController.popBackStack() })
                     }
 
-                    // My Listings route with housing view support
+                    // UPDATED: My Listings route with job support
                     composable<MyListings> {
                         MyListingsScreen(
                             onListingClick = { listingUiModel ->
-                                // Handle non-housing listing clicks
+                                // Handle generic listing clicks
+                                println("Generic listing clicked: ${listingUiModel.title}")
+                            },
+                            // NEW: Job click handler for admin view
+                            onJobClick = { adminJobListing ->
+                                selectedAdminJobForViewing = adminJobListing
+                                navController.navigate(AdminJobDetails)
                             },
                             onHousingViewClick = { housingListing ->
                                 selectedListingForAdminView = housingListing

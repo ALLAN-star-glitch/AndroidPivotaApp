@@ -8,12 +8,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Help
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -27,8 +29,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,220 +40,105 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.window.core.layout.WindowSizeClass
+import androidx.window.core.layout.WindowWidthSizeClass
 import coil3.compose.AsyncImage
-import com.example.pivota.R
-import com.example.pivota.dashboard.domain.ListingStatus
-import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
-import com.example.pivota.listings.presentation.composables.SimpleHousingImageGallery
+import com.example.pivota.core.presentation.composables.StatusBadge
+import com.example.pivota.core.presentation.composables.StatusBadgeSize
+import com.example.pivota.core.presentation.composables.StatusBadgeStyle
 import com.example.pivota.ui.theme.PivotaConnectTheme
 import kotlinx.coroutines.delay
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
-// Add this data class for dialog configuration
-data class DialogConfig(
-    val title: String,
-    val message: String,
-    val icon: ImageVector,
-    val color: Color
-)
-
-// Add this data class for management actions
-data class ManagementActionHousingDetails(
-    val label: String,
-    val icon: ImageVector,
-    val color: Color,
-    val onClick: () -> Unit
-)
-
 /**
- * Admin Housing Listing UI Model Extension
- * Adding missing fields to match job details functionality
+ * Admin Job Listing UI Model
  */
-data class AdminHousingListingUiModel(
+data class AdminJobListingUiModel(
     val id: String,
     val title: String,
-    val price: String,
+    val companyName: String,
+    val companyLogoUrl: String? = null,
     val location: String,
     val exactLocation: String? = null,
-    val propertyType: String,
-    val status: ListingStatus,
+    val jobType: String, // "Full-time", "Part-time", "Contract", etc.
+    val status: JobStatus,
     val postedDate: Date,
     val expiryDate: Date? = null,
     val views: Int = 0,
-    val messages: Int = 0,
-    val requests: Int = 0,
-    val newInquiries: Int = 0,
+    val applications: Int = 0,
+    val newApplications: Int = 0,
+    val reviewedApplications: Int = 0,
     val description: String,
-    val bedrooms: Int,
-    val bathrooms: Int,
-    val squareMeters: Int,
-    val facilities: List<String> = emptyList(),
-    val imageUrls: List<String> = emptyList(),
-    val imageRes: List<Int> = emptyList(), // For preview
+    val requirements: List<String> = emptyList(),
+    val skills: List<String> = emptyList(),
+    val benefits: List<String> = emptyList(),
     val isVerified: Boolean = true,
-    val ownerName: String,
-    val ownerVerified: Boolean = true,
-    val rating: Double = 0.0,
-    val isForSale: Boolean = false,
-    val averageResponseTime: Double = 0.0, // in hours
-    val viewsTrend: String = "+12%",
-    val messagesTrend: String = "+8%",
-    val requestsTrend: String = "+5%"
+    val employerName: String,
+    val employerVerified: Boolean = true,
+    val averageTimeToApply: Double = 0.0, // in days
+    val applicationFunnel: ApplicationFunnel = ApplicationFunnel()
 )
 
-// Extension function to convert from HousingListingUiModel
-fun HousingListingUiModel.toAdminHousingListingUiModel(): AdminHousingListingUiModel {
-    return AdminHousingListingUiModel(
-        id = this.id,
-        title = this.title,
-        price = this.price,
-        location = this.location,
-        exactLocation = this.location,
-        propertyType = this.propertyType,
-        status = this.status,
-        postedDate = Date(), // You'll need to add postedDate to HousingListingUiModel
-        expiryDate = null, // You'll need to add expiryDate to HousingListingUiModel
-        views = this.views,
-        messages = this.messages,
-        requests = this.requests,
-        newInquiries = 0, // You'll need to add this
-        description = this.description,
-        bedrooms = this.bedrooms,
-        bathrooms = this.bathrooms,
-        squareMeters = this.squareMeters,
-        facilities = listOf("Water", "Electricity", "Parking", "Wi-Fi", "Security", "Gym"),
-        imageUrls = emptyList(),
-        imageRes = this.imageList,
-        isVerified = this.isVerified,
-        ownerName = "Property Owner",
-        ownerVerified = this.isVerified,
-        rating = this.rating,
-        isForSale = this.isForSale,
-        averageResponseTime = 2.5,
-        viewsTrend = "+12%",
-        messagesTrend = "+8%",
-        requestsTrend = "+5%"
-    )
-}
-
-// Extension function to get all images for gallery
-fun AdminHousingListingUiModel.getAllImages(): List<Any> {
-    return if (imageUrls.isNotEmpty()) imageUrls else imageRes
-}
-
-// Extension function to map ListingStatus to JobStatus style
-fun ListingStatus.toDisplayStatus(): ListingStatusDisplay = when (this) {
-    ListingStatus.AVAILABLE -> ListingStatusDisplay.AVAILABLE
-    ListingStatus.PENDING -> ListingStatusDisplay.PENDING
-    ListingStatus.RENTED -> ListingStatusDisplay.RENTED
-    ListingStatus.SOLD -> ListingStatusDisplay.SOLD
-    ListingStatus.INACTIVE -> ListingStatusDisplay.INACTIVE
-    else -> ListingStatusDisplay.INACTIVE
-}
-
-enum class ListingStatusDisplay {
-    AVAILABLE,
-    PENDING,
-    RENTED,
-    SOLD,
-    INACTIVE;
+enum class JobStatus {
+    ACTIVE,
+    PAUSED,
+    CLOSED,
+    PENDING_REVIEW;
 
     fun displayName(): String = when (this) {
-        AVAILABLE -> "Available"
-        PENDING -> "Pending Review"
-        RENTED -> "Rented"
-        SOLD -> "Sold"
-        INACTIVE -> "Inactive"
+        ACTIVE -> "Active"
+        PAUSED -> "Paused"
+        CLOSED -> "Closed"
+        PENDING_REVIEW -> "Pending Review"
     }
 
     @Composable
     fun color(): Color = when (this) {
-        AVAILABLE -> Color(0xFF10B981) // Success Green
-        PENDING -> MaterialTheme.colorScheme.tertiary // Baobab Gold
-        RENTED, SOLD -> MaterialTheme.colorScheme.error // Sunset Red
-        INACTIVE -> MaterialTheme.colorScheme.onSurfaceVariant // Gray
+        ACTIVE -> Color(0xFF10B981) // Success Green (keeping as is, not in theme)
+        PAUSED -> MaterialTheme.colorScheme.onSurfaceVariant // Warm Gray equivalent
+        CLOSED -> MaterialTheme.colorScheme.error // Sunset Red
+        PENDING_REVIEW -> MaterialTheme.colorScheme.tertiary // Baobab Gold
     }
 
     fun icon(): ImageVector = when (this) {
-        AVAILABLE -> Icons.Filled.CheckCircle
-        PENDING -> Icons.Filled.HourglassEmpty
-        RENTED -> Icons.Filled.HomeWork
-        SOLD -> Icons.Filled.Sell
-        INACTIVE -> Icons.Filled.Pause
+        ACTIVE -> Icons.Filled.CheckCircle
+        PAUSED -> Icons.Filled.Pause
+        CLOSED -> Icons.Filled.Cancel
+        PENDING_REVIEW -> Icons.Filled.HourglassEmpty
     }
 
     fun outlinedIcon(): ImageVector = when (this) {
-        AVAILABLE -> Icons.Outlined.CheckCircle
-        PENDING -> Icons.Outlined.HourglassEmpty
-        RENTED -> Icons.Outlined.HomeWork
-        SOLD -> Icons.Outlined.Sell
-        INACTIVE -> Icons.Outlined.Pause
+        ACTIVE -> Icons.Outlined.CheckCircle
+        PAUSED -> Icons.Outlined.Pause
+        CLOSED -> Icons.Outlined.Cancel
+        PENDING_REVIEW -> Icons.Outlined.HourglassEmpty
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AdminHouseDetailsScreen(
-    housingListing: HousingListingUiModel,
-    onNavigateBack: () -> Unit,
-    onEditListing: (String) -> Unit,
-    onDuplicateListing: (String) -> Unit,
-    onArchiveListing: (String) -> Unit,
-    onDeleteListing: (String) -> Unit,
-    onPauseListing: (String) -> Unit,
-    onResumeListing: (String) -> Unit,
-    onMarkAvailable: (String) -> Unit,
-    onMarkRented: (String) -> Unit,
-    onMarkSold: (String) -> Unit,
-    onViewInquiries: (String) -> Unit,
-    onShareListing: (String) -> Unit,
-    onViewLogs: (String) -> Unit,
-    onCopyListingLink: (String) -> Unit
-) {
-    // Convert to admin UI model
-    val adminListing = remember(housingListing) {
-        housingListing.toAdminHousingListingUiModel()
-    }
 
-    AdminHouseDetailsScreenContent(
-        housingListing = adminListing,
-        onNavigateBack = onNavigateBack,
-        onEditListing = onEditListing,
-        onDuplicateListing = onDuplicateListing,
-        onArchiveListing = onArchiveListing,
-        onDeleteListing = onDeleteListing,
-        onPauseListing = onPauseListing,
-        onResumeListing = onResumeListing,
-        onMarkAvailable = onMarkAvailable,
-        onMarkRented = onMarkRented,
-        onMarkSold = onMarkSold,
-        onViewInquiries = onViewInquiries,
-        onShareListing = onShareListing,
-        onViewLogs = onViewLogs,
-        onCopyListingLink = onCopyListingLink
-    )
-}
+data class ApplicationFunnel(
+    val viewed: Int = 100,
+    val applied: Int = 24,
+    val reviewed: Int = 12
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminHouseDetailsScreenContent(
-    housingListing: AdminHousingListingUiModel,
+fun AdminJobDetailsScreen(
+    jobListing: AdminJobListingUiModel,
     onNavigateBack: () -> Unit,
-    onEditListing: (String) -> Unit,
-    onDuplicateListing: (String) -> Unit,
-    onArchiveListing: (String) -> Unit,
-    onDeleteListing: (String) -> Unit,
-    onPauseListing: (String) -> Unit,
-    onResumeListing: (String) -> Unit,
-    onMarkAvailable: (String) -> Unit,
-    onMarkRented: (String) -> Unit,
-    onMarkSold: (String) -> Unit,
-    onViewInquiries: (String) -> Unit,
-    onShareListing: (String) -> Unit,
+    onEditJob: (String) -> Unit,
+    onDuplicateJob: (String) -> Unit,
+    onArchiveJob: (String) -> Unit,
+    onDeleteJob: (String) -> Unit,
+    onPauseJob: (String) -> Unit,
+    onResumeJob: (String) -> Unit,
+    onCloseJob: (String) -> Unit,
+    onViewApplicants: (String) -> Unit,
+    onShareJob: (String) -> Unit,
     onViewLogs: (String) -> Unit,
-    onCopyListingLink: (String) -> Unit
+    onCopyJobLink: (String) -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val clipboardManager = LocalClipboardManager.current
@@ -259,11 +147,10 @@ fun AdminHouseDetailsScreenContent(
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showPauseDialog by remember { mutableStateOf(false) }
-    var showStatusChangeDialog by remember { mutableStateOf(false) }
-    var pendingStatusChange by remember { mutableStateOf<ListingStatusDisplay?>(null) }
+    var showCloseDialog by remember { mutableStateOf(false) }
     var showCopyConfirmation by remember { mutableStateOf(false) }
     var isDescriptionExpanded by remember { mutableStateOf(true) }
-    var listingStatus by remember { mutableStateOf(housingListing.status.toDisplayStatus()) }
+    var jobStatus by remember { mutableStateOf(jobListing.status) }
 
     // Animation for copy confirmation
     val copyConfirmationAlpha = animateFloatAsState(
@@ -272,18 +159,14 @@ fun AdminHouseDetailsScreenContent(
         label = "copy_confirmation_alpha"
     )
 
-    // Format price
-    val priceValue = extractPriceValue(housingListing.price)
-    val formattedPrice = NumberFormat.getInstance(Locale.US).format(priceValue)
-
     // Format dates
     val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.US)
-    val postedDateStr = dateFormat.format(housingListing.postedDate)
-    val expiryDateStr = housingListing.expiryDate?.let { dateFormat.format(it) } ?: "No expiry"
+    val postedDateStr = dateFormat.format(jobListing.postedDate)
+    val expiryDateStr = jobListing.expiryDate?.let { dateFormat.format(it) } ?: "No expiry"
 
     // Format numbers
-    val viewsFormatted = formatNumber(housingListing.views)
-    val inquiriesFormatted = formatNumber(housingListing.messages + housingListing.requests)
+    val viewsFormatted = formatNumberHousingDetails(jobListing.views)
+    val applicationsFormatted = formatNumber(jobListing.applications)
 
     // Responsive layout
     val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
@@ -292,36 +175,17 @@ fun AdminHouseDetailsScreenContent(
 
     Scaffold(
         topBar = {
-            AdminHouseDetailsTopBar(
-                title = housingListing.title,
+            AdminJobDetailsTopBar(
+                title = jobListing.title,
                 onNavigateBack = onNavigateBack,
                 onMenuClick = { showMenu = true }
             )
         },
         bottomBar = {
-            AdminHouseDetailsBottomBar(
-                listingStatus = listingStatus,
-                onEditClick = { onEditListing(housingListing.id) },
-                onStatusChangeClick = {
-                    when (listingStatus) {
-                        ListingStatusDisplay.AVAILABLE -> {
-                            pendingStatusChange = ListingStatusDisplay.RENTED
-                            showStatusChangeDialog = true
-                        }
-                        ListingStatusDisplay.PENDING -> {
-                            pendingStatusChange = ListingStatusDisplay.AVAILABLE
-                            showStatusChangeDialog = true
-                        }
-                        ListingStatusDisplay.RENTED, ListingStatusDisplay.SOLD -> {
-                            pendingStatusChange = ListingStatusDisplay.AVAILABLE
-                            showStatusChangeDialog = true
-                        }
-                        else -> {
-                            pendingStatusChange = ListingStatusDisplay.AVAILABLE
-                            showStatusChangeDialog = true
-                        }
-                    }
-                },
+            AdminJobDetailsBottomBar(
+                jobStatus = jobStatus,
+                onEditClick = { onEditJob(jobListing.id) },
+                onCloseClick = { showCloseDialog = true },
                 isWide = isWide
             )
         },
@@ -348,27 +212,25 @@ fun AdminHouseDetailsScreenContent(
                     ) {
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Property Overview Card
-                        AdminPropertyOverviewCard(
-                            housingListing = housingListing,
-                            listingStatus = listingStatus,
-                            formattedPrice = formattedPrice,
+                        // Job Overview Card
+                        AdminJobOverviewCard(
+                            jobListing = jobListing,
+                            jobStatus = jobStatus,
                             postedDateStr = postedDateStr,
                             expiryDateStr = expiryDateStr,
                             viewsFormatted = viewsFormatted,
-                            inquiriesFormatted = inquiriesFormatted,
+                            applicationsFormatted = applicationsFormatted,
                             colorScheme = colorScheme
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Inquiries Overview Card
-                        AdminInquiriesCard(
-                            totalInquiries = housingListing.messages + housingListing.requests,
-                            newInquiries = housingListing.newInquiries,
-                            messages = housingListing.messages,
-                            requests = housingListing.requests,
-                            onViewAllClick = { onViewInquiries(housingListing.id) },
+                        // Applicants Overview Card
+                        AdminApplicantsCard(
+                            totalApplicants = jobListing.applications,
+                            newApplicants = jobListing.newApplications,
+                            reviewedApplicants = jobListing.reviewedApplications,
+                            onViewAllClick = { onViewApplicants(jobListing.id) },
                             colorScheme = colorScheme
                         )
 
@@ -384,21 +246,17 @@ fun AdminHouseDetailsScreenContent(
                     ) {
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Property Description Card (Expandable)
-                        AdminPropertyDescriptionCard(
-                            description = housingListing.description,
-                            facilities = housingListing.facilities,
-                            bedrooms = housingListing.bedrooms,
-                            bathrooms = housingListing.bathrooms,
-                            squareMeters = housingListing.squareMeters,
-                            ownerName = housingListing.ownerName,
-                            ownerVerified = housingListing.ownerVerified,
-                            rating = housingListing.rating,
+                        // Job Description Card (Expandable)
+                        AdminJobDescriptionCard(
+                            description = jobListing.description,
+                            requirements = jobListing.requirements,
+                            skills = jobListing.skills,
+                            benefits = jobListing.benefits,
                             isExpanded = isDescriptionExpanded,
                             onToggleExpand = { isDescriptionExpanded = !isDescriptionExpanded },
                             onCopyLink = {
-                                onCopyListingLink(housingListing.id)
-                                clipboardManager.setText(AnnotatedString("https://pivotaconnect.com/houses/${housingListing.id}"))
+                                onCopyJobLink(jobListing.id)
+                                clipboardManager.setText(AnnotatedString("https://pivotaconnect.com/jobs/${jobListing.id}"))
                                 showCopyConfirmation = true
                             },
                             colorScheme = colorScheme
@@ -407,27 +265,16 @@ fun AdminHouseDetailsScreenContent(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // Management Tools Section
-                        AdminHouseManagementTools(
-                            listingStatus = listingStatus,
-                            onEditClick = { onEditListing(housingListing.id) },
-                            onDuplicateClick = { onDuplicateListing(housingListing.id) },
+                        AdminManagementTools(
+                            jobStatus = jobStatus,
+                            onEditClick = { onEditJob(jobListing.id) },
+                            onDuplicateClick = { onDuplicateJob(jobListing.id) },
                             onPauseClick = { showPauseDialog = true },
-                            onResumeClick = { onResumeListing(housingListing.id) },
-                            onMarkAvailableClick = {
-                                pendingStatusChange = ListingStatusDisplay.AVAILABLE
-                                showStatusChangeDialog = true
-                            },
-                            onMarkRentedClick = {
-                                pendingStatusChange = ListingStatusDisplay.RENTED
-                                showStatusChangeDialog = true
-                            },
-                            onMarkSoldClick = {
-                                pendingStatusChange = ListingStatusDisplay.SOLD
-                                showStatusChangeDialog = true
-                            },
+                            onResumeClick = { onResumeJob(jobListing.id) },
+                            onCloseClick = { showCloseDialog = true },
                             onDeleteClick = { showDeleteDialog = true },
-                            onShareClick = { onShareListing(housingListing.id) },
-                            onLogsClick = { onViewLogs(housingListing.id) },
+                            onShareClick = { onShareJob(jobListing.id) },
+                            onLogsClick = { onViewLogs(jobListing.id) },
                             colorScheme = colorScheme,
                             isWide = isWide
                         )
@@ -435,14 +282,11 @@ fun AdminHouseDetailsScreenContent(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // Analytics & Insights
-                        AdminPropertyAnalyticsCard(
-                            views = housingListing.views,
-                            messages = housingListing.messages,
-                            requests = housingListing.requests,
-                            averageResponseTime = housingListing.averageResponseTime,
-                            viewsTrend = housingListing.viewsTrend,
-                            messagesTrend = housingListing.messagesTrend,
-                            requestsTrend = housingListing.requestsTrend,
+                        AdminAnalyticsCard(
+                            views = jobListing.views,
+                            applications = jobListing.applications,
+                            averageTimeToApply = jobListing.averageTimeToApply,
+                            funnel = jobListing.applicationFunnel,
                             onViewFullAnalytics = { /* Navigate to full analytics */ },
                             colorScheme = colorScheme
                         )
@@ -460,43 +304,30 @@ fun AdminHouseDetailsScreenContent(
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Image Gallery
-                    SimpleHousingImageGallery(
-                        images = housingListing.getAllImages(),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Property Overview Card
-                    AdminPropertyOverviewCard(
-                        housingListing = housingListing,
-                        listingStatus = listingStatus,
-                        formattedPrice = formattedPrice,
+                    // Job Overview Card
+                    AdminJobOverviewCard(
+                        jobListing = jobListing,
+                        jobStatus = jobStatus,
                         postedDateStr = postedDateStr,
                         expiryDateStr = expiryDateStr,
                         viewsFormatted = viewsFormatted,
-                        inquiriesFormatted = inquiriesFormatted,
+                        applicationsFormatted = applicationsFormatted,
                         colorScheme = colorScheme
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Property Description Card (Expandable)
-                    AdminPropertyDescriptionCard(
-                        description = housingListing.description,
-                        facilities = housingListing.facilities,
-                        bedrooms = housingListing.bedrooms,
-                        bathrooms = housingListing.bathrooms,
-                        squareMeters = housingListing.squareMeters,
-                        ownerName = housingListing.ownerName,
-                        ownerVerified = housingListing.ownerVerified,
-                        rating = housingListing.rating,
+                    // Job Description Card (Expandable)
+                    AdminJobDescriptionCard(
+                        description = jobListing.description,
+                        requirements = jobListing.requirements,
+                        skills = jobListing.skills,
+                        benefits = jobListing.benefits,
                         isExpanded = isDescriptionExpanded,
                         onToggleExpand = { isDescriptionExpanded = !isDescriptionExpanded },
                         onCopyLink = {
-                            onCopyListingLink(housingListing.id)
-                            clipboardManager.setText(AnnotatedString("https://pivotaconnect.com/houses/${housingListing.id}"))
+                            onCopyJobLink(jobListing.id)
+                            clipboardManager.setText(AnnotatedString("https://pivotaconnect.com/jobs/${jobListing.id}"))
                             showCopyConfirmation = true
                         },
                         colorScheme = colorScheme
@@ -504,40 +335,28 @@ fun AdminHouseDetailsScreenContent(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Inquiries Overview Card
-                    AdminInquiriesCard(
-                        totalInquiries = housingListing.messages + housingListing.requests,
-                        newInquiries = housingListing.newInquiries,
-                        messages = housingListing.messages,
-                        requests = housingListing.requests,
-                        onViewAllClick = { onViewInquiries(housingListing.id) },
+                    // Applicants Overview Card
+                    AdminApplicantsCard(
+                        totalApplicants = jobListing.applications,
+                        newApplicants = jobListing.newApplications,
+                        reviewedApplicants = jobListing.reviewedApplications,
+                        onViewAllClick = { onViewApplicants(jobListing.id) },
                         colorScheme = colorScheme
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Management Tools Section
-                    AdminHouseManagementTools(
-                        listingStatus = listingStatus,
-                        onEditClick = { onEditListing(housingListing.id) },
-                        onDuplicateClick = { onDuplicateListing(housingListing.id) },
+                    AdminManagementTools(
+                        jobStatus = jobStatus,
+                        onEditClick = { onEditJob(jobListing.id) },
+                        onDuplicateClick = { onDuplicateJob(jobListing.id) },
                         onPauseClick = { showPauseDialog = true },
-                        onResumeClick = { onResumeListing(housingListing.id) },
-                        onMarkAvailableClick = {
-                            pendingStatusChange = ListingStatusDisplay.AVAILABLE
-                            showStatusChangeDialog = true
-                        },
-                        onMarkRentedClick = {
-                            pendingStatusChange = ListingStatusDisplay.RENTED
-                            showStatusChangeDialog = true
-                        },
-                        onMarkSoldClick = {
-                            pendingStatusChange = ListingStatusDisplay.SOLD
-                            showStatusChangeDialog = true
-                        },
+                        onResumeClick = { onResumeJob(jobListing.id) },
+                        onCloseClick = { showCloseDialog = true },
                         onDeleteClick = { showDeleteDialog = true },
-                        onShareClick = { onShareListing(housingListing.id) },
-                        onLogsClick = { onViewLogs(housingListing.id) },
+                        onShareClick = { onShareJob(jobListing.id) },
+                        onLogsClick = { onViewLogs(jobListing.id) },
                         colorScheme = colorScheme,
                         isWide = isWide
                     )
@@ -545,14 +364,11 @@ fun AdminHouseDetailsScreenContent(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Analytics & Insights
-                    AdminPropertyAnalyticsCard(
-                        views = housingListing.views,
-                        messages = housingListing.messages,
-                        requests = housingListing.requests,
-                        averageResponseTime = housingListing.averageResponseTime,
-                        viewsTrend = housingListing.viewsTrend,
-                        messagesTrend = housingListing.messagesTrend,
-                        requestsTrend = housingListing.requestsTrend,
+                    AdminAnalyticsCard(
+                        views = jobListing.views,
+                        applications = jobListing.applications,
+                        averageTimeToApply = jobListing.averageTimeToApply,
+                        funnel = jobListing.applicationFunnel,
                         onViewFullAnalytics = { /* Navigate to full analytics */ },
                         colorScheme = colorScheme
                     )
@@ -604,7 +420,7 @@ fun AdminHouseDetailsScreenContent(
             text = { Text("Edit", color = colorScheme.primary) },
             onClick = {
                 showMenu = false
-                onEditListing(housingListing.id)
+                onEditJob(jobListing.id)
             },
             leadingIcon = {
                 Icon(Icons.Outlined.Edit, contentDescription = null, tint = colorScheme.primary)
@@ -614,7 +430,7 @@ fun AdminHouseDetailsScreenContent(
             text = { Text("Duplicate", color = colorScheme.primary) },
             onClick = {
                 showMenu = false
-                onDuplicateListing(housingListing.id)
+                onDuplicateJob(jobListing.id)
             },
             leadingIcon = {
                 Icon(Icons.Outlined.ContentCopy, contentDescription = null, tint = colorScheme.primary)
@@ -624,7 +440,7 @@ fun AdminHouseDetailsScreenContent(
             text = { Text("Archive", color = colorScheme.onSurfaceVariant) },
             onClick = {
                 showMenu = false
-                onArchiveListing(housingListing.id)
+                onArchiveJob(jobListing.id)
             },
             leadingIcon = {
                 Icon(Icons.Outlined.Archive, contentDescription = null, tint = colorScheme.onSurfaceVariant)
@@ -645,14 +461,14 @@ fun AdminHouseDetailsScreenContent(
 
     // Confirmation Dialogs
     if (showDeleteDialog) {
-        AdminConfirmationDialogHousingDetails(
-            title = "Delete Property Listing?",
-            message = "This action cannot be undone. The property will be permanently removed from the platform.",
+        AdminConfirmationDialog(
+            title = "Delete Job Posting?",
+            message = "This action cannot be undone. The job will be permanently removed from the platform.",
             icon = Icons.Filled.Delete,
             iconColor = Color(0xFFBA2D2D),
             confirmText = "Delete",
             onConfirm = {
-                onDeleteListing(housingListing.id)
+                onDeleteJob(jobListing.id)
                 showDeleteDialog = false
             },
             onDismiss = { showDeleteDialog = false }
@@ -660,23 +476,23 @@ fun AdminHouseDetailsScreenContent(
     }
 
     if (showPauseDialog) {
-        AdminConfirmationDialogHousingDetails(
-            title = if (listingStatus == ListingStatusDisplay.INACTIVE) "Resume Listing?" else "Pause Listing?",
-            message = if (listingStatus == ListingStatusDisplay.INACTIVE) {
-                "The property will become visible to potential tenants/buyers again."
+        AdminConfirmationDialog(
+            title = if (jobStatus == JobStatus.PAUSED) "Resume Job Posting?" else "Pause Job Posting?",
+            message = if (jobStatus == JobStatus.PAUSED) {
+                "The job will become visible to applicants again."
             } else {
-                "The property will no longer be visible to potential tenants/buyers. You can resume anytime."
+                "The job will no longer be visible to applicants. You can resume anytime."
             },
-            icon = if (listingStatus == ListingStatusDisplay.INACTIVE) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+            icon = if (jobStatus == JobStatus.PAUSED) Icons.Filled.PlayArrow else Icons.Filled.Pause,
             iconColor = Color(0xFFC95D3A), // Warm Terracotta
-            confirmText = if (listingStatus == ListingStatusDisplay.INACTIVE) "Resume" else "Pause",
+            confirmText = if (jobStatus == JobStatus.PAUSED) "Resume" else "Pause",
             onConfirm = {
-                if (listingStatus == ListingStatusDisplay.INACTIVE) {
-                    onResumeListing(housingListing.id)
-                    listingStatus = ListingStatusDisplay.AVAILABLE
+                if (jobStatus == JobStatus.PAUSED) {
+                    onResumeJob(jobListing.id)
+                    jobStatus = JobStatus.ACTIVE
                 } else {
-                    onPauseListing(housingListing.id)
-                    listingStatus = ListingStatusDisplay.INACTIVE
+                    onPauseJob(jobListing.id)
+                    jobStatus = JobStatus.PAUSED
                 }
                 showPauseDialog = false
             },
@@ -684,63 +500,19 @@ fun AdminHouseDetailsScreenContent(
         )
     }
 
-    if (showStatusChangeDialog && pendingStatusChange != null) {
-        val dialogConfig = when (pendingStatusChange) {
-            ListingStatusDisplay.AVAILABLE -> DialogConfig(
-                title = "Mark as Available?",
-                message = "The property will be listed as available for rent/sale.",
-                icon = Icons.Filled.CheckCircle,
-                color = Color(0xFF10B981)
-            )
-            ListingStatusDisplay.RENTED -> DialogConfig(
-                title = "Mark as Rented?",
-                message = "The property will be marked as rented and removed from active listings.",
-                icon = Icons.Filled.HomeWork,
-                color = Color(0xFFBA2D2D)
-            )
-            ListingStatusDisplay.SOLD -> DialogConfig(
-                title = "Mark as Sold?",
-                message = "The property will be marked as sold and removed from active listings.",
-                icon = Icons.Filled.Sell,
-                color = Color(0xFFBA2D2D)
-            )
-            else -> DialogConfig(
-                title = "Change Status?",
-                message = "Are you sure you want to change the property status?",
-                icon = Icons.Filled.Info,
-                color = colorScheme.primary
-            )
-        }
-
-        AdminConfirmationDialogHousingDetails(
-            title = dialogConfig.title,
-            message = dialogConfig.message,
-            icon = dialogConfig.icon,
-            iconColor = dialogConfig.color,
-            confirmText = "Confirm",
+    if (showCloseDialog) {
+        AdminConfirmationDialog(
+            title = "Close Job Posting?",
+            message = "The job will be marked as closed and removed from active listings.",
+            icon = Icons.Filled.Lock,
+            iconColor = Color(0xFFBA2D2D),
+            confirmText = "Close",
             onConfirm = {
-                when (pendingStatusChange) {
-                    ListingStatusDisplay.AVAILABLE -> {
-                        onMarkAvailable(housingListing.id)
-                        listingStatus = ListingStatusDisplay.AVAILABLE
-                    }
-                    ListingStatusDisplay.RENTED -> {
-                        onMarkRented(housingListing.id)
-                        listingStatus = ListingStatusDisplay.RENTED
-                    }
-                    ListingStatusDisplay.SOLD -> {
-                        onMarkSold(housingListing.id)
-                        listingStatus = ListingStatusDisplay.SOLD
-                    }
-                    else -> {}
-                }
-                showStatusChangeDialog = false
-                pendingStatusChange = null
+                onCloseJob(jobListing.id)
+                jobStatus = JobStatus.CLOSED
+                showCloseDialog = false
             },
-            onDismiss = {
-                showStatusChangeDialog = false
-                pendingStatusChange = null
-            }
+            onDismiss = { showCloseDialog = false }
         )
     }
 }
@@ -749,7 +521,7 @@ fun AdminHouseDetailsScreenContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminHouseDetailsTopBar(
+fun AdminJobDetailsTopBar(
     title: String,
     onNavigateBack: () -> Unit,
     onMenuClick: () -> Unit
@@ -798,10 +570,10 @@ fun AdminHouseDetailsTopBar(
 /* ───────── BOTTOM BAR ───────── */
 
 @Composable
-fun AdminHouseDetailsBottomBar(
-    listingStatus: ListingStatusDisplay,
+fun AdminJobDetailsBottomBar(
+    jobStatus: JobStatus,
     onEditClick: () -> Unit,
-    onStatusChangeClick: () -> Unit,
+    onCloseClick: () -> Unit,
     isWide: Boolean
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -817,56 +589,38 @@ fun AdminHouseDetailsBottomBar(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Status Change button (contextual)
-            val statusButtonText = when (listingStatus) {
-                ListingStatusDisplay.AVAILABLE -> "Mark as Rented"
-                ListingStatusDisplay.PENDING -> "Approve Listing"
-                ListingStatusDisplay.RENTED -> "List Again"
-                ListingStatusDisplay.SOLD -> "List Again"
-                ListingStatusDisplay.INACTIVE -> "Activate Listing"
+            // Close Job button (secondary)
+            if (jobStatus != JobStatus.CLOSED) {
+                OutlinedButton(
+                    onClick = onCloseClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        Icons.Outlined.Lock,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Close Job",
+                        fontSize = if (isWide) 16.sp else 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
 
-            val statusButtonColor = when (listingStatus) {
-                ListingStatusDisplay.AVAILABLE -> Color(0xFFBA2D2D)
-                ListingStatusDisplay.PENDING -> Color(0xFF10B981)
-                ListingStatusDisplay.RENTED, ListingStatusDisplay.SOLD -> Color(0xFF10B981)
-                ListingStatusDisplay.INACTIVE -> Color(0xFF10B981)
-            }
-
-            OutlinedButton(
-                onClick = onStatusChangeClick,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(52.dp),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, statusButtonColor),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = statusButtonColor
-                )
-            ) {
-                Icon(
-                    when (listingStatus) {
-                        ListingStatusDisplay.AVAILABLE -> Icons.Outlined.HomeWork
-                        ListingStatusDisplay.PENDING -> Icons.Outlined.CheckCircle
-                        ListingStatusDisplay.RENTED, ListingStatusDisplay.SOLD -> Icons.Outlined.PlayArrow
-                        ListingStatusDisplay.INACTIVE -> Icons.Outlined.PlayArrow
-                    },
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    statusButtonText,
-                    fontSize = if (isWide) 16.sp else 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            // Edit button (primary)
+            // Edit Job button (primary)
             Button(
                 onClick = onEditClick,
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(if (jobStatus == JobStatus.CLOSED) 1f else 1f)
                     .height(52.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -883,7 +637,7 @@ fun AdminHouseDetailsBottomBar(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    "Edit Listing",
+                    "Edit Job",
                     fontSize = if (isWide) 16.sp else 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -893,19 +647,16 @@ fun AdminHouseDetailsBottomBar(
     }
 }
 
-/* ───────── PROPERTY OVERVIEW CARD ───────── */
-
-/* ───────── PROPERTY OVERVIEW CARD ───────── */
+/* ───────── JOB OVERVIEW CARD ───────── */
 
 @Composable
-fun AdminPropertyOverviewCard(
-    housingListing: AdminHousingListingUiModel,
-    listingStatus: ListingStatusDisplay,
-    formattedPrice: String,
+fun AdminJobOverviewCard(
+    jobListing: AdminJobListingUiModel,
+    jobStatus: JobStatus,
     postedDateStr: String,
     expiryDateStr: String,
     viewsFormatted: String,
-    inquiriesFormatted: String,
+    applicationsFormatted: String,
     colorScheme: ColorScheme
 ) {
     Card(
@@ -923,17 +674,17 @@ fun AdminPropertyOverviewCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Left column - Property Image (now curved with RoundedCornerShape)
+            // Left column - Company Logo
             Surface(
                 modifier = Modifier
                     .size(72.dp)
-                    .align(Alignment.Top)
-                    .clip(RoundedCornerShape(12.dp)), // Added clip for curved corners
+                    .align(Alignment.Top),
+                shape = RoundedCornerShape(12.dp),
                 color = colorScheme.surfaceVariant
             ) {
-                if (housingListing.getAllImages().isNotEmpty()) {
+                if (jobListing.companyLogoUrl != null) {
                     AsyncImage(
-                        model = housingListing.getAllImages().first(),
+                        model = jobListing.companyLogoUrl,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -941,7 +692,7 @@ fun AdminPropertyOverviewCard(
                 } else {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            Icons.Outlined.Home,
+                            Icons.Outlined.Business,
                             contentDescription = null,
                             tint = colorScheme.primary,
                             modifier = Modifier.size(36.dp)
@@ -952,20 +703,20 @@ fun AdminPropertyOverviewCard(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Right column - Property details
+            // Right column - Job details
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                // Title
+                // Title and Company
                 Text(
-                    text = housingListing.title,
+                    text = jobListing.title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = colorScheme.primary // African Sapphire
                 )
 
                 Text(
-                    text = "${housingListing.bedrooms} bed • ${housingListing.bathrooms} bath • ${housingListing.squareMeters} m²",
+                    text = jobListing.companyName,
                     style = MaterialTheme.typography.bodyMedium,
                     color = colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp)
@@ -973,32 +724,16 @@ fun AdminPropertyOverviewCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Price
-                Text(
-                    text = buildAnnotatedString {
-                        append("KES $formattedPrice")
-                        if (!housingListing.isForSale) {
-                            append("/month")
-                        }
-                    },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = colorScheme.secondary // Warm Terracotta
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Property Type and Location
+                // Job Type and Location
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
                         shape = RoundedCornerShape(20.dp),
                         color = colorScheme.surfaceVariant
                     ) {
                         Text(
-                            text = housingListing.propertyType,
+                            text = jobListing.jobType,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
@@ -1010,12 +745,12 @@ fun AdminPropertyOverviewCard(
                     Icon(
                         Icons.Outlined.LocationOn,
                         contentDescription = null,
-                        tint = colorScheme.secondary,
+                        tint = colorScheme.secondary, // Warm Terracotta
                         modifier = Modifier.size(14.dp)
                     )
 
                     Text(
-                        text = housingListing.location,
+                        text = jobListing.location,
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 2.dp)
@@ -1031,29 +766,14 @@ fun AdminPropertyOverviewCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Status Badge
-                    Surface(
-                        shape = CircleShape,
-                        color = listingStatus.color().copy(alpha = 0.1f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                listingStatus.icon(),
-                                contentDescription = null,
-                                tint = listingStatus.color(),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = listingStatus.displayName(),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Medium,
-                                color = listingStatus.color()
-                            )
-                        }
-                    }
+                    StatusBadge(
+                        status = jobStatus,
+                        style = StatusBadgeStyle.PILL,
+                        size = StatusBadgeSize.MEDIUM,
+                        showIcon = true,
+                        showLabel = true,
+                        animated = jobStatus == JobStatus.PENDING_REVIEW
+                    )
 
                     // View count
                     Row(
@@ -1117,7 +837,7 @@ fun AdminPropertyOverviewCard(
                 }
 
                 // Verification Badge
-                if (housingListing.isVerified) {
+                if (jobListing.isVerified) {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Row(
@@ -1130,7 +850,7 @@ fun AdminPropertyOverviewCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "Verified Owner",
+                            text = "Verified Employer",
                             color = colorScheme.primary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
@@ -1143,19 +863,14 @@ fun AdminPropertyOverviewCard(
     }
 }
 
-/* ───────── PROPERTY DESCRIPTION CARD ───────── */
+/* ───────── JOB DESCRIPTION CARD ───────── */
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AdminPropertyDescriptionCard(
+fun AdminJobDescriptionCard(
     description: String,
-    facilities: List<String>,
-    bedrooms: Int,
-    bathrooms: Int,
-    squareMeters: Int,
-    ownerName: String,
-    ownerVerified: Boolean,
-    rating: Double,
+    requirements: List<String>,
+    skills: List<String>,
+    benefits: List<String>,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
     onCopyLink: () -> Unit,
@@ -1183,7 +898,7 @@ fun AdminPropertyDescriptionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Property Details",
+                    text = "Job Details",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = colorScheme.primary
@@ -1204,36 +919,9 @@ fun AdminPropertyDescriptionCard(
                 Column(
                     modifier = Modifier.padding(top = 12.dp)
                 ) {
-                    // Key Specs
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        SpecItem(
-                            icon = Icons.Outlined.Bed,
-                            value = bedrooms.toString(),
-                            label = "Bedrooms",
-                            colorScheme = colorScheme
-                        )
-                        SpecItem(
-                            icon = Icons.Outlined.Shower,
-                            value = bathrooms.toString(),
-                            label = "Bathrooms",
-                            colorScheme = colorScheme
-                        )
-                        SpecItem(
-                            icon = Icons.Outlined.SquareFoot,
-                            value = "$squareMeters",
-                            label = "m²",
-                            colorScheme = colorScheme
-                        )
-                    }
-
                     // Description
                     Text(
-                        text = "Description",
+                        text = "About the Job",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = colorScheme.primary,
@@ -1248,10 +936,27 @@ fun AdminPropertyDescriptionCard(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
-                    // Facilities
-                    if (facilities.isNotEmpty()) {
+                    // Requirements
+                    if (requirements.isNotEmpty()) {
                         Text(
-                            text = "Facilities & Amenities",
+                            text = "Requirements",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+
+                        requirements.forEach { requirement ->
+                            AdminBulletPoint(text = requirement, colorScheme = colorScheme)
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    // Skills
+                    if (skills.isNotEmpty()) {
+                        Text(
+                            text = "Skills Needed",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = colorScheme.primary,
@@ -1265,107 +970,41 @@ fun AdminPropertyDescriptionCard(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            facilities.forEach { facility ->
+                            skills.forEach { skill ->
                                 Surface(
                                     shape = RoundedCornerShape(20.dp),
                                     color = colorScheme.surfaceVariant
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        val icon = when(facility.lowercase()) {
-                                            "water" -> Icons.Outlined.WaterDrop
-                                            "electricity" -> Icons.Outlined.Bolt
-                                            "parking" -> Icons.Outlined.LocalParking
-                                            "wi-fi" -> Icons.Outlined.Wifi
-                                            "security" -> Icons.Outlined.Security
-                                            "gym" -> Icons.Outlined.FitnessCenter
-                                            else -> Icons.Outlined.CheckCircle
-                                        }
-                                        Icon(
-                                            icon,
-                                            contentDescription = null,
-                                            tint = colorScheme.primary,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = facility,
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
-                                    }
+                                    Text(
+                                        text = skill,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    )
                                 }
                             }
                         }
                     }
 
-                    // Owner Info
-                    Text(
-                        text = "Owner",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                    // Benefits
+                    if (benefits.isNotEmpty()) {
+                        Text(
+                            text = "Benefits",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    ) {
-                        Surface(
-                            modifier = Modifier.size(40.dp),
-                            shape = CircleShape,
-                            color = colorScheme.primaryContainer
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
-                            Text(
-                                text = ownerName,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = colorScheme.onSurface
+                        benefits.forEach { benefit ->
+                            AdminBulletPoint(
+                                text = benefit,
+                                icon = Icons.Outlined.CheckCircle,
+                                colorScheme = colorScheme
                             )
-                            Text(
-                                text = if (ownerVerified) "Verified Owner" else "Unverified",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        // Rating
-                        if (rating > 0) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Filled.Star,
-                                    contentDescription = "Rating",
-                                    tint = colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = String.format("%.1f", rating),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colorScheme.onSurface
-                                )
-                            }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Copy Link Button
                     OutlinedButton(
@@ -1384,7 +1023,7 @@ fun AdminPropertyDescriptionCard(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "Copy Listing Link",
+                            "Copy Job Link",
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -1394,14 +1033,42 @@ fun AdminPropertyDescriptionCard(
     }
 }
 
-/* ───────── INQUIRIES CARD ───────── */
+@Composable
+fun AdminBulletPoint(
+    text: String,
+    icon: ImageVector = Icons.Outlined.Circle,
+    colorScheme: ColorScheme
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = colorScheme.secondary, // Warm Terracotta
+            modifier = Modifier
+                .size(16.dp)
+                .padding(top = 2.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colorScheme.onSurface
+        )
+    }
+}
+
+/* ───────── APPLICANTS CARD ───────── */
 
 @Composable
-fun AdminInquiriesCard(
-    totalInquiries: Int,
-    newInquiries: Int,
-    messages: Int,
-    requests: Int,
+fun AdminApplicantsCard(
+    totalApplicants: Int,
+    newApplicants: Int,
+    reviewedApplicants: Int,
     onViewAllClick: () -> Unit,
     colorScheme: ColorScheme
 ) {
@@ -1428,7 +1095,7 @@ fun AdminInquiriesCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Inquiries",
+                        text = "Applicants",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = colorScheme.primary
@@ -1441,7 +1108,7 @@ fun AdminInquiriesCard(
                         color = colorScheme.primary.copy(alpha = 0.1f)
                     ) {
                         Text(
-                            text = totalInquiries.toString(),
+                            text = totalApplicants.toString(),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = colorScheme.primary,
@@ -1466,27 +1133,86 @@ fun AdminInquiriesCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                InquiriesStat(
-                    value = messages.toString(),
-                    label = "Messages",
+                ApplicantStat(
+                    value = totalApplicants.toString(),
+                    label = "Total",
                     colorScheme = colorScheme
                 )
 
-                InquiriesStat(
-                    value = requests.toString(),
-                    label = "Requests",
+                ApplicantStat(
+                    value = newApplicants.toString(),
+                    label = "New",
+                    valueColor = colorScheme.tertiary, // Baobab Gold
                     colorScheme = colorScheme
                 )
 
-                InquiriesStat(
-                    value = (totalInquiries - newInquiries).toString(),
-                    label = "Responded",
+                ApplicantStat(
+                    value = reviewedApplicants.toString(),
+                    label = "Reviewed",
+                    colorScheme = colorScheme
+                )
+
+                ApplicantStat(
+                    value = (totalApplicants - reviewedApplicants).toString(),
+                    label = "Pending",
                     colorScheme = colorScheme
                 )
             }
 
-            // New badge for new inquiries
-            if (newInquiries > 0) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Progress Bar
+            val reviewProgress = if (totalApplicants > 0) {
+                reviewedApplicants.toFloat() / totalApplicants.toFloat()
+            } else 0f
+
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Review Progress",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant
+                    )
+
+                    Text(
+                        text = "${(reviewProgress * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = colorScheme.primary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(colorScheme.surfaceVariant)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(reviewProgress)
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(colorScheme.primary)
+                    )
+                }
+
+                Text(
+                    text = "$reviewedApplicants/$totalApplicants reviewed",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            // New badge for new applicants
+            if (newApplicants > 0) {
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Surface(
@@ -1505,7 +1231,7 @@ fun AdminInquiriesCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "$newInquiries new ${if (newInquiries == 1) "inquiry" else "inquiries"}",
+                            text = "$newApplicants new ${if (newApplicants == 1) "applicant" else "applicants"}",
                             color = colorScheme.tertiary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
@@ -1518,9 +1244,10 @@ fun AdminInquiriesCard(
 }
 
 @Composable
-fun InquiriesStat(
+fun ApplicantStat(
     value: String,
     label: String,
+    valueColor: Color? = null,
     colorScheme: ColorScheme
 ) {
     Column(
@@ -1530,7 +1257,7 @@ fun InquiriesStat(
             text = value,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            color = colorScheme.primary
+            color = valueColor ?: colorScheme.primary
         )
         Text(
             text = label,
@@ -1542,17 +1269,14 @@ fun InquiriesStat(
 
 /* ───────── MANAGEMENT TOOLS ───────── */
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AdminHouseManagementTools(
-    listingStatus: ListingStatusDisplay,
+fun AdminManagementTools(
+    jobStatus: JobStatus,
     onEditClick: () -> Unit,
     onDuplicateClick: () -> Unit,
     onPauseClick: () -> Unit,
     onResumeClick: () -> Unit,
-    onMarkAvailableClick: () -> Unit,
-    onMarkRentedClick: () -> Unit,
-    onMarkSoldClick: () -> Unit,
+    onCloseClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onShareClick: () -> Unit,
     onLogsClick: () -> Unit,
@@ -1584,31 +1308,17 @@ fun AdminHouseManagementTools(
             val columns = if (isWide) 4 else 2
 
             val actions = buildList {
-                add(ManagementActionHousingDetails("Edit", Icons.Outlined.Edit, colorScheme.primary, onEditClick))
-
-                // Status-specific actions
-                when (listingStatus) {
-                    ListingStatusDisplay.INACTIVE -> {
-                        add(ManagementActionHousingDetails("Resume", Icons.Filled.PlayArrow, colorScheme.secondary, onResumeClick))
-                    }
-                    ListingStatusDisplay.AVAILABLE -> {
-                        add(ManagementActionHousingDetails("Pause", Icons.Filled.Pause, colorScheme.secondary, onPauseClick))
-                        add(ManagementActionHousingDetails("Mark Rented", Icons.Outlined.HomeWork, Color(0xFFBA2D2D), onMarkRentedClick))
-                        add(ManagementActionHousingDetails("Mark Sold", Icons.Outlined.Sell, Color(0xFFBA2D2D), onMarkSoldClick))
-                    }
-                    ListingStatusDisplay.PENDING -> {
-                        add(ManagementActionHousingDetails("Approve", Icons.Outlined.CheckCircle, Color(0xFF10B981), onMarkAvailableClick))
-                        add(ManagementActionHousingDetails("Reject", Icons.Outlined.Cancel, Color(0xFFBA2D2D), onMarkAvailableClick)) // Reject would hide it
-                    }
-                    ListingStatusDisplay.RENTED, ListingStatusDisplay.SOLD -> {
-                        add(ManagementActionHousingDetails("List Again", Icons.Outlined.PlayArrow, Color(0xFF10B981), onMarkAvailableClick))
-                    }
+                add(ManagementAction("Edit", Icons.Outlined.Edit, colorScheme.primary, onEditClick))
+                if (jobStatus == JobStatus.PAUSED) {
+                    add(ManagementAction("Resume", Icons.Filled.PlayArrow, colorScheme.secondary, onResumeClick))
+                } else if (jobStatus == JobStatus.ACTIVE) {
+                    add(ManagementAction("Pause", Icons.Filled.Pause, colorScheme.secondary, onPauseClick))
                 }
-
-                add(ManagementActionHousingDetails("Duplicate", Icons.Outlined.ContentCopy, colorScheme.primary, onDuplicateClick))
-                add(ManagementActionHousingDetails("Share", Icons.Outlined.Share, colorScheme.primary, onShareClick))
-                add(ManagementActionHousingDetails("Logs", Icons.Outlined.History, colorScheme.onSurfaceVariant, onLogsClick))
-                add(ManagementActionHousingDetails("Delete", Icons.Outlined.Delete, Color(0xFFBA2D2D), onDeleteClick))
+                add(ManagementAction("Duplicate", Icons.Outlined.ContentCopy, colorScheme.primary, onDuplicateClick))
+                add(ManagementAction("Share", Icons.Outlined.Share, colorScheme.primary, onShareClick))
+                add(ManagementAction("Logs", Icons.Outlined.History, colorScheme.onSurfaceVariant, onLogsClick))
+                add(ManagementAction("Close", Icons.Outlined.Lock, Color(0xFFBA2D2D), onCloseClick))
+                add(ManagementAction("Delete", Icons.Outlined.Delete, Color(0xFFBA2D2D), onDeleteClick))
             }
 
             // Chunk actions into rows
@@ -1620,7 +1330,7 @@ fun AdminHouseManagementTools(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     rowActions.forEach { action ->
-                        ManagementActionCardHousingDetails(
+                        ManagementActionCard(
                             action = action,
                             modifier = Modifier.weight(1f),
                             colorScheme = colorScheme
@@ -1637,9 +1347,16 @@ fun AdminHouseManagementTools(
     }
 }
 
+data class ManagementAction(
+    val label: String,
+    val icon: ImageVector,
+    val color: Color,
+    val onClick: () -> Unit
+)
+
 @Composable
-fun ManagementActionCardHousingDetails(
-    action: ManagementActionHousingDetails,
+fun ManagementActionCard(
+    action: ManagementAction,
     modifier: Modifier = Modifier,
     colorScheme: ColorScheme
 ) {
@@ -1680,14 +1397,11 @@ fun ManagementActionCardHousingDetails(
 /* ───────── ANALYTICS CARD ───────── */
 
 @Composable
-fun AdminPropertyAnalyticsCard(
+fun AdminAnalyticsCard(
     views: Int,
-    messages: Int,
-    requests: Int,
-    averageResponseTime: Double,
-    viewsTrend: String,
-    messagesTrend: String,
-    requestsTrend: String,
+    applications: Int,
+    averageTimeToApply: Double,
+    funnel: ApplicationFunnel,
     onViewFullAnalytics: () -> Unit,
     colorScheme: ColorScheme
 ) {
@@ -1749,37 +1463,28 @@ fun AdminPropertyAnalyticsCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
-                    AnalyticsStatCardHousingDetails(
+                    AnalyticsStatCard(
                         icon = Icons.Outlined.Visibility,
                         value = formatNumber(views),
                         label = "Views",
-                        trend = viewsTrend,
+                        trend = "+18%",
                         colorScheme = colorScheme
                     )
                 }
                 item {
-                    AnalyticsStatCardHousingDetails(
-                        icon = Icons.Outlined.ChatBubbleOutline,
-                        value = formatNumber(messages),
-                        label = "Messages",
-                        trend = messagesTrend,
+                    AnalyticsStatCard(
+                        icon = Icons.Outlined.Description,
+                        value = formatNumber(applications),
+                        label = "Applications",
+                        trend = "+5%",
                         colorScheme = colorScheme
                     )
                 }
                 item {
-                    AnalyticsStatCardHousingDetails(
-                        icon = Icons.Outlined.PendingActions,
-                        value = formatNumber(requests),
-                        label = "Requests",
-                        trend = requestsTrend,
-                        colorScheme = colorScheme
-                    )
-                }
-                item {
-                    AnalyticsStatCardHousingDetails(
+                    AnalyticsStatCard(
                         icon = Icons.Outlined.Timer,
-                        value = String.format("%.1f hrs", averageResponseTime),
-                        label = "Avg. Response",
+                        value = String.format("%.1f days", averageTimeToApply),
+                        label = "Avg. Time",
                         trend = null,
                         colorScheme = colorScheme
                     )
@@ -1787,6 +1492,41 @@ fun AdminPropertyAnalyticsCard(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Application Funnel
+            Text(
+                text = "Application Funnel",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            FunnelRow(
+                label = "Viewed",
+                value = funnel.viewed,
+                percentage = 100,
+                color = colorScheme.primary,
+                colorScheme = colorScheme
+            )
+
+            FunnelRow(
+                label = "Applied",
+                value = funnel.applied,
+                percentage = (funnel.applied.toFloat() / funnel.viewed.toFloat() * 100).toInt(),
+                color = colorScheme.secondary,
+                colorScheme = colorScheme
+            )
+
+            FunnelRow(
+                label = "Reviewed",
+                value = funnel.reviewed,
+                percentage = (funnel.reviewed.toFloat() / funnel.viewed.toFloat() * 100).toInt(),
+                color = colorScheme.tertiary,
+                colorScheme = colorScheme
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // View Full Analytics Button
             OutlinedButton(
@@ -1808,7 +1548,7 @@ fun AdminPropertyAnalyticsCard(
 }
 
 @Composable
-fun AnalyticsStatCardHousingDetails(
+fun AnalyticsStatCard(
     icon: ImageVector,
     value: String,
     label: String,
@@ -1868,42 +1608,60 @@ fun AnalyticsStatCardHousingDetails(
     }
 }
 
-/* ───────── SPEC ITEM ───────── */
-
 @Composable
-fun SpecItem(
-    icon: ImageVector,
-    value: String,
+fun FunnelRow(
     label: String,
+    value: Int,
+    percentage: Int,
+    color: Color,
     colorScheme: ColorScheme
 ) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = colorScheme.primary,
-            modifier = Modifier.size(24.dp)
-        )
-        Text(
-            text = value,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            color = colorScheme.onSurface
-        )
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            color = colorScheme.onSurfaceVariant
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurface
+            )
+            Text(
+                text = "$value ($percentage%)",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = color
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(colorScheme.surfaceVariant)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(percentage / 100f)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(color)
+            )
+        }
     }
 }
 
 /* ───────── CONFIRMATION DIALOG ───────── */
 
 @Composable
-fun AdminConfirmationDialogHousingDetails(
+fun AdminConfirmationDialog(
     title: String,
     message: String,
     icon: ImageVector,
@@ -2002,7 +1760,7 @@ fun AdminConfirmationDialogHousingDetails(
 /* ───────── UTILITY FUNCTIONS ───────── */
 
 @SuppressLint("DefaultLocale")
-fun formatNumber(number: Int): String {
+private fun formatNumberHousingDetails(number: Int): String {
     return when {
         number >= 1_000_000 -> String.format("%.1fM", number / 1_000_000.0)
         number >= 1_000 -> String.format("%.1fK", number / 1_000.0)
@@ -2010,125 +1768,103 @@ fun formatNumber(number: Int): String {
     }
 }
 
-fun extractPriceValue(priceString: String): Int {
-    return try {
-        val cleaned = priceString
-            .replace("KES", "")
-            .replace("KSh", "")
-            .replace("Ksh", "")
-            .replace(",", "")
-            .replace(" ", "")
-            .trim()
-
-        when {
-            cleaned.endsWith("M", ignoreCase = true) -> {
-                val number = cleaned.dropLast(1).toDoubleOrNull() ?: 0.0
-                (number * 1_000_000).toInt()
-            }
-            cleaned.endsWith("K", ignoreCase = true) -> {
-                val number = cleaned.dropLast(1).toDoubleOrNull() ?: 0.0
-                (number * 1_000).toInt()
-            }
-            else -> cleaned.toIntOrNull() ?: 0
-        }
-    } catch (e: Exception) {
-        0
-    }
-}
-
 /* ───────── PREVIEW ───────── */
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun AdminHouseDetailsPreview() {
+fun AdminJobDetailsPreview() {
     PivotaConnectTheme {
-        AdminHouseDetailsScreenContent(
-            housingListing = createSampleAdminHousingListing(),
+        AdminJobDetailsScreen(
+            jobListing = createSampleAdminJobListing(),
             onNavigateBack = {},
-            onEditListing = {},
-            onDuplicateListing = {},
-            onArchiveListing = {},
-            onDeleteListing = {},
-            onPauseListing = {},
-            onResumeListing = {},
-            onMarkAvailable = {},
-            onMarkRented = {},
-            onMarkSold = {},
-            onViewInquiries = {},
-            onShareListing = {},
+            onEditJob = {},
+            onDuplicateJob = {},
+            onArchiveJob = {},
+            onDeleteJob = {},
+            onPauseJob = {},
+            onResumeJob = {},
+            onCloseJob = {},
+            onViewApplicants = {},
+            onShareJob = {},
             onViewLogs = {},
-            onCopyListingLink = {}
+            onCopyJobLink = {}
         )
     }
 }
 
 @Preview(showBackground = true, widthDp = 840)
 @Composable
-fun AdminHouseDetailsTabletPreview() {
+fun AdminJobDetailsTabletPreview() {
     PivotaConnectTheme {
-        AdminHouseDetailsScreenContent(
-            housingListing = createSampleAdminHousingListing(),
+        AdminJobDetailsScreen(
+            jobListing = createSampleAdminJobListing(),
             onNavigateBack = {},
-            onEditListing = {},
-            onDuplicateListing = {},
-            onArchiveListing = {},
-            onDeleteListing = {},
-            onPauseListing = {},
-            onResumeListing = {},
-            onMarkAvailable = {},
-            onMarkRented = {},
-            onMarkSold = {},
-            onViewInquiries = {},
-            onShareListing = {},
+            onEditJob = {},
+            onDuplicateJob = {},
+            onArchiveJob = {},
+            onDeleteJob = {},
+            onPauseJob = {},
+            onResumeJob = {},
+            onCloseJob = {},
+            onViewApplicants = {},
+            onShareJob = {},
             onViewLogs = {},
-            onCopyListingLink = {}
+            onCopyJobLink = {}
         )
     }
 }
 
-fun createSampleAdminHousingListing(): AdminHousingListingUiModel {
+private fun createSampleAdminJobListing(): AdminJobListingUiModel {
     val calendar = Calendar.getInstance()
-    calendar.add(Calendar.DAY_OF_YEAR, -7)
+    calendar.add(Calendar.DAY_OF_YEAR, -5)
     val postedDate = calendar.time
 
-    calendar.add(Calendar.DAY_OF_YEAR, 23)
+    calendar.add(Calendar.DAY_OF_YEAR, 25)
     val expiryDate = calendar.time
 
-    return AdminHousingListingUiModel(
-        id = "house-123",
-        title = "Modern 2-Bedroom Apartment in Westlands",
-        price = "KES 45,000",
-        location = "Westlands, Nairobi",
-        exactLocation = "Woodvale Grove, Westlands",
-        propertyType = "Apartment",
-        status = ListingStatus.AVAILABLE,
+    return AdminJobListingUiModel(
+        id = "job-123",
+        title = "Senior Software Engineer",
+        companyName = "Tech Innovations Africa",
+        companyLogoUrl = null,
+        location = "Nairobi, Kenya",
+        exactLocation = "Westlands, Nairobi",
+        jobType = "Full-time",
+        status = JobStatus.ACTIVE,
         postedDate = postedDate,
         expiryDate = expiryDate,
-        views = 1832,
-        messages = 28,
-        requests = 12,
-        newInquiries = 8,
-        description = "Spacious and well-lit apartment located in the heart of Westlands. Features include modern finishes, ample parking, and 24/7 security. Close to shopping malls, restaurants, and public transport.",
-        bedrooms = 2,
-        bathrooms = 2,
-        squareMeters = 85,
-        facilities = listOf(
-            "Water", "Electricity", "Parking", "Wi-Fi", "Security", "Gym", "Swimming Pool"
+        views = 2456,
+        applications = 24,
+        newApplications = 12,
+        reviewedApplications = 15,
+        description = "We are looking for a talented Senior Software Engineer to join our growing team in Nairobi. You will be responsible for developing and maintaining high-quality mobile and web applications that serve users across Africa.",
+        requirements = listOf(
+            "Bachelor's degree in Computer Science or related field",
+            "5+ years of experience in software development",
+            "Strong knowledge of Kotlin/Java for Android or Swift for iOS",
+            "Experience with RESTful APIs and cloud services"
         ),
-        imageRes = listOf(
-            R.drawable.property_placeholder1,
-            R.drawable.property_placeholder2,
-            R.drawable.property_placeholder3,
-            R.drawable.property_placeholder4
+        skills = listOf(
+            "Android Development",
+            "Kotlin",
+            "REST APIs",
+            "Firebase",
+            "Git"
+        ),
+        benefits = listOf(
+            "Health Insurance",
+            "Transport allowance",
+            "Meal vouchers",
+            "Learning & Development budget"
         ),
         isVerified = true,
-        ownerName = "Sarah Omondi",
-        ownerVerified = true,
-        rating = 4.5,
-        isForSale = false,
-        averageResponseTime = 2.5,
-        viewsTrend = "+18%",
-        messagesTrend = "+12%",
-        requestsTrend = "+8%"
+        employerName = "Sarah Omondi",
+        employerVerified = true,
+        averageTimeToApply = 3.2,
+        applicationFunnel = ApplicationFunnel(
+            viewed = 100,
+            applied = 24,
+            reviewed = 12
+        )
     )
 }
