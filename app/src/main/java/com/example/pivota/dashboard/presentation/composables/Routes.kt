@@ -32,4 +32,10 @@ data object  HouseDetails
 @Serializable
 data object AdminHouseDetails
 
+@Serializable
+object JobDetails
+
+@Serializable
+object JobApplicationForm // Optional - if you want an application form screen
+
 // Add more routes as needed
