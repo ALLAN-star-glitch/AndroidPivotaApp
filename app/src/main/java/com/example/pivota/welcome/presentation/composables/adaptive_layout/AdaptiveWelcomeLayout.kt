@@ -1,41 +1,34 @@
 package com.example.pivota.welcome.presentation.composables.adaptive_layout
 
-
+import WelcomeContent
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.window.core.layout.WindowSizeClass
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.sp
 import com.example.pivota.R
 import com.example.pivota.core.presentations.composables.background_image_and_overlay.BackgroundImageAndOverlay
-import com.example.pivota.core.presentations.composables.buttons.AuthGoogleButton
 import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
-import com.example.pivota.ui.theme.InfoBlue
-import com.example.pivota.welcome.presentation.composables.welcome_content.WelcomeContent
+import com.example.pivota.core.presentations.composables.buttons.PivotaSecondaryButton
 
-@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun AdaptiveWelcomeLayout(
     header: String,
     welcomeText: String,
-    onNavigateToContinueSetup: () -> Unit,
-    onNavigateToContinueWithGoogle: () -> Unit,
-    onNavigateToLogin: () -> Unit,
+    onNavigateToGetStarted: () -> Unit,
+    onNavigateToLoginScreen: () -> Unit
 ) {
     Box {
         val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
@@ -76,7 +69,7 @@ fun AdaptiveWelcomeLayout(
                         )
                     }
 
-                    // Right pane with all four buttons
+                    // Right pane - completely redesigned for proper centering
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
@@ -86,8 +79,8 @@ fun AdaptiveWelcomeLayout(
                         TwoPaneWelcomeContent(
                             header = header,
                             welcomeText = welcomeText,
-                            onNavigateToContinueSetup = onNavigateToContinueSetup,
-                            onNavigateToLogin = onNavigateToLogin
+                            onNavigateToRegistrationScreen = onNavigateToGetStarted,
+                            onNavigateToLoginScreen = onNavigateToLoginScreen
                         )
                     }
                 }
@@ -97,7 +90,7 @@ fun AdaptiveWelcomeLayout(
             else -> {
                 val configuration = androidx.compose.ui.platform.LocalConfiguration.current
                 val screenHeight = configuration.screenHeightDp.dp
-                val dynamicTopPadding = screenHeight * 0.42f
+                val dynamicTopPadding = screenHeight * 0.45f
 
                 Box(
                     modifier = Modifier
@@ -116,8 +109,8 @@ fun AdaptiveWelcomeLayout(
                         header = header,
                         welcomeText = welcomeText,
                         topPadding = dynamicTopPadding,
-                        onNavigateToContinueSetup = onNavigateToContinueSetup,
-                        onNavigateToLogin = onNavigateToLogin
+                        onNavigateToRegistrationScreen = onNavigateToGetStarted,
+                        onNavigateToLoginScreen = onNavigateToLoginScreen
                     )
                 }
             }
@@ -129,22 +122,21 @@ fun AdaptiveWelcomeLayout(
 fun TwoPaneWelcomeContent(
     header: String,
     welcomeText: String,
-    onNavigateToContinueSetup: () -> Unit,
-    onNavigateToLogin: () -> Unit
+    onNavigateToRegistrationScreen: () -> Unit,
+    onNavigateToLoginScreen: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 48.dp),
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Logo
         coil3.compose.AsyncImage(
-            model = R.drawable.transparentpivlogo,
-            contentDescription = "PivotaConnect Logo",
-            modifier = Modifier.size(120.dp)
+            model = com.example.pivota.R.drawable.logofinale,
+            contentDescription = "Pivota Logo",
+            modifier = Modifier.size(150.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -153,10 +145,8 @@ fun TwoPaneWelcomeContent(
         Text(
             text = header,
             style = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 28.sp,
                 color = MaterialTheme.colorScheme.primary,
-                lineHeight = 36.sp
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
             ),
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 24.dp)
@@ -167,86 +157,44 @@ fun TwoPaneWelcomeContent(
         // Welcome text
         Text(
             text = welcomeText,
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = 15.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                lineHeight = 22.sp
-            ),
+            style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // All Buttons
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Get Started Button
-            PivotaPrimaryButton(
-                text = "Get Started",
-                onClick = onNavigateToContinueSetup,
-                modifier = Modifier.fillMaxWidth(),
-                icon = ImageVector.vectorResource(R.drawable.ic_person)
-            )
-        }
-
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Login Text (Clickable)
+        // Get Started button
+        PivotaPrimaryButton(
+            text = "Get Started",
+            onClick = onNavigateToRegistrationScreen,
+            modifier = Modifier.fillMaxWidth(0.7f)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Divider with OR
         Row(
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxWidth()
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(0.6f)
         ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
             Text(
-                text = "Already have an account? ",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                text = " OR ",
+                modifier = Modifier.padding(horizontal = 8.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
             )
-            Text(
-                text = "Log in",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = InfoBlue
-                ),
-                modifier = Modifier.clickable { onNavigateToLogin() }
-            )
+            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Footer Links
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = "Terms of Service",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                modifier = Modifier.clickable { /* Navigate to Terms */ }
-            )
-            Text(
-                text = " • ",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
-            )
-            Text(
-                text = "Privacy Policy",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                modifier = Modifier.clickable { /* Navigate to Privacy */ }
-            )
-        }
+        // Login button
+        PivotaSecondaryButton(
+            text = "Login",
+            onclick = onNavigateToLoginScreen,
+            modifier = Modifier.fillMaxWidth(0.7f)
+        )
     }
 }

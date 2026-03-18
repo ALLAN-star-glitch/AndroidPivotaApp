@@ -35,7 +35,8 @@ fun WelcomeContent(
     header: String = "Welcome to Pivota",
     welcomeText: String = "Jobs, Housing & Support Across Africa",
     onNavigateToRegistrationScreen: () -> Unit,
-    onNavigateToLoginScreen: () -> Unit
+    onNavigateToLoginScreen: () -> Unit,
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(8.dp) // Add this parameter
 ) {
     Box(
         modifier = Modifier
@@ -47,19 +48,19 @@ fun WelcomeContent(
         contentAlignment = Alignment.TopCenter
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp), // Reduced from 12dp to 8dp
+            verticalArrangement = verticalArrangement, // Use the parameter here
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(top = 16.dp, bottom = 24.dp) // Reduced top padding from 24dp to 16dp
+                .padding(top = 16.dp, bottom = 24.dp)
         ) {
-
+            // Rest of your content remains the same
             /* ───── LOGO & BRAND NAME ───── */
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp) // Reduced from 4dp to 2dp
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 coil3.compose.AsyncImage(
                     model = com.example.pivota.R.drawable.logofinale,
@@ -67,8 +68,6 @@ fun WelcomeContent(
                     modifier = Modifier.size(150.dp)
                 )
             }
-
-            // Removed the Spacer here - letting the 8dp from Arrangement handle it
 
             /* ───── Header & Welcome ───── */
             Text(
@@ -86,8 +85,6 @@ fun WelcomeContent(
                 textAlign = TextAlign.Center
             )
 
-            // Removed the Spacer here - letting the 8dp from Arrangement handle it
-
             /* ───── Buttons & Divider ───── */
             PivotaPrimaryButton(
                 text = "Get Started",
@@ -103,7 +100,7 @@ fun WelcomeContent(
                 HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
                 Text(
                     text = " OR ",
-                    modifier = Modifier.padding(horizontal = 8.dp), // Reduced from 12dp to 8dp
+                    modifier = Modifier.padding(horizontal = 8.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
