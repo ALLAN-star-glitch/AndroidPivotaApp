@@ -23,6 +23,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -48,6 +50,8 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.ui.theme.*
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
 // Data classes
 data class KPI(
@@ -64,10 +68,57 @@ data class Activity(
     val color: Color
 )
 
+data class EscrowTransaction(
+    val id: String,
+    val title: String,
+    val amount: String,
+    val status: EscrowStatus,
+    val counterparty: String,
+    val date: String,
+    val progress: Float,
+    val type: TransactionType
+)
+
+enum class EscrowStatus {
+    ACTIVE, PENDING, COMPLETED, DISPUTED
+}
+
+enum class TransactionType {
+    LISTING, SERVICE, VIEWING_FEE
+}
+
+data class WalletInfo(
+    val availableBalance: String,
+    val pendingPayout: String,
+    val totalEarned: String,
+    val currency: String = "KES"
+)
+
+data class ProfessionalMetrics(
+    val activeServices: Int,
+    val completedJobs: Int,
+    val averageRating: Float,
+    val totalReviews: Int
+)
+
+data class ListerMetrics(
+    val activeListings: Int,
+    val totalViews: Int,
+    val inquiries: Int,
+    val conversionRate: String
+)
+
+enum class UserType {
+    PROFESSIONAL, LISTER, BOTH
+}
+
 @SuppressLint("FrequentlyChangingValue")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun DashboardScreen(onNavigateToListings: () -> Unit) {
+fun DashboardScreen(
+    onNavigateToListings: () -> Unit,
+    userType: UserType = UserType.BOTH
+) {
     val colorScheme = MaterialTheme.colorScheme
 
     // 📱 Orientation & Window Size Logic
@@ -79,7 +130,6 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
     val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND) ||
             windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
 
-    // Header is ALWAYS sticky - use the same listState for both layouts
     val listState = rememberLazyListState()
 
     // 📏 Header sizes
@@ -91,7 +141,6 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
         (maxHeight - minHeight).toPx()
     }
 
-    // 🔥 Collapse logic
     val scrollY = when (listState.firstVisibleItemIndex) {
         0 -> listState.firstVisibleItemScrollOffset.toFloat()
         else -> collapseRangePx
@@ -106,9 +155,96 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
     // Mock data for KPIs
     val kpiData = listOf(
         KPI("Active Listings", "24", "+12%", Icons.Outlined.List),
-        KPI("Total Views", "3,842", "+28%", Icons.Outlined.Visibility),
+        KPI("Total Views", "3.8K", "+28%", Icons.Outlined.Visibility),
         KPI("SmartMatches", "156", "+43%", Icons.Outlined.AutoAwesome),
         KPI("Revenue", "KES 45.2K", "+18%", Icons.Outlined.TrendingUp)
+    )
+
+    // Mock wallet data
+    val walletInfo = WalletInfo(
+        availableBalance = "KES 45,200",
+        pendingPayout = "KES 12,500",
+        totalEarned = "KES 157,800"
+    )
+
+    // Mock professional metrics
+    val professionalMetrics = ProfessionalMetrics(
+        activeServices = 8,
+        completedJobs = 47,
+        averageRating = 4.8f,
+        totalReviews = 89
+    )
+
+    // Mock lister metrics
+    val listerMetrics = ListerMetrics(
+        activeListings = 12,
+        totalViews = 3842,
+        inquiries = 156,
+        conversionRate = "23%"
+    )
+
+    // Mock escrow transactions
+    val escrowTransactions = listOf(
+        EscrowTransaction(
+            id = "1",
+            title = "Property Deposit - Kilimani",
+            amount = "KES 150,000",
+            status = EscrowStatus.ACTIVE,
+            counterparty = "John Mwangi (Tenant)",
+            date = "Release in 3 days",
+            progress = 0.65f,
+            type = TransactionType.LISTING
+        ),
+        EscrowTransaction(
+            id = "2",
+            title = "Plumbing Services",
+            amount = "KES 45,000",
+            status = EscrowStatus.ACTIVE,
+            counterparty = "Sarah Kimani (Client)",
+            date = "Awaiting completion",
+            progress = 0.7f,
+            type = TransactionType.SERVICE
+        ),
+        EscrowTransaction(
+            id = "3",
+            title = "Electrical Repairs",
+            amount = "KES 12,500",
+            status = EscrowStatus.PENDING,
+            counterparty = "Peter Otieno",
+            date = "Pending approval",
+            progress = 0.3f,
+            type = TransactionType.SERVICE
+        ),
+        EscrowTransaction(
+            id = "4",
+            title = "House Viewing - Lavington",
+            amount = "KES 500",
+            status = EscrowStatus.COMPLETED,
+            counterparty = "Mary Wanjiku",
+            date = "Completed yesterday",
+            progress = 1f,
+            type = TransactionType.VIEWING_FEE
+        ),
+        EscrowTransaction(
+            id = "5",
+            title = "Moving Services",
+            amount = "KES 25,000",
+            status = EscrowStatus.ACTIVE,
+            counterparty = "James Mburu",
+            date = "Release in 5 days",
+            progress = 0.4f,
+            type = TransactionType.SERVICE
+        ),
+        EscrowTransaction(
+            id = "6",
+            title = "Rental Deposit - Westlands",
+            amount = "KES 85,000",
+            status = EscrowStatus.PENDING,
+            counterparty = "Alice Njeri",
+            date = "Awaiting viewing",
+            progress = 0.1f,
+            type = TransactionType.LISTING
+        )
     )
 
     Scaffold(
@@ -130,7 +266,6 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                 .fillMaxSize()
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
-            // Use LazyColumn for BOTH layouts to ensure header collapses properly
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
@@ -139,6 +274,27 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                 ),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                // 🏦 UNIFIED FINANCIAL HUB (Always visible)
+                item {
+                    UnifiedFinancialHub(
+                        walletInfo = walletInfo,
+                        escrowTransactions = escrowTransactions,
+                        professionalMetrics = professionalMetrics,
+                        listerMetrics = listerMetrics,
+                        userType = userType,
+                        primaryColor = colorScheme.primary,
+                        secondaryColor = colorScheme.secondary,
+                        tertiaryColor = colorScheme.tertiary,
+                        textPrimary = colorScheme.onSurface,
+                        textSecondary = colorScheme.onSurfaceVariant,
+                        borderColor = colorScheme.outlineVariant,
+                        surfaceColor = colorScheme.surfaceContainerLow,
+                        errorColor = colorScheme.error,
+                        successColor = Color(0xFF4CAF50),
+                        isWide = isWide
+                    )
+                }
+
                 if (isWide) {
                     // TWO PANE LAYOUT (Tablet/Desktop)
                     item {
@@ -153,25 +309,19 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                                 modifier = Modifier.weight(1.5f),
                                 verticalArrangement = Arrangement.spacedBy(20.dp)
                             ) {
-                                KpiCardsSection(
+                                EnhancedKpiCardsSection(
                                     kpis = kpiData,
                                     primaryColor = colorScheme.primary,
                                     textPrimary = colorScheme.onSurface,
                                     textSecondary = colorScheme.onSurfaceVariant,
+                                    surfaceColor = colorScheme.surfaceContainerLow,
+                                    borderColor = colorScheme.outlineVariant,
                                     isWide = true
                                 )
 
                                 ProfessionalAnalyticsSection(
                                     primaryColor = colorScheme.primary,
                                     accentColor = colorScheme.tertiary,
-                                    textPrimary = colorScheme.onSurface,
-                                    textSecondary = colorScheme.onSurfaceVariant,
-                                    borderColor = colorScheme.outlineVariant,
-                                    isWide = true
-                                )
-
-                                WalletTrustSection(
-                                    primaryColor = colorScheme.primary,
                                     textPrimary = colorScheme.onSurface,
                                     textSecondary = colorScheme.onSurfaceVariant,
                                     borderColor = colorScheme.outlineVariant,
@@ -205,7 +355,7 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                         }
                     }
                 } else {
-                    // SINGLE PANE LAYOUT (Mobile) - Optimized for small screens
+                    // SINGLE PANE LAYOUT (Mobile)
                     item {
                         Column(
                             modifier = Modifier
@@ -213,7 +363,6 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                                 .padding(horizontal = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            // KPI Cards - First row (2 cards)
                             KpiCardsSection(
                                 kpis = kpiData,
                                 primaryColor = colorScheme.primary,
@@ -222,7 +371,6 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                                 isWide = false
                             )
 
-                            // Analytics Section
                             ProfessionalAnalyticsSection(
                                 primaryColor = colorScheme.primary,
                                 accentColor = colorScheme.tertiary,
@@ -232,7 +380,6 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                                 isWide = false
                             )
 
-                            // Business Management
                             BusinessManagementSection(
                                 primaryColor = colorScheme.primary,
                                 textPrimary = colorScheme.onSurface,
@@ -242,19 +389,9 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
                                 isWide = false
                             )
 
-                            // Recent Activity
                             RecentActivitySection(
                                 primaryColor = colorScheme.primary,
                                 accentColor = colorScheme.tertiary,
-                                textPrimary = colorScheme.onSurface,
-                                textSecondary = colorScheme.onSurfaceVariant,
-                                borderColor = colorScheme.outlineVariant,
-                                isWide = false
-                            )
-
-                            // Wallet & Trust
-                            WalletTrustSection(
-                                primaryColor = colorScheme.primary,
                                 textPrimary = colorScheme.onSurface,
                                 textSecondary = colorScheme.onSurfaceVariant,
                                 borderColor = colorScheme.outlineVariant,
@@ -270,7 +407,1339 @@ fun DashboardScreen(onNavigateToListings: () -> Unit) {
     }
 }
 
-/* ────────────── KPI CARDS SECTION (MOBILE OPTIMIZED) ────────────── *//* ────────────── KPI CARDS SECTION (MOBILE OPTIMIZED - FIXED) ────────────── */
+/* ────────────── UNIFIED FINANCIAL HUB ────────────── */
+@Composable
+fun UnifiedFinancialHub(
+    walletInfo: WalletInfo,
+    escrowTransactions: List<EscrowTransaction>,
+    professionalMetrics: ProfessionalMetrics,
+    listerMetrics: ListerMetrics,
+    userType: UserType,
+    primaryColor: Color,
+    secondaryColor: Color,
+    tertiaryColor: Color,
+    textPrimary: Color,
+    textSecondary: Color,
+    borderColor: Color,
+    surfaceColor: Color,
+    errorColor: Color,
+    successColor: Color,
+    isWide: Boolean
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableStateOf(0) }
+    val tabs = listOf("Overview", "Escrow", "History")
+
+    Card(
+        shape = RoundedCornerShape(if (isWide) 24.dp else 20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = surfaceColor
+        ),
+        elevation = CardDefaults.cardElevation(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = if (isWide) 24.dp else 16.dp)
+            .shadow(
+                elevation = 16.dp,
+                shape = RoundedCornerShape(if (isWide) 24.dp else 20.dp),
+                spotColor = primaryColor.copy(alpha = 0.15f)
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(if (isWide) 20.dp else 16.dp)
+        ) {
+            // Header with user type indicator
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Animated icon based on user type
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = primaryColor.copy(alpha = 0.15f),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                when (userType) {
+                                    UserType.PROFESSIONAL -> Icons.Rounded.Build
+                                    UserType.LISTER -> Icons.Rounded.Home
+                                    UserType.BOTH -> Icons.Rounded.AccountBalanceWallet
+                                },
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+
+                    Column {
+                        Text(
+                            when (userType) {
+                                UserType.PROFESSIONAL -> "Professional Dashboard"
+                                UserType.LISTER -> "Lister Dashboard"
+                                UserType.BOTH -> "Your Financial Hub"
+                            },
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = textPrimary
+                            )
+                        )
+                        Text(
+                            when (userType) {
+                                UserType.PROFESSIONAL -> "Manage your services & earnings"
+                                UserType.LISTER -> "Manage your listings & income"
+                                UserType.BOTH -> "Manage all your earnings & transactions"
+                            },
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = textSecondary
+                            )
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Wallet Balance Card (Prominent)
+            WalletBalanceCard(
+                walletInfo = walletInfo,
+                primaryColor = primaryColor,
+                textPrimary = textPrimary,
+                textSecondary = textSecondary,
+                isWide = isWide
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Role-specific metrics
+            if (userType == UserType.PROFESSIONAL || userType == UserType.BOTH) {
+                ProfessionalMetricsRow(
+                    metrics = professionalMetrics,
+                    primaryColor = primaryColor,
+                    secondaryColor = secondaryColor,
+                    successColor = successColor,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    isWide = isWide
+                )
+            }
+
+            if (userType == UserType.LISTER || userType == UserType.BOTH) {
+                ListerMetricsRow(
+                    metrics = listerMetrics,
+                    primaryColor = primaryColor,
+                    secondaryColor = secondaryColor,
+                    tertiaryColor = tertiaryColor,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    isWide = isWide
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Tab Row
+            ScrollableTabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.Transparent,
+                edgePadding = 0.dp,
+                divider = {}
+            ) {
+                tabs.forEachIndexed { index, tab ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = { Text(tab, fontSize = if (isWide) 14.sp else 12.sp) },
+                        selectedContentColor = primaryColor,
+                        unselectedContentColor = textSecondary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Tab Content
+            when (selectedTab) {
+                0 -> OverviewTab(
+                    transactions = escrowTransactions,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    primaryColor = primaryColor,
+                    successColor = successColor,
+                    isWide = isWide
+                )
+                1 -> EscrowTab(
+                    transactions = escrowTransactions,
+                    primaryColor = primaryColor,
+                    secondaryColor = secondaryColor,
+                    errorColor = errorColor,
+                    successColor = successColor,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    borderColor = borderColor,
+                    isWide = isWide
+                )
+                2 -> HistoryTab(
+                    transactions = escrowTransactions,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    isWide = isWide
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun WalletBalanceCard(
+    walletInfo: WalletInfo,
+    primaryColor: Color,
+    textPrimary: Color,
+    textSecondary: Color,
+    isWide: Boolean
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        primaryColor.copy(alpha = 0.1f),
+                        Color.Transparent
+                    )
+                ),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                "Available Balance",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    color = textSecondary
+                )
+            )
+            Text(
+                walletInfo.availableBalance,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = textPrimary,
+                    fontSize = if (isWide) 32.sp else 28.sp
+                )
+            )
+            Text(
+                "Pending: ${walletInfo.pendingPayout}",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = textSecondary
+                )
+            )
+            Text(
+                "Total Earned: ${walletInfo.totalEarned}",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = textSecondary
+                )
+            )
+        }
+
+        Button(
+            onClick = { },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = primaryColor
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Rounded.CallMade, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Withdraw")
+        }
+    }
+}
+
+@Composable
+fun ProfessionalMetricsRow(
+    metrics: ProfessionalMetrics,
+    primaryColor: Color,
+    secondaryColor: Color,
+    successColor: Color,
+    textPrimary: Color,
+    textSecondary: Color,
+    isWide: Boolean
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = primaryColor.copy(alpha = 0.05f)
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            MetricItem(
+                value = metrics.activeServices.toString(),
+                label = "Active Jobs",
+                icon = Icons.Rounded.Work,
+                color = primaryColor,
+                textPrimary = textPrimary,
+                textSecondary = textSecondary
+            )
+
+            VerticalDivider(
+                modifier = Modifier.height(30.dp),
+                color = textSecondary.copy(alpha = 0.3f)
+            )
+
+            MetricItem(
+                value = metrics.completedJobs.toString(),
+                label = "Completed",
+                icon = Icons.Rounded.CheckCircle,
+                color = successColor,
+                textPrimary = textPrimary,
+                textSecondary = textSecondary
+            )
+
+            VerticalDivider(
+                modifier = Modifier.height(30.dp),
+                color = textSecondary.copy(alpha = 0.3f)
+            )
+
+            MetricItem(
+                value = String.format("%.1f", metrics.averageRating),
+                label = "Rating",
+                icon = Icons.Rounded.Star,
+                color = secondaryColor,
+                textPrimary = textPrimary,
+                textSecondary = textSecondary
+            )
+
+            VerticalDivider(
+                modifier = Modifier.height(30.dp),
+                color = textSecondary.copy(alpha = 0.3f)
+            )
+
+            MetricItem(
+                value = metrics.totalReviews.toString(),
+                label = "Reviews",
+                icon = Icons.Rounded.RateReview,
+                color = Color(0xFF9C27B0),
+                textPrimary = textPrimary,
+                textSecondary = textSecondary
+            )
+        }
+    }
+}
+
+@Composable
+fun ListerMetricsRow(
+    metrics: ListerMetrics,
+    primaryColor: Color,
+    secondaryColor: Color,
+    tertiaryColor: Color,
+    textPrimary: Color,
+    textSecondary: Color,
+    isWide: Boolean
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = primaryColor.copy(alpha = 0.05f)
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            MetricItem(
+                value = metrics.activeListings.toString(),
+                label = "Listings",
+                icon = Icons.Rounded.List,
+                color = primaryColor,
+                textPrimary = textPrimary,
+                textSecondary = textSecondary
+            )
+
+            VerticalDivider(
+                modifier = Modifier.height(30.dp),
+                color = textSecondary.copy(alpha = 0.3f)
+            )
+
+            MetricItem(
+                value = metrics.totalViews.toString(),
+                label = "Views",
+                icon = Icons.Rounded.Visibility,
+                color = secondaryColor,
+                textPrimary = textPrimary,
+                textSecondary = textSecondary
+            )
+
+            VerticalDivider(
+                modifier = Modifier.height(30.dp),
+                color = textSecondary.copy(alpha = 0.3f)
+            )
+
+            MetricItem(
+                value = metrics.inquiries.toString(),
+                label = "Inquiries",
+                icon = Icons.Rounded.Chat,
+                color = tertiaryColor,
+                textPrimary = textPrimary,
+                textSecondary = textSecondary
+            )
+
+            VerticalDivider(
+                modifier = Modifier.height(30.dp),
+                color = textSecondary.copy(alpha = 0.3f)
+            )
+
+            MetricItem(
+                value = metrics.conversionRate,
+                label = "Conv. Rate",
+                icon = Icons.Rounded.TrendingUp,
+                color = Color(0xFF4CAF50),
+                textPrimary = textPrimary,
+                textSecondary = textSecondary
+            )
+        }
+    }
+}
+
+@Composable
+fun MetricItem(
+    value: String,
+    label: String,
+    icon: ImageVector,
+    color: Color,
+    textPrimary: Color,
+    textSecondary: Color
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = textPrimary
+                )
+            )
+        }
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall.copy(
+                color = textSecondary
+            )
+        )
+    }
+}
+
+@Composable
+fun OverviewTab(
+    transactions: List<EscrowTransaction>,
+    textPrimary: Color,
+    textSecondary: Color,
+    primaryColor: Color,
+    successColor: Color,
+    isWide: Boolean
+) {
+    Column {
+        // Summary cards
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Active escrows
+            val activeCount = transactions.count { it.status == EscrowStatus.ACTIVE }
+            val activeValue = transactions
+                .filter { it.status == EscrowStatus.ACTIVE }
+                .sumOf { it.amount.filter { c -> c.isDigit() || c == ',' }.replace(",", "").toIntOrNull() ?: 0 }
+                .let { "KES ${String.format("%,d", it)}" }
+
+            OverviewCard(
+                title = "Active Escrow",
+                value = activeCount.toString(),
+                subValue = activeValue,
+                icon = Icons.Rounded.Lock,
+                color = primaryColor,
+                textPrimary = textPrimary,
+                textSecondary = textSecondary,
+                modifier = Modifier.weight(1f)
+            )
+
+            // Pending approvals
+            val pendingCount = transactions.count { it.status == EscrowStatus.PENDING }
+            val pendingValue = transactions
+                .filter { it.status == EscrowStatus.PENDING }
+                .sumOf { it.amount.filter { c -> c.isDigit() || c == ',' }.replace(",", "").toIntOrNull() ?: 0 }
+                .let { "KES ${String.format("%,d", it)}" }
+
+            OverviewCard(
+                title = "Pending",
+                value = pendingCount.toString(),
+                subValue = pendingValue,
+                icon = Icons.Rounded.Schedule,
+                color = Color(0xFFFF9800),
+                textPrimary = textPrimary,
+                textSecondary = textSecondary,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Completed
+            val completedCount = transactions.count { it.status == EscrowStatus.COMPLETED }
+            OverviewCard(
+                title = "Completed",
+                value = completedCount.toString(),
+                subValue = "Last 30 days",
+                icon = Icons.Rounded.CheckCircle,
+                color = successColor,
+                textPrimary = textPrimary,
+                textSecondary = textSecondary,
+                modifier = Modifier.weight(1f)
+            )
+
+            // Total Value
+            val totalValue = transactions
+                .sumOf { it.amount.filter { c -> c.isDigit() || c == ',' }.replace(",", "").toIntOrNull() ?: 0 }
+                .let { "KES ${String.format("%,d", it)}" }
+
+            OverviewCard(
+                title = "Total Volume",
+                value = totalValue,
+                subValue = "All time",
+                icon = Icons.Rounded.TrendingUp,
+                color = Color(0xFF9C27B0),
+                textPrimary = textPrimary,
+                textSecondary = textSecondary,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Recent transactions preview
+        Text(
+            "Recent Transactions",
+            style = MaterialTheme.typography.titleSmall.copy(
+                fontWeight = FontWeight.Bold,
+                color = textPrimary
+            )
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        transactions.take(3).forEach { transaction ->
+            TransactionPreviewItem(
+                transaction = transaction,
+                textPrimary = textPrimary,
+                textSecondary = textSecondary
+            )
+        }
+
+        TextButton(
+            onClick = { },
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text("View All", color = primaryColor)
+        }
+    }
+}
+
+@Composable
+fun OverviewCard(
+    title: String,
+    value: String,
+    subValue: String,
+    icon: ImageVector,
+    color: Color,
+    textPrimary: Color,
+    textSecondary: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = color.copy(alpha = 0.1f)
+        ),
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Column {
+                Text(
+                    value,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = textPrimary
+                    )
+                )
+                Text(
+                    title,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = textSecondary
+                    )
+                )
+                Text(
+                    subValue,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = textSecondary,
+                        fontSize = 10.sp
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionPreviewItem(
+    transaction: EscrowTransaction,
+    textPrimary: Color,
+    textSecondary: Color
+) {
+    val statusColor = when (transaction.status) {
+        EscrowStatus.ACTIVE -> Color(0xFF2196F3)
+        EscrowStatus.PENDING -> Color(0xFFFF9800)
+        EscrowStatus.COMPLETED -> Color(0xFF4CAF50)
+        EscrowStatus.DISPUTED -> Color(0xFFF44336)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Type indicator
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = when (transaction.type) {
+                TransactionType.LISTING -> Color(0xFF2196F3).copy(alpha = 0.1f)
+                TransactionType.SERVICE -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                TransactionType.VIEWING_FEE -> Color(0xFFFF9800).copy(alpha = 0.1f)
+            },
+            modifier = Modifier.size(36.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    when (transaction.type) {
+                        TransactionType.LISTING -> Icons.Rounded.Home
+                        TransactionType.SERVICE -> Icons.Rounded.Build
+                        TransactionType.VIEWING_FEE -> Icons.Rounded.Visibility
+                    },
+                    contentDescription = null,
+                    tint = when (transaction.type) {
+                        TransactionType.LISTING -> Color(0xFF2196F3)
+                        TransactionType.SERVICE -> Color(0xFF4CAF50)
+                        TransactionType.VIEWING_FEE -> Color(0xFFFF9800)
+                    },
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                transaction.title,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = textPrimary
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                transaction.counterparty,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = textSecondary
+                )
+            )
+        }
+
+        Column(
+            horizontalAlignment = Alignment.End
+        ) {
+            Text(
+                transaction.amount,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = textPrimary
+                )
+            )
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = statusColor.copy(alpha = 0.1f)
+            ) {
+                Text(
+                    transaction.status.name,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = statusColor,
+                        fontSize = 9.sp
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EscrowTab(
+    transactions: List<EscrowTransaction>,
+    primaryColor: Color,
+    secondaryColor: Color,
+    errorColor: Color,
+    successColor: Color,
+    textPrimary: Color,
+    textSecondary: Color,
+    borderColor: Color,
+    isWide: Boolean
+) {
+    var shimmerProgress by remember { mutableStateOf(0f) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(16)
+            shimmerProgress = (shimmerProgress + 0.02f) % 1f
+        }
+    }
+
+    Column {
+        val activeTransactions = transactions.filter {
+            it.status == EscrowStatus.ACTIVE || it.status == EscrowStatus.PENDING
+        }
+
+        if (activeTransactions.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Rounded.Inbox,
+                        contentDescription = null,
+                        tint = textSecondary,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "No active escrow transactions",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = textSecondary
+                        )
+                    )
+                }
+            }
+        } else {
+            activeTransactions.forEach { transaction ->
+                EnhancedEscrowItem(
+                    transaction = transaction,
+                    primaryColor = primaryColor,
+                    secondaryColor = secondaryColor,
+                    errorColor = errorColor,
+                    successColor = successColor,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    borderColor = borderColor,
+                    shimmerProgress = shimmerProgress
+                )
+                HorizontalDivider(color = borderColor, modifier = Modifier.padding(vertical = 8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun EnhancedEscrowItem(
+    transaction: EscrowTransaction,
+    primaryColor: Color,
+    secondaryColor: Color,
+    errorColor: Color,
+    successColor: Color,
+    textPrimary: Color,
+    textSecondary: Color,
+    borderColor: Color,
+    shimmerProgress: Float
+) {
+    val statusColor = when (transaction.status) {
+        EscrowStatus.ACTIVE -> primaryColor
+        EscrowStatus.PENDING -> secondaryColor
+        EscrowStatus.COMPLETED -> successColor
+        EscrowStatus.DISPUTED -> errorColor
+    }
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Transparent
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left side - Transaction info
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Type indicator with shimmer for active
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                brush = if (transaction.status == EscrowStatus.ACTIVE) {
+                                    Brush.linearGradient(
+                                        colors = listOf(
+                                            statusColor.copy(alpha = 0.3f),
+                                            statusColor.copy(alpha = 0.6f),
+                                            statusColor.copy(alpha = 0.3f)
+                                        ),
+                                        start = Offset(shimmerProgress * 100f, 0f),
+                                        end = Offset(shimmerProgress * 100f + 100f, 100f)
+                                    )
+                                } else {
+                                    Brush.linearGradient(
+                                        colors = listOf(
+                                            when (transaction.type) {
+                                                TransactionType.LISTING -> Color(0xFF2196F3).copy(alpha = 0.2f)
+                                                TransactionType.SERVICE -> Color(0xFF4CAF50).copy(alpha = 0.2f)
+                                                TransactionType.VIEWING_FEE -> Color(0xFFFF9800).copy(alpha = 0.2f)
+                                            },
+                                            when (transaction.type) {
+                                                TransactionType.LISTING -> Color(0xFF2196F3).copy(alpha = 0.1f)
+                                                TransactionType.SERVICE -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                                                TransactionType.VIEWING_FEE -> Color(0xFFFF9800).copy(alpha = 0.1f)
+                                            }
+                                        )
+                                    )
+                                }
+                            )
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                when (transaction.type) {
+                                    TransactionType.LISTING -> Icons.Rounded.Home
+                                    TransactionType.SERVICE -> Icons.Rounded.Build
+                                    TransactionType.VIEWING_FEE -> Icons.Rounded.Visibility
+                                },
+                                contentDescription = null,
+                                tint = when (transaction.type) {
+                                    TransactionType.LISTING -> Color(0xFF2196F3)
+                                    TransactionType.SERVICE -> Color(0xFF4CAF50)
+                                    TransactionType.VIEWING_FEE -> Color(0xFFFF9800)
+                                },
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    Column {
+                        Text(
+                            transaction.title,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = textPrimary
+                            )
+                        )
+                        Text(
+                            transaction.counterparty,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = textSecondary
+                            )
+                        )
+                    }
+                }
+
+                // Amount and status
+                Column(
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        transaction.amount,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = textPrimary
+                        )
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = statusColor.copy(alpha = 0.1f),
+                        border = BorderStroke(1.dp, statusColor.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            transaction.status.name,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = statusColor,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 10.sp
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Progress bar for active escrows
+            if (transaction.status == EscrowStatus.ACTIVE) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        transaction.date,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = textSecondary
+                        )
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(borderColor)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(transaction.progress)
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            primaryColor,
+                                            primaryColor.copy(alpha = 0.7f)
+                                        )
+                                    )
+                                )
+                        )
+                    }
+
+                    Text(
+                        "${(transaction.progress * 100).toInt()}%",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = primaryColor
+                        )
+                    )
+                }
+            }
+
+            // Action buttons for pending/active
+            if (transaction.status == EscrowStatus.PENDING || transaction.status == EscrowStatus.ACTIVE) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = textPrimary
+                        )
+                    ) {
+                        Text("Contact")
+                    }
+
+                    Button(
+                        onClick = { },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = primaryColor
+                        )
+                    ) {
+                        Text(if (transaction.status == EscrowStatus.PENDING) "Approve" else "Release")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HistoryTab(
+    transactions: List<EscrowTransaction>,
+    textPrimary: Color,
+    textSecondary: Color,
+    isWide: Boolean
+) {
+    Column {
+        val historyTransactions = transactions.filter {
+            it.status == EscrowStatus.COMPLETED || it.status == EscrowStatus.DISPUTED
+        }
+
+        if (historyTransactions.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Rounded.History,
+                        contentDescription = null,
+                        tint = textSecondary,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "No transaction history",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = textSecondary
+                        )
+                    )
+                }
+            }
+        } else {
+            historyTransactions.forEach { transaction ->
+                HistoryItem(
+                    transaction = transaction,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary
+                )
+                HorizontalDivider(color = textSecondary.copy(alpha = 0.2f))
+            }
+        }
+    }
+}
+
+@Composable
+fun HistoryItem(
+    transaction: EscrowTransaction,
+    textPrimary: Color,
+    textSecondary: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Status icon
+        Icon(
+            when (transaction.status) {
+                EscrowStatus.COMPLETED -> Icons.Rounded.CheckCircle
+                EscrowStatus.DISPUTED -> Icons.Rounded.Warning
+                else -> Icons.Rounded.History
+            },
+            contentDescription = null,
+            tint = when (transaction.status) {
+                EscrowStatus.COMPLETED -> Color(0xFF4CAF50)
+                EscrowStatus.DISPUTED -> Color(0xFFF44336)
+                else -> textSecondary
+            },
+            modifier = Modifier.size(20.dp)
+        )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                transaction.title,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = textPrimary
+                )
+            )
+            Text(
+                "${transaction.date} • ${transaction.counterparty}",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = textSecondary
+                )
+            )
+        }
+
+        Text(
+            transaction.amount,
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = FontWeight.Bold,
+                color = textPrimary
+            )
+        )
+    }
+}
+
+/* ────────────── ENHANCED KPI CARDS ────────────── */
+@Composable
+fun EnhancedKpiCardsSection(
+    kpis: List<KPI>,
+    primaryColor: Color,
+    textPrimary: Color,
+    textSecondary: Color,
+    surfaceColor: Color,
+    borderColor: Color,
+    isWide: Boolean
+) {
+    Column {
+        SectionHeader("Performance Overview", "Last 30 days", textPrimary, textSecondary, isWide)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                kpis.take(2).forEach { kpi ->
+                    EnhancedKpiCard(
+                        kpi = kpi,
+                        primaryColor = primaryColor,
+                        textPrimary = textPrimary,
+                        textSecondary = textSecondary,
+                        surfaceColor = surfaceColor,
+                        borderColor = borderColor,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                kpis.drop(2).forEach { kpi ->
+                    EnhancedKpiCard(
+                        kpi = kpi,
+                        primaryColor = primaryColor,
+                        textPrimary = textPrimary,
+                        textSecondary = textSecondary,
+                        surfaceColor = surfaceColor,
+                        borderColor = borderColor,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EnhancedKpiCard(
+    kpi: KPI,
+    primaryColor: Color,
+    textPrimary: Color,
+    textSecondary: Color,
+    surfaceColor: Color,
+    borderColor: Color,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val isPositive = kpi.trend.startsWith("+")
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = surfaceColor
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 4.dp
+        ),
+        border = BorderStroke(1.dp, borderColor.copy(alpha = 0.3f)),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(140.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            surfaceColor,
+                            surfaceColor.copy(alpha = 0.95f)
+                        ),
+                        start = Offset.Zero,
+                        end = Offset.Infinite
+                    )
+                )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = primaryColor.copy(alpha = 0.12f),
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = kpi.icon,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(30.dp),
+                        color = if (isPositive)
+                            colorScheme.primary.copy(alpha = 0.1f)
+                        else
+                            colorScheme.error.copy(alpha = 0.1f),
+                        border = BorderStroke(
+                            1.dp,
+                            if (isPositive)
+                                primaryColor.copy(alpha = 0.3f)
+                            else
+                                colorScheme.error.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isPositive)
+                                    Icons.Rounded.TrendingUp
+                                else
+                                    Icons.Rounded.TrendingDown,
+                                contentDescription = null,
+                                tint = if (isPositive) primaryColor else colorScheme.error,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text(
+                                text = kpi.trend,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isPositive) primaryColor else colorScheme.error,
+                                    fontSize = 12.sp
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = kpi.value,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = textPrimary,
+                            fontSize = 28.sp
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Text(
+                        text = kpi.title,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = textSecondary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .align(Alignment.TopCenter)
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = 0.5f),
+                                primaryColor,
+                                primaryColor.copy(alpha = 0.5f)
+                            )
+                        )
+                    )
+            )
+        }
+    }
+}
+
+/* ────────────── KPI CARDS SECTION ────────────── */
 @Composable
 fun KpiCardsSection(
     kpis: List<KPI>,
@@ -286,7 +1755,6 @@ fun KpiCardsSection(
         Spacer(modifier = Modifier.height(12.dp))
 
         if (isWide) {
-            // Desktop/Tablet: 4 in a row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -304,9 +1772,7 @@ fun KpiCardsSection(
                 }
             }
         } else {
-            // Mobile: 2 rows of 2 with improved visibility
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // First row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -323,7 +1789,6 @@ fun KpiCardsSection(
                         }
                     }
                 }
-                // Second row
                 if (kpis.size > 2) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -366,13 +1831,11 @@ fun MobileKpiCard(
                 .padding(12.dp)
                 .fillMaxWidth()
         ) {
-            // First row: Icon and trend
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Icon with background
                 Surface(
                     shape = CircleShape,
                     color = primaryColor.copy(0.1f),
@@ -388,7 +1851,6 @@ fun MobileKpiCard(
                     }
                 }
 
-                // Trend badge
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = if (kpi.trend.startsWith("+")) colorScheme.primary.copy(0.1f) else colorScheme.error.copy(0.1f)
@@ -407,7 +1869,6 @@ fun MobileKpiCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Value with appropriate font size
             Text(
                 text = kpi.value,
                 style = MaterialTheme.typography.titleLarge.copy(
@@ -419,7 +1880,6 @@ fun MobileKpiCard(
                 overflow = TextOverflow.Ellipsis
             )
 
-            // Title with proper spacing
             Text(
                 text = kpi.title,
                 style = MaterialTheme.typography.bodySmall.copy(
@@ -453,7 +1913,6 @@ fun CompactKpiCard(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon
             Surface(
                 shape = CircleShape,
                 color = primaryColor.copy(0.1f),
@@ -471,7 +1930,6 @@ fun CompactKpiCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Content
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -495,7 +1953,6 @@ fun CompactKpiCard(
                 )
             }
 
-            // Trend
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = if (kpi.trend.startsWith("+")) colorScheme.primary.copy(0.1f) else colorScheme.error.copy(0.1f)
@@ -514,7 +1971,7 @@ fun CompactKpiCard(
     }
 }
 
-/* ────────────── PROFESSIONAL ANALYTICS SECTION (MOBILE OPTIMIZED) ────────────── */
+/* ────────────── PROFESSIONAL ANALYTICS SECTION ────────────── */
 @Composable
 fun ProfessionalAnalyticsSection(
     primaryColor: Color,
@@ -537,7 +1994,6 @@ fun ProfessionalAnalyticsSection(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(if (isWide) 20.dp else 16.dp)) {
-            // Header
             if (isWide) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -575,7 +2031,6 @@ fun ProfessionalAnalyticsSection(
 
             Spacer(modifier = Modifier.height(if (isWide) 20.dp else 16.dp))
 
-            // Chart Type Selector - Horizontal scrollable on mobile
             if (isWide) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -591,7 +2046,6 @@ fun ProfessionalAnalyticsSection(
                     )
                 }
             } else {
-                // Horizontal scrollable for mobile
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -611,7 +2065,6 @@ fun ProfessionalAnalyticsSection(
 
             Spacer(modifier = Modifier.height(if (isWide) 20.dp else 16.dp))
 
-            // Chart Card
             ProfessionalChartCard(
                 primaryColor = primaryColor,
                 accentColor = accentColor,
@@ -623,7 +2076,6 @@ fun ProfessionalAnalyticsSection(
                 selectedChartType = selectedChartType
             )
 
-            // Stats Grid - Simplified for mobile
             if (isWide) {
                 Spacer(modifier = Modifier.height(16.dp))
                 ProfessionalStatsGrid(
@@ -695,7 +2147,6 @@ fun ProfessionalChartCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(if (isWide) 16.dp else 12.dp)) {
-            // Chart Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -719,13 +2170,11 @@ fun ProfessionalChartCard(
 
             Spacer(modifier = Modifier.height(if (isWide) 16.dp else 12.dp))
 
-            // Chart
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(if (isWide) 180.dp else 120.dp)
             ) {
-                // Background grid lines
                 Canvas(modifier = Modifier.matchParentSize()) {
                     val stepY = size.height / 4
                     for (i in 1..3) {
@@ -793,7 +2242,6 @@ fun ProfessionalChartCard(
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = borderColor, modifier = Modifier.padding(vertical = 4.dp))
 
-                // Chart Footer
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -867,7 +2315,6 @@ fun ProfessionalChartBar(
         verticalArrangement = Arrangement.Bottom,
         modifier = modifier
     ) {
-        // Previous period bar (accent)
         Box(
             modifier = Modifier
                 .fillMaxWidth(if (isWide) 0.5f else 0.4f)
@@ -882,7 +2329,6 @@ fun ProfessionalChartBar(
 
         Spacer(modifier = Modifier.height(3.dp))
 
-        // Current period bar (primary)
         Box(
             modifier = Modifier
                 .fillMaxWidth(if (isWide) 0.8f else 0.7f)
@@ -1131,7 +2577,7 @@ fun LegendItem(label: String, color: Color, textSecondary: Color, isWide: Boolea
     }
 }
 
-// Business Management Section (Mobile Optimized)
+// Business Management Section
 @Composable
 fun BusinessManagementSection(
     primaryColor: Color,
@@ -1218,7 +2664,7 @@ fun MobileBusinessItem(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
@@ -1237,14 +2683,14 @@ fun MobileBusinessItem(
             Icon(
                 Icons.Rounded.ChevronRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.secondary,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
             )
         }
     }
 }
 
-// Recent Activity Section (Mobile Optimized)
+// Recent Activity Section
 @Composable
 fun RecentActivitySection(
     primaryColor: Color,
@@ -1344,100 +2790,6 @@ fun MobileActivityItem(
     }
 }
 
-// Wallet & Trust Section (Mobile Optimized)
-@Composable
-fun WalletTrustSection(
-    primaryColor: Color,
-    textPrimary: Color,
-    textSecondary: Color,
-    borderColor: Color,
-    isWide: Boolean
-) {
-    val colorScheme = MaterialTheme.colorScheme
-
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(1.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        "Wallet",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = textSecondary
-                        )
-                    )
-                    Text(
-                        "KES 12.4K",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = textPrimary
-                        )
-                    )
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Outlined.Verified,
-                        contentDescription = null,
-                        tint = colorScheme.primary,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Text(
-                        "98",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = { },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = primaryColor,
-                        contentColor = colorScheme.onPrimary
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Deposit", fontSize = 12.sp)
-                }
-                OutlinedButton(
-                    onClick = { },
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = primaryColor
-                    ),
-                    border = BorderStroke(1.dp, primaryColor),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Withdraw", fontSize = 12.sp)
-                }
-            }
-        }
-    }
-}
-
 // Section Header
 @Composable
 fun SectionHeader(
@@ -1505,7 +2857,6 @@ fun DashboardHeroHeader(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            // Background Image
             AnimatedVisibility(
                 visible = !collapsed,
                 enter = fadeIn(),
@@ -1528,7 +2879,6 @@ fun DashboardHeroHeader(
                     .background(backgroundColor)
             )
 
-            // Gradient overlay
             AnimatedVisibility(
                 visible = !collapsed,
                 enter = fadeIn(),
@@ -1554,7 +2904,6 @@ fun DashboardHeroHeader(
                     .fillMaxSize()
                     .statusBarsPadding()
             ) {
-                // Top Row
                 AnimatedVisibility(
                     visible = !collapsed,
                     enter = fadeIn() + slideInVertically(),

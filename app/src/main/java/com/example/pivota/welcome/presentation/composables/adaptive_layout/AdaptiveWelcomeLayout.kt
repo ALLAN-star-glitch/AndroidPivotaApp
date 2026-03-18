@@ -4,6 +4,11 @@ import WelcomeContent
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -11,10 +16,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.window.core.layout.WindowSizeClass
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
 import com.example.pivota.R
 import com.example.pivota.core.presentations.composables.background_image_and_overlay.BackgroundImageAndOverlay
+import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
+import com.example.pivota.core.presentations.composables.buttons.PivotaSecondaryButton
 
-@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun AdaptiveWelcomeLayout(
     header: String,
@@ -27,15 +35,13 @@ fun AdaptiveWelcomeLayout(
         val isMediumScreen = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
         val isExpandedScreen = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
 
-        // Unified list of localized images for the carousel
         val carouselImages = listOf(
             R.drawable.happypeople,
             R.drawable.nairobi_city,
-            R.drawable.mama_mboga,         // Local mwananchi / market vendor
-            R.drawable.organizationpic // Professional corporate setting
+            R.drawable.mama_mboga,
+            R.drawable.organizationpic
         )
 
-        // Unified list of messages that update with each image
         val carouselMessages = listOf(
             "Connect, Discover, Grow",
             "Built for Kenya. Ready for Africa",
@@ -47,6 +53,7 @@ fun AdaptiveWelcomeLayout(
             /* TWO-PANE LAYOUT FOR TABLETS/DESKTOP */
             isMediumScreen || isExpandedScreen -> {
                 Row(modifier = Modifier.fillMaxSize()) {
+                    // Left pane with image carousel
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
@@ -55,7 +62,6 @@ fun AdaptiveWelcomeLayout(
                     ) {
                         BackgroundImageAndOverlay(
                             isWideScreen = true,
-                            // Removed fixed offset and imageHeight
                             showUpgradeButton = false,
                             enableCarousel = true,
                             images = carouselImages,
@@ -63,16 +69,16 @@ fun AdaptiveWelcomeLayout(
                         )
                     }
 
+                    // Right pane - completely redesigned for proper centering
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .weight(1f)
                             .background(Color.White)
                     ) {
-                        WelcomeContent(
+                        TwoPaneWelcomeContent(
                             header = header,
                             welcomeText = welcomeText,
-                            topPadding = 0.dp,
                             onNavigateToRegistrationScreen = onNavigateToGetStarted,
                             onNavigateToLoginScreen = onNavigateToLoginScreen
                         )
@@ -82,12 +88,10 @@ fun AdaptiveWelcomeLayout(
 
             /* SINGLE-PANE LAYOUT FOR MOBILE */
             else -> {
-                // Get the screen height
                 val configuration = androidx.compose.ui.platform.LocalConfiguration.current
                 val screenHeight = configuration.screenHeightDp.dp
-
-                // Calculate padding (e.g., 40% of the screen height)
                 val dynamicTopPadding = screenHeight * 0.45f
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -95,13 +99,11 @@ fun AdaptiveWelcomeLayout(
                 ) {
                     BackgroundImageAndOverlay(
                         isWideScreen = false,
-                        // Removed fixed offset and imageHeight
                         showUpgradeButton = false,
                         enableCarousel = true,
                         images = carouselImages,
                         messages = carouselMessages
                     )
-
 
                     WelcomeContent(
                         header = header,
@@ -110,9 +112,89 @@ fun AdaptiveWelcomeLayout(
                         onNavigateToRegistrationScreen = onNavigateToGetStarted,
                         onNavigateToLoginScreen = onNavigateToLoginScreen
                     )
-
                 }
             }
         }
+    }
+}
+
+@Composable
+fun TwoPaneWelcomeContent(
+    header: String,
+    welcomeText: String,
+    onNavigateToRegistrationScreen: () -> Unit,
+    onNavigateToLoginScreen: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Logo
+        coil3.compose.AsyncImage(
+            model = com.example.pivota.R.drawable.logofinale,
+            contentDescription = "Pivota Logo",
+            modifier = Modifier.size(150.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Header
+        Text(
+            text = header,
+            style = MaterialTheme.typography.headlineMedium.copy(
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            ),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Welcome text
+        Text(
+            text = welcomeText,
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Get Started button
+        PivotaPrimaryButton(
+            text = "Get Started",
+            onClick = onNavigateToRegistrationScreen,
+            modifier = Modifier.fillMaxWidth(0.7f)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Divider with OR
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(0.6f)
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
+            Text(
+                text = " OR ",
+                modifier = Modifier.padding(horizontal = 8.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Login button
+        PivotaSecondaryButton(
+            text = "Login",
+            onclick = onNavigateToLoginScreen,
+            modifier = Modifier.fillMaxWidth(0.7f)
+        )
     }
 }
