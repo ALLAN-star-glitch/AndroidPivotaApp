@@ -106,7 +106,7 @@ fun AdaptiveWelcomeLayout(
             else -> {
                 val configuration = androidx.compose.ui.platform.LocalConfiguration.current
                 val screenHeight = configuration.screenHeightDp.dp
-                val dynamicTopPadding = screenHeight * 0.40f
+                val dynamicTopPadding = screenHeight * 0.50f
 
                 Box(
                     modifier = Modifier
