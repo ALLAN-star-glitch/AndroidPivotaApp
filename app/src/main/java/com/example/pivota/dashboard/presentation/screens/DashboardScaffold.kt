@@ -8,6 +8,7 @@ import androidx.compose.material3.adaptive.navigationsuite.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -153,7 +154,9 @@ private fun convertToAdminJobListing(dashboardJob: DashboardJobListingUiModel): 
 @SuppressLint("ViewModelConstructorInComposable")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScaffold() {
+fun DashboardScaffold(
+    isGuestMode: Boolean = false
+) {
     val navController = rememberNavController()
     val sheetState = rememberModalBottomSheetState()
     var showSheet by remember { mutableStateOf(false) }
@@ -227,7 +230,10 @@ fun DashboardScaffold() {
         Scaffold(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             floatingActionButton = {
-                PulsingPostFab(onClick = { showSheet = true })
+                // Only show FAB if not in guest mode, or if guest mode allows posting
+                if (!isGuestMode) {
+                    PulsingPostFab(onClick = { showSheet = true }, modifier = Modifier.padding(bottom = 40.dp))
+                }
             }
         ) { innerPadding ->
             Box(modifier = Modifier
@@ -241,7 +247,8 @@ fun DashboardScaffold() {
                         DashboardScreen(
                             onNavigateToListings = {
                                 navController.navigate(MyListings)
-                            }
+                            },
+                            isGuestMode = isGuestMode
                         )
                     }
                     composable<Professionals> { ProfessionalsScreen() }
@@ -382,7 +389,7 @@ fun DashboardScaffold() {
                     }
 
                     composable<SmartMatch> { SmartMatchScreen() }
-                    composable<Profile> { ProfileScreen() }
+                    composable<Profile> { ProfileScreen(isGuestMode = isGuestMode) }
 
                     // HouseListings route
                     composable<HouseListings> {
@@ -399,7 +406,7 @@ fun DashboardScaffold() {
                                 navController.navigate(BookViewing)
                             },
                             onPostListingClick = {
-                                showSheet = true
+                                if (!isGuestMode) showSheet = true
                             },
                             onNavigateBack = {
                                 navController.popBackStack()
@@ -417,7 +424,7 @@ fun DashboardScaffold() {
                                 navController.navigate(JobDetails)
                             },
                             onPostListingClick = {
-                                showSheet = true
+                                if (!isGuestMode) showSheet = true
                             },
                             onNavigateBack = {
                                 navController.popBackStack()
@@ -549,7 +556,7 @@ fun DashboardScaffold() {
                                 navController.navigate(AdminHouseDetails)
                             },
                             onPostListingClick = {
-                                showSheet = true
+                                if (!isGuestMode) showSheet = true
                             },
                             viewModel = MyListingsViewModel(),
                             onNavigateBack = {
@@ -559,8 +566,8 @@ fun DashboardScaffold() {
                     }
                 }
 
-                // Extracted Bottom Sheet
-                if (showSheet) {
+                // Extracted Bottom Sheet - only show if not in guest mode
+                if (showSheet && !isGuestMode) {
                     PostOptionsBottomSheet(
                         sheetState = sheetState,
                         onDismiss = { showSheet = false },

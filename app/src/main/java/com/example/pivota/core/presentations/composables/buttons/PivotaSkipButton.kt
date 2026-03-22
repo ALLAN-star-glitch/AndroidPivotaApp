@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.pivota.ui.theme.InfoBlue
 
 @Composable
 fun PivotaSkipButton(
@@ -25,7 +24,7 @@ fun PivotaSkipButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
-    iconTint: Color = MaterialTheme.colorScheme.secondary,
+    iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     enabled: Boolean = true
 ) {
     Row(
@@ -52,7 +51,7 @@ fun PivotaSkipButton(
             text = text,
             style = MaterialTheme.typography.bodyLarge.copy(
                 fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.secondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
     }

@@ -218,6 +218,17 @@ val surfaceContainerHighDarkHighContrast = Color(0xFF383C40)
 val surfaceContainerHighestDarkHighContrast = Color(0xFF43474B)
 
 
+//// ===========================================
+//// EXTENDED COLORS - Add these manually
+//// ===========================================
+
+// Semantic/Action Colors
+val SuccessGreen = Color(0xFF2E7D32)      // For completed, positive trends
+val WarningAmber = Color(0xFFED6C02)      // For pending, warnings
+val InfoBlue = Color(0xFF0288D1)          // For info messages
+val PurpleAccent = Color(0xFF8E6C88)      // For reviews, ratings (Dusty Lavender)
+
+
 
 
 
