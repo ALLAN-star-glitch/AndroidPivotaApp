@@ -108,6 +108,41 @@ data class ListerMetrics(
     val conversionRate: String
 )
 
+data class BusinessMetric(
+    val title: String,
+    val value: String,
+    val change: String,
+    val icon: ImageVector,
+    val color: Color
+)
+
+data class UpcomingBooking(
+    val id: String,
+    val title: String,
+    val client: String,
+    val date: String,
+    val time: String,
+    val status: String
+)
+
+data class Message(
+    val id: String,
+    val sender: String,
+    val preview: String,
+    val time: String,
+    val unread: Boolean,
+    val avatar: String?
+)
+
+data class ListingSummary(
+    val id: String,
+    val title: String,
+    val type: String,
+    val views: Int,
+    val inquiries: Int,
+    val status: String
+)
+
 enum class UserType {
     PROFESSIONAL, LISTER, BOTH
 }
@@ -117,7 +152,12 @@ enum class UserType {
 @Composable
 fun DashboardScreen(
     onNavigateToListings: () -> Unit,
-    userType: UserType = UserType.BOTH
+    onNavigateToBookings: () -> Unit = {},
+    onNavigateToMessages: () -> Unit = {},
+    onNavigateToEarnings: () -> Unit = {},
+    onNavigateToEscrow: () -> Unit = {},
+    userType: UserType = UserType.BOTH,
+    isGuestMode: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -181,6 +221,14 @@ fun DashboardScreen(
         totalViews = 3842,
         inquiries = 156,
         conversionRate = "23%"
+    )
+
+    // Mock business metrics using theme colors
+    val businessMetrics = listOf(
+        BusinessMetric("Conversion Rate", "23%", "+5%", Icons.Rounded.TrendingUp, SuccessGreen),
+        BusinessMetric("Avg. Response", "2.4h", "-12%", Icons.Rounded.Schedule, InfoBlue),
+        BusinessMetric("Completion Rate", "94%", "+3%", Icons.Rounded.CheckCircle, SuccessGreen),
+        BusinessMetric("Customer Rating", "4.8★", "+0.2", Icons.Rounded.Star, tertiaryLight)
     )
 
     // Mock escrow transactions
@@ -247,16 +295,40 @@ fun DashboardScreen(
         )
     )
 
+    // Mock upcoming bookings
+    val upcomingBookings = listOf(
+        UpcomingBooking("1", "Property Viewing", "James K.", "Today", "2:00 PM", "Confirmed"),
+        UpcomingBooking("2", "Plumbing Service", "Mary W.", "Tomorrow", "10:00 AM", "Pending"),
+        UpcomingBooking("3", "Electrical Repair", "Peter O.", "Wed", "3:30 PM", "Confirmed")
+    )
+
+    // Mock messages
+    val messages = listOf(
+        Message("1", "Sarah Kimani", "Is the apartment still available?", "5m", true, null),
+        Message("2", "John Mburu", "When can you come for inspection?", "2h", true, null),
+        Message("3", "Mary Wanjiku", "Thank you for the excellent service!", "1d", false, null),
+        Message("4", "Peter Otieno", "I'd like to book your services", "2d", false, null)
+    )
+
+    // Mock listings summary
+    val listingsSummary = listOf(
+        ListingSummary("1", "Modern Apartment - Kilimani", "Property", 234, 12, "Active"),
+        ListingSummary("2", "Senior Plumber Needed", "Job", 189, 8, "Active"),
+        ListingSummary("3", "Electrical Services", "Service", 156, 5, "Active"),
+        ListingSummary("4", "Commercial Space - Westlands", "Property", 98, 3, "Pending")
+    )
+
     Scaffold(
         containerColor = colorScheme.background,
         topBar = {
             DashboardHeroHeader(
                 primaryColor = colorScheme.primary,
-                accentColor = colorScheme.tertiaryContainer,
+                accentColor = tertiaryLight,
                 height = animatedHeight,
                 collapseFraction = collapseFraction,
                 onSurfaceColor = colorScheme.onSurface,
-                isWide = isWide
+                isWide = isWide,
+                isGuestMode = isGuestMode,
             )
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -284,13 +356,30 @@ fun DashboardScreen(
                         userType = userType,
                         primaryColor = colorScheme.primary,
                         secondaryColor = colorScheme.secondary,
-                        tertiaryColor = colorScheme.tertiary,
+                        tertiaryColor = tertiaryLight,
                         textPrimary = colorScheme.onSurface,
                         textSecondary = colorScheme.onSurfaceVariant,
                         borderColor = colorScheme.outlineVariant,
                         surfaceColor = colorScheme.surfaceContainerLow,
                         errorColor = colorScheme.error,
-                        successColor = Color(0xFF4CAF50),
+                        successColor = SuccessGreen,
+                        onViewAllEscrow = onNavigateToEscrow,
+                        isWide = isWide
+                    )
+                }
+
+                // Quick Actions Row
+                item {
+                    QuickActionsRow(
+                        primaryColor = colorScheme.primary,
+                        accentColor = tertiaryLight,
+                        textSecondary = colorScheme.onSurfaceVariant,
+                        borderColor = colorScheme.outlineVariant,
+                        surfaceColor = colorScheme.surfaceContainerLow,
+                        onNavigateToListings = onNavigateToListings,
+                        onNavigateToBookings = onNavigateToBookings,
+                        onNavigateToMessages = onNavigateToMessages,
+                        onNavigateToEarnings = onNavigateToEarnings,
                         isWide = isWide
                     )
                 }
@@ -321,10 +410,15 @@ fun DashboardScreen(
 
                                 ProfessionalAnalyticsSection(
                                     primaryColor = colorScheme.primary,
-                                    accentColor = colorScheme.tertiary,
+                                    accentColor = tertiaryLight,
                                     textPrimary = colorScheme.onSurface,
                                     textSecondary = colorScheme.onSurfaceVariant,
                                     borderColor = colorScheme.outlineVariant,
+                                    isWide = true
+                                )
+
+                                BusinessMetricsGrid(
+                                    metrics = businessMetrics,
                                     isWide = true
                                 )
                             }
@@ -340,15 +434,31 @@ fun DashboardScreen(
                                     textSecondary = colorScheme.onSurfaceVariant,
                                     borderColor = colorScheme.outlineVariant,
                                     onMyListingsClick = onNavigateToListings,
+                                    listingsSummary = listingsSummary,
                                     isWide = true
                                 )
 
-                                RecentActivitySection(
+                                UpcomingBookingsSection(
+                                    bookings = upcomingBookings,
                                     primaryColor = colorScheme.primary,
-                                    accentColor = colorScheme.tertiary,
+                                    accentColor = tertiaryLight,
+                                    successColor = SuccessGreen,
+                                    warningColor = WarningAmber,
                                     textPrimary = colorScheme.onSurface,
                                     textSecondary = colorScheme.onSurfaceVariant,
                                     borderColor = colorScheme.outlineVariant,
+                                    onViewAllClick = onNavigateToBookings,
+                                    isWide = true
+                                )
+
+                                MessagesSection(
+                                    messages = messages,
+                                    primaryColor = colorScheme.primary,
+                                    textPrimary = colorScheme.onSurface,
+                                    textSecondary = colorScheme.onSurfaceVariant,
+                                    borderColor = colorScheme.outlineVariant,
+                                    unreadColor = InfoBlue,
+                                    onViewAllClick = onNavigateToMessages,
                                     isWide = true
                                 )
                             }
@@ -371,9 +481,14 @@ fun DashboardScreen(
                                 isWide = false
                             )
 
+                            BusinessMetricsGrid(
+                                metrics = businessMetrics,
+                                isWide = false
+                            )
+
                             ProfessionalAnalyticsSection(
                                 primaryColor = colorScheme.primary,
-                                accentColor = colorScheme.tertiary,
+                                accentColor = tertiaryLight,
                                 textPrimary = colorScheme.onSurface,
                                 textSecondary = colorScheme.onSurfaceVariant,
                                 borderColor = colorScheme.outlineVariant,
@@ -386,15 +501,31 @@ fun DashboardScreen(
                                 textSecondary = colorScheme.onSurfaceVariant,
                                 borderColor = colorScheme.outlineVariant,
                                 onMyListingsClick = onNavigateToListings,
+                                listingsSummary = listingsSummary,
                                 isWide = false
                             )
 
-                            RecentActivitySection(
+                            UpcomingBookingsSection(
+                                bookings = upcomingBookings,
                                 primaryColor = colorScheme.primary,
-                                accentColor = colorScheme.tertiary,
+                                accentColor = tertiaryLight,
+                                successColor = SuccessGreen,
+                                warningColor = WarningAmber,
                                 textPrimary = colorScheme.onSurface,
                                 textSecondary = colorScheme.onSurfaceVariant,
                                 borderColor = colorScheme.outlineVariant,
+                                onViewAllClick = onNavigateToBookings,
+                                isWide = false
+                            )
+
+                            MessagesSection(
+                                messages = messages,
+                                primaryColor = colorScheme.primary,
+                                textPrimary = colorScheme.onSurface,
+                                textSecondary = colorScheme.onSurfaceVariant,
+                                borderColor = colorScheme.outlineVariant,
+                                unreadColor = InfoBlue,
+                                onViewAllClick = onNavigateToMessages,
                                 isWide = false
                             )
                         }
@@ -404,6 +535,468 @@ fun DashboardScreen(
                 item { Spacer(modifier = Modifier.height(60.dp)) }
             }
         }
+    }
+}
+
+// Quick Actions Row
+@Composable
+fun QuickActionsRow(
+    primaryColor: Color,
+    accentColor: Color,
+    textSecondary: Color,
+    borderColor: Color,
+    surfaceColor: Color,
+    onNavigateToListings: () -> Unit,
+    onNavigateToBookings: () -> Unit,
+    onNavigateToMessages: () -> Unit,
+    onNavigateToEarnings: () -> Unit,
+    isWide: Boolean
+) {
+    val horizontalPadding = if (isWide) 24.dp else 16.dp
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = surfaceColor),
+        elevation = CardDefaults.cardElevation(2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = horizontalPadding)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            QuickActionButton(
+                icon = Icons.Rounded.AddCircle,
+                label = "New Listing",
+                color = primaryColor,
+                onClick = onNavigateToListings
+            )
+            QuickActionButton(
+                icon = Icons.Rounded.CalendarMonth,
+                label = "Bookings",
+                color = accentColor,
+                onClick = onNavigateToBookings
+            )
+            QuickActionButton(
+                icon = Icons.Rounded.Message,
+                label = "Messages",
+                color = InfoBlue,
+                onClick = onNavigateToMessages
+            )
+            QuickActionButton(
+                icon = Icons.Rounded.AccountBalanceWallet,
+                label = "Earnings",
+                color = SuccessGreen,
+                onClick = onNavigateToEarnings
+            )
+        }
+    }
+}
+
+@Composable
+fun QuickActionButton(
+    icon: ImageVector,
+    label: String,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(color.copy(alpha = 0.1f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}
+
+// Business Metrics Grid
+@Composable
+fun BusinessMetricsGrid(
+    metrics: List<BusinessMetric>,
+    isWide: Boolean
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                "Business Metrics",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            if (isWide) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    metrics.chunked(2).forEach { chunk ->
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            chunk.forEach { metric ->
+                                BusinessMetricItem(metric)
+                            }
+                        }
+                    }
+                }
+            } else {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    metrics.forEach { metric ->
+                        BusinessMetricItem(metric)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BusinessMetricItem(
+    metric: BusinessMetric
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(metric.color.copy(alpha = 0.1f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    metric.icon,
+                    contentDescription = null,
+                    tint = metric.color,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    metric.title,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    metric.value,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = if (metric.change.startsWith("+")) SuccessGreen.copy(alpha = 0.1f) else errorLight.copy(alpha = 0.1f)
+        ) {
+            Text(
+                metric.change,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (metric.change.startsWith("+")) SuccessGreen else errorLight
+            )
+        }
+    }
+}
+
+// Upcoming Bookings Section
+@Composable
+fun UpcomingBookingsSection(
+    bookings: List<UpcomingBooking>,
+    primaryColor: Color,
+    accentColor: Color,
+    successColor: Color,
+    warningColor: Color,
+    textPrimary: Color,
+    textSecondary: Color,
+    borderColor: Color,
+    onViewAllClick: () -> Unit,
+    isWide: Boolean
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Upcoming Bookings",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+                TextButton(onClick = onViewAllClick) {
+                    Text("View All", color = primaryColor)
+                }
+            }
+
+            bookings.forEach { booking ->
+                BookingItem(
+                    booking = booking,
+                    primaryColor = primaryColor,
+                    accentColor = accentColor,
+                    successColor = successColor,
+                    warningColor = warningColor,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary
+                )
+                HorizontalDivider(
+                    color = borderColor,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun BookingItem(
+    booking: UpcomingBooking,
+    primaryColor: Color,
+    accentColor: Color,
+    successColor: Color,
+    warningColor: Color,
+    textPrimary: Color,
+    textSecondary: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(primaryColor.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.CalendarToday,
+                contentDescription = null,
+                tint = primaryColor,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                booking.title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = textPrimary
+            )
+            Text(
+                "${booking.client} • ${booking.date} at ${booking.time}",
+                fontSize = 12.sp,
+                color = textSecondary
+            )
+        }
+
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = when (booking.status) {
+                "Confirmed" -> successColor.copy(alpha = 0.1f)
+                "Pending" -> warningColor.copy(alpha = 0.1f)
+                else -> accentColor.copy(alpha = 0.1f)
+            }
+        ) {
+            Text(
+                booking.status,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = when (booking.status) {
+                    "Confirmed" -> successColor
+                    "Pending" -> warningColor
+                    else -> accentColor
+                }
+            )
+        }
+    }
+}
+
+// Messages Section
+@Composable
+fun MessagesSection(
+    messages: List<Message>,
+    primaryColor: Color,
+    textPrimary: Color,
+    textSecondary: Color,
+    borderColor: Color,
+    unreadColor: Color,
+    onViewAllClick: () -> Unit,
+    isWide: Boolean
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Recent Messages",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+                TextButton(onClick = onViewAllClick) {
+                    Text("View All", color = primaryColor)
+                }
+            }
+
+            messages.take(3).forEach { message ->
+                MessageItem(
+                    message = message,
+                    primaryColor = primaryColor,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    unreadColor = unreadColor
+                )
+                HorizontalDivider(
+                    color = borderColor,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MessageItem(
+    message: Message,
+    primaryColor: Color,
+    textPrimary: Color,
+    textSecondary: Color,
+    unreadColor: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(primaryColor.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (message.avatar != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(message.avatar)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    error = painterResource(id = R.drawable.ic_launcher_background)
+                )
+            } else {
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = null,
+                    tint = primaryColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    message.sender,
+                    fontSize = 15.sp,
+                    fontWeight = if (message.unread) FontWeight.Bold else FontWeight.Medium,
+                    color = textPrimary
+                )
+                if (message.unread) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(unreadColor, CircleShape)
+                    )
+                }
+            }
+            Text(
+                message.preview,
+                fontSize = 12.sp,
+                color = textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Text(
+            message.time,
+            fontSize = 11.sp,
+            color = textSecondary
+        )
     }
 }
 
@@ -424,6 +1017,7 @@ fun UnifiedFinancialHub(
     surfaceColor: Color,
     errorColor: Color,
     successColor: Color,
+    onViewAllEscrow: () -> Unit,
     isWide: Boolean
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -514,6 +1108,7 @@ fun UnifiedFinancialHub(
                 primaryColor = primaryColor,
                 textPrimary = textPrimary,
                 textSecondary = textSecondary,
+                onWithdrawClick = { /* Navigate to withdraw */ },
                 isWide = isWide
             )
 
@@ -574,6 +1169,7 @@ fun UnifiedFinancialHub(
                     textSecondary = textSecondary,
                     primaryColor = primaryColor,
                     successColor = successColor,
+                    onViewAllClick = onViewAllEscrow,
                     isWide = isWide
                 )
                 1 -> EscrowTab(
@@ -604,6 +1200,7 @@ fun WalletBalanceCard(
     primaryColor: Color,
     textPrimary: Color,
     textSecondary: Color,
+    onWithdrawClick: () -> Unit,
     isWide: Boolean
 ) {
     Row(
@@ -652,7 +1249,7 @@ fun WalletBalanceCard(
         }
 
         Button(
-            onClick = { },
+            onClick = onWithdrawClick,
             colors = ButtonDefaults.buttonColors(
                 containerColor = primaryColor
             ),
@@ -734,7 +1331,7 @@ fun ProfessionalMetricsRow(
                 value = metrics.totalReviews.toString(),
                 label = "Reviews",
                 icon = Icons.Rounded.RateReview,
-                color = Color(0xFF9C27B0),
+                color = PurpleAccent,
                 textPrimary = textPrimary,
                 textSecondary = textSecondary
             )
@@ -811,7 +1408,7 @@ fun ListerMetricsRow(
                 value = metrics.conversionRate,
                 label = "Conv. Rate",
                 icon = Icons.Rounded.TrendingUp,
-                color = Color(0xFF4CAF50),
+                color = SuccessGreen,
                 textPrimary = textPrimary,
                 textSecondary = textSecondary
             )
@@ -865,6 +1462,7 @@ fun OverviewTab(
     textSecondary: Color,
     primaryColor: Color,
     successColor: Color,
+    onViewAllClick: () -> Unit,
     isWide: Boolean
 ) {
     Column {
@@ -903,7 +1501,7 @@ fun OverviewTab(
                 value = pendingCount.toString(),
                 subValue = pendingValue,
                 icon = Icons.Rounded.Schedule,
-                color = Color(0xFFFF9800),
+                color = WarningAmber,
                 textPrimary = textPrimary,
                 textSecondary = textSecondary,
                 modifier = Modifier.weight(1f)
@@ -939,7 +1537,7 @@ fun OverviewTab(
                 value = totalValue,
                 subValue = "All time",
                 icon = Icons.Rounded.TrendingUp,
-                color = Color(0xFF9C27B0),
+                color = PurpleAccent,
                 textPrimary = textPrimary,
                 textSecondary = textSecondary,
                 modifier = Modifier.weight(1f)
@@ -949,13 +1547,22 @@ fun OverviewTab(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Recent transactions preview
-        Text(
-            "Recent Transactions",
-            style = MaterialTheme.typography.titleSmall.copy(
-                fontWeight = FontWeight.Bold,
-                color = textPrimary
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Recent Transactions",
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = textPrimary
+                )
             )
-        )
+            TextButton(onClick = onViewAllClick) {
+                Text("View All", color = primaryColor)
+            }
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -965,13 +1572,6 @@ fun OverviewTab(
                 textPrimary = textPrimary,
                 textSecondary = textSecondary
             )
-        }
-
-        TextButton(
-            onClick = { },
-            modifier = Modifier.align(Alignment.End)
-        ) {
-            Text("View All", color = primaryColor)
         }
     }
 }
@@ -1041,10 +1641,10 @@ fun TransactionPreviewItem(
     textSecondary: Color
 ) {
     val statusColor = when (transaction.status) {
-        EscrowStatus.ACTIVE -> Color(0xFF2196F3)
-        EscrowStatus.PENDING -> Color(0xFFFF9800)
-        EscrowStatus.COMPLETED -> Color(0xFF4CAF50)
-        EscrowStatus.DISPUTED -> Color(0xFFF44336)
+        EscrowStatus.ACTIVE -> primaryLight
+        EscrowStatus.PENDING -> WarningAmber
+        EscrowStatus.COMPLETED -> SuccessGreen
+        EscrowStatus.DISPUTED -> errorLight
     }
 
     Row(
@@ -1057,9 +1657,9 @@ fun TransactionPreviewItem(
         Surface(
             shape = RoundedCornerShape(8.dp),
             color = when (transaction.type) {
-                TransactionType.LISTING -> Color(0xFF2196F3).copy(alpha = 0.1f)
-                TransactionType.SERVICE -> Color(0xFF4CAF50).copy(alpha = 0.1f)
-                TransactionType.VIEWING_FEE -> Color(0xFFFF9800).copy(alpha = 0.1f)
+                TransactionType.LISTING -> primaryLight.copy(alpha = 0.1f)
+                TransactionType.SERVICE -> SuccessGreen.copy(alpha = 0.1f)
+                TransactionType.VIEWING_FEE -> WarningAmber.copy(alpha = 0.1f)
             },
             modifier = Modifier.size(36.dp)
         ) {
@@ -1072,9 +1672,9 @@ fun TransactionPreviewItem(
                     },
                     contentDescription = null,
                     tint = when (transaction.type) {
-                        TransactionType.LISTING -> Color(0xFF2196F3)
-                        TransactionType.SERVICE -> Color(0xFF4CAF50)
-                        TransactionType.VIEWING_FEE -> Color(0xFFFF9800)
+                        TransactionType.LISTING -> primaryLight
+                        TransactionType.SERVICE -> SuccessGreen
+                        TransactionType.VIEWING_FEE -> WarningAmber
                     },
                     modifier = Modifier.size(18.dp)
                 )
@@ -1263,14 +1863,14 @@ fun EnhancedEscrowItem(
                                     Brush.linearGradient(
                                         colors = listOf(
                                             when (transaction.type) {
-                                                TransactionType.LISTING -> Color(0xFF2196F3).copy(alpha = 0.2f)
-                                                TransactionType.SERVICE -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                                                TransactionType.VIEWING_FEE -> Color(0xFFFF9800).copy(alpha = 0.2f)
+                                                TransactionType.LISTING -> primaryLight.copy(alpha = 0.2f)
+                                                TransactionType.SERVICE -> SuccessGreen.copy(alpha = 0.2f)
+                                                TransactionType.VIEWING_FEE -> WarningAmber.copy(alpha = 0.2f)
                                             },
                                             when (transaction.type) {
-                                                TransactionType.LISTING -> Color(0xFF2196F3).copy(alpha = 0.1f)
-                                                TransactionType.SERVICE -> Color(0xFF4CAF50).copy(alpha = 0.1f)
-                                                TransactionType.VIEWING_FEE -> Color(0xFFFF9800).copy(alpha = 0.1f)
+                                                TransactionType.LISTING -> primaryLight.copy(alpha = 0.1f)
+                                                TransactionType.SERVICE -> SuccessGreen.copy(alpha = 0.1f)
+                                                TransactionType.VIEWING_FEE -> WarningAmber.copy(alpha = 0.1f)
                                             }
                                         )
                                     )
@@ -1286,9 +1886,9 @@ fun EnhancedEscrowItem(
                                 },
                                 contentDescription = null,
                                 tint = when (transaction.type) {
-                                    TransactionType.LISTING -> Color(0xFF2196F3)
-                                    TransactionType.SERVICE -> Color(0xFF4CAF50)
-                                    TransactionType.VIEWING_FEE -> Color(0xFFFF9800)
+                                    TransactionType.LISTING -> primaryLight
+                                    TransactionType.SERVICE -> SuccessGreen
+                                    TransactionType.VIEWING_FEE -> WarningAmber
                                 },
                                 modifier = Modifier.size(20.dp)
                             )
@@ -1494,8 +2094,8 @@ fun HistoryItem(
             },
             contentDescription = null,
             tint = when (transaction.status) {
-                EscrowStatus.COMPLETED -> Color(0xFF4CAF50)
-                EscrowStatus.DISPUTED -> Color(0xFFF44336)
+                EscrowStatus.COMPLETED -> SuccessGreen
+                EscrowStatus.DISPUTED -> errorLight
                 else -> textSecondary
             },
             modifier = Modifier.size(20.dp)
@@ -2585,12 +3185,13 @@ fun BusinessManagementSection(
     textSecondary: Color,
     borderColor: Color,
     onMyListingsClick: () -> Unit,
+    listingsSummary: List<ListingSummary>,
     isWide: Boolean
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
     Column {
-        SectionHeader("Business", "3 active", textPrimary, textSecondary, isWide)
+        SectionHeader("Business", "${listingsSummary.count { it.status == "Active" }} active", textPrimary, textSecondary, isWide)
         Spacer(modifier = Modifier.height(8.dp))
 
         Card(
@@ -2603,11 +3204,23 @@ fun BusinessManagementSection(
                 MobileBusinessItem(
                     icon = Icons.Outlined.List,
                     title = "My Listings",
-                    value = "3",
+                    value = "${listingsSummary.size}",
                     color = primaryColor,
                     onClick = onMyListingsClick
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = borderColor)
+
+                // Show top 3 listings
+                listingsSummary.take(3).forEach { listing ->
+                    ListingSummaryItem(
+                        listing = listing,
+                        primaryColor = primaryColor,
+                        textPrimary = textPrimary,
+                        textSecondary = textSecondary
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = borderColor)
+                }
+
                 MobileBusinessItem(
                     icon = Icons.Outlined.EventAvailable,
                     title = "Bookings",
@@ -2622,6 +3235,97 @@ fun BusinessManagementSection(
                     color = primaryColor
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun ListingSummaryItem(
+    listing: ListingSummary,
+    primaryColor: Color,
+    textPrimary: Color,
+    textSecondary: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(
+                    when (listing.type) {
+                        "Property" -> primaryColor.copy(alpha = 0.1f)
+                        "Job" -> SuccessGreen.copy(alpha = 0.1f)
+                        else -> tertiaryLight.copy(alpha = 0.1f)
+                    },
+                    RoundedCornerShape(8.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                when (listing.type) {
+                    "Property" -> Icons.Rounded.Home
+                    "Job" -> Icons.Rounded.Work
+                    else -> Icons.Rounded.Build
+                },
+                contentDescription = null,
+                tint = when (listing.type) {
+                    "Property" -> primaryColor
+                    "Job" -> SuccessGreen
+                    else -> tertiaryLight
+                },
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                listing.title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    "${listing.views} views",
+                    fontSize = 11.sp,
+                    color = textSecondary
+                )
+                Text(
+                    "•",
+                    fontSize = 11.sp,
+                    color = textSecondary
+                )
+                Text(
+                    "${listing.inquiries} inquiries",
+                    fontSize = 11.sp,
+                    color = textSecondary
+                )
+            }
+        }
+
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = if (listing.status == "Active") SuccessGreen.copy(alpha = 0.1f) else WarningAmber.copy(alpha = 0.1f)
+        ) {
+            Text(
+                listing.status,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                fontSize = 10.sp,
+                color = if (listing.status == "Active") SuccessGreen else WarningAmber,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
@@ -2709,7 +3413,9 @@ fun RecentActivitySection(
         val activities = listOf(
             Activity("New application", "Electrician needed", Icons.Outlined.Description, primaryColor),
             Activity("Message received", "Sarah responded", Icons.Outlined.Chat, accentColor),
-            Activity("Booking confirmed", "Moving service", Icons.Outlined.Event, primaryColor)
+            Activity("Booking confirmed", "Moving service", Icons.Outlined.Event, primaryColor),
+            Activity("Payment received", "KES 12,500", Icons.Outlined.Payment, SuccessGreen),
+            Activity("Review received", "★★★★★ 5 stars", Icons.Outlined.Star, tertiaryLight)
         )
 
         Card(
@@ -2832,6 +3538,7 @@ fun DashboardHeroHeader(
     collapseFraction: Float,
     onSurfaceColor: Color,
     isWide: Boolean,
+    isGuestMode: Boolean = false,  // Add this parameter
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -2841,7 +3548,7 @@ fun DashboardHeroHeader(
     val minFontSize = if (isWide) 28.sp else 22.sp
 
     val backgroundColor by animateColorAsState(
-        targetValue = if (collapsed) colorScheme.primary.copy(alpha = 0.95f) else Color.Transparent,
+        targetValue = if (collapsed) primaryColor.copy(alpha = 0.95f) else Color.Transparent,
         animationSpec = tween(durationMillis = 300)
     )
 
@@ -2857,20 +3564,23 @@ fun DashboardHeroHeader(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            AnimatedVisibility(
-                visible = !collapsed,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(R.drawable.dashbaordd)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+            // Background image (only for non-guest mode)
+            if (!isGuestMode) {
+                AnimatedVisibility(
+                    visible = !collapsed,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(R.drawable.dashbaordd)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
 
             Box(
@@ -2879,24 +3589,27 @@ fun DashboardHeroHeader(
                     .background(backgroundColor)
             )
 
-            AnimatedVisibility(
-                visible = !collapsed,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    colorScheme.primary.copy(0.9f),
-                                    colorScheme.primary.copy(0.6f),
-                                    Color.Transparent
+            // Gradient overlay (only for non-guest mode)
+            if (!isGuestMode) {
+                AnimatedVisibility(
+                    visible = !collapsed,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        primaryColor.copy(0.9f),
+                                        primaryColor.copy(0.6f),
+                                        Color.Transparent
+                                    )
                                 )
                             )
-                        )
-                )
+                    )
+                }
             }
 
             Column(
@@ -2904,6 +3617,7 @@ fun DashboardHeroHeader(
                     .fillMaxSize()
                     .statusBarsPadding()
             ) {
+                // Header content (different for guest mode)
                 AnimatedVisibility(
                     visible = !collapsed,
                     enter = fadeIn() + slideInVertically(),
@@ -2925,7 +3639,7 @@ fun DashboardHeroHeader(
                                     modifier = Modifier
                                         .size(10.dp)
                                         .background(colorScheme.tertiary, CircleShape)
-                                        .border(1.5.dp, colorScheme.primary, CircleShape)
+                                        .border(1.5.dp, primaryColor, CircleShape)
                                         .align(Alignment.BottomEnd)
                                 )
                             }
@@ -2934,14 +3648,14 @@ fun DashboardHeroHeader(
 
                             Column {
                                 Text(
-                                    "Hi, Guest",
-                                    color = Color.White,
+                                    text = if (isGuestMode) "Hi, Guest" else "Hi, Guest",  // Update with actual user name when available
+                                    color = if (isGuestMode) primaryColor else Color.White,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp
                                 )
                                 Text(
-                                    "Welcome",
-                                    color = Color.White.copy(0.85f),
+                                    text = if (isGuestMode) "Sign in for full access" else "Welcome",
+                                    color = if (isGuestMode) primaryColor.copy(0.7f) else Color.White.copy(0.85f),
                                     fontSize = 12.sp
                                 )
                             }
@@ -2952,14 +3666,14 @@ fun DashboardHeroHeader(
                         ) {
                             HeaderActionIconDashboard(
                                 icon = Icons.Outlined.Mail,
-                                iconTint = Color.White,
-                                backgroundTint = Color.White.copy(alpha = 0.2f),
+                                iconTint = if (isGuestMode) primaryColor else Color.White,
+                                backgroundTint = if (isGuestMode) primaryColor.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f),
                                 size = if (isWide) 44.dp else 36.dp
                             ) {}
                             HeaderActionIconDashboard(
                                 icon = Icons.Outlined.Notifications,
-                                iconTint = Color.White,
-                                backgroundTint = Color.White.copy(alpha = 0.2f),
+                                iconTint = if (isGuestMode) primaryColor else Color.White,
+                                backgroundTint = if (isGuestMode) primaryColor.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f),
                                 size = if (isWide) 44.dp else 36.dp
                             ) {}
                         }
@@ -2971,6 +3685,7 @@ fun DashboardHeroHeader(
                 }
             }
 
+            // Collapsed header content
             if (collapsed) {
                 Row(
                     modifier = Modifier
@@ -2984,7 +3699,7 @@ fun DashboardHeroHeader(
                     Text(
                         text = "Dashboard",
                         style = MaterialTheme.typography.headlineMedium.copy(
-                            color = Color.White,
+                            color = if (isGuestMode) primaryColor else Color.White,
                             fontWeight = FontWeight.Black,
                             fontSize = titleFontSize
                         )
@@ -2995,19 +3710,20 @@ fun DashboardHeroHeader(
                     ) {
                         HeaderActionIconDashboard(
                             icon = Icons.Outlined.Mail,
-                            iconTint = Color.White,
-                            backgroundTint = Color.White.copy(alpha = 0.2f),
+                            iconTint = if (isGuestMode) primaryColor else Color.White,
+                            backgroundTint = if (isGuestMode) primaryColor.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f),
                             size = 36.dp
                         ) {}
                         HeaderActionIconDashboard(
                             icon = Icons.Outlined.Notifications,
-                            iconTint = Color.White,
-                            backgroundTint = Color.White.copy(alpha = 0.2f),
+                            iconTint = if (isGuestMode) primaryColor else Color.White,
+                            backgroundTint = if (isGuestMode) primaryColor.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f),
                             size = 36.dp
                         ) {}
                     }
                 }
             } else {
+                // Expanded header content
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -3017,16 +3733,16 @@ fun DashboardHeroHeader(
                     Text(
                         text = "Dashboard",
                         style = MaterialTheme.typography.headlineLarge.copy(
-                            color = Color.White,
+                            color = if (isGuestMode) primaryColor else Color.White,
                             fontWeight = FontWeight.Black,
                             fontSize = titleFontSize
                         )
                     )
 
                     Text(
-                        text = "Manage your business",
+                        text = if (isGuestMode) "Explore opportunities in your area" else "Manage your business",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(0.9f),
+                            color = if (isGuestMode) primaryColor.copy(0.8f) else Color.White.copy(0.9f),
                             fontSize = 14.sp
                         ),
                         modifier = Modifier.padding(top = 2.dp)
