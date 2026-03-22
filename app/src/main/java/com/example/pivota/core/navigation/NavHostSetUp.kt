@@ -18,6 +18,7 @@ import com.example.pivota.auth.presentation.screens.VerifyOtpScreen
 import com.example.pivota.auth.presentation.viewModel.LoginViewModel
 import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 import com.example.pivota.dashboard.presentation.screens.DashboardScaffold
+import com.example.pivota.welcome.presentation.screens.OnboardingPager
 
 @Composable
 fun NavHostSetup(modifier: Modifier = Modifier) {
@@ -41,18 +42,48 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
             )
         }
 
-        /* ───────── WELCOME ───────── */
+        /* ───────── WELCOME SCREEN ───────── */
         composable<Welcome> {
             WelcomeScreen(
-                onNavigateToGetStarted = { navController.navigate(GuestDashboard) },
-                onNavigateToLoginScreen = { navController.navigate(AuthFlow) }
+                onNavigateToContinueSetup = {
+                    // Navigate to full onboarding flow
+                    navController.navigate(OnboardingFlow)
+                },
+                onNavigateToContinueWithGoogle = {
+                    // TODO: Implement Google Sign-In when ready
+                    navController.navigate(GuestDashboard)
+                },
+                onNavigateToLogin = {
+                    // Navigate to login screen
+                    navController.navigate(AuthFlow)
+                },
+                onNavigateToSkipToDashboard = {
+                    // Skip to minimal account (guest dashboard)
+                    navController.navigate(GuestDashboard)
+                }
             )
         }
 
+        /* ───────── ONBOARDING FLOW ───────── */
+        composable<OnboardingFlow> {
+            OnboardingPager(
+                onOnboardingComplete = {
+                    // After onboarding complete, navigate to dashboard
+                    navController.navigate(Dashboard) {
+                        popUpTo(Welcome) { inclusive = true }
+                    }
+                },
+                onLoginClick = {
+                    // Navigate to login screen
+                    navController.navigate(AuthFlow)
+                }
+            )
+        }
 
         /* ───────── GUEST DASHBOARD ───────── */
         composable<GuestDashboard> {
             DashboardScaffold(
+                isGuestMode = true
             )
         }
 
@@ -81,7 +112,6 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
 
             /* ───────── REGISTER SCREEN ───────── */
             composable<Register> { backStackEntry ->
-                // Shared ViewModel scoped to the AuthFlow graph
                 val parentEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(AuthFlow)
                 }
@@ -90,7 +120,6 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                 RegisterScreen(
                     viewModel = signupViewModel,
                     onSuccess = { email ->
-                        // After Step 1 (OTP Sent), navigate to Verification
                         navController.navigate(VerifyOtp(email = email, isLogin = false))
                     },
                     onLoginClick = {
@@ -116,7 +145,6 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                     loginViewModel = loginViewModel,
                     signupViewModel = signupViewModel,
                     onVerificationSuccess = {
-                        // Final registration success: clear auth graph and go to Dashboard
                         navController.navigate(Dashboard) {
                             popUpTo(AuthFlow) { inclusive = true }
                         }
@@ -130,7 +158,9 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
 
         /* ───────── AUTHENTICATED DASHBOARD ───────── */
         composable<Dashboard> {
-            DashboardScaffold()
+            DashboardScaffold(
+                isGuestMode = false
+            )
         }
     }
 }

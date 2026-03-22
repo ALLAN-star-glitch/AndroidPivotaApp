@@ -127,6 +127,8 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
 
+    implementation("com.airbnb.android:lottie-compose:6.4.0")
+
     implementation("io.ktor:ktor-client-android:${ktorVersion}")
     implementation("io.ktor:ktor-client-content-negotiation:${ktorVersion}")
     implementation("io.ktor:ktor-serialization-kotlinx-json:${ktorVersion}")

@@ -14,6 +14,8 @@ import kotlinx.serialization.Serializable
 @Serializable object Register
 @Serializable object Login
 
+@Serializable object OnboardingFlow
+
 // This route needs to carry the email to the next screen
 @Serializable
 data class VerifyOtp(

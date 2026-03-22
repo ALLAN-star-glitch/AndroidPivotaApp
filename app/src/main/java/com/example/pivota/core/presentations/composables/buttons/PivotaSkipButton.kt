@@ -1,6 +1,5 @@
 package com.example.pivota.core.presentations.composables.buttons
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -20,23 +19,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun PivotaSecondaryButton(
+fun PivotaSkipButton(
     text: String,
-    onclick: () -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
-    iconTint: Color = MaterialTheme.colorScheme.primary,
+    iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     enabled: Boolean = true
 ) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(48.dp))
-            .border(
-                width = 1.5.dp,
-                color = MaterialTheme.colorScheme.secondary,
-                shape = RoundedCornerShape(48.dp)
-            )
-            .clickable(enabled = enabled) { onclick() }
+            .clickable(enabled = enabled) { onClick() }
             .padding(vertical = 14.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
@@ -57,7 +51,7 @@ fun PivotaSecondaryButton(
             text = text,
             style = MaterialTheme.typography.bodyLarge.copy(
                 fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
     }
