@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.airbnb.lottie.compose.*
 import com.example.pivota.R
+import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
+import com.example.pivota.core.presentations.composables.buttons.PivotaSkipButton
 
 @Composable
 fun JoiningAsScreenContent(
@@ -129,8 +132,9 @@ fun JoiningAsScreenContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Continue Button
-        Button(
+        // Continue Button using custom PivotaPrimaryButton
+        PivotaPrimaryButton(
+            text = "Continue",
             onClick = {
                 if (selectedType != null && !isLoading) {
                     isLoading = true
@@ -138,37 +142,28 @@ fun JoiningAsScreenContent(
                 }
             },
             enabled = selectedType != null && !isLoading,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (selectedType != null) MaterialTheme.colorScheme.tertiary
-                else MaterialTheme.colorScheme.outlineVariant,
-                contentColor = if (selectedType != null) MaterialTheme.colorScheme.onTertiary
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            ),
-            shape = RoundedCornerShape(48.dp)
-        ) {
-            if (isLoading) {
+            modifier = Modifier.fillMaxWidth(),
+            icon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(R.drawable.ic_skip)
+        )
+
+        // Show loading overlay if needed
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f))
+                    .clickable(enabled = false) { },
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onTertiary,
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Text(
-                    text = "Continue",
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp
-                    )
+                    color = MaterialTheme.colorScheme.tertiary
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Login Link
+        // Login Link (using text, not a button)
         Row(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxWidth()
