@@ -1,619 +1,563 @@
-package com.example.pivota.welcome.presentation.composables.purpose_selection
+package com.example.pivota.welcome.presentation.screens
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.pivota.ui.theme.*
-import com.example.pivota.welcome.presentation.state.SupportBeneficiaryFormData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun SupportBeneficiaryFields(
-    data: SupportBeneficiaryFormData,
-    onDataChange: (SupportBeneficiaryFormData) -> Unit
-): Boolean {
-
+    data: SupportBeneficiaryData,
+    onDataChange: (SupportBeneficiaryData) -> Unit
+) {
     var currentUrgentNeedInput by remember { mutableStateOf("") }
+    var currentLocationInput by remember { mutableStateOf("") }
     var showDuplicateError by remember { mutableStateOf(false) }
-    var showAddHint by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
+    // Parse urgent needs from data.urgentNeeds string into a list
     val urgentNeedsList = remember(data.urgentNeeds) {
         data.urgentNeeds.split(",")
             .map { it.trim() }
             .filter { it.isNotEmpty() }
     }
 
-    val supportOptions = listOf(
-        "Food", "Shelter", "Medical", "Education", "Cash", "Other"
-    )
-
-    val urgentNeedSuggestions = listOf(
-        "Food for family",
-        "Emergency shelter",
-        "Medical help",
-        "School fees",
-        "Clothing",
-        "Transport"
-    )
-
-    val hasSelectedSupport = data.supportTypes.isNotEmpty()
-    val selectedCount = data.supportTypes.size
-
-    // Auto-scroll state for support types
-    val supportListState = rememberLazyListState()
-    var lastSelectedSupportIndex by remember { mutableStateOf(-1) }
-
-    // Validation - at least one support type selected
-    val isValid = data.supportTypes.isNotEmpty()
-
-    // Smart auto-scroll for support types
-    LaunchedEffect(data.supportTypes) {
-        if (lastSelectedSupportIndex != -1 && data.supportTypes.isNotEmpty()) {
-            coroutineScope.launch {
-                delay(50)
-
-                var nextIndex = -1
-
-                for (i in lastSelectedSupportIndex + 1 until supportOptions.size) {
-                    if (!data.supportTypes.contains(supportOptions[i])) {
-                        nextIndex = i
-                        break
-                    }
-                }
-
-                if (nextIndex == -1) {
-                    for (i in 0 until lastSelectedSupportIndex) {
-                        if (!data.supportTypes.contains(supportOptions[i])) {
-                            nextIndex = i
-                            break
-                        }
-                    }
-                }
-
-                if (nextIndex != -1 && nextIndex < supportOptions.size) {
-                    supportListState.animateScrollToItem(nextIndex)
-                }
-            }
-        }
+    // Parse location from data.location string into a list (if multiple locations)
+    val locationList = remember(data.location) {
+        data.location.split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
     }
 
-    fun addNeed(input: String) {
-        val trimmed = input.trim()
-        if (trimmed.isNotEmpty() && !urgentNeedsList.contains(trimmed)) {
-            val updated = if (urgentNeedsList.isEmpty()) trimmed
-            else "${urgentNeedsList.joinToString(", ")}, $trimmed"
-
-            onDataChange(data.copy(urgentNeeds = updated))
-            currentUrgentNeedInput = ""
+    // Generic add function for any list
+    fun addItem(currentInput: String, currentList: List<String>, onAdd: (String) -> Unit, onClearInput: () -> Unit) {
+        val trimmedItem = currentInput.trim()
+        if (trimmedItem.isNotEmpty() && !currentList.contains(trimmedItem)) {
+            val newItems = if (currentList.isEmpty()) {
+                trimmedItem
+            } else {
+                "${currentList.joinToString(", ")}, $trimmedItem"
+            }
+            onAdd(newItems)
+            onClearInput()
             showDuplicateError = false
-            showAddHint = false
-        } else if (trimmed.isNotEmpty()) {
+        } else if (currentList.contains(trimmedItem)) {
             showDuplicateError = true
             coroutineScope.launch {
-                delay(1500)
+                delay(2000)
                 showDuplicateError = false
             }
         }
     }
 
-    fun removeNeed(item: String) {
-        val updated = urgentNeedsList.filter { it != item }.joinToString(", ")
-        onDataChange(data.copy(urgentNeeds = updated))
+    // Generic remove function
+    fun removeItem(itemToRemove: String, currentList: List<String>, onRemove: (String) -> Unit) {
+        val newItems = currentList.filter { it != itemToRemove }.joinToString(", ")
+        onRemove(newItems)
     }
 
-    fun clearAllNeeds() {
-        onDataChange(data.copy(urgentNeeds = ""))
-    }
+    // Support Types options
+    val supportOptions = listOf(
+        "Food", "Shelter", "Medical", "Counseling",
+        "Training", "Legal", "Cash Assistance", "Education",
+        "Job Placement", "Transportation", "Childcare"
+    )
 
-    fun clearAllSupportTypes() {
-        onDataChange(data.copy(supportTypes = emptyList()))
-    }
+    // Common urgent needs suggestions
+    val urgentNeedSuggestions = listOf(
+        "Food for family", "Emergency shelter", "Medical treatment",
+        "School fees", "Clothing", "Bedding", "Water", "Electricity"
+    )
+
+    // Common location suggestions
+    val locationSuggestions = listOf(
+        "Kawangware", "Kibera", "Mathare", "Mukuru", "Korogocho",
+        "Eastleigh", "Ngara", "Kariobangi", "Huruma", "Dandora"
+    )
 
     Card(
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Elegant Header
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            Text(
+                text = "PURPOSE DETAILS: Support Beneficiary",
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            )
+
+            // Support Types (multi-select)
+            Text(
+                text = "Type of Support Needed",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            )
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Box(
-                    modifier = Modifier
-                        .width(32.dp)
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(1.5.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                                )
-                            )
+                items(supportOptions) { option ->
+                    FilterChip(
+                        selected = data.supportTypes.contains(option),
+                        onClick = {
+                            val newList = if (data.supportTypes.contains(option)) {
+                                data.supportTypes.filter { it != option }
+                            } else {
+                                data.supportTypes + option
+                            }
+                            onDataChange(data.copy(supportTypes = newList))
+                        },
+                        label = { Text(option) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                )
-
-                Text(
-                    text = "Support\nRequest",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 24.sp,
-                        lineHeight = 32.sp,
-                        color = MaterialTheme.colorScheme.onSurface
                     )
-                )
+                }
+            }
 
+            // Show selected count
+            if (data.supportTypes.isNotEmpty()) {
                 Text(
-                    text = "Tell us how we can help",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp,
+                    text = "${data.supportTypes.size} support type${if (data.supportTypes.size > 1) "s" else ""} selected",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            // Urgent Needs Section (Pill Input)
+            UrgentNeedInputSection(
+                title = "Urgent Needs",
+                itemsList = urgentNeedsList,
+                currentInput = currentUrgentNeedInput,
+                onCurrentInputChange = { currentUrgentNeedInput = it },
+                onAddItem = { need ->
+                    addItem(need, urgentNeedsList, { newNeeds -> onDataChange(data.copy(urgentNeeds = newNeeds)) }) { currentUrgentNeedInput = "" }
+                },
+                onRemoveItem = { need ->
+                    removeItem(need, urgentNeedsList, { newNeeds -> onDataChange(data.copy(urgentNeeds = newNeeds)) })
+                },
+                placeholder = "e.g., Food for family of 4, Immediate shelter, Medical assistance",
+                suggestions = urgentNeedSuggestions,
+                showDuplicateError = showDuplicateError
+            )
+
+            // Location Section (Pill Input)
+            LocationInputSection(
+                title = "Location",
+                itemsList = locationList,
+                currentInput = currentLocationInput,
+                onCurrentInputChange = { currentLocationInput = it },
+                onAddItem = { location ->
+                    addItem(location, locationList, { newLocation -> onDataChange(data.copy(location = newLocation)) }) { currentLocationInput = "" }
+                },
+                onRemoveItem = { location ->
+                    removeItem(location, locationList, { newLocation -> onDataChange(data.copy(location = newLocation)) })
+                },
+                placeholder = "e.g., Kawangware, Kibera, Mathare",
+                suggestions = locationSuggestions,
+                showDuplicateError = showDuplicateError
+            )
+
+            // Family Size
+            OutlinedTextField(
+                value = data.familySize,
+                onValueChange = { onDataChange(data.copy(familySize = it)) },
+                label = { Text("Family Size") },
+                placeholder = { Text("4") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+        }
+    }
+}
+
+@Composable
+fun UrgentNeedInputSection(
+    title: String,
+    itemsList: List<String>,
+    currentInput: String,
+    onCurrentInputChange: (String) -> Unit,
+    onAddItem: (String) -> Unit,
+    onRemoveItem: (String) -> Unit,
+    placeholder: String,
+    suggestions: List<String>,
+    showDuplicateError: Boolean
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary
+            )
+        )
+
+        // Items Pills Row
+        if (itemsList.isNotEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(itemsList) { item ->
+                    AssistChip(
+                        onClick = { },
+                        label = {
+                            Text(
+                                item,
+                                maxLines = 1,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Remove",
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clickable { onRemoveItem(item) },
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.height(36.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+
+        // Input Field
+        OutlinedTextField(
+            value = currentInput,
+            onValueChange = {
+                onCurrentInputChange(it)
+            },
+            label = {
+                Text(
+                    if (itemsList.isEmpty()) "Add $title" else "Add another $title",
+                    color = if (showDuplicateError)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            placeholder = {
+                Text(
+                    placeholder,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            },
+            trailingIcon = {
+                IconButton(
+                    onClick = {
+                        if (currentInput.isNotBlank()) {
+                            onAddItem(currentInput)
+                        }
+                    },
+                    enabled = currentInput.isNotBlank()
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add",
+                        tint = if (currentInput.isNotBlank())
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+            },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    if (currentInput.isNotBlank()) {
+                        onAddItem(currentInput)
+                    }
+                }
+            ),
+            isError = showDuplicateError,
+            supportingText = {
+                if (showDuplicateError) {
+                    Text(
+                        "This need has already been added",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                } else if (itemsList.isNotEmpty()) {
+                    Text(
+                        "${itemsList.size} need${if (itemsList.size > 1) "s" else ""} added",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                )
-            }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                errorBorderColor = MaterialTheme.colorScheme.error,
+                errorLabelColor = MaterialTheme.colorScheme.error
+            )
+        )
 
-            // Support Type Section - Multi-select Elegant Pills with auto-scroll
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+        // Suggestions chips
+        if (suggestions.isNotEmpty()) {
+            Text(
+                text = "Suggestions:",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = "What do you need help with? *",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 18.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        )
-
-                        Text(
-                            text = "Select all that apply",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        )
-                    }
-
-                    // Animated counter only (clear button moved below)
-                    AnimatedContent(
-                        targetState = selectedCount,
-                        transitionSpec = {
-                            fadeIn(animationSpec = tween(200)) +
-                                    scaleIn(initialScale = 0.7f) togetherWith
-                                    fadeOut(animationSpec = tween(100)) +
-                                    scaleOut(targetScale = 0.7f)
-                        }
-                    ) { count ->
-                        if (count > 0) {
-                            Surface(
-                                shape = RoundedCornerShape(20.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier
-                            ) {
-                                Text(
-                                    text = "$count",
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 13.sp,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                )
+                items(suggestions) { suggestion ->
+                    SuggestionChip(
+                        onClick = {
+                            if (!itemsList.contains(suggestion)) {
+                                onAddItem(suggestion)
                             }
-                        }
-                    }
-                }
-
-                LazyRow(
-                    state = supportListState,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(supportOptions.size) { index ->
-                        val option = supportOptions[index]
-                        val isSelected = data.supportTypes.contains(option)
-
-                        ElegantPill(
-                            selected = isSelected,
-                            onClick = {
-                                val updated = if (data.supportTypes.contains(option)) {
-                                    data.supportTypes - option
-                                } else {
-                                    lastSelectedSupportIndex = index
-                                    data.supportTypes + option
-                                }
-                                onDataChange(data.copy(supportTypes = updated))
-                            },
-                            label = option,
-                            modifier = Modifier
-                        )
-                    }
-                }
-
-                // Clear button below the pills
-                if (selectedCount > 0) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        ClearSelectionButton(
-                            onClick = { clearAllSupportTypes() }
-                        )
-                    }
-                }
-
-                // Validation message for support type
-                if (data.supportTypes.isEmpty()) {
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(animationSpec = tween(300)) +
-                                slideInVertically(initialOffsetY = { 20 })
-                    ) {
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Info,
-                                    contentDescription = "Info",
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                                Text(
-                                    text = "Please select at least one support type to continue",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Smart navigation hint for support types
-                if (selectedCount > 0 && selectedCount < supportOptions.size) {
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(animationSpec = tween(300)) +
-                                slideInVertically(initialOffsetY = { 20 }),
-                        exit = fadeOut(animationSpec = tween(200))
-                    ) {
-                        Text(
-                            text = "✨ Automatically scrolling to next option",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                            ),
-                            modifier = Modifier.alpha(0.7f)
-                        )
-                    }
-                }
-            }
-
-            // Urgent Needs Section - Animated conditional display (hidden until support type selected)
-            AnimatedVisibility(
-                visible = hasSelectedSupport,
-                enter = fadeIn(animationSpec = tween(400)) +
-                        slideInVertically(
-                            initialOffsetY = { 30 },
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                stiffness = Spring.StiffnessMedium
+                        },
+                        label = {
+                            Text(
+                                suggestion,
+                                style = MaterialTheme.typography.labelMedium
                             )
-                        ) +
-                        scaleIn(
-                            initialScale = 0.95f,
-                            animationSpec = tween(400)
+                        },
+                        enabled = !itemsList.contains(suggestion),
+                        colors = SuggestionChipDefaults.suggestionChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
-                exit = fadeOut(animationSpec = tween(200)) +
-                        slideOutVertically(
-                            targetOffsetY = { -20 },
-                            animationSpec = tween(200)
-                        ) +
-                        scaleOut(
-                            targetScale = 0.98f,
-                            animationSpec = tween(200)
-                        )
-            ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = "Describe Your Need",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 18.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            )
-
-                            Text(
-                                text = "Tell us more about your situation (optional)",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            )
-                        }
-
-                        // Counter and Clear button for urgent needs
-                        if (urgentNeedsList.isNotEmpty()) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                AnimatedContent(
-                                    targetState = urgentNeedsList.size,
-                                    transitionSpec = {
-                                        fadeIn(animationSpec = tween(200)) +
-                                                scaleIn(initialScale = 0.7f) togetherWith
-                                                fadeOut(animationSpec = tween(100)) +
-                                                scaleOut(targetScale = 0.7f)
-                                    }
-                                ) { count ->
-                                    Surface(
-                                        shape = RoundedCornerShape(20.dp),
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        modifier = Modifier
-                                    ) {
-                                        Text(
-                                            text = "$count",
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                            style = MaterialTheme.typography.labelMedium.copy(
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontSize = 13.sp,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                                            )
-                                        )
-                                    }
-                                }
-
-                                ClearButton(
-                                    onClick = { clearAllNeeds() }
-                                )
-                            }
-                        }
-                    }
-
-                    // Urgent Needs Pills Row
-                    if (urgentNeedsList.isNotEmpty()) {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            items(urgentNeedsList) { need ->
-                                ElegantPillWithRemove(
-                                    label = need,
-                                    onRemove = { removeNeed(need) }
-                                )
-                            }
-                        }
-                    }
-
-                    // Add Need Input
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = currentUrgentNeedInput,
-                            onValueChange = {
-                                currentUrgentNeedInput = it
-                                if (it.isNotBlank() && !showAddHint) {
-                                    showAddHint = true
-                                } else if (it.isBlank() && showAddHint) {
-                                    showAddHint = false
-                                }
-                            },
-                            placeholder = {
-                                Text(
-                                    if (urgentNeedsList.isEmpty()) "Type your need and tap + to add"
-                                    else "Type another need and tap +",
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontSize = 14.sp
-                                    )
-                                )
-                            },
-                            trailingIcon = {
-                                AnimatedVisibility(
-                                    visible = currentUrgentNeedInput.isNotBlank(),
-                                    enter = scaleIn() + fadeIn(),
-                                    exit = scaleOut() + fadeOut()
-                                ) {
-                                    IconButton(
-                                        onClick = { addNeed(currentUrgentNeedInput) }
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Add,
-                                            contentDescription = "Add need",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Text,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = {
-                                    if (currentUrgentNeedInput.isNotBlank()) {
-                                        addNeed(currentUrgentNeedInput)
-                                    }
-                                }
-                            ),
-                            isError = showDuplicateError,
-                            supportingText = {
-                                if (showDuplicateError) {
-                                    Text(
-                                        "This need has already been added",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontSize = 11.sp
-                                    )
-                                } else if (showAddHint && currentUrgentNeedInput.isNotBlank()) {
-                                    Text(
-                                        "Tap the + button or press Done to add",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                                errorBorderColor = MaterialTheme.colorScheme.error,
-                                errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f),
-                                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                errorLabelColor = MaterialTheme.colorScheme.error
-                            )
-                        )
-                    }
-
-                    // Suggestions
-                    if (urgentNeedSuggestions.isNotEmpty()) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "Quick suggestions",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    letterSpacing = 0.4.sp
-                                )
-                            )
-
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(urgentNeedSuggestions) { suggestion ->
-                                    val isAlreadyAdded = urgentNeedsList.contains(suggestion)
-
-                                    SuggestionPill(
-                                        label = suggestion,
-                                        isAdded = isAlreadyAdded,
-                                        onClick = {
-                                            if (!isAlreadyAdded) {
-                                                addNeed(suggestion)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Location Field (always visible)
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "Your Location",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        letterSpacing = 0.5.sp
+                        shape = RoundedCornerShape(16.dp)
                     )
-                )
-
-                OutlinedTextField(
-                    value = data.location,
-                    onValueChange = { onDataChange(data.copy(location = it)) },
-                    placeholder = {
-                        Text(
-                            "e.g., Kibera, Nairobi",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp)
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    supportingText = {
-                        Text(
-                            "Your location helps us connect you with local resources",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-                    }
-                )
+                }
             }
         }
     }
+}
 
-    return isValid
+@Composable
+fun LocationInputSection(
+    title: String,
+    itemsList: List<String>,
+    currentInput: String,
+    onCurrentInputChange: (String) -> Unit,
+    onAddItem: (String) -> Unit,
+    onRemoveItem: (String) -> Unit,
+    placeholder: String,
+    suggestions: List<String>,
+    showDuplicateError: Boolean
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary
+            )
+        )
+
+        // Items Pills Row
+        if (itemsList.isNotEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(itemsList) { item ->
+                    AssistChip(
+                        onClick = { },
+                        label = {
+                            Text(
+                                item,
+                                maxLines = 1,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Remove",
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clickable { onRemoveItem(item) },
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.height(36.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+
+        // Input Field
+        OutlinedTextField(
+            value = currentInput,
+            onValueChange = {
+                onCurrentInputChange(it)
+            },
+            label = {
+                Text(
+                    if (itemsList.isEmpty()) "Add $title" else "Add another $title",
+                    color = if (showDuplicateError)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            placeholder = {
+                Text(
+                    placeholder,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            },
+            trailingIcon = {
+                IconButton(
+                    onClick = {
+                        if (currentInput.isNotBlank()) {
+                            onAddItem(currentInput)
+                        }
+                    },
+                    enabled = currentInput.isNotBlank()
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add",
+                        tint = if (currentInput.isNotBlank())
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+            },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    if (currentInput.isNotBlank()) {
+                        onAddItem(currentInput)
+                    }
+                }
+            ),
+            isError = showDuplicateError,
+            supportingText = {
+                if (showDuplicateError) {
+                    Text(
+                        "This location has already been added",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                } else if (itemsList.isNotEmpty()) {
+                    Text(
+                        "${itemsList.size} location${if (itemsList.size > 1) "s" else ""} added",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                errorBorderColor = MaterialTheme.colorScheme.error,
+                errorLabelColor = MaterialTheme.colorScheme.error
+            )
+        )
+
+        // Suggestions chips
+        if (suggestions.isNotEmpty()) {
+            Text(
+                text = "Suggestions:",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(suggestions) { suggestion ->
+                    SuggestionChip(
+                        onClick = {
+                            if (!itemsList.contains(suggestion)) {
+                                onAddItem(suggestion)
+                            }
+                        },
+                        label = {
+                            Text(
+                                suggestion,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        },
+                        enabled = !itemsList.contains(suggestion),
+                        colors = SuggestionChipDefaults.suggestionChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                }
+            }
+        }
+    }
 }

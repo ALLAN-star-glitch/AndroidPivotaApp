@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.sp
 import com.airbnb.lottie.compose.*
 import com.example.pivota.R
 import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
-import com.example.pivota.core.presentations.composables.buttons.PivotaSkipButton
 
 @Composable
 fun JoiningAsScreenContent(
@@ -60,15 +59,15 @@ fun JoiningAsScreenContent(
         // Spacer for header (since header is in parent pager)
         Spacer(modifier = Modifier.height(56.dp))
 
-        // Lottie Illustration
+        // Lottie Illustration - Reduced size
         AnimatedVisibility(
             visible = true,
             enter = fadeIn(animationSpec = tween(300))
         ) {
             Box(
                 modifier = Modifier
-                    .size(200.dp)
-                    .padding(16.dp)
+                    .size(160.dp)
+                    .padding(12.dp)
             ) {
                 LottieAnimation(
                     composition = composition,
@@ -78,7 +77,7 @@ fun JoiningAsScreenContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Headline
         AnimatedVisibility(
@@ -89,21 +88,21 @@ fun JoiningAsScreenContent(
                 text = "Joining as?",
                 style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    fontSize = 32.sp,
+                    fontSize = 28.sp,
                     color = MaterialTheme.colorScheme.primary
                 ),
                 textAlign = TextAlign.Center
             )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Cards Container
         Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Individual Card
+            // Individual Card - Reduced size
             OnboardingCard(
                 isSelected = selectedType == "individual",
                 onClick = {
@@ -111,26 +110,99 @@ fun JoiningAsScreenContent(
                         selectedType = "individual"
                     }
                 },
-                animationDelay = 0
+                animationDelay = 0,
+                isEnabled = true
             ) {
                 IndividualCardContent()
             }
 
-            // Organization Card
-            OnboardingCard(
-                isSelected = selectedType == "organization",
-                onClick = {
-                    if (!isLoading) {
-                        selectedType = "organization"
-                    }
-                },
-                animationDelay = 100
+            // Organization Card with "Coming Soon" overlay
+            Box(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                OrganizationCardContent()
+                OnboardingCard(
+                    isSelected = selectedType == "organization",
+                    onClick = {
+                        // Disabled - organization coming soon
+                    },
+                    animationDelay = 100,
+                    isEnabled = false
+                ) {
+                    OrganizationCardContent()
+                }
+
+                // Overlay for coming soon - Light gray with opacity for better text visibility
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            color = Color(0xFFE0E0E0).copy(alpha = 0.85f),
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .clickable(enabled = false) { },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .background(
+                                color = Color(0xFFF5F5F5).copy(alpha = 0.95f),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "🚀 COMING SOON",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = "Organization features in next release:",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 11.sp,
+                                color = Color(0xFF666666)
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+
+                        Column(
+                            horizontalAlignment = Alignment.Start,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            FeatureItem("• Post job listings and hire talent")
+                            FeatureItem("• List properties and manage rentals")
+                            FeatureItem("• Access organization analytics dashboard")
+                            FeatureItem("• Team management and roles")
+                            FeatureItem("• Company profile and branding")
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = "Get notified when available",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Continue Button using custom PivotaPrimaryButton
         PivotaPrimaryButton(
@@ -163,7 +235,7 @@ fun JoiningAsScreenContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Login Link (using text, not a button)
+        // Login Link
         Row(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxWidth()
@@ -189,10 +261,24 @@ fun JoiningAsScreenContent(
 }
 
 @Composable
+fun FeatureItem(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall.copy(
+            fontSize = 10.sp,
+            color = Color(0xFF444444),
+            lineHeight = 14.sp
+        ),
+        textAlign = TextAlign.Start
+    )
+}
+
+@Composable
 fun OnboardingCard(
     isSelected: Boolean,
     onClick: () -> Unit,
     animationDelay: Int,
+    isEnabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val offset by animateDpAsState(
@@ -211,23 +297,29 @@ fun OnboardingCard(
         modifier = Modifier
             .offset(y = offset)
             .scale(scale)
-            .clickable { onClick() }
+            .then(
+                if (isEnabled) {
+                    Modifier.clickable { onClick() }
+                } else {
+                    Modifier
+                }
+            )
             .shadow(
-                elevation = if (isSelected) 8.dp else 4.dp,
-                shape = RoundedCornerShape(24.dp),
-                ambientColor = if (isSelected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+                elevation = if (isSelected && isEnabled) 8.dp else 4.dp,
+                shape = RoundedCornerShape(20.dp),
+                ambientColor = if (isSelected && isEnabled) MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
                 else Color.Black.copy(alpha = 0.08f),
-                spotColor = if (isSelected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+                spotColor = if (isSelected && isEnabled) MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
                 else Color.Black.copy(alpha = 0.08f)
             ),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.03f)
+            containerColor = if (isSelected && isEnabled) MaterialTheme.colorScheme.secondary.copy(alpha = 0.03f)
             else MaterialTheme.colorScheme.surface
         ),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         border = BorderStroke(
-            width = if (isSelected) 2.dp else 1.5.dp,
-            color = if (isSelected) MaterialTheme.colorScheme.secondary
+            width = if (isSelected && isEnabled) 2.dp else 1.5.dp,
+            color = if (isSelected && isEnabled) MaterialTheme.colorScheme.secondary
             else MaterialTheme.colorScheme.outlineVariant
         )
     ) {
@@ -240,37 +332,38 @@ fun IndividualCardContent() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp),
+            .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
             imageVector = ImageVector.vectorResource(R.drawable.ic_person),
             contentDescription = "Individual",
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(48.dp)
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "INDIVIDUAL",
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.primary
-            ),
-            textAlign = TextAlign.Center
+            modifier = Modifier.size(40.dp)
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "For personal use — job seeking, offering services, finding housing, or accessing support",
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = "INDIVIDUAL",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.primary
             ),
             textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "For personal use — job seeking, offering services, finding housing, or accessing support",
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            textAlign = TextAlign.Center,
+            maxLines = 2
         )
     }
 }
@@ -280,37 +373,38 @@ fun OrganizationCardContent() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp),
+            .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
             imageVector = ImageVector.vectorResource(R.drawable.ic_work),
             contentDescription = "Organization",
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(48.dp)
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "ORGANIZATION",
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.primary
-            ),
-            textAlign = TextAlign.Center
+            modifier = Modifier.size(40.dp)
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "For companies, NGOs, government agencies, and institutions — hiring, listing properties, or providing services",
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = "ORGANIZATION",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.primary
             ),
             textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "For companies, NGOs, government agencies, and institutions",
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            textAlign = TextAlign.Center,
+            maxLines = 2
         )
     }
 }
