@@ -67,9 +67,9 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
         /* ───────── ONBOARDING FLOW ───────── */
         composable<OnboardingFlow> {
             OnboardingPager(
-                onOnboardingComplete = {
-                    // After onboarding complete, navigate to dashboard
-                    navController.navigate(Dashboard) {
+                onOnboardingComplete = { purpose, purposeData ->
+                    // After onboarding complete, navigate to registration with purpose data
+                    navController.navigate(Register) {
                         popUpTo(Welcome) { inclusive = true }
                     }
                 },
@@ -120,7 +120,11 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                 RegisterScreen(
                     viewModel = signupViewModel,
                     onSuccess = { email ->
-                        navController.navigate(VerifyOtp(email = email, isLogin = false))
+                        // After OTP verification in dialog, navigate directly to Dashboard
+                        navController.navigate(Dashboard) {
+                            // Clear the entire auth flow and onboarding stack
+                            popUpTo(Welcome) { inclusive = true }
+                        }
                     },
                     onLoginClick = {
                         navController.navigate(Login) {

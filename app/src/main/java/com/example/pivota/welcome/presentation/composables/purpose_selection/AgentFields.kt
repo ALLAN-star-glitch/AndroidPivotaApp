@@ -1,4 +1,4 @@
-package com.example.pivota.welcome.presentation.composables.purpose_selection
+package com.example.pivota.welcome.presentation.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,21 +12,20 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.pivota.welcome.presentation.screens.AgentData
-import com.example.pivota.welcome.presentation.state.AgentFormData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun AgentFields(
-    data: AgentFormData,
-    onDataChange: (AgentFormData) -> Unit
+    data: AgentData,
+    onDataChange: (AgentData) -> Unit
 ) {
     var currentSpecializationInput by remember { mutableStateOf("") }
     var currentServiceAreaInput by remember { mutableStateOf("") }
@@ -146,28 +145,13 @@ fun AgentFields(
                 currentInput = currentServiceAreaInput,
                 onCurrentInputChange = { currentServiceAreaInput = it },
                 onAddItem = { area ->
-                    addItem(
-                        area,
-                        serviceAreasList,
-                        { newAreas -> onDataChange(data.copy(serviceAreas = newAreas)) }) {
-                        currentServiceAreaInput = ""
-                    }
+                    addItem(area, serviceAreasList, { newAreas -> onDataChange(data.copy(serviceAreas = newAreas)) }) { currentServiceAreaInput = "" }
                 },
                 onRemoveItem = { area ->
-                    removeItem(
-                        area,
-                        serviceAreasList,
-                        { newAreas -> onDataChange(data.copy(serviceAreas = newAreas)) })
+                    removeItem(area, serviceAreasList, { newAreas -> onDataChange(data.copy(serviceAreas = newAreas)) })
                 },
                 placeholder = "e.g., Nairobi, Kiambu, Kajiado",
-                suggestions = listOf(
-                    "Nairobi",
-                    "Kiambu",
-                    "Kajiado",
-                    "Machakos",
-                    "Mombasa",
-                    "Kisumu"
-                ),
+                suggestions = listOf("Nairobi", "Kiambu", "Kajiado", "Machakos", "Mombasa", "Kisumu"),
                 showDuplicateError = showDuplicateError
             )
 
