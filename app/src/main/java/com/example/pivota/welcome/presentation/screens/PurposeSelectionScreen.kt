@@ -7,29 +7,30 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import com.example.pivota.R
+import com.example.pivota.core.presentations.composables.buttons.AuthGoogleButton
 import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
+import com.example.pivota.core.presentations.composables.buttons.PivotaSkipButton
 import com.example.pivota.ui.theme.*
 
 
@@ -37,13 +38,15 @@ import com.example.pivota.ui.theme.*
 @Composable
 fun PurposeSelectionScreenContent(
     onContinue: (purpose: String, purposeData: Map<String, Any>) -> Unit,
-    onBack: () -> Unit,
+    onSkipToDashboard: () -> Unit,
+    onContinueWithGoogle: () -> Unit,
+    onJustExploring: () -> Unit, // New callback for just exploring
     currentStep: Int = 2,
     totalSteps: Int = 6,
     modifier: Modifier = Modifier
 ) {
     var selectedPurpose by remember { mutableStateOf<String?>(null) }
-    var isDropdownExpanded by remember { mutableStateOf(false) }
+    var showBottomSheet by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
 
     // Dynamic field states
@@ -56,17 +59,18 @@ fun PurposeSelectionScreenContent(
     var propertyOwnerData by remember { mutableStateOf(PropertyOwnerData()) }
 
     val scrollState = rememberScrollState()
+    val colorScheme = MaterialTheme.colorScheme
 
-    // Purpose options
+    // Purpose options - Just Exploring moved to the top
     val purposeOptions = listOf(
-        PurposeOption("Find a Job", Icons.Default.Work, "🔍"),
-        PurposeOption("Offer Skilled Services", Icons.Default.Build, "🔧"),
-        PurposeOption("Work as Agent", Icons.Default.Person, "🤝"),
-        PurposeOption("Find Housing", Icons.Default.Home, "🏠"),
-        PurposeOption("Get Social Support", Icons.Default.Favorite, "❤️"),
-        PurposeOption("Hire Employees", Icons.Default.Business, "👔"),
-        PurposeOption("List Properties", Icons.Default.House, "📋"),
-        PurposeOption("Just Exploring", Icons.Default.Explore, "✨")
+        PurposeOption("Just Exploring", Icons.Default.Explore, "✨", "Explore what Pivota has to offer before deciding"),
+        PurposeOption("Find a Job", Icons.Default.Work, "🔍", "Search and apply for jobs that match your skills"),
+        PurposeOption("Offer Skilled Services", Icons.Default.Build, "🔧", "Showcase your expertise and get hired by clients"),
+        PurposeOption("Work as Agent", Icons.Default.Person, "🤝", "Help others find opportunities and earn commissions"),
+        PurposeOption("Find Housing", Icons.Default.Home, "🏠", "Discover rental properties, apartments, and houses"),
+        PurposeOption("Get Social Support", Icons.Default.Favorite, "❤️", "Access community support services and resources"),
+        PurposeOption("Hire Employees", Icons.Default.Business, "👔", "Find talented professionals for your business"),
+        PurposeOption("List Properties", Icons.Default.House, "📋", "Rent out your properties to qualified tenants")
     )
 
     Box(
@@ -82,32 +86,6 @@ fun PurposeSelectionScreenContent(
                 .padding(top = 56.dp, bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header with Back Button and Logo
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Back Button
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                // Logo
-                Icon(
-                    painter = painterResource(id = R.drawable.transparentpivlogo),
-                    contentDescription = "PivotaConnect Logo",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-
-                // Placeholder for balance
-                Spacer(modifier = Modifier.size(40.dp))
-            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -136,89 +114,85 @@ fun PurposeSelectionScreenContent(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Dropdown
-            Box(
+            // Professional Selection Card
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .zIndex(1f)
+                    .clickable { showBottomSheet = true },
+                shape = RoundedCornerShape(16.dp),
+                color = colorScheme.surface,
+                tonalElevation = 2.dp,
+                shadowElevation = 2.dp
             ) {
-                ExposedDropdownMenuBox(
-                    expanded = isDropdownExpanded,
-                    onExpandedChange = { isDropdownExpanded = !isDropdownExpanded }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedTextField(
-                        value = selectedPurpose ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        placeholder = {
-                            Text(
-                                "Select your primary purpose",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                        },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.secondary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                            focusedTextColor = MaterialTheme.colorScheme.primary,
-                            unfocusedTextColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
-
-                    ExposedDropdownMenu(
-                        expanded = isDropdownExpanded,
-                        onDismissRequest = { isDropdownExpanded = false },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surface)
-                            .clip(RoundedCornerShape(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        purposeOptions.forEach { option ->
-                            DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = option.icon,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                        Text(
-                                            option.label,
-                                            style = MaterialTheme.typography.bodyLarge.copy(
-                                                fontSize = 16.sp,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
-                                        )
-                                    }
-                                },
-                                onClick = {
-                                    selectedPurpose = option.label
-                                    isDropdownExpanded = false
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(
-                                        if (selectedPurpose == option.label)
-                                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.03f)
-                                        else Color.Transparent
-                                    )
+                        // Icon container
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (selectedPurpose != null)
+                                        colorScheme.primary.copy(alpha = 0.1f)
+                                    else
+                                        colorScheme.surfaceVariant
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (selectedPurpose != null) {
+                                    purposeOptions.find { it.label == selectedPurpose }?.icon ?: Icons.Default.Info
+                                } else Icons.Default.Info,
+                                contentDescription = null,
+                                tint = if (selectedPurpose != null)
+                                    colorScheme.primary
+                                else
+                                    colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+
+                        Column {
+                            Text(
+                                text = if (selectedPurpose != null) "Selected Purpose" else "Select Your Purpose",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 12.sp,
+                                    color = colorScheme.onSurfaceVariant,
+                                    letterSpacing = 0.5.sp
+                                )
+                            )
+                            Text(
+                                text = selectedPurpose ?: "Choose your primary focus",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = if (selectedPurpose != null) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (selectedPurpose != null)
+                                        colorScheme.primary
+                                    else
+                                        colorScheme.onSurfaceVariant
+                                )
                             )
                         }
                     }
+
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowRight,
+                        contentDescription = "Select purpose",
+                        tint = colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
 
-            // Helper text below dropdown
+            // Helper text below selection
             Text(
                 text = "You can add more roles from your dashboard later",
                 style = MaterialTheme.typography.labelSmall.copy(
@@ -227,13 +201,13 @@ fun PurposeSelectionScreenContent(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
+                    .padding(top = 12.dp),
                 textAlign = TextAlign.End
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Dynamic Fields based on selection
+            // Dynamic Fields based on selection (but not for Just Exploring)
             AnimatedContent(
                 targetState = selectedPurpose,
                 transitionSpec = {
@@ -279,26 +253,81 @@ fun PurposeSelectionScreenContent(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Continue Button using custom button
+            // Continue Button - Now with special handling for Just Exploring
             PivotaPrimaryButton(
-                text = "Continue",
+                text = if (selectedPurpose == "Just Exploring") "Start Exploring" else "Continue",
                 onClick = {
                     if (selectedPurpose != null && !isLoading) {
-                        isLoading = true
-                        val purposeData = when (selectedPurpose) {
-                            "Find a Job" -> jobSeekerData.toMap()
-                            "Offer Skilled Services" -> skilledProfessionalData.toMap()
-                            "Work as Agent" -> agentData.toMap()
-                            "Find Housing" -> housingSeekerData.toMap()
-                            "Get Social Support" -> supportBeneficiaryData.toMap()
-                            "Hire Employees" -> employerData.toMap()
-                            "List Properties" -> propertyOwnerData.toMap()
-                            else -> emptyMap()
+                        if (selectedPurpose == "Just Exploring") {
+                            // Navigate directly to registration for Just Exploring
+                            onJustExploring()
+                        } else {
+                            isLoading = true
+                            val purposeData = when (selectedPurpose) {
+                                "Find a Job" -> jobSeekerData.toMap()
+                                "Offer Skilled Services" -> skilledProfessionalData.toMap()
+                                "Work as Agent" -> agentData.toMap()
+                                "Find Housing" -> housingSeekerData.toMap()
+                                "Get Social Support" -> supportBeneficiaryData.toMap()
+                                "Hire Employees" -> employerData.toMap()
+                                "List Properties" -> propertyOwnerData.toMap()
+                                else -> emptyMap()
+                            }
+                            onContinue(selectedPurpose!!, purposeData)
                         }
-                        onContinue(selectedPurpose!!, purposeData)
                     }
                 },
                 enabled = selectedPurpose != null && !isLoading,
+                modifier = Modifier.fillMaxWidth(),
+                icon = if (selectedPurpose == "Just Exploring")
+                    ImageVector.vectorResource(R.drawable.ic_explore)
+                else
+                    ImageVector.vectorResource(R.drawable.ic_person)
+            )
+
+            // Add spacing between buttons
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Continue with Google Button
+            AuthGoogleButton(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onContinueWithGoogle
+            )
+
+            // Add spacing before divider
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // DIVIDER WITH "OR"
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                )
+                Text(
+                    text = " OR ",
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                )
+            }
+
+            // Add spacing after divider
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Skip to Dashboard Button
+            PivotaSkipButton(
+                text = "Skip to Dashboard",
+                onClick = onSkipToDashboard,
                 modifier = Modifier.fillMaxWidth(),
                 icon = ImageVector.vectorResource(R.drawable.ic_skip)
             )
@@ -331,14 +360,176 @@ fun PurposeSelectionScreenContent(
             )
         }
     }
+
+    // Styled Bottom Sheet for Purpose Selection
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            containerColor = colorScheme.surface,
+            tonalElevation = 8.dp,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = colorScheme.outlineVariant) }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Select Your Purpose",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.onSurface
+                        )
+                    )
+
+                    IconButton(
+                        onClick = { showBottomSheet = false },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = colorScheme.outlineVariant.copy(0.5f),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Outlined.Close,
+                                    contentDescription = "Close",
+                                    tint = colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Text(
+                    text = "Choose the primary way you'll use Pivota",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+
+                // Purpose options list
+                purposeOptions.forEach { option ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedPurpose = option.label
+                                showBottomSheet = false
+                            }
+                            .padding(vertical = 4.dp),
+                        color = if (selectedPurpose == option.label)
+                            colorScheme.primary.copy(alpha = 0.08f)
+                        else
+                            Color.Transparent,
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // Icon container
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(
+                                        if (selectedPurpose == option.label)
+                                            colorScheme.primary.copy(alpha = 0.15f)
+                                        else
+                                            colorScheme.surfaceVariant
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = option.icon,
+                                    contentDescription = null,
+                                    tint = if (selectedPurpose == option.label)
+                                        colorScheme.primary
+                                    else
+                                        colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = option.label,
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = if (selectedPurpose == option.label)
+                                            FontWeight.Bold
+                                        else
+                                            FontWeight.SemiBold,
+                                        color = if (selectedPurpose == option.label)
+                                            colorScheme.primary
+                                        else
+                                            colorScheme.onSurface
+                                    )
+                                )
+                                Text(
+                                    text = option.description,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = colorScheme.onSurfaceVariant
+                                    ),
+                                    maxLines = 2
+                                )
+                            }
+
+                            if (selectedPurpose == option.label) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Selected",
+                                    tint = colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
 }
 
-// Data classes for dynamic fields
+
+// Updated PurposeOption with description
+data class PurposeOption(
+    val label: String,
+    val icon: ImageVector,
+    val emoji: String,
+    val description: String
+)
+
+// Data classes for dynamic fields (unchanged)
 data class JobSeekerData(
+    var headline: String = "",
+    var isActivelySeeking: Boolean = true,
     var skills: String = "",
-    var experienceLevel: String = "",
+    var industries: String = "",
+    var jobTypes: String = "",
+    var seniorityLevel: String = "",
     var expectedSalary: String = "",
-    var cvUrl: String? = null
+    var noticePeriod: String = "",
+    var workAuthorization: String = ""
 )
 
 data class SkilledProfessionalData(
@@ -390,679 +581,6 @@ data class PropertyOwnerData(
     var serviceAreas: String = ""
 )
 
-// Field composables for each purpose (simplified for brevity)
-@Composable
-fun JobSeekerFields(
-    data: JobSeekerData,
-    onDataChange: (JobSeekerData) -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "PURPOSE DETAILS: Job Seeker",
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-
-            // Skills field
-            OutlinedTextField(
-                value = data.skills,
-                onValueChange = { onDataChange(data.copy(skills = it)) },
-                label = { Text("Skills (comma-separated)") },
-                placeholder = { Text("welding, metal fabrication, oxy cutting") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Experience Level
-            Text(
-                text = "Experience Level",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = data.experienceLevel == "Entry Level",
-                    onClick = { onDataChange(data.copy(experienceLevel = "Entry Level")) },
-                    label = { Text("Entry Level") }
-                )
-                FilterChip(
-                    selected = data.experienceLevel == "Mid Level",
-                    onClick = { onDataChange(data.copy(experienceLevel = "Mid Level")) },
-                    label = { Text("Mid Level") }
-                )
-                FilterChip(
-                    selected = data.experienceLevel == "Senior Level",
-                    onClick = { onDataChange(data.copy(experienceLevel = "Senior Level")) },
-                    label = { Text("Senior Level") }
-                )
-            }
-
-            // Expected Salary
-            OutlinedTextField(
-                value = data.expectedSalary,
-                onValueChange = { onDataChange(data.copy(expectedSalary = it)) },
-                label = { Text("Expected Salary (KES)") },
-                placeholder = { Text("1,500") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-
-            // CV Upload
-            OutlinedButton(
-                onClick = { /* Handle CV upload */ },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.Upload, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Upload CV (PDF)")
-            }
-        }
-    }
-}
-
-@Composable
-fun SkilledProfessionalFields(
-    data: SkilledProfessionalData,
-    onDataChange: (SkilledProfessionalData) -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "PURPOSE DETAILS: Skilled Professional",
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-
-            // Profession selection
-            Text(
-                text = "Profession",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val professions = listOf("Electrician", "Plumber", "Carpenter", "Welder")
-                professions.forEach { prof ->
-                    FilterChip(
-                        selected = data.profession == prof,
-                        onClick = { onDataChange(data.copy(profession = prof, otherProfession = "")) },
-                        label = { Text(prof) }
-                    )
-                }
-            }
-
-            // Other profession input
-            OutlinedTextField(
-                value = data.otherProfession,
-                onValueChange = { onDataChange(data.copy(profession = "Other", otherProfession = it)) },
-                label = { Text("Other Profession") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Specialties
-            OutlinedTextField(
-                value = data.specialties,
-                onValueChange = { onDataChange(data.copy(specialties = it)) },
-                label = { Text("Specialties (comma-separated)") },
-                placeholder = { Text("wiring, lighting installation, fault diagnosis") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Years Experience
-            OutlinedTextField(
-                value = data.yearsExperience,
-                onValueChange = { onDataChange(data.copy(yearsExperience = it)) },
-                label = { Text("Years Experience") },
-                placeholder = { Text("5") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-
-            // Service Areas
-            OutlinedTextField(
-                value = data.serviceAreas,
-                onValueChange = { onDataChange(data.copy(serviceAreas = it)) },
-                label = { Text("Service Areas (comma-separated)") },
-                placeholder = { Text("Nairobi, Kiambu, Ruiru") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Hourly Rate
-            OutlinedTextField(
-                value = data.hourlyRate,
-                onValueChange = { onDataChange(data.copy(hourlyRate = it)) },
-                label = { Text("Hourly Rate (KES)") },
-                placeholder = { Text("500") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-
-            // License Number (optional)
-            OutlinedTextField(
-                value = data.licenseNumber,
-                onValueChange = { onDataChange(data.copy(licenseNumber = it)) },
-                label = { Text("License Number (optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun AgentFields(
-    data: AgentData,
-    onDataChange: (AgentData) -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "PURPOSE DETAILS: Agent",
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-
-            // Agent Type selection
-            Text(
-                text = "Agent Type",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val agentTypes = listOf("Housing Agent", "Recruitment Agent", "Broker")
-                agentTypes.forEach { type ->
-                    FilterChip(
-                        selected = data.agentType == type,
-                        onClick = { onDataChange(data.copy(agentType = type)) },
-                        label = { Text(type) }
-                    )
-                }
-            }
-
-            // Specializations
-            OutlinedTextField(
-                value = data.specializations,
-                onValueChange = { onDataChange(data.copy(specializations = it)) },
-                label = { Text("Specializations (comma-separated)") },
-                placeholder = { Text("residential, commercial, luxury") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Service Areas
-            OutlinedTextField(
-                value = data.serviceAreas,
-                onValueChange = { onDataChange(data.copy(serviceAreas = it)) },
-                label = { Text("Service Areas (comma-separated)") },
-                placeholder = { Text("Nairobi, Kiambu, Kajiado") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Commission Rate
-            OutlinedTextField(
-                value = data.commissionRate,
-                onValueChange = { onDataChange(data.copy(commissionRate = it)) },
-                label = { Text("Commission Rate (%)") },
-                placeholder = { Text("5") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-
-            // License Number (optional)
-            OutlinedTextField(
-                value = data.licenseNumber,
-                onValueChange = { onDataChange(data.copy(licenseNumber = it)) },
-                label = { Text("License Number (optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun HousingSeekerFields(
-    data: HousingSeekerData,
-    onDataChange: (HousingSeekerData) -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "PURPOSE DETAILS: Housing Seeker",
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-
-            // Property Type
-            Text(
-                text = "Property Type",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val propertyTypes = listOf("Apartment", "House", "Bedsitter", "Room", "Land")
-                propertyTypes.forEach { type ->
-                    FilterChip(
-                        selected = data.propertyType == type,
-                        onClick = { onDataChange(data.copy(propertyType = type)) },
-                        label = { Text(type) }
-                    )
-                }
-            }
-
-            // Bedrooms range
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedTextField(
-                    value = data.minBedrooms,
-                    onValueChange = { onDataChange(data.copy(minBedrooms = it)) },
-                    label = { Text("Min Bedrooms") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-                OutlinedTextField(
-                    value = data.maxBedrooms,
-                    onValueChange = { onDataChange(data.copy(maxBedrooms = it)) },
-                    label = { Text("Max Bedrooms") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-            }
-
-            // Budget range
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedTextField(
-                    value = data.minBudget,
-                    onValueChange = { onDataChange(data.copy(minBudget = it)) },
-                    label = { Text("Min Budget (KES)") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-                OutlinedTextField(
-                    value = data.maxBudget,
-                    onValueChange = { onDataChange(data.copy(maxBudget = it)) },
-                    label = { Text("Max Budget (KES)") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-            }
-
-            // Preferred Areas
-            OutlinedTextField(
-                value = data.preferredAreas,
-                onValueChange = { onDataChange(data.copy(preferredAreas = it)) },
-                label = { Text("Preferred Areas (comma-separated)") },
-                placeholder = { Text("Kilimani, Kileleshwa, Westlands") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Move-in Date
-            OutlinedTextField(
-                value = data.moveInDate,
-                onValueChange = { onDataChange(data.copy(moveInDate = it)) },
-                label = { Text("Move-in Date") },
-                placeholder = { Text("MM/DD/YYYY") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun SupportBeneficiaryFields(
-    data: SupportBeneficiaryData,
-    onDataChange: (SupportBeneficiaryData) -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "PURPOSE DETAILS: Support Beneficiary",
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-
-            // Support Types (multi-select)
-            Text(
-                text = "Type of Support Needed (select all that apply)",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-            val supportOptions = listOf("Food", "Shelter", "Medical", "Counseling", "Training", "Legal", "Cash Assistance")
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(supportOptions.size) { index ->
-                    val option = supportOptions[index]
-                    FilterChip(
-                        selected = data.supportTypes.contains(option),
-                        onClick = {
-                            val newList = if (data.supportTypes.contains(option)) {
-                                data.supportTypes.filter { it != option }
-                            } else {
-                                data.supportTypes + option
-                            }
-                            onDataChange(data.copy(supportTypes = newList))
-                        },
-                        label = { Text(option) }
-                    )
-                }
-            }
-
-            // Urgent Needs
-            OutlinedTextField(
-                value = data.urgentNeeds,
-                onValueChange = { onDataChange(data.copy(urgentNeeds = it)) },
-                label = { Text("Urgent Needs") },
-                placeholder = { Text("Food for family of 4, immediate shelter") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Location
-            OutlinedTextField(
-                value = data.location,
-                onValueChange = { onDataChange(data.copy(location = it)) },
-                label = { Text("Location") },
-                placeholder = { Text("Kawangware, Nairobi") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Family Size
-            OutlinedTextField(
-                value = data.familySize,
-                onValueChange = { onDataChange(data.copy(familySize = it)) },
-                label = { Text("Family Size") },
-                placeholder = { Text("4") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-        }
-    }
-}
-
-@Composable
-fun EmployerFields(
-    data: EmployerData,
-    onDataChange: (EmployerData) -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "PURPOSE DETAILS: Employer",
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-
-            // Business Name
-            OutlinedTextField(
-                value = data.businessName,
-                onValueChange = { onDataChange(data.copy(businessName = it)) },
-                label = { Text("Business Name") },
-                placeholder = { Text("Wanjiku Hardware Solutions") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Industry Sector
-            Text(
-                text = "Industry Sector",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val industries = listOf("Construction", "Tech", "Healthcare")
-                industries.forEach { industry ->
-                    FilterChip(
-                        selected = data.industrySector == industry,
-                        onClick = { onDataChange(data.copy(industrySector = industry)) },
-                        label = { Text(industry) }
-                    )
-                }
-                FilterChip(
-                    selected = data.industrySector == "Other",
-                    onClick = { onDataChange(data.copy(industrySector = "Other")) },
-                    label = { Text("Other") }
-                )
-            }
-
-            // Company Size
-            Text(
-                text = "Company Size",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val sizes = listOf("1-10", "11-50", "51-200", "201-500", "500+")
-                sizes.forEach { size ->
-                    FilterChip(
-                        selected = data.companySize == size,
-                        onClick = { onDataChange(data.copy(companySize = size)) },
-                        label = { Text(size) }
-                    )
-                }
-            }
-
-            // Preferred Skills
-            OutlinedTextField(
-                value = data.preferredSkills,
-                onValueChange = { onDataChange(data.copy(preferredSkills = it)) },
-                label = { Text("Preferred Skills for Hiring (comma-separated)") },
-                placeholder = { Text("welding, carpentry, plumbing") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun PropertyOwnerFields(
-    data: PropertyOwnerData,
-    onDataChange: (PropertyOwnerData) -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "PURPOSE DETAILS: Property Owner",
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-
-            // Professional Status
-            Text(
-                text = "Professional Status",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = data.professionalStatus == "Individual Owner",
-                    onClick = { onDataChange(data.copy(professionalStatus = "Individual Owner")) },
-                    label = { Text("Individual Owner") }
-                )
-                FilterChip(
-                    selected = data.professionalStatus == "Professional Landlord",
-                    onClick = { onDataChange(data.copy(professionalStatus = "Professional Landlord")) },
-                    label = { Text("Professional Landlord") }
-                )
-            }
-
-            // Number of Properties
-            OutlinedTextField(
-                value = data.propertyCount,
-                onValueChange = { onDataChange(data.copy(propertyCount = it)) },
-                label = { Text("Number of Properties Owned") },
-                placeholder = { Text("3") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-
-            // Property Types
-            OutlinedTextField(
-                value = data.propertyTypes,
-                onValueChange = { onDataChange(data.copy(propertyTypes = it)) },
-                label = { Text("Property Types Owned (comma-separated)") },
-                placeholder = { Text("apartments, commercial spaces") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Service Areas
-            OutlinedTextField(
-                value = data.serviceAreas,
-                onValueChange = { onDataChange(data.copy(serviceAreas = it)) },
-                label = { Text("Service Areas (comma-separated)") },
-                placeholder = { Text("Kilimani, Westlands, Ruaka") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-    }
-}
-
 @Composable
 fun JustExploringMessage() {
     Card(
@@ -1101,18 +619,10 @@ fun JustExploringMessage() {
     }
 }
 
-data class PurposeOption(
-    val label: String,
-    val icon: ImageVector,
-    val emoji: String
-)
-
-// Extension function to convert data to Map
+// Extension functions to convert data to Map (unchanged)
 fun JobSeekerData.toMap() = mapOf(
     "skills" to skills,
-    "experienceLevel" to experienceLevel,
     "expectedSalary" to expectedSalary,
-    "cvUrl" to (cvUrl ?: "")
 )
 
 fun SkilledProfessionalData.toMap() = mapOf(

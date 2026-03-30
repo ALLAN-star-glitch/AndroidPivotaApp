@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.pivota.R
-import com.example.pivota.core.presentations.composables.buttons.AuthGoogleButton
 import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
 import com.example.pivota.core.presentations.composables.buttons.PivotaSkipButton
 import com.example.pivota.ui.theme.InfoBlue
@@ -44,7 +42,6 @@ fun WelcomeContent(
     header: String = "Your Gateway to Life Opportunities",
     welcomeText: String = "Find Jobs, Housing, Services & Support Across Africa",
     onNavigateToContinueSetup: () -> Unit,
-    onNavigateToContinueWithGoogle: () -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateToSkipToDashboard: () -> Unit
 ) {
@@ -106,36 +103,6 @@ fun WelcomeContent(
                 icon = ImageVector.vectorResource(R.drawable.ic_person)
             )
 
-            /* ───── Continue with Google Button ───── */
-            AuthGoogleButton(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = onNavigateToContinueWithGoogle
-            )
-
-            /* ───── DIVIDER WITH SOFT SAND ───── */
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f),
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                )
-                Text(
-                    text = " OR ",
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f),
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                )
-            }
-
             /* ───── Skip to Dashboard Button ───── */
             PivotaSkipButton(
                 text = "Skip to Dashboard",
@@ -186,7 +153,7 @@ fun WelcomeContent(
                     text = " • ",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.tertiaryContainer
+                        color = MaterialTheme.colorScheme.tertiaryContainer
                     )
                 )
                 Text(

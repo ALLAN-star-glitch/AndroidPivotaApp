@@ -1,426 +1,362 @@
-package com.example.pivota.welcome.presentation.composables.purpose_selection
+package com.example.pivota.welcome.presentation.screens
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.pivota.ui.theme.*
-import com.example.pivota.welcome.presentation.state.EmployerFormData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun EmployerFields(
-    data: EmployerFormData,
-    onDataChange: (EmployerFormData) -> Unit
-): Boolean { // Return validation state
+    data: EmployerData,
+    onDataChange: (EmployerData) -> Unit
+) {
+    var currentSkillInput by remember { mutableStateOf("") }
+    var showDuplicateError by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
-    val industries = listOf(
-        "Construction", "Tech", "Healthcare",
-        "Manufacturing", "Education",
-        "Agriculture", "Hospitality", "Retail"
-    )
+    // Parse preferred skills from data.preferredSkills string into a list
+    val skillsList = remember(data.preferredSkills) {
+        data.preferredSkills.split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+    }
 
-    // Validation logic - button enabled when business name is not empty AND industry is selected
-    val isValid = data.businessName.isNotBlank() &&
-            data.industrySector.isNotEmpty() &&
-            (data.industrySector != "Other" || data.otherIndustry.isNotBlank())
-
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // Elegant Header
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(32.dp)
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(1.5.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                                )
-                            )
-                        )
-                )
-
-                Text(
-                    text = "Employer\nProfile",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 24.sp,
-                        lineHeight = 32.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                )
-
-                Text(
-                    text = "Tell job seekers about your company",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
+    // Generic add function for skills
+    fun addSkill(currentInput: String, currentList: List<String>, onAdd: (String) -> Unit, onClearInput: () -> Unit) {
+        val trimmedItem = currentInput.trim()
+        if (trimmedItem.isNotEmpty() && !currentList.contains(trimmedItem)) {
+            val newItems = if (currentList.isEmpty()) {
+                trimmedItem
+            } else {
+                "${currentList.joinToString(", ")}, $trimmedItem"
             }
-
-            // Business Name Field
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "Business Name *",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        letterSpacing = 0.5.sp
-                    )
-                )
-
-                OutlinedTextField(
-                    value = data.businessName,
-                    onValueChange = { onDataChange(data.copy(businessName = it)) },
-                    placeholder = {
-                        Text(
-                            "e.g., Wanjiku Hardware",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontSize = 14.sp
-                            )
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    supportingText = {
-                        if (data.businessName.isBlank()) {
-                            Text(
-                                "Enter your business or company name",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-                )
-            }
-
-            // Industry Section
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "Industry *",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        letterSpacing = 0.5.sp
-                    )
-                )
-
-                // Industry Pills
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(industries) { industry ->
-                        val isSelected = data.industrySector == industry
-
-                        ElegantPill(
-                            selected = isSelected,
-                            onClick = {
-                                onDataChange(
-                                    data.copy(
-                                        industrySector = industry,
-                                        otherIndustry = if (industry != "Other") "" else data.otherIndustry
-                                    )
-                                )
-                            },
-                            label = industry,
-                            modifier = Modifier
-                        )
-                    }
-
-                    item {
-                        val isSelected = data.industrySector == "Other"
-
-                        ElegantPill(
-                            selected = isSelected,
-                            onClick = {
-                                onDataChange(
-                                    data.copy(
-                                        industrySector = "Other",
-                                        otherIndustry = data.otherIndustry
-                                    )
-                                )
-                            },
-                            label = "Other",
-                            modifier = Modifier
-                        )
-                    }
-                }
-
-                // Other Industry Input (conditionally shown)
-                AnimatedVisibility(
-                    visible = data.industrySector == "Other",
-                    enter = fadeIn(animationSpec = tween(400)) +
-                            slideInVertically(
-                                initialOffsetY = { 30 },
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                    stiffness = Spring.StiffnessMedium
-                                )
-                            ) +
-                            scaleIn(
-                                initialScale = 0.95f,
-                                animationSpec = tween(400)
-                            ),
-                    exit = fadeOut(animationSpec = tween(200)) +
-                            slideOutVertically(
-                                targetOffsetY = { -20 },
-                                animationSpec = tween(200)
-                            ) +
-                            scaleOut(
-                                targetScale = 0.98f,
-                                animationSpec = tween(200)
-                            )
-                ) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Specify Industry",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                letterSpacing = 0.5.sp
-                            )
-                        )
-
-                        OutlinedTextField(
-                            value = data.otherIndustry,
-                            onValueChange = { onDataChange(data.copy(otherIndustry = it)) },
-                            placeholder = {
-                                Text(
-                                    "Enter your industry",
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontSize = 14.sp
-                                    )
-                                )
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Text,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = { /* Just dismiss keyboard */ }
-                            )
-                        )
-                    }
-                }
-
-                // Validation message for industry
-                if (data.industrySector.isEmpty()) {
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(animationSpec = tween(300)) +
-                                slideInVertically(initialOffsetY = { 20 })
-                    ) {
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = androidx.compose.material.icons.Icons.Default.Info,
-                                    contentDescription = "Info",
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                                Text(
-                                    text = "Please select an industry to continue",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Validation message for other industry
-                if (data.industrySector == "Other" && data.otherIndustry.isBlank()) {
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(animationSpec = tween(300)) +
-                                slideInVertically(initialOffsetY = { 20 })
-                    ) {
-                        Text(
-                            text = "⚠️ Please specify your industry",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.error
-                            ),
-                            modifier = Modifier.alpha(0.8f)
-                        )
-                    }
-                }
+            onAdd(newItems)
+            onClearInput()
+            showDuplicateError = false
+        } else if (currentList.contains(trimmedItem)) {
+            showDuplicateError = true
+            coroutineScope.launch {
+                delay(2000)
+                showDuplicateError = false
             }
         }
     }
 
-    return isValid
-}
+    // Generic remove function for skills
+    fun removeSkill(skillToRemove: String, currentList: List<String>, onRemove: (String) -> Unit) {
+        val newItems = currentList.filter { it != skillToRemove }.joinToString(", ")
+        onRemove(newItems)
+    }
 
-@Composable
-fun ElegantPillEmployer(
-    selected: Boolean,
-    onClick: () -> Unit,
-    label: String,
-    modifier: Modifier = Modifier
-) {
-    var isPressed by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
+    // Industry Sectors
+    val industries = listOf("Construction", "Tech", "Healthcare", "Manufacturing", "Education", "Agriculture", "Hospitality", "Retail")
 
-    val scale by animateFloatAsState(
-        targetValue = when {
-            isPressed -> 0.97f
-            selected -> 1.02f
-            else -> 1f
-        },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
+    // Company Sizes
+    val companySizes = listOf("1-10", "11-50", "51-200", "201-500", "500+", "1000+")
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        label = "scale"
-    )
-
-    val backgroundColor by animateColorAsState(
-        targetValue = if (selected)
-            MaterialTheme.colorScheme.primaryContainer
-        else
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        animationSpec = tween(250, easing = FastOutSlowInEasing),
-        label = "backgroundColor"
-    )
-
-    val textColor by animateColorAsState(
-        targetValue = if (selected)
-            MaterialTheme.colorScheme.onPrimaryContainer
-        else
-            MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = tween(250),
-        label = "textColor"
-    )
-
-    val borderAlpha by animateFloatAsState(
-        targetValue = if (selected) 0.8f else 0.1f,
-        animationSpec = tween(250),
-        label = "borderAlpha"
-    )
-
-    Surface(
-        modifier = modifier
-            .scale(scale),
-        shape = RoundedCornerShape(100.dp),
-        color = backgroundColor,
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = borderAlpha)
-        ),
-        onClick = {
-            coroutineScope.launch {
-                isPressed = true
-                onClick()
-                delay(80)
-                isPressed = false
-            }
-        }
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                    fontSize = 14.sp,
-                    color = textColor
+                text = "PURPOSE DETAILS: Employer",
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.primary
                 )
             )
 
-            AnimatedVisibility(
-                visible = selected,
-                enter = scaleIn(initialScale = 0.5f) + fadeIn(),
-                exit = scaleOut(targetScale = 0.5f) + fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(MaterialTheme.colorScheme.primary)
+            // Business Name
+            OutlinedTextField(
+                value = data.businessName,
+                onValueChange = { onDataChange(data.copy(businessName = it)) },
+                label = { Text("Business Name") },
+                placeholder = { Text("Wanjiku Hardware Solutions") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            // Industry Sector
+            Text(
+                text = "Industry Sector",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
                 )
+            )
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(industries) { industry ->
+                    FilterChip(
+                        selected = data.industrySector == industry,
+                        onClick = { onDataChange(data.copy(industrySector = industry)) },
+                        label = { Text(industry) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = data.industrySector == "Other",
+                        onClick = { onDataChange(data.copy(industrySector = "Other")) },
+                        label = { Text("Other") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                }
+            }
+
+            // Company Size
+            Text(
+                text = "Company Size",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            )
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(companySizes) { size ->
+                    FilterChip(
+                        selected = data.companySize == size,
+                        onClick = { onDataChange(data.copy(companySize = size)) },
+                        label = { Text(size) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                }
+            }
+
+            // Preferred Skills Section (Pill Input)
+            SkillInputSectionEmployer(
+                title = "Preferred Skills",
+                itemsList = skillsList,
+                currentInput = currentSkillInput,
+                onCurrentInputChange = { currentSkillInput = it },
+                onAddItem = { skill ->
+                    addSkill(skill, skillsList, { newSkills -> onDataChange(data.copy(preferredSkills = newSkills)) }) { currentSkillInput = "" }
+                },
+                onRemoveItem = { skill ->
+                    removeSkill(skill, skillsList, { newSkills -> onDataChange(data.copy(preferredSkills = newSkills)) })
+                },
+                placeholder = "e.g., Welding, Carpentry, Plumbing",
+                suggestions = listOf("Welding", "Carpentry", "Plumbing", "Electrical", "Project Management", "Sales", "Customer Service", "Accounting"),
+                showDuplicateError = showDuplicateError
+            )
+        }
+    }
+}
+
+@Composable
+fun SkillInputSectionEmployer(
+    title: String,
+    itemsList: List<String>,
+    currentInput: String,
+    onCurrentInputChange: (String) -> Unit,
+    onAddItem: (String) -> Unit,
+    onRemoveItem: (String) -> Unit,
+    placeholder: String,
+    suggestions: List<String>,
+    showDuplicateError: Boolean
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary
+            )
+        )
+
+        // Items Pills Row
+        if (itemsList.isNotEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(itemsList) { item ->
+                    AssistChip(
+                        onClick = { },
+                        label = {
+                            Text(
+                                item,
+                                maxLines = 1,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Remove",
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clickable { onRemoveItem(item) },
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.height(36.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+
+        // Input Field
+        OutlinedTextField(
+            value = currentInput,
+            onValueChange = {
+                onCurrentInputChange(it)
+            },
+            label = {
+                Text(
+                    if (itemsList.isEmpty()) "Add $title" else "Add another $title",
+                    color = if (showDuplicateError)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            placeholder = {
+                Text(
+                    placeholder,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            },
+            trailingIcon = {
+                IconButton(
+                    onClick = {
+                        if (currentInput.isNotBlank()) {
+                            onAddItem(currentInput)
+                        }
+                    },
+                    enabled = currentInput.isNotBlank()
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add",
+                        tint = if (currentInput.isNotBlank())
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+            },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    if (currentInput.isNotBlank()) {
+                        onAddItem(currentInput)
+                    }
+                }
+            ),
+            isError = showDuplicateError,
+            supportingText = {
+                if (showDuplicateError) {
+                    Text(
+                        "This skill has already been added",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                } else if (itemsList.isNotEmpty()) {
+                    Text(
+                        "${itemsList.size} skill${if (itemsList.size > 1) "s" else ""} added",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                errorBorderColor = MaterialTheme.colorScheme.error,
+                errorLabelColor = MaterialTheme.colorScheme.error
+            )
+        )
+
+        // Suggestions chips
+        if (suggestions.isNotEmpty()) {
+            Text(
+                text = "Suggestions:",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(suggestions) { suggestion ->
+                    SuggestionChip(
+                        onClick = {
+                            if (!itemsList.contains(suggestion)) {
+                                onAddItem(suggestion)
+                            }
+                        },
+                        label = {
+                            Text(
+                                suggestion,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        },
+                        enabled = !itemsList.contains(suggestion),
+                        colors = SuggestionChipDefaults.suggestionChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                }
             }
         }
     }
