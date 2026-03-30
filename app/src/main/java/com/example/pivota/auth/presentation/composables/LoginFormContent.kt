@@ -25,6 +25,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.airbnb.lottie.compose.*
 import com.example.pivota.R
 import com.example.pivota.auth.presentation.state.LoginUiState
 import com.example.pivota.auth.presentation.viewModel.LoginViewModel
@@ -45,6 +46,16 @@ fun LoginFormContent(
     var passwordVisible by remember { mutableStateOf(false) }
     var enableFingerprint by remember { mutableStateOf(false) }
     var agreeTerms by remember { mutableStateOf(false) }
+
+    // Lottie animation
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.login_animation) // Make sure you have this animation file
+    )
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        iterations = LottieConstants.IterateForever,
+        isPlaying = true
+    )
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -68,28 +79,40 @@ fun LoginFormContent(
             .padding(horizontal = 24.dp)
 
     ) {
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(24.dp))
 
-        /* ───────── BRANDING SECTION ───────── */
+        /* ───────── LOTTIE ANIMATION SECTION ───────── */
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            LottieAnimation(
+                composition = composition,
+                progress = { progress },
+                modifier = Modifier.size(160.dp)
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        /* ───────── WELCOME TEXT ───────── */
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.logofinaletransp),
-                contentDescription = "Pivota Connect Logo",
-                modifier = Modifier.size(200.dp)
-            )
-            Spacer(Modifier.height(16.dp))
             Text(
                 text = "Welcome Back!",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
+            Spacer(Modifier.height(8.dp))
             Text(
-                text = "Sign in to continue",
+                text = "Sign in to continue your journey",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -104,7 +127,7 @@ fun LoginFormContent(
             colors = textFieldColors,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
             singleLine = true,
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(12.dp)
         )
 
         Spacer(Modifier.height(16.dp))
@@ -115,7 +138,7 @@ fun LoginFormContent(
             label = { Text("Password") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(12.dp),
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             colors = textFieldColors,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
@@ -151,9 +174,17 @@ fun LoginFormContent(
             Text(
                 text = "Enable fingerprint login",
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Switch(checked = enableFingerprint, onCheckedChange = { enableFingerprint = it })
+            Switch(
+                checked = enableFingerprint,
+                onCheckedChange = { enableFingerprint = it },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                )
+            )
         }
 
         PivotaCheckBox(
@@ -171,7 +202,10 @@ fun LoginFormContent(
             },
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(28.dp),
-            enabled = email.isNotEmpty() && password.isNotEmpty() && agreeTerms
+            enabled = email.isNotEmpty() && password.isNotEmpty() && agreeTerms,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
         ) {
             if (uiState is LoginUiState.Loading) {
                 CircularProgressIndicator(
@@ -180,7 +214,7 @@ fun LoginFormContent(
                     color = Color.White
                 )
             } else {
-                Text("Login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Login", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             }
         }
 
@@ -200,7 +234,6 @@ fun LoginFormContent(
             )
             HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
         }
-
 
         Spacer(Modifier.height(12.dp))
 
@@ -236,7 +269,10 @@ fun LoginFormContent(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
         ) {
-            Text("Don't have an account? ")
+            Text(
+                text = "Don't have an account? ",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Text(
                 text = "Register",
                 color = MaterialTheme.colorScheme.primary,
