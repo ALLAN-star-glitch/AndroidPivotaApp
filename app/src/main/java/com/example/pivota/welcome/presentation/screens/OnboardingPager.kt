@@ -11,6 +11,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -21,20 +22,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import com.example.pivota.R
+import com.example.pivota.auth.presentation.composables.AdaptiveAuthLayout
+import com.example.pivota.auth.presentation.viewModel.SignupViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OnboardingPager(
     onOnboardingComplete: (purpose: String, purposeData: Map<String, Any>) -> Unit,
     onLoginClick: () -> Unit,
+    signupViewModel: SignupViewModel = hiltViewModel(),
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(
         initialPage = 0,
-        pageCount = { 2 }
+        pageCount = { 3 }
     )
 
     val coroutineScope = rememberCoroutineScope()
@@ -62,9 +69,8 @@ fun OnboardingPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
             pageSpacing = 16.dp,
-            userScrollEnabled = false, // Disable hand swiping
+            userScrollEnabled = false,
             pageContent = { page ->
-                // Apply crossfade animation when changing pages
                 AnimatedContent(
                     targetState = page,
                     transitionSpec = {
@@ -81,19 +87,23 @@ fun OnboardingPager(
                     }
                 ) { currentPage ->
                     when (currentPage) {
-                        0 -> JoiningAsScreenContent(
+                        0 -> AdaptiveJoiningAsScreenContent(
                             onContinue = { accountType -> goToNextPage() },
                             onLoginClick = onLoginClick,
-                            currentStep = currentPage,
-                            totalSteps = 2
-                        )
-                        1 -> PurposeSelectionScreenContent(
-                            onContinue = { purpose, purposeData ->
-                                // Pass the purpose data to the completion callback
-                                onOnboardingComplete(purpose, purposeData)
+                            onSkipToDashboard = {
+                                // Skip to dashboard with empty purpose
+                                onOnboardingComplete("just_exploring", emptyMap())
                             },
                             currentStep = currentPage,
-                            totalSteps = 2,
+                            totalSteps = 3
+                        )
+                        1 -> AdaptivePurposeSelectionScreenContent(
+                            onContinue = { purpose, purposeData ->
+                                // Store purpose data and navigate to registration
+                                goToNextPage()
+                            },
+                            currentStep = currentPage,
+                            totalSteps = 3,
                             onSkipToDashboard = {
                                 // Skip to dashboard with empty purpose
                                 onOnboardingComplete("just_exploring", emptyMap())
@@ -104,79 +114,100 @@ fun OnboardingPager(
                             },
                             onJustExploring = {
                                 // Navigate directly to registration for Just Exploring
-                                onOnboardingComplete("just_exploring", emptyMap())
+                                goToNextPage()
+                            }
+                        )
+                        2 -> AdaptiveAuthLayout(
+                            viewModel = signupViewModel,
+                            desc1 = "After registering, you can upgrade your account to post unlimited jobs, rentals, or services",
+                            desc2 = "It's free to join. Upgrade when you're ready!",
+                            isLoginScreen = false,
+                            onSuccess = { email ->
+                                // On successful registration, complete onboarding
+                                onOnboardingComplete("registered", mapOf("email" to email))
                             },
-
+                            onLoginClick = onLoginClick
                         )
                     }
                 }
             }
         )
 
-        // Progress Indicator with animation
-        Row(
+        // Progress Indicator with animation and step counter
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 48.dp)
-                .padding(horizontal = 24.dp)
-                .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
-                ),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Back Arrow Button (visible on all pages)
-            AnimatedVisibility(
-                visible = true,
-                enter = fadeIn() + scaleIn(initialScale = 0.8f),
-                exit = fadeOut() + scaleOut(targetScale = 0.8f)
-            ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_back_arrow),
-                    contentDescription = "Back",
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clickable {
-                            if (currentPage > 0) {
-                                goToPreviousPage()
-                            }
-                        }
-                        .animateContentSize(),
-                    tint = if (currentPage > 0)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                )
-            }
-
-            // Progress Indicators with animation
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.animateContentSize()
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                repeat(2) { index ->
-                    val isActive = index < currentPage + 1
-                    Box(
+                // Back Arrow Button (visible on page 1 and 2, not on page 0)
+                AnimatedVisibility(
+                    visible = currentPage > 0,
+                    enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                    exit = fadeOut() + scaleOut(targetScale = 0.8f)
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_back_arrow),
+                        contentDescription = "Back",
                         modifier = Modifier
-                            .size(8.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(
-                                color = if (isActive)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.outlineVariant,
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                            .animateContentSize(
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    easing = FastOutSlowInEasing
-                                )
-                            )
+                            .size(32.dp)
+                            .clickable {
+                                if (currentPage > 0) {
+                                    goToPreviousPage()
+                                }
+                            }
+                            .animateContentSize(),
+                        tint = MaterialTheme.colorScheme.primary
                     )
+                }
+
+                // Empty spacer when back button is hidden to maintain layout
+                if (currentPage == 0) {
+                    Spacer(modifier = Modifier.size(32.dp))
+                }
+
+                // Step Counter Text
+                Text(
+                    text = "Step ${currentPage + 1} of 3",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+
+                // Progress Indicators
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.animateContentSize()
+                ) {
+                    repeat(3) { index ->
+                        val isActive = index <= currentPage
+                        Box(
+                            modifier = Modifier
+                                .size(if (isActive && index == currentPage) 24.dp else 8.dp, 8.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(
+                                    color = if (isActive)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.outlineVariant,
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                                .animateContentSize(
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        easing = FastOutSlowInEasing
+                                    )
+                                )
+                        )
+                    }
                 }
             }
         }

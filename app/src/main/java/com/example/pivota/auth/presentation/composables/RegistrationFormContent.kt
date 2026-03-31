@@ -106,7 +106,7 @@ fun RegistrationFormContent(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Welcome to Pivota! 👋",
+                text = "Last Step! Personal Details",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     fontSize = 28.sp,

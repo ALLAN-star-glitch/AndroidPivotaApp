@@ -31,15 +31,18 @@ fun HousingSeekerFields(
     var showDuplicateError by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Parse preferred areas from data.preferredAreas string into a list
     val areasList = remember(data.preferredAreas) {
         data.preferredAreas.split(",")
             .map { it.trim() }
             .filter { it.isNotEmpty() }
     }
 
-    // Generic add function for areas
-    fun addArea(currentInput: String, currentList: List<String>, onAdd: (String) -> Unit, onClearInput: () -> Unit) {
+    fun addArea(
+        currentInput: String,
+        currentList: List<String>,
+        onAdd: (String) -> Unit,
+        onClearInput: () -> Unit
+    ) {
         val trimmedItem = currentInput.trim()
         if (trimmedItem.isNotEmpty() && !currentList.contains(trimmedItem)) {
             val newItems = if (currentList.isEmpty()) {
@@ -59,16 +62,23 @@ fun HousingSeekerFields(
         }
     }
 
-    // Generic remove function for areas
-    fun removeArea(areaToRemove: String, currentList: List<String>, onRemove: (String) -> Unit) {
+    fun removeArea(
+        areaToRemove: String,
+        currentList: List<String>,
+        onRemove: (String) -> Unit
+    ) {
         val newItems = currentList.filter { it != areaToRemove }.joinToString(", ")
         onRemove(newItems)
     }
 
-    // Property Types
-    val propertyTypes = listOf("Apartment", "House", "Bedsitter", "Room", "Studio", "Townhouse", "Land")
+    // NEW: Listing Types (multi-select)
+    val listingTypes = listOf("Rental", "House for Sale")
 
-    // Common areas in Nairobi for suggestions
+    val propertyTypes = listOf(
+        "Apartment", "House", "Bedsitter", "Room",
+        "Studio", "Townhouse", "Land"
+    )
+
     val areaSuggestions = listOf(
         "Kilimani", "Kileleshwa", "Westlands", "Lavington", "Karen",
         "Ruiru", "Thika", "Kiambu", "Embakasi", "Donholm",
@@ -86,6 +96,7 @@ fun HousingSeekerFields(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
             Text(
                 text = "PURPOSE DETAILS: Housing Seeker",
                 style = MaterialTheme.typography.titleSmall.copy(
@@ -95,7 +106,45 @@ fun HousingSeekerFields(
                 )
             )
 
-            // Property Type
+            // ✅ NEW: Listing Type (multi-select)
+            Text(
+                text = "Looking For",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            )
+
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(listingTypes) { type ->
+                    FilterChip(
+                        selected = data.listingTypes.contains(type),
+                        onClick = {
+                            val updated = if (data.listingTypes.contains(type)) {
+                                data.listingTypes.filter { it != type }
+                            } else {
+                                data.listingTypes + type
+                            }
+                            onDataChange(data.copy(listingTypes = updated))
+                        },
+                        label = { Text(type) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                }
+            }
+
+            if (data.listingTypes.isNotEmpty()) {
+                Text(
+                    text = "${data.listingTypes.size} option${if (data.listingTypes.size > 1) "s" else ""} selected",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Property Type (unchanged)
             Text(
                 text = "Property Type",
                 style = MaterialTheme.typography.labelMedium.copy(
@@ -103,10 +152,8 @@ fun HousingSeekerFields(
                     color = MaterialTheme.colorScheme.primary
                 )
             )
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(propertyTypes) { type ->
                     FilterChip(
                         selected = data.propertyType == type,
@@ -120,82 +167,67 @@ fun HousingSeekerFields(
                 }
             }
 
-            // Bedrooms range
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            // Bedrooms
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = data.minBedrooms,
                     onValueChange = { onDataChange(data.copy(minBedrooms = it)) },
                     label = { Text("Min Bedrooms") },
-                    placeholder = { Text("0") },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(12.dp)
                 )
+
                 OutlinedTextField(
                     value = data.maxBedrooms,
                     onValueChange = { onDataChange(data.copy(maxBedrooms = it)) },
                     label = { Text("Max Bedrooms") },
-                    placeholder = { Text("5") },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(12.dp)
                 )
             }
 
-            // Budget range
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            // Budget
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = data.minBudget,
                     onValueChange = { onDataChange(data.copy(minBudget = it)) },
                     label = { Text("Min Budget (KES)") },
-                    placeholder = { Text("10,000") },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(12.dp)
                 )
+
                 OutlinedTextField(
                     value = data.maxBudget,
                     onValueChange = { onDataChange(data.copy(maxBudget = it)) },
                     label = { Text("Max Budget (KES)") },
-                    placeholder = { Text("100,000") },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(12.dp)
                 )
             }
 
-            // Preferred Areas Section (Pill Input)
+            // Preferred Areas
             AreaInputSection(
                 title = "Preferred Areas",
                 itemsList = areasList,
                 currentInput = currentAreaInput,
                 onCurrentInputChange = { currentAreaInput = it },
                 onAddItem = { area ->
-                    addArea(area, areasList, { newAreas -> onDataChange(data.copy(preferredAreas = newAreas)) }) { currentAreaInput = "" }
+                    addArea(area, areasList,
+                        { onDataChange(data.copy(preferredAreas = it)) }) {
+                        currentAreaInput = ""
+                    }
                 },
-                onRemoveItem = { area ->
-                    removeArea(area, areasList, { newAreas -> onDataChange(data.copy(preferredAreas = newAreas)) })
+                onRemoveItem = {
+                    removeArea(it, areasList,
+                        { onDataChange(data.copy(preferredAreas = it)) })
                 },
-                placeholder = "e.g., Kilimani, Kileleshwa, Westlands",
+                placeholder = "e.g., Kilimani, Westlands",
                 suggestions = areaSuggestions,
                 showDuplicateError = showDuplicateError
-            )
-
-            // Move-in Date
-            OutlinedTextField(
-                value = data.moveInDate,
-                onValueChange = { onDataChange(data.copy(moveInDate = it)) },
-                label = { Text("Move-in Date") },
-                placeholder = { Text("MM/DD/YYYY") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
             )
         }
     }
