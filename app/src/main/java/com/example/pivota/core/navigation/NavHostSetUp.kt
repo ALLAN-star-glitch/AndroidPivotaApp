@@ -12,7 +12,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.pivota.auth.presentation.screens.InterestsScreen
 import com.example.pivota.auth.presentation.screens.LoginScreen
-import com.example.pivota.auth.presentation.screens.RegisterScreen
 import com.example.pivota.auth.presentation.screens.SplashScreen
 import com.example.pivota.auth.presentation.screens.VerifyOtpScreen
 import com.example.pivota.auth.presentation.viewModel.LoginViewModel
@@ -68,8 +67,8 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
         composable<OnboardingFlow> {
             OnboardingPager(
                 onOnboardingComplete = { purpose, purposeData ->
-                    // After onboarding complete, navigate to registration with purpose data
-                    navController.navigate(Register) {
+                    // After onboarding complete (registration success), navigate to dashboard
+                    navController.navigate(Dashboard) {
                         popUpTo(Welcome) { inclusive = true }
                     }
                 },
@@ -97,7 +96,8 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                         navController.navigate(VerifyOtp(email = email, isLogin = true))
                     },
                     onRegisterClick = {
-                        navController.navigate(Register) {
+                        // Navigate to onboarding flow instead of separate register screen
+                        navController.navigate(OnboardingFlow) {
                             popUpTo(Login) { inclusive = true }
                         }
                     },
@@ -106,30 +106,6 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                     },
                     onBack = {
                         navController.popBackStack()
-                    }
-                )
-            }
-
-            /* ───────── REGISTER SCREEN ───────── */
-            composable<Register> { backStackEntry ->
-                val parentEntry = remember(backStackEntry) {
-                    navController.getBackStackEntry(AuthFlow)
-                }
-                val signupViewModel: SignupViewModel = hiltViewModel(parentEntry)
-
-                RegisterScreen(
-                    viewModel = signupViewModel,
-                    onSuccess = { email ->
-                        // After OTP verification in dialog, navigate directly to Dashboard
-                        navController.navigate(Dashboard) {
-                            // Clear the entire auth flow and onboarding stack
-                            popUpTo(Welcome) { inclusive = true }
-                        }
-                    },
-                    onLoginClick = {
-                        navController.navigate(Login) {
-                            popUpTo(Register) { inclusive = true }
-                        }
                     }
                 )
             }

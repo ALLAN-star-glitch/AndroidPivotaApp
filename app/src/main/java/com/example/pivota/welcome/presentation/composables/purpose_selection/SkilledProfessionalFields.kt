@@ -1,4 +1,4 @@
-package com.example.pivota.welcome.presentation.screens
+package com.example.pivota.welcome.presentation.composables.purpose_selection
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,13 +12,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pivota.welcome.presentation.screens.SkilledProfessionalData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -28,53 +28,42 @@ fun SkilledProfessionalFields(
     onDataChange: (SkilledProfessionalData) -> Unit
 ) {
     var currentSpecialtyInput by remember { mutableStateOf("") }
-    var currentServiceAreaInput by remember { mutableStateOf("") }
     var showDuplicateError by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Parse specialties from data.specialties string into a list
     val specialtiesList = remember(data.specialties) {
         data.specialties.split(",")
             .map { it.trim() }
             .filter { it.isNotEmpty() }
     }
 
-    // Parse service areas from data.serviceAreas string into a list
-    val serviceAreasList = remember(data.serviceAreas) {
-        data.serviceAreas.split(",")
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-    }
+    fun addSpecialty(input: String) {
+        val trimmed = input.trim()
+        if (trimmed.isNotEmpty() && !specialtiesList.contains(trimmed)) {
+            val updated = if (specialtiesList.isEmpty()) trimmed
+            else "${specialtiesList.joinToString(", ")}, $trimmed"
 
-    // Generic add function for any list
-    fun addItem(currentInput: String, currentList: List<String>, onAdd: (String) -> Unit, onClearInput: () -> Unit) {
-        val trimmedItem = currentInput.trim()
-        if (trimmedItem.isNotEmpty() && !currentList.contains(trimmedItem)) {
-            val newItems = if (currentList.isEmpty()) {
-                trimmedItem
-            } else {
-                "${currentList.joinToString(", ")}, $trimmedItem"
-            }
-            onAdd(newItems)
-            onClearInput()
+            onDataChange(data.copy(specialties = updated))
+            currentSpecialtyInput = ""
             showDuplicateError = false
-        } else if (currentList.contains(trimmedItem)) {
+        } else {
             showDuplicateError = true
             coroutineScope.launch {
-                delay(2000)
+                delay(1500)
                 showDuplicateError = false
             }
         }
     }
 
-    // Generic remove function
-    fun removeItem(itemToRemove: String, currentList: List<String>, onRemove: (String) -> Unit) {
-        val newItems = currentList.filter { it != itemToRemove }.joinToString(", ")
-        onRemove(newItems)
+    fun removeSpecialty(item: String) {
+        val updated = specialtiesList.filter { it != item }.joinToString(", ")
+        onDataChange(data.copy(specialties = updated))
     }
 
-    // Profession options
-    val professions = listOf("Electrician", "Plumber", "Carpenter", "Welder", "Painter", "Mason")
+    val professions = listOf(
+        "Electrician", "Plumber", "Carpenter",
+        "Welder", "Painter", "Mason"
+    )
 
     Card(
         shape = RoundedCornerShape(20.dp),
@@ -87,8 +76,9 @@ fun SkilledProfessionalFields(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
             Text(
-                text = "PURPOSE DETAILS: Skilled Professional",
+                text = "Quick Setup",
                 style = MaterialTheme.typography.titleSmall.copy(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 18.sp,
@@ -96,7 +86,7 @@ fun SkilledProfessionalFields(
                 )
             )
 
-            // Profession selection
+            // Profession (main identity)
             Text(
                 text = "Profession",
                 style = MaterialTheme.typography.labelMedium.copy(
@@ -104,87 +94,47 @@ fun SkilledProfessionalFields(
                     color = MaterialTheme.colorScheme.primary
                 )
             )
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(professions) { prof ->
                     FilterChip(
                         selected = data.profession == prof,
-                        onClick = { onDataChange(data.copy(profession = prof, otherProfession = "")) },
-                        label = { Text(prof) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        onClick = {
+                            onDataChange(data.copy(profession = prof, otherProfession = ""))
+                        },
+                        label = { Text(prof) }
                     )
                 }
             }
 
-            // Other profession input
+            // Optional "Other"
             OutlinedTextField(
                 value = data.otherProfession,
-                onValueChange = { onDataChange(data.copy(profession = "Other", otherProfession = it)) },
-                label = { Text("Other Profession") },
-                placeholder = { Text("Enter your profession if not listed above") },
+                onValueChange = {
+                    onDataChange(
+                        data.copy(
+                            profession = "Other",
+                            otherProfession = it
+                        )
+                    )
+                },
+                label = { Text("Other (optional)") },
+                placeholder = { Text("Enter your profession") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
 
-            // Specialties Section (Pill Input)
+            // Specialties
             SkillInputSectionProfessional(
                 title = "Specialties",
                 itemsList = specialtiesList,
                 currentInput = currentSpecialtyInput,
                 onCurrentInputChange = { currentSpecialtyInput = it },
-                onAddItem = { specialty ->
-                    addItem(specialty, specialtiesList, { newSpecialties -> onDataChange(data.copy(specialties = newSpecialties)) }) { currentSpecialtyInput = "" }
-                },
-                onRemoveItem = { specialty ->
-                    removeItem(specialty, specialtiesList, { newSpecialties -> onDataChange(data.copy(specialties = newSpecialties)) })
-                },
-                placeholder = "e.g., Wiring, Lighting Installation, Fault Diagnosis",
-                suggestions = listOf("Wiring", "Lighting Installation", "Fault Diagnosis", "Pipe Fitting", "Welding", "Carpentry"),
+                onAddItem = { addSpecialty(it) },
+                onRemoveItem = { removeSpecialty(it) },
+                placeholder = "e.g., Wiring, Pipe Fixing",
+                suggestions = listOf("Wiring", "Pipe Fixing", "Painting", "Welding"),
                 showDuplicateError = showDuplicateError
-            )
-
-            // Years Experience
-            OutlinedTextField(
-                value = data.yearsExperience,
-                onValueChange = { onDataChange(data.copy(yearsExperience = it)) },
-                label = { Text("Years Experience") },
-                placeholder = { Text("5") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-
-            // Service Areas Section (Pill Input)
-            SkillInputSection(
-                title = "Service Areas",
-                itemsList = serviceAreasList,
-                currentInput = currentServiceAreaInput,
-                onCurrentInputChange = { currentServiceAreaInput = it },
-                onAddItem = { area ->
-                    addItem(area, serviceAreasList, { newAreas -> onDataChange(data.copy(serviceAreas = newAreas)) }) { currentServiceAreaInput = "" }
-                },
-                onRemoveItem = { area ->
-                    removeItem(area, serviceAreasList, { newAreas -> onDataChange(data.copy(serviceAreas = newAreas)) })
-                },
-                placeholder = "e.g., Nairobi, Kiambu, Ruiru",
-                suggestions = listOf("Nairobi", "Kiambu", "Ruiru", "Thika", "Kisumu", "Mombasa"),
-                showDuplicateError = showDuplicateError
-            )
-
-            // Hourly Rate
-            OutlinedTextField(
-                value = data.hourlyRate,
-                onValueChange = { onDataChange(data.copy(hourlyRate = it)) },
-                label = { Text("Hourly Rate (KES)") },
-                placeholder = { Text("500") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
         }
     }
