@@ -28,11 +28,29 @@ fun PivotaPrimaryButton(
     iconTint: Color = MaterialTheme.colorScheme.onPrimary,
     enabled: Boolean = true
 ) {
+    val backgroundColor = if (enabled) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f)
+    }
+
+    val textColor = if (enabled) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+    }
+
+    val iconColor = if (enabled) {
+        iconTint
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+    }
+
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(48.dp))
             .background(
-                color = MaterialTheme.colorScheme.primary,
+                color = backgroundColor,
                 shape = RoundedCornerShape(48.dp)
             )
             .clickable(enabled = enabled) { onClick() }
@@ -44,7 +62,7 @@ fun PivotaPrimaryButton(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = iconTint,
+                tint = iconColor,
                 modifier = Modifier.size(24.dp)
             )
             Text(
@@ -56,7 +74,7 @@ fun PivotaPrimaryButton(
             text = text,
             style = MaterialTheme.typography.bodyLarge.copy(
                 fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onPrimary
+                color = textColor
             )
         )
     }
