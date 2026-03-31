@@ -258,8 +258,8 @@ val unspecified_scheme = ColorFamily(
 @Composable
 fun PivotaConnectTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    useMediumContrast: Boolean = false,
+    useHighContrast: Boolean = false,
     content: @Composable() () -> Unit
 ) {
     val colorScheme = when {

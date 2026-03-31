@@ -45,7 +45,6 @@ object KtorClientFactory {
             }
 
             defaultRequest {
-                // Tip: Move this URL to a BuildConfig or Constant file later
                 url(NetworkConstants.BASE_URL)
                 header(HttpHeaders.ContentType, ContentType.Application.Json)
             }

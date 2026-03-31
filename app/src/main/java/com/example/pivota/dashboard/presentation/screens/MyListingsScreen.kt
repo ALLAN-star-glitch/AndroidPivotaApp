@@ -39,9 +39,14 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
+import com.example.pivota.admin.presentation.screens.AdminJobListingUiModel
+import com.example.pivota.admin.presentation.screens.ApplicationFunnel
+import com.example.pivota.admin.presentation.screens.JobStatus
 import com.example.pivota.dashboard.domain.*
 import com.example.pivota.dashboard.presentation.model.*
+import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
 import kotlinx.coroutines.delay
+import java.util.*
 
 // Category type for filtering
 enum class CategoryType {
@@ -63,8 +68,10 @@ data class StatusFilterState(
 fun MyListingsScreen(
     viewModel: MyListingsViewModel = hiltViewModel(),
     onListingClick: (ListingUiModel) -> Unit,
+    onJobClick: (AdminJobListingUiModel) -> Unit, // NEW: Admin job click handler
     onPostListingClick: () -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onHousingViewClick: (HousingListingUiModel) -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val listings by viewModel.filteredListings.collectAsStateWithLifecycle()
@@ -102,7 +109,7 @@ fun MyListingsScreen(
             when (selectedCategory) {
                 CategoryType.ALL -> matches = true
                 CategoryType.JOB -> matches = listing.category.label.equals("Job", ignoreCase = true)
-                CategoryType.HOUSING -> matches = listing.category.label.equals("Housing", ignoreCase = true)
+                CategoryType.HOUSING -> matches = listing.category.label.equals("House", ignoreCase = true)
                 CategoryType.SERVICE -> matches = listing.category.label.equals("Service", ignoreCase = true)
             }
 
@@ -195,7 +202,41 @@ fun MyListingsScreen(
                     items(filteredListings, key = { it.id }) { listing ->
                         ListingCard(
                             listing = listing,
-                            onClick = { onListingClick(listing) },
+                            onClick = {
+                                // Check if it's a housing listing using the label
+                                if (listing.category.label.equals("House", ignoreCase = true)) {
+                                    // Since we don't have full housing data, we'll create a basic HousingListingUiModel
+                                    val housingListing = HousingListingUiModel(
+                                        id = listing.id,
+                                        title = listing.title,
+                                        price = "KES 0", // Default price
+                                        location = "Nairobi", // Default location
+                                        propertyType = "Apartment", // Default type
+                                        description = listing.descriptionPreview,
+                                        isVerified = false,
+                                        isForSale = false,
+                                        rating = 0.0,
+                                        bedrooms = 0,
+                                        bathrooms = 0,
+                                        squareMeters = 0,
+                                        imageRes = null,
+                                        status = listing.status,
+                                        views = listing.views,
+                                        messages = listing.messages,
+                                        requests = listing.requests
+                                    )
+                                    onHousingViewClick(housingListing)
+                                }
+                                // NEW: Handle job clicks
+                                else if (listing.category.label.equals("Job", ignoreCase = true)) {
+                                    // Convert the generic listing to AdminJobListingUiModel
+                                    val adminJobListing = convertToAdminJobListing(listing)
+                                    onJobClick(adminJobListing)
+                                }
+                                else {
+                                    onListingClick(listing)
+                                }
+                            },
                             colorScheme = colorScheme
                         )
                     }
@@ -219,6 +260,63 @@ fun MyListingsScreen(
             colorScheme = colorScheme
         )
     }
+}
+
+// NEW: Helper function to convert generic ListingUiModel to AdminJobListingUiModel
+private fun convertToAdminJobListing(listing: ListingUiModel): AdminJobListingUiModel {
+    // Map ListingStatus to JobStatus
+    val jobStatus = when (listing.status) {
+        ListingStatus.ACTIVE -> JobStatus.ACTIVE
+        ListingStatus.PAUSED -> JobStatus.PAUSED
+        ListingStatus.CLOSED -> JobStatus.CLOSED
+        ListingStatus.PENDING -> JobStatus.PENDING_REVIEW
+        ListingStatus.REJECTED -> JobStatus.CLOSED
+        ListingStatus.EXPIRED -> JobStatus.CLOSED
+        ListingStatus.ARCHIVED -> JobStatus.CLOSED
+        ListingStatus.DRAFT -> JobStatus.PENDING_REVIEW
+        ListingStatus.AVAILABLE -> JobStatus.ACTIVE
+        ListingStatus.RENTED -> JobStatus.CLOSED
+        ListingStatus.SOLD -> JobStatus.CLOSED
+        ListingStatus.INACTIVE -> JobStatus.CLOSED
+    }
+
+    // Create sample dates (you should get these from your data source)
+    val calendar = Calendar.getInstance()
+    calendar.add(Calendar.DAY_OF_YEAR, -5)
+    val postedDate = calendar.time
+
+    calendar.add(Calendar.DAY_OF_YEAR, 25)
+    val expiryDate = calendar.time
+
+    return AdminJobListingUiModel(
+        id = listing.id,
+        title = listing.title,
+        companyName = "Your Company", // This should come from your data
+        companyLogoUrl = null,
+        location = "Nairobi, Kenya", // This should come from your data
+        exactLocation = null,
+        jobType = "Full-time", // This should come from your data
+        status = jobStatus,
+        postedDate = postedDate,
+        expiryDate = expiryDate,
+        views = listing.views,
+        applications = listing.requests, // Map requests to applications
+        newApplications = 0, // This needs to come from your data
+        reviewedApplications = 0, // This needs to come from your data
+        description = listing.descriptionPreview,
+        requirements = emptyList(),
+        skills = emptyList(),
+        benefits = emptyList(),
+        isVerified = true,
+        employerName = "Employer Name", // This should come from your data
+        employerVerified = true,
+        averageTimeToApply = 0.0,
+        applicationFunnel = ApplicationFunnel(
+            viewed = listing.views,
+            applied = listing.requests,
+            reviewed = 0
+        )
+    )
 }
 
 /* ────────────── SEARCH HEADER with SmartMatch style ────────────── */
@@ -305,7 +403,6 @@ private fun MyListingsHeader(
                     }
                 }
 
-                // Removed sort/filter icon from here - it's now in search bar
                 Spacer(modifier = Modifier.width(40.dp))
             }
 
@@ -347,7 +444,7 @@ private fun MyListingsHeader(
                             Box {
                                 if (searchQuery.isEmpty()) {
                                     Text(
-                                        text = "Search your listings...",
+                                        text = "Search...",
                                         color = colorScheme.onSurfaceVariant.copy(0.5f),
                                         fontSize = 14.sp,
                                         style = MaterialTheme.typography.bodyMedium
@@ -1069,5 +1166,3 @@ private fun ElegantEmptyState(
         }
     }
 }
-
-// FlowRowStatus has been removed - using manual row layout instead
