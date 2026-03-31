@@ -18,17 +18,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bed
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.filled.Shower
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.Whatsapp
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.SquareFoot
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -53,7 +53,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.pivota.dashboard.presentation.composables.ContactIcon
 
 @SuppressLint("DefaultLocale")
 @Composable
@@ -64,14 +63,15 @@ fun ModernHousingCard(
     type: String,
     rating: Double,
     isVerified: Boolean,
-    description: String = "", // Added description parameter
+    bedrooms: Int,              // Required parameter
+    bathrooms: Int,              // Required parameter
+    squareMeters: Int,           // Required parameter
+    modifier: Modifier = Modifier, // Added modifier parameter
+    description: String = "",
     isForSale: Boolean = false,
-    imageRes: Int,
+    imageRes: Any,
     onViewClick: () -> Unit = {},
     onBookClick: () -> Unit = {},
-    onMessageClick: () -> Unit = {},
-    onWhatsAppClick: () -> Unit = {},
-    onPhoneClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
     var isFavorite by remember { mutableStateOf(false) }
@@ -89,8 +89,8 @@ fun ModernHousingCard(
     val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
 
     Card(
-        modifier = Modifier
-            .width(300.dp)
+        modifier = modifier
+            .width(300.dp) // Keep default width but allow overriding via modifier
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -262,7 +262,7 @@ fun ModernHousingCard(
                     }
                 }
 
-                // Short Description (new)
+                // Short Description
                 if (description.isNotEmpty()) {
                     Text(
                         text = description,
@@ -275,7 +275,7 @@ fun ModernHousingCard(
                     )
                 }
 
-                // Location
+                // Location with icon
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -295,6 +295,73 @@ fun ModernHousingCard(
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall
                     )
+                }
+
+                // Property Features Row (Beds, Baths, SqM)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Bedrooms
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Bed,
+                            contentDescription = "Bedrooms",
+                            tint = onSurfaceVariantColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = bedrooms.toString(),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = onSurfaceColor,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    // Bathrooms
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Shower,
+                            contentDescription = "Bathrooms",
+                            tint = onSurfaceVariantColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = bathrooms.toString(),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = onSurfaceColor,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    // Square Meters
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.SquareFoot,
+                            contentDescription = "Square Meters",
+                            tint = onSurfaceVariantColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "$squareMeters m²",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = onSurfaceColor,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
 
                 // Price Row
@@ -350,40 +417,6 @@ fun ModernHousingCard(
                         .height(1.dp)
                         .background(outlineVariantColor)
                 )
-
-                // Contact Icons Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Message Icon
-                    ContactIcon(
-                        icon = Icons.Filled.Message,
-                        contentDescription = "Send message",
-                        onClick = onMessageClick,
-                        tint = secondaryColor,
-                        backgroundColor = secondaryColor.copy(alpha = 0.1f)
-                    )
-
-                    // WhatsApp Icon
-                    ContactIcon(
-                        icon = Icons.Filled.Whatsapp,
-                        contentDescription = "Chat on WhatsApp",
-                        onClick = onWhatsAppClick,
-                        tint = primaryColor,
-                        backgroundColor = primaryColor.copy(alpha = 0.1f)
-                    )
-
-                    // Phone Icon
-                    ContactIcon(
-                        icon = Icons.Filled.Call,
-                        contentDescription = "Call now",
-                        onClick = onPhoneClick,
-                        tint = secondaryColor,
-                        backgroundColor = secondaryColor.copy(alpha = 0.1f)
-                    )
-                }
 
                 // Action Buttons Row
                 Row(

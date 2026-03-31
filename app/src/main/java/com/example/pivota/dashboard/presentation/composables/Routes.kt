@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 // Top-level dashboard routes
 @Serializable object Dashboard
-@Serializable object Providers
+@Serializable object Professionals
 @Serializable object Discover
 @Serializable object SmartMatch
 @Serializable object Profile
@@ -16,4 +16,29 @@ import kotlinx.serialization.Serializable
 @Serializable object PostService
 
 
+
 @Serializable object MyListings
+
+@Serializable object HouseListings
+
+@Serializable object JobListings
+
+@Serializable
+data object BookViewing
+
+@Serializable
+data object  HouseDetails
+
+@Serializable
+data object AdminHouseDetails
+
+@Serializable
+object JobDetails
+
+@Serializable
+object JobApplicationForm // Optional - if you want an application form screen
+
+@Serializable
+object AdminJobDetails
+
+// Add more routes as needed
