@@ -2,9 +2,20 @@ package com.example.pivota.auth.data.remote.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 
 /* ======================================================
-   CORE WRAPPERS
+   BASE RESPONSE (Matches proto SignupResponse/LoginResponse pattern)
 ====================================================== */
 
 @Serializable
@@ -13,92 +24,104 @@ data class BaseResponseDto<T>(
     @SerialName("message") val message: String,
     @SerialName("code") val code: String,
     @SerialName("data") val data: T? = null,
-    @SerialName("error") val error: ApiErrorDto? = null
+    @SerialName("error") val error: ErrorPayloadDto? = null
 )
 
-@Serializable
-data class ApiErrorDto(
+@Serializable(with = ErrorPayloadDtoSerializer::class)
+data class ErrorPayloadDto(
     val message: String? = null,
     val code: String? = null,
-    val status: Int? = null
-)
+    val details: String? = null
+) {
+    fun getErrorMessage(): String = message ?: "Unknown error"
+}
+
+object ErrorPayloadDtoSerializer : kotlinx.serialization.KSerializer<ErrorPayloadDto> {
+    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("ErrorPayloadDto")
+
+    override fun deserialize(decoder: Decoder): ErrorPayloadDto {
+        val jsonDecoder = decoder as? kotlinx.serialization.json.JsonDecoder
+            ?: return ErrorPayloadDto()
+
+        val element = jsonDecoder.decodeJsonElement()
+        val jsonObject = element.jsonObject
+
+        // Handle message that could be String or Array
+        val message = when (val msgElement = jsonObject["message"]) {
+            null -> null
+            is JsonPrimitive -> msgElement.content
+            else -> {
+                // It's an array
+                msgElement.jsonArray.joinToString(", ") { it.jsonPrimitive.content }
+            }
+        }
+
+        return ErrorPayloadDto(
+            message = message,
+            code = jsonObject["code"]?.jsonPrimitive?.contentOrNull,
+            details = jsonObject["details"]?.jsonPrimitive?.contentOrNull
+        )
+    }
+
+    override fun serialize(encoder: Encoder, value: ErrorPayloadDto) {
+        // Not needed for deserialization
+    }
+}
 
 /* ======================================================
-   INDIVIDUAL USER RESPONSE (T = UserResponseDto)
+   SIGNUP RESPONSE DATA (Matches proto SignupSuccessData)
 ====================================================== */
 
 @Serializable
-data class UserResponseDto(
-    @SerialName("user") val user: UserDto,
-    @SerialName("account") val account: AccountResponseDto,
-    @SerialName("profile") val profile: ProfileResponseDto = ProfileResponseDto(),
-    @SerialName("completion") val completion: CompletionResponseDto
+data class SignupSuccessDataDto(
+    @SerialName("message") val message: String  // "Signup successful"
 )
 
+typealias SignupResponseDto = BaseResponseDto<SignupSuccessDataDto>
+
+/* ======================================================
+   LOGIN RESPONSE DATA (Matches proto LoginData)
+====================================================== */
+
 @Serializable
-data class UserDto(
-    @SerialName("uuid") val uuid: String,
-    @SerialName("userCode") val userCode: String,
-    @SerialName("firstName") val firstName: String? = null,
-    @SerialName("lastName") val lastName: String? = null,
-    @SerialName("email") val email: String,
-    @SerialName("phone") val phone: String? = null,
-    @SerialName("roleName") val roleName: String? = "",
-    @SerialName("status") val status: String,
+data class LoginDataDto(
+    // Stage 1: MFA required
+    @SerialName("email") val email: String? = null,
+    @SerialName("uuid") val uuid: String? = null,
+    @SerialName("message") val message: String? = null,  // "MFA_REQUIRED"
+
+    // Stage 2: Tokens
     @SerialName("accessToken") val accessToken: String? = null,
-    @SerialName("refreshToken") val refreshToken: String? = null,
-    @SerialName("account") val account: AccountResponseDto, /// TODO ,
-    //@SerialName("organization") val organization: OrganizationResponseDto? = null
+    @SerialName("refreshToken") val refreshToken: String? = null
 )
 
+typealias LoginResponseDto = BaseResponseDto<LoginDataDto>
+
 /* ======================================================
-   ORGANIZATION SIGNUP RESPONSE (T = OrganisationSignupDataDto)
+   VERIFY OTP RESPONSE (Matches proto VerifyOtpResponse)
 ====================================================== */
 
 @Serializable
-data class OrganisationSignupDataDto(
-    @SerialName("organization") val organization: OrgBaseDto,
-    @SerialName("admin") val admin: AdminUserResponseDto,
-    @SerialName("account") val account: AccountResponseDto
+data class VerifyOtpDataDto(
+    @SerialName("verified") val verified: Boolean
 )
 
-@Serializable
-data class OrgBaseDto(
-    @SerialName("id") val id: String,
-    @SerialName("uuid") val uuid: String,
-    @SerialName("name") val name: String,
-    @SerialName("orgCode") val orgCode: String,
-    @SerialName("verificationStatus") val verificationStatus: String
-)
-
-@Serializable
-data class AdminUserResponseDto(
-    @SerialName("uuid") val uuid: String,
-    @SerialName("userCode") val userCode: String,
-    @SerialName("email") val email: String,
-    @SerialName("firstName") val firstName: String,
-    @SerialName("lastName") val lastName: String,
-    @SerialName("roleName") val roleName: String,
-    @SerialName("phone") val phone: String
-)
+typealias VerifyOtpResponseDto = BaseResponseDto<VerifyOtpDataDto>
 
 /* ======================================================
-   COMMON SHARED COMPONENTS
+   BASE OTP RESPONSE (Matches proto BaseOtpResponse)
+====================================================== */
+
+typealias BaseOtpResponseDto = BaseResponseDto<Nothing>
+
+/* ======================================================
+   REFRESH TOKEN RESPONSE (Matches proto RefreshTokenResponse)
 ====================================================== */
 
 @Serializable
-data class AccountResponseDto(
-    @SerialName("uuid") val uuid: String,
-    @SerialName("accountCode") val accountCode: String,
-    @SerialName("type") val type: String // "INDIVIDUAL" | "ORGANIZATION"
+data class RefreshTokenDataDto(
+    @SerialName("accessToken") val accessToken: String,
+    @SerialName("refreshToken") val refreshToken: String
 )
 
-@Serializable
-class ProfileResponseDto // Empty object in JSON
-
-@Serializable
-data class CompletionResponseDto(
-    @SerialName("percentage") val percentage: Int,
-    @SerialName("missingFields") val missingFields: List<String>,
-    @SerialName("isComplete") val isComplete: Boolean
-)
+typealias RefreshTokenResponseDto = BaseResponseDto<RefreshTokenDataDto>

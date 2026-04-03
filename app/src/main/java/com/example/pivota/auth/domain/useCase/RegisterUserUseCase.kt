@@ -7,11 +7,14 @@ import javax.inject.Inject
 class RegisterUserUseCase @Inject constructor(
     private val repository: AuthRepository
 ) {
-    suspend fun signupIndividual(user: User, code: String, password: String): Result<User> {
+    /**
+     * Individual Signup
+     * @param user User object containing registration data
+     * @param code 6-digit OTP code
+     * @param password User's password
+     * @return Result<Unit> - Success or failure (no tokens returned, user must login separately)
+     */
+    suspend fun signupIndividual(user: User, code: String, password: String): Result<Unit> {
         return repository.signupIndividual(user, code, password)
-    }
-
-    suspend fun signupOrganization(user: User, code: String, password: String): Result<User> {
-        return repository.signupOrganization(user, code, password)
     }
 }

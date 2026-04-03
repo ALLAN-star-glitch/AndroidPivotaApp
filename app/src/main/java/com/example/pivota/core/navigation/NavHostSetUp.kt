@@ -9,15 +9,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
-import com.example.pivota.auth.presentation.screens.InterestsScreen
 import com.example.pivota.auth.presentation.screens.LoginScreen
 import com.example.pivota.auth.presentation.screens.SplashScreen
-import com.example.pivota.auth.presentation.screens.VerifyOtpScreen
-import com.example.pivota.auth.presentation.viewModel.LoginViewModel
-import com.example.pivota.auth.presentation.viewModel.SignupViewModel
+import com.example.pivota.core.preferences.PivotaDataStore
 import com.example.pivota.dashboard.presentation.screens.DashboardScaffold
 import com.example.pivota.welcome.presentation.screens.OnboardingPager
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.hilt.android.EntryPointAccessors
 
 @Composable
 fun NavHostSetup(modifier: Modifier = Modifier) {
@@ -45,19 +45,15 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
         composable<Welcome> {
             WelcomeScreen(
                 onNavigateToContinueSetup = {
-                    // Navigate to full onboarding flow
                     navController.navigate(OnboardingFlow)
                 },
                 onNavigateToContinueWithGoogle = {
-                    // TODO: Implement Google Sign-In when ready
                     navController.navigate(GuestDashboard)
                 },
                 onNavigateToLogin = {
-                    // Navigate to login screen
                     navController.navigate(AuthFlow)
                 },
                 onNavigateToSkipToDashboard = {
-                    // Skip to minimal account (guest dashboard)
                     navController.navigate(GuestDashboard)
                 }
             )
@@ -65,15 +61,16 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
 
         /* ───────── ONBOARDING FLOW ───────── */
         composable<OnboardingFlow> {
+            val onboardingDataStore = rememberOnboardingDataStore()
+
             OnboardingPager(
+                datastore = onboardingDataStore,
                 onOnboardingComplete = { purpose, purposeData ->
-                    // After onboarding complete (registration success), navigate to dashboard
                     navController.navigate(Dashboard) {
                         popUpTo(Welcome) { inclusive = true }
                     }
                 },
                 onLoginClick = {
-                    // Navigate to login screen
                     navController.navigate(AuthFlow)
                 }
             )
@@ -92,44 +89,20 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
             /* ───────── LOGIN SCREEN ───────── */
             composable<Login> {
                 LoginScreen(
-                    onSuccess = { email ->
-                        navController.navigate(VerifyOtp(email = email, isLogin = true))
+                    onSuccess = { user ->
+                        navController.navigate(Dashboard) {
+                            popUpTo(AuthFlow) { inclusive = true }
+                        }
                     },
                     onRegisterClick = {
-                        // Navigate to onboarding flow instead of separate register screen
                         navController.navigate(OnboardingFlow) {
                             popUpTo(Login) { inclusive = true }
                         }
                     },
                     onForgotPasswordClick = {
-                        // TODO: navController.navigate(ForgotPassword)
+                        // TODO: Navigate to ForgotPassword screen when implemented
                     },
                     onBack = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-
-            /* ───────── VERIFY OTP SCREEN ───────── */
-            composable<VerifyOtp> { backStackEntry ->
-                val parentEntry = remember(backStackEntry) {
-                    navController.getBackStackEntry(AuthFlow)
-                }
-                val signupViewModel: SignupViewModel = hiltViewModel(parentEntry)
-                val loginViewModel: LoginViewModel = hiltViewModel(backStackEntry)
-                val args = backStackEntry.toRoute<VerifyOtp>()
-
-                VerifyOtpScreen(
-                    email = args.email,
-                    isLoginFlow = args.isLogin,
-                    loginViewModel = loginViewModel,
-                    signupViewModel = signupViewModel,
-                    onVerificationSuccess = {
-                        navController.navigate(Dashboard) {
-                            popUpTo(AuthFlow) { inclusive = true }
-                        }
-                    },
-                    onNavigateBack = {
                         navController.popBackStack()
                     }
                 )
@@ -143,4 +116,24 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
             )
         }
     }
+}
+
+@Composable
+fun rememberOnboardingDataStore(): PivotaDataStore {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    val entryPoint = remember {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            OnboardingDataStoreEntryPoint::class.java
+        )
+    }
+
+    return entryPoint.onboardingDataStore()
+}
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface OnboardingDataStoreEntryPoint {
+    fun onboardingDataStore(): PivotaDataStore
 }

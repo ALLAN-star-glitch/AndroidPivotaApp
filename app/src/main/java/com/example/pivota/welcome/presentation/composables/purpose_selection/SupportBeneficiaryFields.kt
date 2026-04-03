@@ -18,13 +18,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.welcome.presentation.screens.SupportBeneficiaryData
+import com.example.pivota.welcome.presentation.state.SupportBeneficiaryFormData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun SupportBeneficiaryFields(
-    data: SupportBeneficiaryData,
-    onDataChange: (SupportBeneficiaryData) -> Unit
+    data: SupportBeneficiaryFormData,
+    onDataChange: (SupportBeneficiaryFormData) -> Unit
 ) {
     var currentUrgentNeedInput by remember { mutableStateOf("") }
     var showDuplicateError by remember { mutableStateOf(false) }
