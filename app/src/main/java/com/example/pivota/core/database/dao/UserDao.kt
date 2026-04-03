@@ -22,6 +22,9 @@ interface UserDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: UserEntity)
 
+    @Query("UPDATE users SET accessToken = :accessToken, refreshToken = :refreshToken, isAuthenticated = :isAuthenticated, updatedAt = :updatedAt WHERE email = :email")
+    suspend fun updateUserTokens(email: String, accessToken: String?, refreshToken: String?, isAuthenticated: Boolean, updatedAt: Long)
+
     @Query("UPDATE users SET isOnboardingComplete = :isComplete WHERE email = :email")
     suspend fun updateOnboardingStatus(email: String, isComplete: Boolean)
 

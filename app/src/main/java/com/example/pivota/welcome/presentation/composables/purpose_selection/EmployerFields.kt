@@ -11,11 +11,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.welcome.presentation.screens.EmployerData
+import com.example.pivota.welcome.presentation.state.EmployerFormData
 
 @Composable
 fun EmployerFields(
-    data: EmployerData,
-    onDataChange: (EmployerData) -> Unit
+    data: EmployerFormData,
+    onDataChange: (EmployerFormData) -> Unit
 ) {
 
     val industries = listOf(

@@ -71,7 +71,6 @@ data class IntermediaryAgentProfileDataDto(
 
 @Serializable
 data class HousingSeekerProfileDataDto(
-    // Basic preferences
     @SerialName("minBedrooms") val minBedrooms: Int? = null,
     @SerialName("maxBedrooms") val maxBedrooms: Int? = null,
     @SerialName("minBudget") val minBudget: Double? = null,
@@ -88,31 +87,7 @@ data class HousingSeekerProfileDataDto(
     @SerialName("longitude") val longitude: Double? = null,
     @SerialName("searchRadiusKm") val searchRadiusKm: Int? = null,
     @SerialName("hasAgent") val hasAgent: Boolean = false,
-    @SerialName("agentUuid") val agentUuid: String? = null,
-
-    // ======================================================
-    // SEARCH TYPE (Matches backend listingType concept)
-    // Values: "RENTAL", "SALE", "BOTH"
-    // ======================================================
-    @SerialName("searchType") val searchType: String? = null,
-    @SerialName("isLookingForRental") val isLookingForRental: Boolean = false,
-    @SerialName("isLookingToBuy") val isLookingToBuy: Boolean = false,
-
-    // ======================================================
-    // RENTAL PREFERENCES (Matches backend rental fields)
-    // ======================================================
-    @SerialName("minimumLeaseTerm") val minimumLeaseTerm: Int? = null,  // Minimum lease term in months
-    @SerialName("maximumLeaseTerm") val maximumLeaseTerm: Int? = null,  // Maximum lease term in months
-    @SerialName("depositAmount") val depositAmount: Double? = null,      // Security deposit amount
-    @SerialName("isPetFriendly") val isPetFriendly: Boolean = false,     // Whether pets are allowed
-    @SerialName("utilitiesIncluded") val utilitiesIncluded: Boolean = false, // Utilities included in rent
-    @SerialName("utilitiesDetails") val utilitiesDetails: String? = null,    // Details about utilities
-
-    // ======================================================
-    // SALE PREFERENCES (Matches backend sale fields)
-    // ======================================================
-    @SerialName("isNegotiable") val isNegotiable: Boolean = true,         // Whether price is negotiable
-    @SerialName("titleDeedAvailable") val titleDeedAvailable: Boolean = false // Title deed available
+    @SerialName("agentUuid") val agentUuid: String? = null
 )
 
 @Serializable
@@ -155,7 +130,6 @@ data class EmployerProfileDataDto(
 
 @Serializable
 data class PropertyOwnerProfileDataDto(
-    // Basic information
     @SerialName("isProfessional") val isProfessional: Boolean = false,
     @SerialName("licenseNumber") val licenseNumber: String? = null,
     @SerialName("companyName") val companyName: String? = null,
@@ -166,15 +140,7 @@ data class PropertyOwnerProfileDataDto(
     @SerialName("managingAgentUuid") val managingAgentUuid: String? = null,
     @SerialName("propertyCount") val propertyCount: Int? = null,
     @SerialName("propertyTypes") val propertyTypes: List<String> = emptyList(),
-    @SerialName("propertyPurpose") val propertyPurpose: String? = null,
-
-    // ======================================================
-    // LISTING TYPE (Matches backend listingType)
-    // Values: "RENT", "SALE", "BOTH"
-    // ======================================================
-    @SerialName("listingType") val listingType: String? = null,
-    @SerialName("isListingForRent") val isListingForRent: Boolean = false,
-    @SerialName("isListingForSale") val isListingForSale: Boolean = false
+    @SerialName("propertyPurpose") val propertyPurpose: String? = null
 )
 
 /* ======================================================
@@ -229,8 +195,7 @@ data class VerifyMfaLoginRequestDto(
 @Serializable
 data class RequestOtpRequestDto(
     @SerialName("email") val email: String,
-    @SerialName("purpose") val purpose: String,  // "SIGNUP", "FORGOT_PASSWORD", "LOGIN"
-    @SerialName("phone") val phone: String? = null,
+    @SerialName("purpose") val purpose: String  // "SIGNUP", "FORGOT_PASSWORD", "LOGIN"
 )
 
 /* ======================================================

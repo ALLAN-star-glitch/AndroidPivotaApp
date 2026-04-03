@@ -100,19 +100,13 @@ class AuthDataMapper @Inject constructor() {
         )
     }
 
-    // UPDATED: Include new simplified fields for housing seeker
     fun toHousingSeekerDataDto(domain: HousingSeekerPreferences): HousingSeekerProfileDataDto {
         return HousingSeekerProfileDataDto(
-            // New simplified fields
-            searchType = domain.searchType,
-            isLookingForRental = domain.isLookingForRental,
-            isLookingToBuy = domain.isLookingToBuy,
-            preferredTypes = domain.propertyTypes,  // Map propertyTypes to preferredTypes
-            // Legacy fields (kept for backward compatibility)
             minBedrooms = domain.minBedrooms,
             maxBedrooms = domain.maxBedrooms,
             minBudget = domain.minBudget,
             maxBudget = domain.maxBudget,
+            preferredTypes = domain.preferredTypes,
             preferredCities = domain.preferredCities,
             preferredNeighborhoods = domain.preferredNeighborhoods,
             moveInDate = domain.moveInDate,
@@ -168,108 +162,38 @@ class AuthDataMapper @Inject constructor() {
         )
     }
 
-    // UPDATED: Include new simplified fields for property owner
     fun toPropertyOwnerDataDto(domain: PropertyOwnerPortfolio): PropertyOwnerProfileDataDto {
         return PropertyOwnerProfileDataDto(
-            // New simplified fields
-            listingType = domain.listingType,
-            isListingForRent = domain.isListingForRent,
-            isListingForSale = domain.isListingForSale,
-            // Core fields
-            propertyCount = domain.propertyCount,
-            propertyTypes = domain.propertyTypes,
-            serviceAreas = domain.serviceAreas,
-            // Legacy fields (kept for backward compatibility)
             isProfessional = domain.isProfessional,
             licenseNumber = domain.licenseNumber,
             companyName = domain.companyName,
             yearsInBusiness = domain.yearsInBusiness,
             preferredPropertyTypes = domain.preferredPropertyTypes,
+            serviceAreas = domain.serviceAreas,
             usesAgent = domain.usesAgent,
             managingAgentUuid = domain.managingAgentUuid,
+            propertyCount = domain.propertyCount,
+            propertyTypes = domain.propertyTypes,
             propertyPurpose = domain.propertyPurpose
         )
     }
 
     // ======================================================
-    // RESPONSE DTO TO DOMAIN MAPPERS (For handling API responses)
+    // DTO TO DOMAIN MAPPERS (For handling responses)
     // ======================================================
 
-    fun toLoginResponse(response: LoginResponseDto): LoginResponse {
-        return if (response.success && response.data != null) {
-            if (response.data.accessToken != null) {
-                val user = toUserFromLoginData(response.data, response.data.email ?: "")
-                LoginResponse.Authenticated(
-                    user = user,
-                    accessToken = response.data.accessToken,
-                    refreshToken = response.data.refreshToken ?: "",
-                    message = response.data.message
-                )
-            } else {
-                LoginResponse.MfaRequired(
-                    email = response.data.email ?: "",
-                    uuid = response.data.userUuid ?: ""
-                )
-            }
-        } else {
-            throw Exception(response.message)
-        }
-    }
-
-    fun toUserFromLoginData(data: LoginDataDto, email: String): User {
+    fun toUser(
+        email: String,
+        accessToken: String? = null,
+        refreshToken: String? = null
+    ): User {
         return User(
-            uuid = data.userUuid ?: "",
-            email = data.email ?: email,
-            firstName = data.firstName ?: "",
-            lastName = data.lastName ?: "",
-            userName = data.userName ?: "",
-            personalPhone = data.phone,
-            profileImage = data.profileImage,
-            accessToken = data.accessToken,
-            refreshToken = data.refreshToken,
-            isAuthenticated = true,
-            primaryPurpose = data.primaryPurpose,
-            userUuid = data.userUuid,
-            accountId = data.accountId,
-            accountName = data.accountName,
-            accountType = data.accountType,
-            tokenId = data.tokenId,
-            role = data.role,
-            organizationUuid = data.organizationUuid,
-            planSlug = data.planSlug
+            email = email,
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            isAuthenticated = accessToken != null
         )
     }
-
-    fun toUser(response: LoginResponseDto, email: String): User {
-        return if (response.success && response.data != null) {
-            toUserFromLoginData(response.data, email)
-        } else {
-            User(
-                uuid = "",
-                email = email,
-                firstName = "",
-                lastName = "",
-                userName = "",
-                isAuthenticated = false
-            )
-        }
-    }
-
-    fun toVerificationResult(response: VerifyOtpResponseDto): Boolean {
-        return response.success && response.data?.verified == true
-    }
-
-    fun getErrorMessage(response: BaseResponseDto<*>): String {
-        return response.error?.message ?: response.message
-    }
-
-    fun isSuccess(response: BaseResponseDto<*>): Boolean {
-        return response.success
-    }
-
-    // ======================================================
-    // DTO TO DOMAIN MAPPERS (For profile data from API)
-    // ======================================================
 
     fun toJobSeekerPreferences(dto: JobSeekerProfileDataDto): JobSeekerPreferences {
         return JobSeekerPreferences(
@@ -336,15 +260,8 @@ class AuthDataMapper @Inject constructor() {
         )
     }
 
-    // UPDATED: Map from DTO to domain with new fields
     fun toHousingSeekerPreferences(dto: HousingSeekerProfileDataDto): HousingSeekerPreferences {
         return HousingSeekerPreferences(
-            // New simplified fields
-            searchType = dto.searchType,
-            isLookingForRental = dto.isLookingForRental,
-            isLookingToBuy = dto.isLookingToBuy,
-            propertyTypes = dto.preferredTypes,  // Map preferredTypes to propertyTypes
-            // Legacy fields
             minBedrooms = dto.minBedrooms,
             maxBedrooms = dto.maxBedrooms,
             minBudget = dto.minBudget,
@@ -405,50 +322,19 @@ class AuthDataMapper @Inject constructor() {
         )
     }
 
-    // UPDATED: Map from DTO to domain with new fields
     fun toPropertyOwnerPortfolio(dto: PropertyOwnerProfileDataDto): PropertyOwnerPortfolio {
         return PropertyOwnerPortfolio(
-            // New simplified fields
-            listingType = dto.listingType,
-            isListingForRent = dto.isListingForRent,
-            isListingForSale = dto.isListingForSale,
-            // Core fields
-            propertyCount = dto.propertyCount,
-            propertyTypes = dto.propertyTypes,
-            serviceAreas = dto.serviceAreas,
-            // Legacy fields
             isProfessional = dto.isProfessional,
             licenseNumber = dto.licenseNumber,
             companyName = dto.companyName,
             yearsInBusiness = dto.yearsInBusiness,
             preferredPropertyTypes = dto.preferredPropertyTypes,
+            serviceAreas = dto.serviceAreas,
             usesAgent = dto.usesAgent,
             managingAgentUuid = dto.managingAgentUuid,
+            propertyCount = dto.propertyCount,
+            propertyTypes = dto.propertyTypes,
             propertyPurpose = dto.propertyPurpose
         )
-    }
-
-    // ======================================================
-    // HELPER METHODS FOR OTHER RESPONSES
-    // ======================================================
-
-    fun toSignupResult(response: SignupResponseDto): Boolean {
-        return response.success
-    }
-
-    fun toResetPasswordResult(response: BaseResponseDto<Nothing>): Pair<Boolean, String> {
-        return Pair(response.success, response.message)
-    }
-
-    fun toTokenPair(response: RefreshTokenResponseDto): Pair<String, String>? {
-        return if (response.success && response.data != null) {
-            Pair(response.data.accessToken, response.data.refreshToken)
-        } else {
-            null
-        }
-    }
-
-    fun toOtpRequestResult(response: BaseOtpResponseDto): Boolean {
-        return response.success
     }
 }
