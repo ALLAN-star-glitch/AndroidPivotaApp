@@ -9,22 +9,12 @@ data class User(
     val email: String,
     val firstName: String = "",
     val lastName: String = "",
-    val userName: String = "",  // ADD THIS - Full name from JWT (e.g., "John Doe")
     val personalPhone: String? = null,
     val profileImage: String? = null,
     val accessToken: String? = null,
     val refreshToken: String? = null,
     val isAuthenticated: Boolean = false,
     val primaryPurpose: String? = null,
-    // JWT additional fields (optional but useful)
-    val userUuid: String? = null,
-    val accountId: String? = null,
-    val accountName: String? = null,
-    val accountType: String? = null,  // "INDIVIDUAL" or "ORGANIZATION"
-    val tokenId: String? = null,
-    val role: String? = null,
-    val organizationUuid: String? = null,
-    val planSlug: String? = null,
     // Profile data based on purpose
     val jobSeekerPreferences: JobSeekerPreferences? = null,
     val skilledProfessionalProfile: SkilledProfessionalProfile? = null,
@@ -206,7 +196,6 @@ sealed class LoginResponse {
 
     data class Authenticated(
         val user: User,
-        val message: String?,
         val accessToken: String,
         val refreshToken: String
     ) : LoginResponse()

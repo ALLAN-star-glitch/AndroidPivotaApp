@@ -179,109 +179,21 @@ class AuthDataMapper @Inject constructor() {
     }
 
     // ======================================================
-    // RESPONSE DTO TO DOMAIN MAPPERS (For handling API responses)
+    // DTO TO DOMAIN MAPPERS (For handling responses)
     // ======================================================
 
-    /**
-     * Convert LoginResponseDto to LoginResponse domain model
-     * Handles both MFA required and Authenticated states
-     */
-    fun toLoginResponse(response: LoginResponseDto): LoginResponse {
-        return if (response.success && response.data != null) {
-            if (response.data.accessToken != null) {
-                // Stage 2: Authenticated with tokens - Create full User object
-                val user = toUserFromLoginData(response.data, response.data.email ?: "")
-                LoginResponse.Authenticated(
-                    user = user,
-                    accessToken = response.data.accessToken,
-                    refreshToken = response.data.refreshToken ?: "",
-                    message = response.data.message
-                )
-            } else {
-                // Stage 1: MFA Required
-                LoginResponse.MfaRequired(
-                    email = response.data.email ?: "",
-                    uuid = response.data.userUuid ?: ""
-                )
-            }
-        } else {
-            // Return error - will be handled by the caller
-            throw Exception(response.message)
-        }
-    }
-
-    /**
-     * Convert successful login data to User domain model with all JWT fields
-     * Used after MFA verification when tokens are returned
-     */
-    fun toUserFromLoginData(data: LoginDataDto, email: String): User {
+    fun toUser(
+        email: String,
+        accessToken: String? = null,
+        refreshToken: String? = null
+    ): User {
         return User(
-            uuid = data.userUuid ?: "",
-            email = data.email ?: email,
-            firstName = data.firstName ?: "",
-            lastName = data.lastName ?: "",
-            userName = data.userName ?: "",  // Full name from JWT
-            personalPhone = data.phone,
-            profileImage = data.profileImage,
-            accessToken = data.accessToken,
-            refreshToken = data.refreshToken,
-            isAuthenticated = true,
-            primaryPurpose = data.primaryPurpose,
-            // JWT payload fields
-            userUuid = data.userUuid,
-            accountId = data.accountId,
-            accountName = data.accountName,
-            accountType = data.accountType,
-            tokenId = data.tokenId,
-            role = data.role,
-            organizationUuid = data.organizationUuid,
-            planSlug = data.planSlug
+            email = email,
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            isAuthenticated = accessToken != null
         )
     }
-
-    /**
-     * Convert successful login response to User domain model
-     * Simplified version when you only have the response DTO
-     */
-    fun toUser(response: LoginResponseDto, email: String): User {
-        return if (response.success && response.data != null) {
-            toUserFromLoginData(response.data, email)
-        } else {
-            User(
-                uuid = "",
-                email = email,
-                firstName = "",
-                lastName = "",
-                userName = "",
-                isAuthenticated = false
-            )
-        }
-    }
-
-    /**
-     * Convert VerifyOtpResponseDto to verification result
-     */
-    fun toVerificationResult(response: VerifyOtpResponseDto): Boolean {
-        return response.success && response.data?.verified == true
-    }
-
-    /**
-     * Get error message from response
-     */
-    fun getErrorMessage(response: BaseResponseDto<*>): String {
-        return response.error?.message ?: response.message
-    }
-
-    /**
-     * Check if response is successful
-     */
-    fun isSuccess(response: BaseResponseDto<*>): Boolean {
-        return response.success
-    }
-
-    // ======================================================
-    // DTO TO DOMAIN MAPPERS (For profile data from API)
-    // ======================================================
 
     fun toJobSeekerPreferences(dto: JobSeekerProfileDataDto): JobSeekerPreferences {
         return JobSeekerPreferences(
@@ -424,41 +336,5 @@ class AuthDataMapper @Inject constructor() {
             propertyTypes = dto.propertyTypes,
             propertyPurpose = dto.propertyPurpose
         )
-    }
-
-    // ======================================================
-    // HELPER METHODS FOR OTHER RESPONSES
-    // ======================================================
-
-    /**
-     * Convert SignupResponseDto to domain result
-     */
-    fun toSignupResult(response: SignupResponseDto): Boolean {
-        return response.success
-    }
-
-    /**
-     * Convert ResetPassword response to domain result
-     */
-    fun toResetPasswordResult(response: BaseResponseDto<Nothing>): Pair<Boolean, String> {
-        return Pair(response.success, response.message)
-    }
-
-    /**
-     * Convert RefreshTokenResponseDto to token pair
-     */
-    fun toTokenPair(response: RefreshTokenResponseDto): Pair<String, String>? {
-        return if (response.success && response.data != null) {
-            Pair(response.data.accessToken, response.data.refreshToken)
-        } else {
-            null
-        }
-    }
-
-    /**
-     * Convert BaseOtpResponseDto to domain result
-     */
-    fun toOtpRequestResult(response: BaseOtpResponseDto): Boolean {
-        return response.success
     }
 }

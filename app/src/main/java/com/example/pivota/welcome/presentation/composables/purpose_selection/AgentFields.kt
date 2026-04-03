@@ -1,4 +1,4 @@
-package com.example.pivota.welcome.presentation.screens
+package com.example.pivota.welcome.presentation.composables.purpose_selection
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,14 +18,15 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.pivota.welcome.presentation.composables.purpose_selection.SkillInputSection
+import com.example.pivota.welcome.presentation.screens.AgentData
+import com.example.pivota.welcome.presentation.state.AgentFormData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun AgentFields(
-    data: AgentData,
-    onDataChange: (AgentData) -> Unit
+    data: AgentFormData,
+    onDataChange: (AgentFormData) -> Unit
 ) {
     var currentSpecializationInput by remember { mutableStateOf("") }
     var currentServiceAreaInput by remember { mutableStateOf("") }

@@ -18,13 +18,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pivota.welcome.presentation.state.PropertyOwnerFormData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun PropertyOwnerFields(
-    data: PropertyOwnerData,
-    onDataChange: (PropertyOwnerData) -> Unit
+    data: PropertyOwnerFormData,
+    onDataChange: (PropertyOwnerFormData) -> Unit
 ) {
     var currentPropertyTypeInput by remember { mutableStateOf("") }
     var showDuplicateError by remember { mutableStateOf(false) }

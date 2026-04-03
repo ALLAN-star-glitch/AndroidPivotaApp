@@ -58,11 +58,7 @@ fun OtpVerificationDialog(
     verifyButtonText: String = "Verify",
     onVerify: () -> Unit,
     onResend: () -> Unit,
-    onCancel: () -> Unit,
-    // Snackbar parameters
-    snackbarMessage: String? = null,
-    snackbarType: SnackbarType = SnackbarType.ERROR,
-    onSnackbarDismiss: () -> Unit = {}
+    onCancel: () -> Unit
 ) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
@@ -105,14 +101,19 @@ fun OtpVerificationDialog(
         }
     }
 
+    // FIXED: Natural deletion - deletes current digit or moves to previous
     fun handleDelete(index: Int) {
         when {
+            // Current cell has a digit - clear it and stay on this cell
             otpValues[index].isNotEmpty() -> {
                 onOtpDigitChange(index, "")
                 focusRequesters[index].requestFocus()
             }
+            // Current cell is empty and not the first cell - move to previous cell
             index > 0 -> {
+                // Move focus to previous cell
                 focusRequesters[index - 1].requestFocus()
+                // If previous cell has a digit, clear it
                 if (otpValues[index - 1].isNotEmpty()) {
                     onOtpDigitChange(index - 1, "")
                 }
@@ -137,206 +138,202 @@ fun OtpVerificationDialog(
             usePlatformDefaultWidth = false
         )
     ) {
-        // Main Dialog Surface with snackbar inside it
         Surface(
             modifier = Modifier
                 .width(dialogWidth)
-                .heightIn(max = dialogMaxHeight),
+                .heightIn(max = dialogMaxHeight)
+                .padding(16.dp),
             shape = RoundedCornerShape(32.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
             shadowElevation = 24.dp
         ) {
-            Box {
-                // Scrollable content
-                Column(
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState)
+                    .padding(if (isTablet) 32.dp else 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(if (isLandscape) 12.dp else 16.dp)
+            ) {
+                LottieAnimation(
+                    composition = otpComposition,
+                    progress = { otpProgress },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(scrollState)
-                        .padding(if (isTablet) 32.dp else 28.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(if (isLandscape) 12.dp else 16.dp)
+                        .size(if (isLandscape) 80.dp else if (isTablet) 160.dp else 120.dp)
+                        .padding(8.dp)
+                )
+
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = if (isLandscape) 20.sp else if (isTablet) 26.sp else 22.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    textAlign = TextAlign.Center
+                )
+
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = if (isLandscape) 12.sp else if (isTablet) 15.sp else 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    textAlign = TextAlign.Center
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 ) {
-                    LottieAnimation(
-                        composition = otpComposition,
-                        progress = { otpProgress },
-                        modifier = Modifier
-                            .size(if (isLandscape) 80.dp else if (isTablet) 160.dp else 120.dp)
-                            .padding(8.dp)
-                    )
-
                     Text(
-                        text = title,
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = if (isLandscape) 20.sp else if (isTablet) 26.sp else 22.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        ),
-                        textAlign = TextAlign.Center
-                    )
-
-                    Text(
-                        text = description,
-                        style = MaterialTheme.typography.bodyMedium.copy(
+                        text = email,
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Medium,
                             fontSize = if (isLandscape) 12.sp else if (isTablet) 15.sp else 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.primary
                         ),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
+                }
 
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(if (isLandscape) 8.dp else if (isTablet) 14.dp else 10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    for (index in 0..5) {
+                        val cellSize = when {
+                            isLandscape -> 48.dp
+                            isTablet -> 64.dp
+                            else -> 52.dp
+                        }
+
+                        OtpSquareDigitCell(
+                            digit = otpValues.getOrElse(index) { "" },
+                            isActive = otpValues[index].isEmpty() && otpValues.take(index).all { it.isNotEmpty() },
+                            isError = otpError != null,
+                            hasValue = otpValues[index].isNotEmpty(),
+                            fontSize = if (isLandscape) 20.sp else if (isTablet) 28.sp else 22.sp,
+                            cellSize = cellSize,
+                            focusRequester = focusRequesters[index],
+                            shakeError = shakeError,
+                            modifier = Modifier.weight(1f),
+                            onDigitChange = { digit ->
+                                if (digit.length <= 1 && (digit.isEmpty() || digit.all { it.isDigit() })) {
+                                    onOtpDigitChange(index, digit)
+                                    if (digit.isNotEmpty() && index < 5) {
+                                        focusRequesters[index + 1].requestFocus()
+                                    }
+                                }
+                            },
+                            onDelete = { handleDelete(index) }
+                        )
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = otpError != null,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { 20 }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { -20 })
+                ) {
                     Surface(
-                        shape = RoundedCornerShape(24.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f),
                         modifier = Modifier.padding(horizontal = 8.dp)
                     ) {
                         Text(
-                            text = email,
-                            style = MaterialTheme.typography.titleSmall.copy(
+                            text = otpError ?: "",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = if (isLandscape) 11.sp else if (isTablet) 13.sp else 12.sp,
                                 fontWeight = FontWeight.Medium,
-                                fontSize = if (isLandscape) 12.sp else if (isTablet) 15.sp else 13.sp,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.error
                             ),
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
                         )
                     }
+                }
 
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(if (isLandscape) 8.dp else if (isTablet) 14.dp else 10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        for (index in 0..5) {
-                            val cellSize = when {
-                                isLandscape -> 48.dp
-                                isTablet -> 64.dp
-                                else -> 52.dp
-                            }
-
-                            OtpSquareDigitCell(
-                                digit = otpValues.getOrElse(index) { "" },
-                                isActive = otpValues[index].isEmpty() && otpValues.take(index).all { it.isNotEmpty() },
-                                isError = otpError != null,
-                                hasValue = otpValues[index].isNotEmpty(),
-                                fontSize = if (isLandscape) 20.sp else if (isTablet) 28.sp else 22.sp,
-                                cellSize = cellSize,
-                                focusRequester = focusRequesters[index],
-                                shakeError = shakeError,
-                                modifier = Modifier.weight(1f),
-                                onDigitChange = { digit ->
-                                    if (digit.length <= 1 && (digit.isEmpty() || digit.all { it.isDigit() })) {
-                                        onOtpDigitChange(index, digit)
-                                        if (digit.isNotEmpty() && index < 5) {
-                                            focusRequesters[index + 1].requestFocus()
-                                        }
-                                    }
-                                },
-                                onDelete = { handleDelete(index) }
-                            )
-                        }
-                    }
-
-                    AnimatedVisibility(
-                        visible = otpError != null,
-                        enter = fadeIn() + slideInVertically(initialOffsetY = { 20 }),
-                        exit = fadeOut() + slideOutVertically(targetOffsetY = { -20 })
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f),
-                            modifier = Modifier.padding(horizontal = 8.dp)
+                Button(
+                    onClick = onVerify,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(if (isLandscape) 48.dp else if (isTablet) 56.dp else 52.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    enabled = !isVerifying && otpValues.joinToString("").length == 6,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    if (isVerifying) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = otpError ?: "",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = if (isLandscape) 11.sp else if (isTablet) 13.sp else 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.error
-                                ),
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
                             )
-                        }
-                    }
-
-                    // Verify Button
-                    Button(
-                        onClick = onVerify,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(if (isLandscape) 48.dp else if (isTablet) 56.dp else 52.dp),
-                        shape = RoundedCornerShape(28.dp),
-                        enabled = !isVerifying && otpValues.joinToString("").length == 6,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        if (isVerifying) {
-                            PivotaButtonLoading(
-                                text = "Verifying...",
-                                textColor = Color.White,
-                                indicatorColor = Color.White
-                            )
-                        } else {
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                verifyButtonText,
-                                fontWeight = FontWeight.Bold,
+                                "Verifying...",
+                                fontWeight = FontWeight.SemiBold,
                                 fontSize = if (isLandscape) 13.sp else 14.sp,
                                 color = Color.White
                             )
                         }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = onResend,
-                            enabled = !isVerifying && countdown == 0,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = if (!isVerifying && countdown == 0)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                        ) {
-                            Text(
-                                if (countdown > 0) "Resend (${countdown}s)" else "Resend",
-                                fontSize = if (isLandscape) 12.sp else 13.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-
-                        TextButton(
-                            onClick = onCancel,
-                            enabled = !isVerifying,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                "Cancel",
-                                fontSize = if (isLandscape) 12.sp else 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = if (!isVerifying)
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                        }
+                    } else {
+                        Text(
+                            verifyButtonText,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = if (isLandscape) 13.sp else 14.sp,
+                            color = Color.White
+                        )
                     }
                 }
 
-                // Snackbar INSIDE the dialog (overlays on top of content)
-                if (snackbarMessage != null) {
-                    PivotaSnackbar(
-                        message = snackbarMessage,
-                        type = snackbarType,
-                        onDismiss = onSnackbarDismiss,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(16.dp)
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onResend,
+                        enabled = !isVerifying && countdown == 0,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = if (!isVerifying && countdown == 0)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Text(
+                            if (countdown > 0) "Resend (${countdown}s)" else "Resend",
+                            fontSize = if (isLandscape) 12.sp else 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    TextButton(
+                        onClick = onCancel,
+                        enabled = !isVerifying,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            "Cancel",
+                            fontSize = if (isLandscape) 12.sp else 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (!isVerifying)
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                    }
                 }
             }
         }

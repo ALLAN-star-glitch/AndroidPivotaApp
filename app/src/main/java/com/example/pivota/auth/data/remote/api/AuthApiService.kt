@@ -29,19 +29,16 @@ class AuthApiService @Inject constructor(
      * Request OTP for signup, login, or password reset
      */
     suspend fun requestOtp(request: RequestOtpRequestDto): BaseOtpResponseDto {
-        // Build request body - only include phone if it's provided
-        val requestBody = mutableMapOf<String, String>("email" to request.email)
-        request.phone?.let { requestBody["phone"] = it }
-
         // Log REQUEST
         println("🔍 ========== OTP REQUEST ==========")
         println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/otp/request?purpose=${request.purpose}")
-        println("🔍 BODY: email=${request.email}${request.phone?.let { ", phone=$it" } ?: ""}")
+        println("🔍 BODY: email=${request.email}")
         println("🔍 ==================================")
 
         val response: BaseOtpResponseDto = client.post("v1/auth-module/otp/request?purpose=${request.purpose}") {
             contentType(ContentType.Application.Json)
-            setBody(requestBody)
+            // Only send email in body, purpose goes in URL
+            setBody(mapOf("email" to request.email))
         }.body()
 
         // Log RESPONSE
@@ -162,70 +159,26 @@ class AuthApiService @Inject constructor(
      * Request password reset
      */
     suspend fun requestPasswordReset(email: String): BaseOtpResponseDto {
-        println("🔍 ========== PASSWORD RESET REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/password/forgot")
-        println("🔍 BODY: email=$email")
-        println("🔍 ============================================")
-
-        return try {
-            val response: BaseOtpResponseDto = client.post("v1/auth-module/password/forgot") {
-                contentType(ContentType.Application.Json)
-                setBody(mapOf("email" to email))
-            }.body()
-
-            println("🔍 ========== PASSWORD RESET RESPONSE ==========")
-            println("🔍 SUCCESS: ${response.success}")
-            println("🔍 MESSAGE: ${response.message}")
-            println("🔍 CODE: ${response.code}")
-            println("🔍 ERROR: ${response.error}")
-            println("🔍 =============================================")
-
-            response
-        } catch (e: Exception) {
-            println("🔍 ========== PASSWORD RESET ERROR ==========")
-            println("🔍 ERROR: ${e.message}")
-            e.printStackTrace()
-            println("🔍 ==========================================")
-            throw e
-        }
+        return client.post("v1/auth-module/password-reset/request") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("email" to email))
+        }.body()
     }
 
     /**
      * Reset password with OTP
      */
     suspend fun resetPassword(email: String, code: String, newPassword: String): BaseResponseDto<Nothing> {
-        println("🔍 ========== RESET PASSWORD REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/password/reset")
-        println("🔍 BODY: email=$email, code=$code, newPassword=${"*".repeat(newPassword.length)}")
-        println("🔍 ============================================")
-
-        return try {
-            val response: BaseResponseDto<Nothing> = client.post("v1/auth-module/password/reset") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    mapOf(
-                        "email" to email,
-                        "code" to code,
-                        "newPassword" to newPassword
-                    )
+        return client.post("v1/auth-module/password-reset/reset") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                mapOf(
+                    "email" to email,
+                    "code" to code,
+                    "newPassword" to newPassword
                 )
-            }.body()
-
-            println("🔍 ========== RESET PASSWORD RESPONSE ==========")
-            println("🔍 SUCCESS: ${response.success}")
-            println("🔍 MESSAGE: ${response.message}")
-            println("🔍 CODE: ${response.code}")
-            println("🔍 ERROR: ${response.error}")
-            println("🔍 =============================================")
-
-            response
-        } catch (e: Exception) {
-            println("🔍 ========== RESET PASSWORD ERROR ==========")
-            println("🔍 ERROR: ${e.message}")
-            e.printStackTrace()
-            println("🔍 ==========================================")
-            throw e
-        }
+            )
+        }.body()
     }
 
     /**
