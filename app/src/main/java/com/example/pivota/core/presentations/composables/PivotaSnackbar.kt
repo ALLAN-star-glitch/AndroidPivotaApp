@@ -56,7 +56,7 @@ fun PivotaSnackbar(
             modifier = modifier
                 .padding(16.dp)
                 .fillMaxWidth()
-                .zIndex(1000f),
+                .zIndex(999f),
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(
                 containerColor = when (type) {
@@ -66,7 +66,7 @@ fun PivotaSnackbar(
                     SnackbarType.INFO -> InfoBlue
                 }
             ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Row(
                 modifier = Modifier

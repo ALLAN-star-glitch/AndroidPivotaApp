@@ -23,23 +23,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import androidx.window.core.layout.WindowSizeClass
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import com.airbnb.lottie.compose.*
 import com.example.pivota.R
 import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
 import com.example.pivota.core.presentations.composables.buttons.PivotaSkipButton
+import com.example.pivota.welcome.presentation.viewmodel.JoiningAsViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun AdaptiveJoiningAsScreenContent(
-    onContinue: (accountType: String) -> Unit,
+    modifier: Modifier = Modifier,
+    onContinue: () -> Unit,  // Changed: no parameter needed
     onLoginClick: () -> Unit,
     onSkipToDashboard: () -> Unit,
     currentStep: Int = 0,
     totalSteps: Int = 3,
-    modifier: Modifier = Modifier
+    viewModel: JoiningAsViewModel = hiltViewModel()  // Inject ViewModel
 ) {
     val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isMediumScreen = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
@@ -67,6 +69,7 @@ fun AdaptiveJoiningAsScreenContent(
                         .background(MaterialTheme.colorScheme.surface)
                 ) {
                     TwoPaneJoiningAsRightContent(
+                        viewModel = viewModel,
                         onContinue = onContinue,
                         onLoginClick = onLoginClick,
                         onSkipToDashboard = onSkipToDashboard,
@@ -80,6 +83,7 @@ fun AdaptiveJoiningAsScreenContent(
         /* SINGLE-PANE LAYOUT FOR MOBILE */
         else -> {
             JoiningAsScreenContent(
+                viewModel = viewModel,
                 onContinue = onContinue,
                 onLoginClick = onLoginClick,
                 onSkipToDashboard = onSkipToDashboard,
@@ -143,14 +147,14 @@ fun TwoPaneJoiningAsLeftContent() {
 
 @Composable
 fun TwoPaneJoiningAsRightContent(
-    onContinue: (accountType: String) -> Unit,
+    viewModel: JoiningAsViewModel,
+    onContinue: () -> Unit,
     onLoginClick: () -> Unit,
     onSkipToDashboard: () -> Unit,
     currentStep: Int = 0,
     totalSteps: Int = 3
 ) {
-    var selectedType by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsState()
 
     Column(
         modifier = Modifier
@@ -201,10 +205,10 @@ fun TwoPaneJoiningAsRightContent(
         ) {
             // Individual Card
             OnboardingCard(
-                isSelected = selectedType == "individual",
+                isSelected = uiState.selectedAccountType == "individual",
                 onClick = {
-                    if (!isLoading) {
-                        selectedType = "individual"
+                    if (!uiState.isLoading) {
+                        viewModel.selectAccountType("individual")
                     }
                 },
                 animationDelay = 0,
@@ -218,7 +222,7 @@ fun TwoPaneJoiningAsRightContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 OnboardingCard(
-                    isSelected = selectedType == "organization",
+                    isSelected = uiState.selectedAccountType == "organization",
                     onClick = { /* Disabled */ },
                     animationDelay = 100,
                     isEnabled = false
@@ -260,12 +264,12 @@ fun TwoPaneJoiningAsRightContent(
         PivotaPrimaryButton(
             text = "Continue",
             onClick = {
-                if (selectedType != null && !isLoading) {
-                    isLoading = true
-                    onContinue(selectedType!!)
+                if (uiState.selectedAccountType != null && !uiState.isLoading) {
+                    viewModel.confirmAccountType()  // Cache the selection
+                    onContinue()  // Navigate to next screen
                 }
             },
-            enabled = selectedType != null && !isLoading,
+            enabled = uiState.selectedAccountType != null && !uiState.isLoading,
             modifier = Modifier.fillMaxWidth(),
             icon = ImageVector.vectorResource(R.drawable.ic_skip)
         )
@@ -280,7 +284,7 @@ fun TwoPaneJoiningAsRightContent(
             icon = ImageVector.vectorResource(R.drawable.ic_skip)
         )
 
-        if (isLoading) {
+        if (uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -323,15 +327,15 @@ fun TwoPaneJoiningAsRightContent(
 
 @Composable
 fun JoiningAsScreenContent(
-    onContinue: (accountType: String) -> Unit,
+    viewModel: JoiningAsViewModel,
+    onContinue: () -> Unit,
     onLoginClick: () -> Unit,
     onSkipToDashboard: () -> Unit,
     currentStep: Int = 0,
     totalSteps: Int = 3,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
-    var selectedType by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsState()
 
     // Lottie animation
     val composition by rememberLottieComposition(
@@ -413,10 +417,10 @@ fun JoiningAsScreenContent(
         ) {
             // Individual Card
             OnboardingCard(
-                isSelected = selectedType == "individual",
+                isSelected = uiState.selectedAccountType == "individual",
                 onClick = {
-                    if (!isLoading) {
-                        selectedType = "individual"
+                    if (!uiState.isLoading) {
+                        viewModel.selectAccountType("individual")
                     }
                 },
                 animationDelay = 0,
@@ -430,7 +434,7 @@ fun JoiningAsScreenContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 OnboardingCard(
-                    isSelected = selectedType == "organization",
+                    isSelected = uiState.selectedAccountType == "organization",
                     onClick = { /* Disabled */ },
                     animationDelay = 100,
                     isEnabled = false
@@ -471,12 +475,12 @@ fun JoiningAsScreenContent(
         PivotaPrimaryButton(
             text = "Continue",
             onClick = {
-                if (selectedType != null && !isLoading) {
-                    isLoading = true
-                    onContinue(selectedType!!)
+                if (uiState.selectedAccountType != null && !uiState.isLoading) {
+                    viewModel.confirmAccountType()
+                    onContinue()
                 }
             },
-            enabled = selectedType != null && !isLoading,
+            enabled = uiState.selectedAccountType != null && !uiState.isLoading,
             modifier = Modifier.fillMaxWidth(),
             icon = ImageVector.vectorResource(R.drawable.ic_skip)
         )
@@ -491,7 +495,7 @@ fun JoiningAsScreenContent(
             icon = ImageVector.vectorResource(R.drawable.ic_skip)
         )
 
-        if (isLoading) {
+        if (uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

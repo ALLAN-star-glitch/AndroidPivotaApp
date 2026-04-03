@@ -20,13 +20,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.welcome.presentation.screens.JobSeekerData
+import com.example.pivota.welcome.presentation.state.JobSeekerFormData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun JobSeekerFields(
-    data: JobSeekerData,
-    onDataChange: (JobSeekerData) -> Unit
+    data: JobSeekerFormData,
+    onDataChange: (JobSeekerFormData) -> Unit
 ) {
     var currentSkillInput by remember { mutableStateOf("") }
     var showDuplicateError by remember { mutableStateOf(false) }

@@ -1,4 +1,4 @@
-package com.example.pivota.welcome.presentation.screens
+package com.example.pivota.welcome.presentation.composables.purpose_selection
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,20 +12,21 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pivota.welcome.presentation.screens.HousingSeekerData
+import com.example.pivota.welcome.presentation.state.HousingSeekerFormData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun HousingSeekerFields(
-    data: HousingSeekerData,
-    onDataChange: (HousingSeekerData) -> Unit
+    data: HousingSeekerFormData,
+    onDataChange: (HousingSeekerFormData) -> Unit
 ) {
     var currentAreaInput by remember { mutableStateOf("") }
     var showDuplicateError by remember { mutableStateOf(false) }

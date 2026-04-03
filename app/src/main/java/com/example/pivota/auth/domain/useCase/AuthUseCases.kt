@@ -5,8 +5,8 @@ package com.example.pivota.auth.domain.useCase
 data class AuthUseCases(
     val requestOtp: RequestOtpUseCase,
     val registerUser: RegisterUserUseCase,
-    val verifyMfaLogin: VerifyMfaLoginUseCase,
     val loginUser: LoginUserUseCase,
+    val verifyMfaLogin: VerifyMfaLoginUseCase,
     val refreshToken: RefreshTokenUseCase,
     val requestPasswordReset: RequestPasswordResetUseCase,
     val resetPassword: ResetPasswordUseCase,

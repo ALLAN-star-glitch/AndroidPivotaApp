@@ -19,13 +19,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.welcome.presentation.screens.SkilledProfessionalData
+import com.example.pivota.welcome.presentation.state.SkilledProfessionalFormData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun SkilledProfessionalFields(
-    data: SkilledProfessionalData,
-    onDataChange: (SkilledProfessionalData) -> Unit
+    data: SkilledProfessionalFormData,
+    onDataChange: (SkilledProfessionalFormData) -> Unit
 ) {
     var currentSpecialtyInput by remember { mutableStateOf("") }
     var showDuplicateError by remember { mutableStateOf(false) }

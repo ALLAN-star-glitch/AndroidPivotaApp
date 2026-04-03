@@ -9,22 +9,12 @@ data class User(
     val email: String,
     val firstName: String = "",
     val lastName: String = "",
-    val userName: String = "",  // Full name from JWT (e.g., "John Doe")
     val personalPhone: String? = null,
     val profileImage: String? = null,
     val accessToken: String? = null,
     val refreshToken: String? = null,
     val isAuthenticated: Boolean = false,
     val primaryPurpose: String? = null,
-    // JWT additional fields
-    val userUuid: String? = null,
-    val accountId: String? = null,
-    val accountName: String? = null,
-    val accountType: String? = null,  // "INDIVIDUAL" or "ORGANIZATION"
-    val tokenId: String? = null,
-    val role: String? = null,
-    val organizationUuid: String? = null,
-    val planSlug: String? = null,
     // Profile data based on purpose
     val jobSeekerPreferences: JobSeekerPreferences? = null,
     val skilledProfessionalProfile: SkilledProfessionalProfile? = null,
@@ -107,19 +97,10 @@ data class IntermediaryAgentProfile(
 )
 
 /* ======================================================
-   HOUSING SEEKER MODELS (UPDATED - Simplified)
+   HOUSING SEEKER MODELS
 ====================================================== */
 
 data class HousingSeekerPreferences(
-    // Search Type (what are they looking for)
-    val searchType: String? = null,  // "RENTAL", "SALE", "BOTH"
-    val isLookingForRental: Boolean = false,
-    val isLookingToBuy: Boolean = false,
-
-    // Property Types (multi-select)
-    val propertyTypes: List<String> = emptyList(),  // "APARTMENT", "HOUSE", "BEDSITTER", etc.
-
-    // Legacy fields kept for backward compatibility
     val minBedrooms: Int? = null,
     val maxBedrooms: Int? = null,
     val minBudget: Double? = null,
@@ -185,28 +166,21 @@ data class EmployerRequirements(
 )
 
 /* ======================================================
-   PROPERTY OWNER MODELS (UPDATED - Simplified)
+   PROPERTY OWNER MODELS
 ====================================================== */
 
 data class PropertyOwnerPortfolio(
-    // Listing Type (what are they listing)
-    val listingType: String? = null,  // "RENT", "SALE", "BOTH"
-    val isListingForRent: Boolean = false,
-    val isListingForSale: Boolean = false,
-
-    // Property details
-    val propertyCount: Int? = null,
-    val propertyTypes: List<String> = emptyList(),
-    val serviceAreas: List<String> = emptyList(),
-
-    // Legacy fields kept for backward compatibility
     val isProfessional: Boolean = false,
     val licenseNumber: String? = null,
     val companyName: String? = null,
     val yearsInBusiness: Int? = null,
     val preferredPropertyTypes: List<String> = emptyList(),
+    val serviceAreas: List<String> = emptyList(),
     val usesAgent: Boolean = false,
     val managingAgentUuid: String? = null,
+    // Individual property owner fields
+    val propertyCount: Int? = null,
+    val propertyTypes: List<String> = emptyList(),
     val propertyPurpose: String? = null  // "PRIMARY", "INVESTMENT", "BOTH"
 )
 
@@ -222,7 +196,6 @@ sealed class LoginResponse {
 
     data class Authenticated(
         val user: User,
-        val message: String?,
         val accessToken: String,
         val refreshToken: String
     ) : LoginResponse()

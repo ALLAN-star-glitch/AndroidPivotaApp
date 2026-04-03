@@ -1,3 +1,5 @@
+
+
 package com.example.pivota.welcome.presentation.state
 
 data class PurposeSelectionUiState(
@@ -49,41 +51,12 @@ data class AgentFormData(
 )
 
 data class HousingSeekerFormData(
-    // Basic property preferences
     var propertyType: String = "",
     var minBedrooms: String = "",
     var maxBedrooms: String = "",
     var minBudget: String = "",
     var maxBudget: String = "",
     var preferredAreas: String = "",
-
-    // ======================================================
-    // NEW SEARCH TYPE FIELDS
-    // Values: "RENTAL", "SALE", "BOTH"
-    // ======================================================
-    var searchType: String = "",  // "RENTAL", "SALE", or "BOTH"
-    var isLookingForRental: Boolean = false,
-    var isLookingToBuy: Boolean = false,
-
-    var propertyTypes: List<String> = emptyList(),
-
-    // ======================================================
-    // NEW RENTAL PREFERENCES
-    // ======================================================
-    var minimumLeaseTerm: String = "",      // Minimum lease term in months
-    var maximumLeaseTerm: String = "",      // Maximum lease term in months
-    var depositAmount: String = "",          // Security deposit amount
-    var isPetFriendly: Boolean = false,      // Whether pets are allowed
-    var utilitiesIncluded: Boolean = false,  // Whether utilities are included
-    var utilitiesDetails: String = "",       // Details about utilities
-
-    // ======================================================
-    // NEW SALE PREFERENCES
-    // ======================================================
-    var isNegotiable: Boolean = true,        // Whether price is negotiable
-    var titleDeedAvailable: Boolean = false, // Whether title deed is available
-
-    // Legacy field (kept for backward compatibility)
     var listingTypes: List<String> = emptyList()
 )
 
@@ -106,13 +79,5 @@ data class PropertyOwnerFormData(
     var professionalStatus: String = "",
     var propertyCount: String = "",
     var propertyTypes: String = "",
-    var serviceAreas: String = "",
-
-    // ======================================================
-    // NEW LISTING TYPE FIELDS
-    // Values: "RENT", "SALE", "BOTH"
-    // ======================================================
-    var listingType: String = "",           // "RENT", "SALE", or "BOTH"
-    var isListingForRent: Boolean = false,   // Whether listing for rent
-    var isListingForSale: Boolean = false    // Whether listing for sale
+    var serviceAreas: String = ""
 )
