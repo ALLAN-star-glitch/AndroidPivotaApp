@@ -53,6 +53,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
+import com.example.pivota.auth.domain.model.User
 import com.example.pivota.dashboard.domain.EmployerType
 import com.example.pivota.dashboard.domain.ListingStatus
 import com.example.pivota.dashboard.presentation.composables.ModernHousingCard
@@ -249,7 +250,9 @@ fun DiscoverScreen(
     onNavigateToAllSupport: () -> Unit = {},
     onNavigateToSmartMatch: () -> Unit = {}, // Navigation for SmartMatch
     onBookHousingClick: (HousingListingUiModel) -> Unit = {},
-    onViewHousingClick: (HousingListingUiModel) -> Unit = {}
+    onViewHousingClick: (HousingListingUiModel) -> Unit = {},
+    user: User? = null,
+    isGuestMode: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -836,7 +839,9 @@ fun DiscoverScreen(
                 colorScheme = colorScheme,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .zIndex(3f)
+                    .zIndex(3f),
+                user = user,  // Pass the user
+                isGuestMode = isGuestMode  // Pass guest mode
             )
 
             // 📌 FIXED SEARCH + PILLS SECTION
@@ -1401,12 +1406,34 @@ fun DiscoverHeroHeader(
     height: Dp,
     collapseFraction: Float,
     colorScheme: ColorScheme,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    user: User? = null,  // Add this parameter
+    isGuestMode: Boolean = false  // Add this parameter
 ) {
     val collapsed = collapseFraction > 0.85f
 
     val maxFontSize = 34.sp
     val minFontSize = 24.sp
+
+    // Extract user name for display
+    val displayName = remember(user) {
+        when {
+            user == null || isGuestMode -> "Guest"
+            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
+            user.firstName.isNotBlank() -> user.firstName
+            else -> user.email.split("@").firstOrNull() ?: "Guest"
+        }
+    }
+
+    val welcomeMessage = remember(user, isGuestMode) {
+        when {
+            isGuestMode -> "Welcome to Pivota"
+            user?.userName?.isNotBlank() == true -> "Welcome back, ${user.userName.split(" ")
+                .firstOrNull() ?: "User"}!"
+            user?.firstName?.isNotBlank() == true -> "Welcome back, ${user.firstName}!"
+            else -> "Welcome to Pivota"
+        }
+    }
 
     val backgroundColor by animateColorAsState(
         targetValue = if (collapsed) colorScheme.primary.copy(alpha = 0.95f) else Color.Transparent,
@@ -1504,14 +1531,16 @@ fun DiscoverHeroHeader(
 
                             Column {
                                 Text(
-                                    "Hi, Guest",
+                                    text = if (isGuestMode) "Hi, Guest" else "Hi, $displayName",
                                     color = Color.White,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
                                 )
                                 Text(
-                                    "Welcome to Pivota",
+                                    text = welcomeMessage,
                                     color = Color.White.copy(0.85f),
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 12.sp
                                 )
                             }
                         }
@@ -1519,7 +1548,6 @@ fun DiscoverHeroHeader(
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // SmartMatch badge removed from header
                             HeaderActionIcon(
                                 icon = Icons.Default.Mail,
                                 iconTint = Color.White,
@@ -1562,7 +1590,6 @@ fun DiscoverHeroHeader(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // SmartMatch badge removed from header
                         HeaderActionIcon(
                             icon = Icons.Default.Mail,
                             iconTint = Color.White,
@@ -1593,7 +1620,11 @@ fun DiscoverHeroHeader(
                     )
 
                     Text(
-                        text = "Life opportunities, tailored for you",
+                        text = if (isGuestMode) {
+                            "Life opportunities, tailored for you"
+                        } else {
+                            "Find opportunities ${if (displayName != "Guest") "for $displayName" else "for you"}"
+                        },
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = Color.White.copy(0.9f)
                         ),
