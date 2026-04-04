@@ -1,7 +1,6 @@
 package com.example.pivota.auth.presentation.composables
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,8 +24,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewModelScope
 import com.airbnb.lottie.compose.*
 import com.example.pivota.R
+import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.presentation.state.LoginUiState
 import com.example.pivota.auth.presentation.viewModel.LoginViewModel
 import com.example.pivota.core.presentations.composables.OtpVerificationDialog
@@ -39,24 +40,27 @@ import kotlinx.coroutines.launch
 @Composable
 fun LoginFormContent(
     viewModel: LoginViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
-    onLoginSuccess: (String) -> Unit,
+    onLoginSuccess: (User, String, String, String) -> Unit,
     onGoogleLoginClick: () -> Unit,
     onRegisterLinkClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
+    successMessage: String? = null
 ) {
+    println("🔍 [LoginFormContent] ENTERED WITH successMessage: $successMessage")
+
     val scrollState = rememberScrollState()
     val uiState by viewModel.uiState.collectAsState()
     val otpValues by viewModel.otpValues.collectAsState()
     val resendCount by viewModel.resendCount.collectAsState()
 
-    // Snackbar state
-    val snackbarMessage by viewModel.snackbarMessage.collectAsState()
-    val snackbarType by viewModel.snackbarType.collectAsState()
-
     // Collect form state from ViewModel (survives rotation)
     val email by viewModel.email.collectAsState()
     val password by viewModel.password.collectAsState()
     val agreeTerms by viewModel.agreeTerms.collectAsState()
+
+    // Main snackbar state (for login errors)
+    val mainSnackbarMessage by viewModel.snackbarMessage.collectAsState()
+    val mainSnackbarType by viewModel.snackbarType.collectAsState()
 
     var passwordVisible by remember { mutableStateOf(false) }
     var enableFingerprint by remember { mutableStateOf(false) }
@@ -67,9 +71,26 @@ fun LoginFormContent(
     var otpError by remember { mutableStateOf<String?>(null) }
     var countdown by remember { mutableStateOf(0) }
 
+    // Track verification state
+    var verificationFailed by remember { mutableStateOf(false) }
+    var dialogSnackbarMessage by remember { mutableStateOf<String?>(null) }
+    var dialogSnackbarType by remember { mutableStateOf(SnackbarType.INFO) }
+
     // Track loading states
     val isLoggingIn = uiState is LoginUiState.Loading && !showOtpDialog
-    val isVerifyingMfa = uiState is LoginUiState.Loading && showOtpDialog
+
+    // Success snackbar state (from password reset)
+    var showSimpleSnackbar by remember { mutableStateOf(false) }
+    var simpleMessage by remember { mutableStateOf("") }
+
+    LaunchedEffect(successMessage) {
+        if (!successMessage.isNullOrBlank()) {
+            simpleMessage = successMessage
+            showSimpleSnackbar = true
+            delay(5000)
+            showSimpleSnackbar = false
+        }
+    }
 
     // Lottie animation
     val composition by rememberLottieComposition(
@@ -92,25 +113,72 @@ fun LoginFormContent(
     LaunchedEffect(uiState) {
         when (uiState) {
             is LoginUiState.OtpSent -> {
+                println("🔍 [LoginFormContent] OtpSent state received")
                 showOtpDialog = true
                 isVerifying = false
+                verificationFailed = false
                 otpError = null
                 countdown = 60
-                // Start countdown
-                while (countdown > 0) {
-                    delay(1000)
-                    countdown--
+                // Show success snackbar INSIDE the dialog when it opens
+                dialogSnackbarMessage = "Verification code sent to your email!"
+                dialogSnackbarType = SnackbarType.SUCCESS
+                launch {
+                    delay(3000)
+                    dialogSnackbarMessage = null
                 }
             }
             is LoginUiState.Loading -> {
-                isVerifying = true
+                println("🔍 [LoginFormContent] Loading state - showOtpDialog: $showOtpDialog")
+                if (showOtpDialog) {
+                    isVerifying = true
+                    verificationFailed = false
+                }
             }
             is LoginUiState.Success -> {
+                println("🔍 [LoginFormContent] Success state")
                 showOtpDialog = false
-                onLoginSuccess((uiState as LoginUiState.Success).user.email)
+                isVerifying = false
+                // Extract all data from Success state and pass to callback
+                val successState = uiState as LoginUiState.Success
+                onLoginSuccess(
+                    successState.user,
+                    successState.message,
+                    successState.accessToken,
+                    successState.refreshToken
+                )
                 viewModel.resetState()
             }
+            is LoginUiState.Error -> {
+                println("🔍 [LoginFormContent] Error state - message: ${(uiState as LoginUiState.Error).message}")
+                if (showOtpDialog) {
+                    // OTP verification error - show inside dialog
+                    isVerifying = false
+                    verificationFailed = true
+                    otpError = (uiState as LoginUiState.Error).message
+                    dialogSnackbarMessage = otpError
+                    dialogSnackbarType = SnackbarType.ERROR
+                    launch {
+                        delay(4000)
+                        dialogSnackbarMessage = null
+                    }
+                } else {
+                    // ✅ Login error (wrong password, etc.) - show as snackbar on main screen
+                    // This uses the same pattern as AdaptiveResetPasswordScreen
+                    val errorMessage = (uiState as LoginUiState.Error).message
+                    if (!errorMessage.isNullOrBlank()) {
+                        viewModel.showErrorMessage(errorMessage)
+                    }
+                }
+            }
             else -> {}
+        }
+    }
+
+    // Countdown timer for resend button
+    LaunchedEffect(countdown) {
+        while (countdown > 0) {
+            delay(1000)
+            countdown--
         }
     }
 
@@ -125,7 +193,6 @@ fun LoginFormContent(
         ) {
             Spacer(Modifier.height(24.dp))
 
-            /* ───────── LOTTIE ANIMATION SECTION ───────── */
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -141,7 +208,6 @@ fun LoginFormContent(
 
             Spacer(Modifier.height(8.dp))
 
-            /* ───────── WELCOME TEXT ───────── */
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -162,7 +228,6 @@ fun LoginFormContent(
 
             Spacer(Modifier.height(32.dp))
 
-            /* ───────── INPUT FIELDS ───────── */
             OutlinedTextField(
                 value = email,
                 onValueChange = viewModel::updateEmail,
@@ -204,7 +269,6 @@ fun LoginFormContent(
 
             Spacer(Modifier.height(16.dp))
 
-            /* ───────── FINGERPRINT & TERMS ───────── */
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -239,11 +303,10 @@ fun LoginFormContent(
 
             Spacer(Modifier.height(32.dp))
 
-            /* ───────── ACTION BUTTONS ───────── */
             Button(
                 onClick = {
                     if (email.isNotEmpty() && password.isNotEmpty() && agreeTerms) {
-                        viewModel.authenticateUser()
+                        viewModel.authenticateUser(email, password)
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -258,7 +321,6 @@ fun LoginFormContent(
 
             Spacer(Modifier.height(12.dp))
 
-            /* ───────── SOCIAL DIVIDER ───────── */
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -312,36 +374,42 @@ fun LoginFormContent(
 
         // Full screen loading for login
         if (isLoggingIn) {
-            PivotaFullScreenLoading(
-                message = "Signing you in..."
-            )
+            PivotaFullScreenLoading(message = "Signing you in...")
         }
 
-        // Full screen loading for MFA verification
-        if (isVerifyingMfa) {
-            PivotaFullScreenLoading(
-                message = "Verifying security code..."
-            )
-        }
-
-        // Snackbar for all messages (errors, successes, warnings)
-        if (snackbarMessage != null) {
+        // ✅ Main Snackbar for login errors (wrong password, rate limiting, etc.)
+        // This uses the same pattern as AdaptiveResetPasswordScreen
+        if (mainSnackbarMessage != null && !showOtpDialog) {
             PivotaSnackbar(
-                message = snackbarMessage!!,
-                type = snackbarType,
+                message = mainSnackbarMessage!!,
+                type = mainSnackbarType,
+                duration = 4000L,
                 onDismiss = { viewModel.clearSnackbar() }
+            )
+        }
+
+        // Success Snackbar for password reset
+        if (showSimpleSnackbar && simpleMessage.isNotBlank()) {
+            PivotaSnackbar(
+                message = simpleMessage,
+                type = SnackbarType.SUCCESS,
+                duration = 5000L,
+                onDismiss = {
+                    showSimpleSnackbar = false
+                    simpleMessage = ""
+                }
             )
         }
     }
 
-    /* ───────── OTP VERIFICATION DIALOG ───────── */
+    // OTP Verification Dialog
     if (showOtpDialog) {
         OtpVerificationDialog(
             email = email,
             otpValues = otpValues,
             onOtpDigitChange = { index, value -> viewModel.updateOtpDigit(index, value) },
             isVerifying = isVerifying,
-            otpError = otpError,
+            otpError = if (verificationFailed) otpError else null,
             countdown = countdown,
             resendCount = resendCount,
             title = "Verify Your Login",
@@ -350,21 +418,43 @@ fun LoginFormContent(
             onVerify = {
                 val code = otpValues.joinToString("")
                 if (code.length == 6) {
+                    println("🔍 [LoginFormContent] Verify clicked with code: $code")
+                    verificationFailed = false
                     viewModel.verifyMfaLogin(code)
                 } else {
                     otpError = "Please enter a valid 6-digit code"
+                    verificationFailed = true
+                    dialogSnackbarMessage = otpError
+                    dialogSnackbarType = SnackbarType.ERROR
                 }
             },
             onResend = {
+                println("🔍 [LoginFormContent] Resend clicked")
                 viewModel.resendOtp()
                 otpError = null
+                verificationFailed = false
+                dialogSnackbarMessage = "New verification code sent!"
+                dialogSnackbarType = SnackbarType.SUCCESS
+                viewModel.viewModelScope.launch {
+                    delay(3000)
+                    dialogSnackbarMessage = null
+                }
             },
             onCancel = {
+                println("🔍 [LoginFormContent] Cancel clicked")
                 if (!isVerifying) {
                     showOtpDialog = false
                     viewModel.resetState()
                     otpError = null
+                    verificationFailed = false
+                    dialogSnackbarMessage = null
                 }
+            },
+            snackbarMessage = dialogSnackbarMessage,
+            snackbarType = dialogSnackbarType,
+            onSnackbarDismiss = {
+                println("🔍 [LoginFormContent] Snackbar dismissed")
+                dialogSnackbarMessage = null
             }
         )
     }

@@ -335,7 +335,7 @@ class SignupViewModel @Inject constructor(
             val trimmedCode = code.trim()
             datastore.setOtpCode(trimmedCode)
 
-            val result = authUseCases.registerUser.signupIndividual(user, trimmedCode, pendingPassword)
+            val result = authUseCases.registerUser.invoke(user, trimmedCode, pendingPassword)
 
             result.onSuccess {
                 datastore.clear()

@@ -49,6 +49,7 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
+import com.example.pivota.auth.domain.model.User
 import com.example.pivota.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -157,9 +158,48 @@ fun DashboardScreen(
     onNavigateToEarnings: () -> Unit = {},
     onNavigateToEscrow: () -> Unit = {},
     userType: UserType = UserType.BOTH,
-    isGuestMode: Boolean = false
+    isGuestMode: Boolean = false,
+    user: User? = null,
+    accessToken: String? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
+
+    // Extract user information for display
+    val displayName = remember(user) {
+        when {
+            user == null -> "Guest"
+            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
+            user.firstName.isNotBlank() -> user.firstName
+            else -> user.email.split("@").firstOrNull() ?: "Guest"
+        }
+    }
+
+    val fullName = remember(user) {
+        when {
+            user == null -> "Guest"
+            user.userName.isNotBlank() -> user.userName
+            user.firstName.isNotBlank() && user.lastName.isNotBlank() -> "${user.firstName} ${user.lastName}"
+            user.firstName.isNotBlank() -> user.firstName
+            else -> user.email.split("@").firstOrNull() ?: "Guest"
+        }
+    }
+
+    val userRole = user?.role
+    val accountType = user?.accountType
+
+    // Log user info for debugging
+    LaunchedEffect(user, accessToken) {
+        if (user != null) {
+            println("🔍 [DashboardScreen] User loaded:")
+            println("   - Email: ${user.email}")
+            println("   - Name: ${user.userName}")
+            println("   - First: ${user.firstName}")
+            println("   - Last: ${user.lastName}")
+            println("   - Role: ${user.role}")
+            println("   - Account Type: ${user.accountType}")
+            println("   - Access Token: ${if (accessToken != null) "Present" else "Missing"}")
+        }
+    }
 
     // 📱 Orientation & Window Size Logic
     val configuration = LocalConfiguration.current
@@ -318,6 +358,8 @@ fun DashboardScreen(
         ListingSummary("4", "Commercial Space - Westlands", "Property", 98, 3, "Pending")
     )
 
+
+
     Scaffold(
         containerColor = colorScheme.background,
         topBar = {
@@ -329,6 +371,11 @@ fun DashboardScreen(
                 onSurfaceColor = colorScheme.onSurface,
                 isWide = isWide,
                 isGuestMode = isGuestMode,
+                userName = displayName,  // Use first name for greeting
+                fullName = fullName,     // Use full name for welcome message
+                isLoggedIn = user != null,
+                userRole = userRole,
+                accountType = accountType
             )
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -3538,7 +3585,12 @@ fun DashboardHeroHeader(
     collapseFraction: Float,
     onSurfaceColor: Color,
     isWide: Boolean,
-    isGuestMode: Boolean = false,  // Add this parameter
+    isGuestMode: Boolean = false,
+    userName: String = "Guest",
+    fullName: String = "Guest",  // Add this parameter
+    isLoggedIn: Boolean = false,
+    userRole: String? = null,    // Add this parameter
+    accountType: String? = null, // Add this parameter
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -3648,13 +3700,20 @@ fun DashboardHeroHeader(
 
                             Column {
                                 Text(
-                                    text = if (isGuestMode) "Hi, Guest" else "Hi, Guest",  // Update with actual user name when available
+                                    text = if (isGuestMode) "Hi, Guest" else "Hi, $userName",
                                     color = if (isGuestMode) primaryColor else Color.White,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp
                                 )
                                 Text(
-                                    text = if (isGuestMode) "Sign in for full access" else "Welcome",
+                                    text = when {
+                                        isGuestMode -> "Sign in for full access"
+                                        userRole != null && accountType != null -> "$userRole • $accountType"
+                                        userRole != null -> userRole
+                                        accountType != null -> accountType
+                                        isLoggedIn -> "Welcome back!"
+                                        else -> "Welcome"
+                                    },
                                     color = if (isGuestMode) primaryColor.copy(0.7f) else Color.White.copy(0.85f),
                                     fontSize = 12.sp
                                 )
@@ -3740,13 +3799,29 @@ fun DashboardHeroHeader(
                     )
 
                     Text(
-                        text = if (isGuestMode) "Explore opportunities in your area" else "Manage your business",
+                        text = if (isGuestMode) {
+                            "Explore opportunities in your area"
+                        } else {
+                            "Welcome back, $fullName!"
+                        },
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = if (isGuestMode) primaryColor.copy(0.8f) else Color.White.copy(0.9f),
                             fontSize = 14.sp
                         ),
                         modifier = Modifier.padding(top = 2.dp)
                     )
+
+                    // Show role and account type in expanded header for logged-in users
+                    if (!isGuestMode && (userRole != null || accountType != null)) {
+                        Text(
+                            text = listOfNotNull(userRole, accountType).joinToString(" • "),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = if (isGuestMode) primaryColor.copy(0.6f) else Color.White.copy(0.7f),
+                                fontSize = 11.sp
+                            ),
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                 }
             }
         }

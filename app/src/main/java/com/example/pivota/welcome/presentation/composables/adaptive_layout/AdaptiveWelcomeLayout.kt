@@ -7,16 +7,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import androidx.window.core.layout.WindowSizeClass
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.ui.Alignment
@@ -29,10 +25,8 @@ import com.example.pivota.R
 import com.example.pivota.core.presentations.composables.background_image_and_overlay.BackgroundImageAndOverlay
 import com.example.pivota.core.presentations.composables.buttons.AuthGoogleButton
 import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
-import com.example.pivota.core.presentations.composables.buttons.PivotaSecondaryButton
-import com.example.pivota.core.presentations.composables.buttons.PivotaSkipButton
 import com.example.pivota.ui.theme.InfoBlue
-import com.example.pivota.welcome.presentation.composables.WelcomeContent
+import com.example.pivota.welcome.presentation.composables.welcome_content.WelcomeContent
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
@@ -42,7 +36,6 @@ fun AdaptiveWelcomeLayout(
     onNavigateToContinueSetup: () -> Unit,
     onNavigateToContinueWithGoogle: () -> Unit,
     onNavigateToLogin: () -> Unit,
-    onNavigateToSkipToDashboard: () -> Unit
 ) {
     Box {
         val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
@@ -94,9 +87,7 @@ fun AdaptiveWelcomeLayout(
                             header = header,
                             welcomeText = welcomeText,
                             onNavigateToContinueSetup = onNavigateToContinueSetup,
-                            onNavigateToContinueWithGoogle = onNavigateToContinueWithGoogle,
-                            onNavigateToLogin = onNavigateToLogin,
-                            onNavigateToSkipToDashboard = onNavigateToSkipToDashboard
+                            onNavigateToLogin = onNavigateToLogin
                         )
                     }
                 }
@@ -126,8 +117,7 @@ fun AdaptiveWelcomeLayout(
                         welcomeText = welcomeText,
                         topPadding = dynamicTopPadding,
                         onNavigateToContinueSetup = onNavigateToContinueSetup,
-                        onNavigateToLogin = onNavigateToLogin,
-                        onNavigateToSkipToDashboard = onNavigateToSkipToDashboard
+                        onNavigateToLogin = onNavigateToLogin
                     )
                 }
             }
@@ -140,9 +130,7 @@ fun TwoPaneWelcomeContent(
     header: String,
     welcomeText: String,
     onNavigateToContinueSetup: () -> Unit,
-    onNavigateToContinueWithGoogle: () -> Unit,
-    onNavigateToLogin: () -> Unit,
-    onNavigateToSkipToDashboard: () -> Unit
+    onNavigateToLogin: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -201,44 +189,6 @@ fun TwoPaneWelcomeContent(
                 onClick = onNavigateToContinueSetup,
                 modifier = Modifier.fillMaxWidth(),
                 icon = ImageVector.vectorResource(R.drawable.ic_person)
-            )
-
-            // Continue with Google Button
-            AuthGoogleButton(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = onNavigateToContinueWithGoogle
-            )
-
-            // Divider with OR
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f),
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
-                Text(
-                    text = " OR ",
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f),
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
-            }
-
-            // Skip to Dashboard Button
-            PivotaSkipButton(
-                text = "Skip to Dashboard",
-                onClick = onNavigateToSkipToDashboard,
-                modifier = Modifier.fillMaxWidth(),
-                icon = ImageVector.vectorResource(R.drawable.ic_skip)
             )
         }
 

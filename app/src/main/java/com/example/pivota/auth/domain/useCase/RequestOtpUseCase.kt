@@ -9,13 +9,12 @@ class RequestOtpUseCase @Inject constructor(
     /**
      * Request OTP for email verification
      * @param email User's email address
-     * @param purpose Purpose of OTP: "EMAIL_VERIFICATION", "LOGIN_2FA", "PASSWORD_RESET", etc.
-     * @param phone Optional phone number for signup validation (required for EMAIL_VERIFICATION)
+     * @param purpose Purpose of OTP: "SIGNUP" or "2FA" or "PASSWORD_RESET"
      * @return Result<Unit> - Success or failure
      */
-    suspend operator fun invoke(email: String, purpose: String, phone: String? = null): Result<Unit> {
+    suspend operator fun invoke(email: String, purpose: String): Result<Unit> {
         return try {
-            val response = repository.requestOtp(email, purpose, phone)
+            val response = repository.requestOtp(email, purpose)
 
             if (response.success) {
                 Result.success(Unit)

@@ -5,12 +5,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.pivota.auth.domain.model.User
+import com.example.pivota.auth.presentation.screens.AdaptiveResetPasswordScreen
 import com.example.pivota.auth.presentation.screens.LoginScreen
 import com.example.pivota.auth.presentation.screens.SplashScreen
+import com.example.pivota.auth.presentation.viewModel.SharedAuthViewModel
 import com.example.pivota.core.preferences.PivotaDataStore
 import com.example.pivota.dashboard.presentation.screens.DashboardScaffold
 import com.example.pivota.welcome.presentation.screens.OnboardingPager
@@ -18,10 +23,12 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.android.EntryPointAccessors
+import kotlinx.serialization.json.Json
 
 @Composable
 fun NavHostSetup(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
+    val sharedAuthViewModel: SharedAuthViewModel = hiltViewModel()
 
     NavHost(
         navController = navController,
@@ -52,9 +59,6 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                 },
                 onNavigateToLogin = {
                     navController.navigate(AuthFlow)
-                },
-                onNavigateToSkipToDashboard = {
-                    navController.navigate(GuestDashboard)
                 }
             )
         }
@@ -88,8 +92,19 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
 
             /* ───────── LOGIN SCREEN ───────── */
             composable<Login> {
+                // Only get reset password message for login screen
+                val resetSuccessMessage = sharedAuthViewModel.peekResetSuccessMessage()
+
+                println("🔍 [NavHostSetup] Login screen received resetSuccessMessage: $resetSuccessMessage")
+
                 LoginScreen(
-                    onSuccess = { user ->
+                    onLoginSuccess = { user, message, accessToken, refreshToken ->
+                        // Set login success message and tokens for dashboard
+                        sharedAuthViewModel.setLoginSuccessMessage(message)
+                        sharedAuthViewModel.setUserTokens(accessToken, refreshToken)
+                        sharedAuthViewModel.setUser(user)
+                        // Clear reset message since it's been shown
+                        sharedAuthViewModel.clearResetSuccessMessage()
                         navController.navigate(Dashboard) {
                             popUpTo(AuthFlow) { inclusive = true }
                         }
@@ -100,10 +115,25 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                         }
                     },
                     onForgotPasswordClick = {
-                        // TODO: Navigate to ForgotPassword screen when implemented
+                        navController.navigate(ResetPassword)
                     },
                     onBack = {
                         navController.popBackStack()
+                    },
+                    successMessage = resetSuccessMessage
+                )
+            }
+
+            /* ───────── RESET PASSWORD SCREEN ───────── */
+            composable<ResetPassword> {
+                AdaptiveResetPasswordScreen(
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+                    onPasswordReset = { successMessage ->
+                        println("🔍 [NavHostSetup] ResetPasswordScreen onPasswordReset called with message: $successMessage")
+                        sharedAuthViewModel.setResetSuccessMessage(successMessage)
+                        navController.popBackStack(Login, inclusive = false)
                     }
                 )
             }
@@ -111,8 +141,24 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
 
         /* ───────── AUTHENTICATED DASHBOARD ───────── */
         composable<Dashboard> {
+            // Get login success message and user data from shared view model
+            val loginSuccessMessage = sharedAuthViewModel.peekLoginSuccessMessage()
+            val user = sharedAuthViewModel.peekUser()
+            val accessToken = sharedAuthViewModel.peekAccessToken()
+            val refreshToken = sharedAuthViewModel.peekRefreshToken()
+
+            println("🔍 [NavHostSetup] Dashboard received loginSuccessMessage: $loginSuccessMessage")
+            println("🔍 [NavHostSetup] Dashboard received user: ${user?.email}")
+
             DashboardScaffold(
-                isGuestMode = false
+                isGuestMode = false,
+                successMessage = loginSuccessMessage,
+                user = user,
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+                onMessageConsumed = {
+                    sharedAuthViewModel.clearLoginSuccessMessage()
+                }
             )
         }
     }

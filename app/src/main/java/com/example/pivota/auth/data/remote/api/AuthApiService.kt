@@ -158,27 +158,77 @@ class AuthApiService @Inject constructor(
     /**
      * Request password reset
      */
+    /**
+     * Request password reset OTP
+     */
     suspend fun requestPasswordReset(email: String): BaseOtpResponseDto {
-        return client.post("v1/auth-module/password-reset/request") {
-            contentType(ContentType.Application.Json)
-            setBody(mapOf("email" to email))
-        }.body()
+        println("🔍 ========== PASSWORD RESET REQUEST ==========")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/password/forgot")
+        println("🔍 BODY: email=$email")
+        println("🔍 ============================================")
+
+        return try {
+            val response: BaseOtpResponseDto = client.post("v1/auth-module/password/forgot") {
+                contentType(ContentType.Application.Json)
+                setBody(mapOf("email" to email))
+            }.body()
+
+            println("🔍 ========== PASSWORD RESET RESPONSE ==========")
+            println("🔍 SUCCESS: ${response.success}")
+            println("🔍 MESSAGE: ${response.message}")
+            println("🔍 CODE: ${response.code}")
+            println("🔍 ERROR: ${response.error}")
+            println("🔍 =============================================")
+
+            response
+        } catch (e: Exception) {
+            println("🔍 ========== PASSWORD RESET ERROR ==========")
+            println("🔍 ERROR: ${e.message}")
+            e.printStackTrace()
+            println("🔍 ==========================================")
+            throw e
+        }
     }
 
     /**
      * Reset password with OTP
      */
+    /**
+     * Reset password with OTP
+     */
     suspend fun resetPassword(email: String, code: String, newPassword: String): BaseResponseDto<Nothing> {
-        return client.post("v1/auth-module/password-reset/reset") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                mapOf(
-                    "email" to email,
-                    "code" to code,
-                    "newPassword" to newPassword
+        println("🔍 ========== RESET PASSWORD REQUEST ==========")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/password/reset")
+        println("🔍 BODY: email=$email, code=$code, newPassword=${"*".repeat(newPassword.length)}")
+        println("🔍 ============================================")
+
+        return try {
+            val response: BaseResponseDto<Nothing> = client.post("v1/auth-module/password/reset") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    mapOf(
+                        "email" to email,
+                        "code" to code,
+                        "newPassword" to newPassword
+                    )
                 )
-            )
-        }.body()
+            }.body()
+
+            println("🔍 ========== RESET PASSWORD RESPONSE ==========")
+            println("🔍 SUCCESS: ${response.success}")
+            println("🔍 MESSAGE: ${response.message}")
+            println("🔍 CODE: ${response.code}")
+            println("🔍 ERROR: ${response.error}")
+            println("🔍 =============================================")
+
+            response
+        } catch (e: Exception) {
+            println("🔍 ========== RESET PASSWORD ERROR ==========")
+            println("🔍 ERROR: ${e.message}")
+            e.printStackTrace()
+            println("🔍 ==========================================")
+            throw e
+        }
     }
 
     /**
