@@ -15,43 +15,65 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 
 /* ======================================================
-   BASE RESPONSE (Matches proto SignupResponse/LoginResponse pattern)
+   BASE RESPONSE DTO (Matches backend BaseResponseDto)
 ====================================================== */
 
 @Serializable
 data class BaseResponseDto<T>(
     @SerialName("success") val success: Boolean,
     @SerialName("message") val message: String,
-    @SerialName("code") val code: String,
+    @SerialName("code") val code: String,  // String in backend, but can be number at gateway
     @SerialName("data") val data: T? = null,
     @SerialName("error") val error: ErrorPayloadDto? = null
-)
+) {
+    companion object {
+        fun <T> ok(data: T, message: String = "Success", code: String = "OK"): BaseResponseDto<T> {
+            return BaseResponseDto(
+                success = true,
+                message = message,
+                code = code,
+                data = data,
+                error = null
+            )
+        }
+
+        fun fail(message: String, code: String = "INTERNAL_ERROR", details: Any? = null): BaseResponseDto<Nothing> {
+            return BaseResponseDto(
+                success = false,
+                message = message,
+                code = code,
+                data = null,
+                error = ErrorPayloadDto(
+                    message = message,
+                    code = code,
+                    details = details
+                )
+            )
+        }
+    }
+}
 
 @Serializable(with = ErrorPayloadDtoSerializer::class)
 data class ErrorPayloadDto(
-    val message: String? = null,
+    val message: String,
     val code: String? = null,
-    val details: String? = null
-) {
-    fun getErrorMessage(): String = message ?: "Unknown error"
-}
+    val details: Any? = null
+)
 
 object ErrorPayloadDtoSerializer : kotlinx.serialization.KSerializer<ErrorPayloadDto> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("ErrorPayloadDto")
 
     override fun deserialize(decoder: Decoder): ErrorPayloadDto {
         val jsonDecoder = decoder as? kotlinx.serialization.json.JsonDecoder
-            ?: return ErrorPayloadDto()
+            ?: return ErrorPayloadDto(message = "Unknown error")
 
         val element = jsonDecoder.decodeJsonElement()
         val jsonObject = element.jsonObject
 
-        // Handle message that could be String or Array
         val message = when (val msgElement = jsonObject["message"]) {
-            null -> null
+            null -> "Unknown error"
             is JsonPrimitive -> msgElement.content
             else -> {
-                // It's an array
                 msgElement.jsonArray.joinToString(", ") { it.jsonPrimitive.content }
             }
         }
@@ -59,7 +81,7 @@ object ErrorPayloadDtoSerializer : kotlinx.serialization.KSerializer<ErrorPayloa
         return ErrorPayloadDto(
             message = message,
             code = jsonObject["code"]?.jsonPrimitive?.contentOrNull,
-            details = jsonObject["details"]?.jsonPrimitive?.contentOrNull
+            details = jsonObject["details"]
         )
     }
 
@@ -69,36 +91,12 @@ object ErrorPayloadDtoSerializer : kotlinx.serialization.KSerializer<ErrorPayloa
 }
 
 /* ======================================================
-   SIGNUP RESPONSE DATA (Matches proto SignupSuccessData)
+   BASE OTP RESPONSE (Matches backend BaseOtpResponse)
 ====================================================== */
-
-@Serializable
-data class SignupSuccessDataDto(
-    @SerialName("message") val message: String  // "Signup successful"
-)
-
-typealias SignupResponseDto = BaseResponseDto<SignupSuccessDataDto>
+typealias BaseOtpResponseDto = BaseResponseDto<Nothing>
 
 /* ======================================================
-   LOGIN RESPONSE DATA (Matches proto LoginData)
-====================================================== */
-
-@Serializable
-data class LoginDataDto(
-    // Stage 1: MFA required
-    @SerialName("email") val email: String? = null,
-    @SerialName("uuid") val uuid: String? = null,
-    @SerialName("message") val message: String? = null,  // "MFA_REQUIRED"
-
-    // Stage 2: Tokens
-    @SerialName("accessToken") val accessToken: String? = null,
-    @SerialName("refreshToken") val refreshToken: String? = null
-)
-
-typealias LoginResponseDto = BaseResponseDto<LoginDataDto>
-
-/* ======================================================
-   VERIFY OTP RESPONSE (Matches proto VerifyOtpResponse)
+   VERIFY OTP RESPONSE (Matches backend VerifyOtpResponse)
 ====================================================== */
 
 @Serializable
@@ -109,13 +107,53 @@ data class VerifyOtpDataDto(
 typealias VerifyOtpResponseDto = BaseResponseDto<VerifyOtpDataDto>
 
 /* ======================================================
-   BASE OTP RESPONSE (Matches proto BaseOtpResponse)
+   SIGNUP RESPONSE (Matches backend SignupResponse)
 ====================================================== */
 
-typealias BaseOtpResponseDto = BaseResponseDto<Nothing>
+@Serializable
+data class SignupSuccessDataDto(
+    @SerialName("message") val message: String  // "Signup successful"
+)
+
+typealias SignupResponseDto = BaseResponseDto<SignupSuccessDataDto>
 
 /* ======================================================
-   REFRESH TOKEN RESPONSE (Matches proto RefreshTokenResponse)
+   LOGIN RESPONSE (Matches backend LoginResponse)
+   Used for both Login and VerifyMfaLogin
+====================================================== */
+
+@Serializable
+data class LoginDataDto(
+    // Stage 1: MFA required
+    @SerialName("email") val email: String? = null,
+    @SerialName("uuid") val uuid: String? = null,
+    @SerialName("message") val message: String? = null,
+
+    // Stage 2: Tokens
+    @SerialName("accessToken") val accessToken: String? = null,
+    @SerialName("refreshToken") val refreshToken: String? = null,
+
+    // JWT Payload fields
+    @SerialName("userUuid") val userUuid: String? = null,
+    @SerialName("userName") val userName: String? = null,
+    @SerialName("firstName") val firstName: String? = null,
+    @SerialName("lastName") val lastName: String? = null,
+    @SerialName("phone") val phone: String? = null,
+    @SerialName("profileImage") val profileImage: String? = null,
+    @SerialName("primaryPurpose") val primaryPurpose: String? = null,
+    @SerialName("accountId") val accountId: String? = null,
+    @SerialName("accountName") val accountName: String? = null,
+    @SerialName("accountType") val accountType: String? = null,
+    @SerialName("tokenId") val tokenId: String? = null,
+    @SerialName("role") val role: String? = null,
+    @SerialName("organizationUuid") val organizationUuid: String? = null,
+    @SerialName("planSlug") val planSlug: String? = null
+)
+
+typealias LoginResponseDto = BaseResponseDto<LoginDataDto>
+
+/* ======================================================
+   REFRESH TOKEN RESPONSE (Matches backend BaseRefreshTokenResponse)
 ====================================================== */
 
 @Serializable
@@ -125,3 +163,29 @@ data class RefreshTokenDataDto(
 )
 
 typealias RefreshTokenResponseDto = BaseResponseDto<RefreshTokenDataDto>
+
+/* ======================================================
+   DEV TOKEN RESPONSE (Matches backend BaseDevTokenResponse)
+====================================================== */
+
+typealias BaseDevTokenResponseDto = BaseResponseDto<RefreshTokenDataDto>
+
+/* ======================================================
+   GET ACTIVE SESSIONS RESPONSE (Matches backend GetActiveSessionsResponse)
+====================================================== */
+
+@Serializable
+data class SessionDto(
+    @SerialName("id") val id: Int,
+    @SerialName("tokenId") val tokenId: String,
+    @SerialName("device") val device: String? = null,
+    @SerialName("ipAddress") val ipAddress: String? = null,
+    @SerialName("userAgent") val userAgent: String? = null,
+    @SerialName("os") val os: String? = null,
+    @SerialName("lastActiveAt") val lastActiveAt: String,
+    @SerialName("expiresAt") val expiresAt: String,
+    @SerialName("createdAt") val createdAt: String,
+    @SerialName("revoked") val revoked: Boolean
+)
+
+typealias GetActiveSessionsResponseDto = BaseResponseDto<List<SessionDto>>

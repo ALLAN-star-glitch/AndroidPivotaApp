@@ -28,6 +28,8 @@ class PivotaDataStore @Inject constructor(
         private val REFRESH_TOKEN = stringPreferencesKey("refresh_token")
         private val USER_EMAIL = stringPreferencesKey("user_email")
 
+        private val RESET_PASSWORD_EMAIL = stringPreferencesKey("reset_password_email")
+
         // ======================================================
         // ONBOARDING & WELCOME
         // ======================================================
@@ -111,6 +113,19 @@ class PivotaDataStore @Inject constructor(
             it.remove(REFRESH_TOKEN)
             it.remove(USER_EMAIL)
         }
+    }
+
+    // Reset password email methods
+    suspend fun saveResetPasswordEmail(email: String) {
+        dataStore.edit { it[RESET_PASSWORD_EMAIL] = email }
+    }
+
+    suspend fun getResetPasswordEmail(): String? {
+        return dataStore.data.map { it[RESET_PASSWORD_EMAIL] }.first()
+    }
+
+    suspend fun clearResetPasswordEmail() {
+        dataStore.edit { it.remove(RESET_PASSWORD_EMAIL) }
     }
 
     // ======================================================

@@ -17,10 +17,6 @@ class SharedAuthViewModel @Inject constructor() : ViewModel() {
     private val _loginSuccessMessage = MutableStateFlow<String?>(null)
     val loginSuccessMessage: StateFlow<String?> = _loginSuccessMessage.asStateFlow()
 
-    // Add signup success message
-    private val _signupSuccessMessage = MutableStateFlow<String?>(null)
-    val signupSuccessMessage: StateFlow<String?> = _signupSuccessMessage.asStateFlow()
-
     // Add user data storage
     private val _user = MutableStateFlow<User?>(null)
     val user: StateFlow<User?> = _user.asStateFlow()
@@ -65,23 +61,6 @@ class SharedAuthViewModel @Inject constructor() : ViewModel() {
         _loginSuccessMessage.value = null
     }
 
-    //  Signup success methods
-    fun setSignupSuccessMessage(message: String) {
-        println("🔍 [SharedAuthViewModel] Setting signup message: $message")
-        _signupSuccessMessage.value = message
-    }
-
-    fun peekSignupSuccessMessage(): String? {
-        val message = _signupSuccessMessage.value
-        println("🔍 [SharedAuthViewModel] Peeking signup message: $message")
-        return message
-    }
-
-    fun clearSignupSuccessMessage() {
-        println("🔍 [SharedAuthViewModel] Clearing signup message")
-        _signupSuccessMessage.value = null
-    }
-
     // User data methods
     fun setUser(user: User) {
         println("🔍 [SharedAuthViewModel] Setting user: ${user.email}")
@@ -120,7 +99,6 @@ class SharedAuthViewModel @Inject constructor() : ViewModel() {
     fun clearAllAuthData() {
         clearResetSuccessMessage()
         clearLoginSuccessMessage()
-        clearSignupSuccessMessage()  // ✅ Clear signup message
         clearUser()
         clearTokens()
     }
