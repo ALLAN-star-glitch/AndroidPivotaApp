@@ -117,7 +117,7 @@ fun OnboardingPager(
                             desc1 = "After registering, you can upgrade your account to post unlimited jobs, rentals, or services",
                             desc2 = "It's free to join. Upgrade when you're ready!",
                             isLoginScreen = false,
-                            onSuccess = { email ->
+                            onRegisterSuccess = { email ->
                                 coroutineScope.launch {
                                     datastore.clear()
                                 }

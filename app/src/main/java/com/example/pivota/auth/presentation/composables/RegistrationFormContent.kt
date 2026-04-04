@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -29,6 +30,8 @@ import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 import com.example.pivota.core.presentations.composables.OtpVerificationDialog
 import com.example.pivota.core.presentations.composables.PivotaFullScreenLoading
 import com.example.pivota.core.presentations.composables.PivotaSnackbar
+import com.example.pivota.core.presentations.composables.SnackbarType
+import com.example.pivota.ui.theme.SuccessGreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -56,6 +59,9 @@ fun RegistrationFormContent(
     var otpError by remember { mutableStateOf<String?>(null) }
     var countdown by remember { mutableStateOf(0) }
 
+    // ✅ Local password validation state
+    var localPasswordError by remember { mutableStateOf<String?>(null) }
+
     // Track if we're in OTP request or verification
     val isRequestingOtp = uiState is SignupUiState.Loading && !showOtpDialog
     val isVerifyingOtp = uiState is SignupUiState.Loading && showOtpDialog
@@ -69,6 +75,26 @@ fun RegistrationFormContent(
         iterations = LottieConstants.IterateForever,
         isPlaying = true
     )
+
+    // ✅ Real-time password validation (matches backend requirements)
+    fun validatePassword(password: String): String? {
+        return when {
+            password.isBlank() -> null  // Don't show error while empty
+            password.length < 8 -> "Password must be at least 8 characters"
+            !password.any { it.isUpperCase() } -> "Password must contain an uppercase letter (A-Z)"
+            !password.any { it.isLowerCase() } -> "Password must contain a lowercase letter (a-z)"
+            !password.any { it.isDigit() } -> "Password must contain a number (0-9)"
+            !password.any { it in "!@#$%^&*()_+-=[]{}|;':\",.<>/?`~" } ->
+                "Password must contain a special character"
+            else -> null
+        }
+    }
+
+    // ✅ Update password and local validation
+    fun handlePasswordChange(newValue: String) {
+        viewModel.updatePassword(newValue)
+        localPasswordError = validatePassword(newValue)
+    }
 
     // Countdown timer for resend button
     LaunchedEffect(uiState) {
@@ -90,15 +116,18 @@ fun RegistrationFormContent(
                 otpError = null
             }
             is SignupUiState.Loading -> {
-                isVerifying = true
+                if (showOtpDialog) {
+                    isVerifying = true
+                }
             }
             is SignupUiState.Success -> {
                 showOtpDialog = false
+                isVerifying = false
                 onRegisterSuccess(formState.email)
             }
             is SignupUiState.Error -> {
-                isVerifying = false
                 if (showOtpDialog) {
+                    isVerifying = false
                     otpError = (uiState as SignupUiState.Error).message
                 }
             }
@@ -114,6 +143,9 @@ fun RegistrationFormContent(
         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer
     )
     val fieldShape = RoundedCornerShape(12.dp)
+
+    // ✅ Display password error (prioritize local validation)
+    val displayPasswordError = localPasswordError
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Main content
@@ -229,11 +261,12 @@ fun RegistrationFormContent(
             )
             Spacer(Modifier.height(12.dp))
 
-            // Password
+            // ✅ Password field with real-time validation
             OutlinedTextField(
                 value = formState.password,
-                onValueChange = viewModel::updatePassword,
+                onValueChange = { handlePasswordChange(it) },
                 label = { Text("Password") },
+                placeholder = { Text("Enter your password") },
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
@@ -246,7 +279,40 @@ fun RegistrationFormContent(
                     }
                 },
                 colors = textFieldColors,
-                shape = fieldShape
+                shape = fieldShape,
+                isError = displayPasswordError != null,
+                supportingText = {
+                    if (displayPasswordError != null) {
+                        Text(
+                            text = displayPasswordError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp
+                        )
+                    } else if (formState.password.isNotEmpty()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = SuccessGreen
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Password meets requirements",
+                                fontSize = 11.sp,
+                                color = SuccessGreen
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "Min 8 chars: uppercase, lowercase, number, special (@ $ ! % * ? &)",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             )
 
             Spacer(Modifier.height(16.dp))
@@ -260,18 +326,19 @@ fun RegistrationFormContent(
 
             Spacer(Modifier.height(24.dp))
 
-            // Register Button
+            // ✅ Register Button - Enabled only when password is valid
             Button(
                 onClick = {
-                    if (formState.agreeTerms && formState.email.isNotEmpty() && formState.password.isNotEmpty()) {
+                    if (formState.agreeTerms && formState.email.isNotEmpty() && displayPasswordError == null && formState.password.isNotEmpty()) {
                         viewModel.startSignup()
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-                enabled = formState.agreeTerms && formState.email.isNotEmpty() && formState.password.isNotEmpty() && !isRequestingOtp,
+                enabled = formState.agreeTerms && formState.email.isNotEmpty() && displayPasswordError == null && formState.password.isNotEmpty() && !isRequestingOtp,
                 shape = RoundedCornerShape(28.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                 )
             ) {
                 if (isRequestingOtp) {
@@ -308,13 +375,14 @@ fun RegistrationFormContent(
             }
         }
 
-        // Full screen loading for OTP request and verification
+        // Full screen loading for OTP request
         if (isRequestingOtp) {
             PivotaFullScreenLoading(
                 message = "Sending verification code to\n${formState.email}"
             )
         }
 
+        // Full screen loading for OTP verification
         if (isVerifyingOtp) {
             PivotaFullScreenLoading(
                 message = "Verifying your code\nCreating your account..."
@@ -331,12 +399,14 @@ fun RegistrationFormContent(
         }
     }
 
-    // Use shared OtpVerificationDialog
+    // OTP Verification Dialog - Manual verification only
     if (showOtpDialog) {
         OtpVerificationDialog(
             email = formState.email,
             otpValues = otpValues,
-            onOtpDigitChange = { index, value -> viewModel.updateOtpDigit(index, value) },
+            onOtpDigitChange = { index, value ->
+                viewModel.updateOtpDigit(index, value)
+            },
             isVerifying = isVerifying,
             otpError = otpError,
             countdown = countdown,
