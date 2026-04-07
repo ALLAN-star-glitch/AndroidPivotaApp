@@ -69,7 +69,20 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
 
             OnboardingPager(
                 datastore = onboardingDataStore,
-                onOnboardingComplete = { purpose, purposeData ->
+                onOnboardingComplete = {
+                    // Just exploring or skip - go to dashboard without tokens
+                    navController.navigate(Dashboard) {
+                        popUpTo(Welcome) { inclusive = true }
+                    }
+                },
+                onSignupSuccess = { message, accessToken, refreshToken, user ->
+                    // Same pattern as login
+                    sharedAuthViewModel.setSignupSuccessMessage(message)
+                    sharedAuthViewModel.setUserTokens(accessToken, refreshToken)
+                    if (user != null) {
+                        sharedAuthViewModel.setUser(user)
+                    }
+
                     navController.navigate(Dashboard) {
                         popUpTo(Welcome) { inclusive = true }
                     }
@@ -143,20 +156,27 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
         composable<Dashboard> {
             // Get login success message and user data from shared view model
             val loginSuccessMessage = sharedAuthViewModel.peekLoginSuccessMessage()
+            val signupSuccessMessage = sharedAuthViewModel.peekSignupSuccessMessage()  // Get signup message
             val user = sharedAuthViewModel.peekUser()
             val accessToken = sharedAuthViewModel.peekAccessToken()
             val refreshToken = sharedAuthViewModel.peekRefreshToken()
 
             println("🔍 [NavHostSetup] Dashboard received loginSuccessMessage: $loginSuccessMessage")
+            println("🔍 [NavHostSetup] Dashboard received signupSuccessMessage: $signupSuccessMessage")  // Log signup message
             println("🔍 [NavHostSetup] Dashboard received user: ${user?.email}")
+
+            //  Use signup message first, then login message
+            val successMessage = signupSuccessMessage ?: loginSuccessMessage
 
             DashboardScaffold(
                 isGuestMode = false,
-                successMessage = loginSuccessMessage,
+                successMessage = successMessage,
                 user = user,
                 accessToken = accessToken,
                 refreshToken = refreshToken,
                 onMessageConsumed = {
+                    // Clear both messages after they're shown
+                    sharedAuthViewModel.clearSignupSuccessMessage()
                     sharedAuthViewModel.clearLoginSuccessMessage()
                 }
             )
