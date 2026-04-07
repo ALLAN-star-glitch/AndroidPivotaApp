@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import com.example.pivota.R
+import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.presentation.composables.AdaptiveAuthLayout
 import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -36,7 +37,8 @@ import com.example.pivota.core.preferences.PivotaDataStore
 @Composable
 fun OnboardingPager(
     modifier: Modifier = Modifier,
-    onOnboardingComplete: (purpose: String, purposeData: Map<String, Any>) -> Unit,
+    onOnboardingComplete: () -> Unit,  // For just exploring / skip
+    onSignupSuccess: (String, String, String, User?) -> Unit,  // (message, accessToken, refreshToken, user)
     onLoginClick: () -> Unit,
     signupViewModel: SignupViewModel = hiltViewModel(),
     datastore: PivotaDataStore,
@@ -92,7 +94,7 @@ fun OnboardingPager(
                             onContinue = { goToNextPage() },
                             onLoginClick = onLoginClick,
                             onSkipToDashboard = {
-                                onOnboardingComplete("just_exploring", emptyMap())
+                                onOnboardingComplete()
                             },
                             currentStep = currentPage,
                             totalSteps = 3
@@ -100,28 +102,25 @@ fun OnboardingPager(
                         1 -> AdaptivePurposeSelectionScreenContent(
                             onContinue = { goToNextPage() },
                             onSkipToDashboard = {
-                                onOnboardingComplete("just_exploring", emptyMap())
+                                onOnboardingComplete()
                             },
                             onContinueWithGoogle = {
-                                onOnboardingComplete("google", emptyMap())
+                                onOnboardingComplete()
                             },
-                            onJustExploring = {
-                                // Do nothing here - the button click already handles confirmSelection and navigation
-                                // The ViewModel's confirmSelection() will save the purpose, then the button calls onContinue()
-                            },
+                            onJustExploring = {},
                             currentStep = currentPage,
                             totalSteps = 3
                         )
                         2 -> AdaptiveAuthLayout(
                             viewModel = signupViewModel,
-                            desc1 = "After registering, you can upgrade your account to post unlimited jobs, rentals, or services",
+                            desc1 = "After registering, you can upgrade your account...",
                             desc2 = "It's free to join. Upgrade when you're ready!",
                             isLoginScreen = false,
-                            onRegisterSuccess = { email ->
+                            onRegisterSuccess = { message, accessToken, refreshToken, user ->
                                 coroutineScope.launch {
                                     datastore.clear()
                                 }
-                                onOnboardingComplete("registered", mapOf("email" to email))
+                                onSignupSuccess(message, accessToken, refreshToken, user)
                             },
                             onLoginClick = onLoginClick
                         )
@@ -130,7 +129,7 @@ fun OnboardingPager(
             }
         )
 
-        // Progress Indicator
+        // Progress Indicator - Moved OUTSIDE of HorizontalPager
         Column(
             modifier = Modifier
                 .fillMaxWidth()

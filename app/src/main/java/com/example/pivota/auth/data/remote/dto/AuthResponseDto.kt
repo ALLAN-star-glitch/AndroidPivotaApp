@@ -108,15 +108,24 @@ typealias VerifyOtpResponseDto = BaseResponseDto<VerifyOtpDataDto>
 
 /* ======================================================
    SIGNUP RESPONSE (Matches backend SignupResponse)
+   Updated to support auto-login with tokens
 ====================================================== */
 
 @Serializable
 data class SignupSuccessDataDto(
-    @SerialName("message") val message: String  // "Signup successful"
+    @SerialName("message") val message: String,  // "Signup successful"
+
+    // For auto-login (free plan)
+    @SerialName("accessToken") val accessToken: String? = null,
+    @SerialName("refreshToken") val refreshToken: String? = null,
+    @SerialName("redirectTo") val redirectTo: String? = null,  // "/dashboard"
+
+    // For premium payment required
+    @SerialName("redirectUrl") val redirectUrl: String? = null,
+    @SerialName("merchantReference") val merchantReference: String? = null
 )
 
 typealias SignupResponseDto = BaseResponseDto<SignupSuccessDataDto>
-
 /* ======================================================
    LOGIN RESPONSE (Matches backend LoginResponse)
    Used for both Login and VerifyMfaLogin

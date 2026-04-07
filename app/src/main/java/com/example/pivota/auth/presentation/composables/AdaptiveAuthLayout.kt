@@ -27,8 +27,8 @@ fun AdaptiveAuthLayout(
     viewModel: SignupViewModel? = null,
     onRegisterClick: () -> Unit = {},
     onLoginClick: () -> Unit = {},
-    onLoginSuccess: (User, String, String, String) -> Unit = { _, _, _, _ -> }, // New: 4 parameters for login
-    onRegisterSuccess: ( String) -> Unit = {},
+    onLoginSuccess: (User, String, String, String) -> Unit = { _, _, _, _ -> },
+    onRegisterSuccess: (String, String, String, User?) -> Unit = { _, _, _, _ -> },  // Updated: 4 parameters
     onForgotPasswordClick: () -> Unit = {},
     onGoogleLoginClick: () -> Unit = {},
     successMessage: String? = null
@@ -107,8 +107,8 @@ private fun AuthFormSwitcher(
     viewModel: SignupViewModel?,
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
-    onLoginSuccess: (User, String, String, String) -> Unit, // 4 parameters for login
-    onRegisterSuccess: (String) -> Unit,
+    onLoginSuccess: (User, String, String, String) -> Unit,
+    onRegisterSuccess: (String, String, String, User?) -> Unit,  // Updated: 4 parameters
     onForgotPasswordClick: () -> Unit,
     onGoogleLoginClick: () -> Unit,
     successMessage: String? = null
@@ -116,18 +116,18 @@ private fun AuthFormSwitcher(
     Box(modifier = Modifier.fillMaxSize()) {
         if (isLoginScreen) {
             LoginFormContent(
-                onLoginSuccess = onLoginSuccess, // Now passes 4 parameters
+                onLoginSuccess = onLoginSuccess,
                 onGoogleLoginClick = onGoogleLoginClick,
                 onRegisterLinkClick = onRegisterClick,
                 onForgotPasswordClick = onForgotPasswordClick,
                 successMessage = successMessage
             )
         } else {
-            // Only call if viewModel is not null - Registration uses 2 parameters
+            // Only call if viewModel is not null
             viewModel?.let { vm ->
                 RegistrationFormContent(
                     viewModel = vm,
-                    onRegisterSuccess = onRegisterSuccess, // Still 2 parameters
+                    onRegisterSuccess = onRegisterSuccess,  // Now passes 4 parameters (message, accessToken, refreshToken, user)
                     onLoginLinkClick = onLoginClick
                 )
             }

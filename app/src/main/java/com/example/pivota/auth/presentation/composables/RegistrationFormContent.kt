@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.airbnb.lottie.compose.*
 import com.example.pivota.R
+import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.presentation.state.SignupUiState
 import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 import com.example.pivota.core.presentations.composables.OtpVerificationDialog
@@ -38,7 +39,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun RegistrationFormContent(
     viewModel: SignupViewModel,
-    onRegisterSuccess: (String) -> Unit,
+    onRegisterSuccess: (String, String, String, User?) -> Unit,  // (message, accessToken, refreshToken, user)
     onLoginLinkClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -47,9 +48,13 @@ fun RegistrationFormContent(
     val otpValues by viewModel.otpValues.collectAsState()
     val resendCount by viewModel.resendCount.collectAsState()
 
-    // Snackbar state
-    val snackbarMessage by viewModel.snackbarMessage.collectAsState()
-    val snackbarType by viewModel.snackbarType.collectAsState()
+    // Main screen snackbar state (for signup errors, validation errors)
+    val mainSnackbarMessage by viewModel.mainSnackbarMessage.collectAsState()
+    val mainSnackbarType by viewModel.mainSnackbarType.collectAsState()
+
+    // Dialog snackbar state (for OTP-related messages)
+    val dialogSnackbarMessage by viewModel.dialogSnackbarMessage.collectAsState()
+    val dialogSnackbarType by viewModel.dialogSnackbarType.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -58,6 +63,7 @@ fun RegistrationFormContent(
     var isVerifying by remember { mutableStateOf(false) }
     var otpError by remember { mutableStateOf<String?>(null) }
     var countdown by remember { mutableStateOf(0) }
+    var verificationFailed by remember { mutableStateOf(false) }
 
     // ✅ Local password validation state
     var localPasswordError by remember { mutableStateOf<String?>(null) }
@@ -113,22 +119,54 @@ fun RegistrationFormContent(
             is SignupUiState.OtpSent -> {
                 showOtpDialog = true
                 isVerifying = false
+                verificationFailed = false
                 otpError = null
+                countdown = 60
+                // Show success message inside dialog when it opens
+                viewModel.showDialogSnackbar("Verification code sent to your email!", SnackbarType.SUCCESS)
+                coroutineScope.launch {
+                    delay(3000)
+                    viewModel.clearDialogSnackbar()
+                }
             }
             is SignupUiState.Loading -> {
                 if (showOtpDialog) {
                     isVerifying = true
+                    verificationFailed = false
                 }
             }
             is SignupUiState.Success -> {
                 showOtpDialog = false
                 isVerifying = false
-                onRegisterSuccess(formState.email)
+                // Pass the success message, tokens, and user to the callback
+                val successState = uiState as SignupUiState.Success
+                onRegisterSuccess(
+                    successState.message,
+                    successState.accessToken ?: "",
+                    successState.refreshToken ?: "",
+                    successState.user
+                )
+                viewModel.resetState()
+            }
+            is SignupUiState.PaymentRequired -> {
+                // Handle payment required (redirect to payment page)
+                showOtpDialog = false
+                isVerifying = false
+                val paymentData = uiState as SignupUiState.PaymentRequired
+                // TODO: Navigate to payment screen with redirectUrl and merchantReference
+                println("🔍 Payment required: ${paymentData.redirectUrl}")
+                viewModel.resetState()
             }
             is SignupUiState.Error -> {
                 if (showOtpDialog) {
                     isVerifying = false
+                    verificationFailed = true
                     otpError = (uiState as SignupUiState.Error).message
+                    viewModel.showDialogSnackbar(otpError ?: "Verification failed", SnackbarType.ERROR)
+                    coroutineScope.launch {
+                        delay(4000)
+                        viewModel.clearDialogSnackbar()
+                    }
                 }
             }
             else -> {}
@@ -389,17 +427,18 @@ fun RegistrationFormContent(
             )
         }
 
-        // Snackbar for all messages (errors, successes, warnings)
-        if (snackbarMessage != null) {
+        // ✅ Main Snackbar for signup errors, validation errors, and success messages
+        if (mainSnackbarMessage != null && !showOtpDialog) {
             PivotaSnackbar(
-                message = snackbarMessage!!,
-                type = snackbarType,
-                onDismiss = { viewModel.clearSnackbar() }
+                message = mainSnackbarMessage!!,
+                type = mainSnackbarType,
+                duration = 4000L,
+                onDismiss = { viewModel.clearMainSnackbar() }
             )
         }
     }
 
-    // OTP Verification Dialog - Manual verification only
+    // OTP Verification Dialog with its own snackbar
     if (showOtpDialog) {
         OtpVerificationDialog(
             email = formState.email,
@@ -408,7 +447,7 @@ fun RegistrationFormContent(
                 viewModel.updateOtpDigit(index, value)
             },
             isVerifying = isVerifying,
-            otpError = otpError,
+            otpError = if (verificationFailed) otpError else null,
             countdown = countdown,
             resendCount = resendCount,
             title = "Verify Your Email",
@@ -417,22 +456,41 @@ fun RegistrationFormContent(
             onVerify = {
                 val code = otpValues.joinToString("")
                 if (code.length == 6) {
+                    verificationFailed = false
                     viewModel.verifyAndRegister(code)
                 } else {
                     otpError = "Please enter a valid 6-digit code"
+                    verificationFailed = true
+                    viewModel.showDialogSnackbar(otpError!!, SnackbarType.ERROR)
+                    coroutineScope.launch {
+                        delay(3000)
+                        viewModel.clearDialogSnackbar()
+                    }
                 }
             },
             onResend = {
                 viewModel.incrementResendCount()
-                viewModel.requestSignupOtp(formState.email)
+                viewModel.requestSignupOtp(formState.email, formState.phone)
                 otpError = null
+                verificationFailed = false
+                viewModel.showDialogSnackbar("New verification code sent!", SnackbarType.SUCCESS)
+                coroutineScope.launch {
+                    delay(3000)
+                    viewModel.clearDialogSnackbar()
+                }
             },
             onCancel = {
                 if (!isVerifying) {
                     showOtpDialog = false
                     viewModel.resetState()
                     otpError = null
+                    verificationFailed = false
                 }
+            },
+            snackbarMessage = dialogSnackbarMessage,
+            snackbarType = dialogSnackbarType,
+            onSnackbarDismiss = {
+                viewModel.clearDialogSnackbar()
             }
         )
     }

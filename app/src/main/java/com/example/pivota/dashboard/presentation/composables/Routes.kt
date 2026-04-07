@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable object Dashboard
 @Serializable object Professionals
 @Serializable object Discover
-@Serializable object SmartMatch
+@Serializable object Favorites
 @Serializable object Profile
 
 // Specific Posting Flow routes (Type-Safe)
