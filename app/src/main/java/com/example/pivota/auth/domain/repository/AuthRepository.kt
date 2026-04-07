@@ -14,7 +14,7 @@ interface AuthRepository {
      * Stage 1: Request OTP
      * Backend returns: BaseOtpResponseDto (BaseResponseDto<Nothing>)
      */
-    suspend fun requestOtp(email: String, purpose: String): BaseOtpResponseDto
+    suspend fun requestOtp(email: String, purpose: String, phone: String? = null): BaseOtpResponseDto
 
     /**
      * Stage 2: Verify OTP

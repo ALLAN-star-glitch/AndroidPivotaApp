@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.domain.useCase.AuthUseCases
 import com.example.pivota.auth.presentation.state.SignupUiState
+import com.example.pivota.core.database.dao.UserDao
 import com.example.pivota.core.preferences.PivotaDataStore
 import com.example.pivota.core.presentations.composables.SnackbarType
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,7 +30,8 @@ data class RegistrationFormState(
 @HiltViewModel
 class SignupViewModel @Inject constructor(
     private val authUseCases: AuthUseCases,
-    private val datastore: PivotaDataStore
+    private val datastore: PivotaDataStore,
+    private val userDao: UserDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SignupUiState>(SignupUiState.Idle)
@@ -37,11 +39,19 @@ class SignupViewModel @Inject constructor(
 
     /* ---------------- SNACKBAR STATE ---------------- */
 
-    private val _snackbarMessage = MutableStateFlow<String?>(null)
-    val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
+    // Main screen snackbar (for signup errors, validation errors)
+    private val _mainSnackbarMessage = MutableStateFlow<String?>(null)
+    val mainSnackbarMessage: StateFlow<String?> = _mainSnackbarMessage.asStateFlow()
 
-    private val _snackbarType = MutableStateFlow(SnackbarType.INFO)
-    val snackbarType: StateFlow<SnackbarType> = _snackbarType.asStateFlow()
+    private val _mainSnackbarType = MutableStateFlow(SnackbarType.INFO)
+    val mainSnackbarType: StateFlow<SnackbarType> = _mainSnackbarType.asStateFlow()
+
+    // Dialog snackbar (for OTP-related messages inside the OTP dialog)
+    private val _dialogSnackbarMessage = MutableStateFlow<String?>(null)
+    val dialogSnackbarMessage: StateFlow<String?> = _dialogSnackbarMessage.asStateFlow()
+
+    private val _dialogSnackbarType = MutableStateFlow(SnackbarType.INFO)
+    val dialogSnackbarType: StateFlow<SnackbarType> = _dialogSnackbarType.asStateFlow()
 
     private val _formState = MutableStateFlow(RegistrationFormState())
     val formState: StateFlow<RegistrationFormState> = _formState.asStateFlow()
@@ -59,13 +69,34 @@ class SignupViewModel @Inject constructor(
 
     /* ---------------- SNACKBAR ACTIONS ---------------- */
 
-    private fun showSnackbar(message: String, type: SnackbarType = SnackbarType.ERROR) {
-        _snackbarMessage.value = message
-        _snackbarType.value = type
+    // Show snackbar on main screen
+    private fun showMainSnackbar(message: String, type: SnackbarType = SnackbarType.ERROR) {
+        _mainSnackbarMessage.value = message
+        _mainSnackbarType.value = type
     }
 
-    fun clearSnackbar() {
-        _snackbarMessage.value = null
+    // Show snackbar inside OTP dialog
+    fun showDialogSnackbar(message: String, type: SnackbarType = SnackbarType.INFO) {
+        _dialogSnackbarMessage.value = message
+        _dialogSnackbarType.value = type
+    }
+
+    fun clearMainSnackbar() {
+        _mainSnackbarMessage.value = null
+    }
+
+    fun clearDialogSnackbar() {
+        _dialogSnackbarMessage.value = null
+    }
+
+    // Show error message (for external calls, similar to LoginViewModel)
+    fun showErrorMessage(message: String) {
+        _mainSnackbarMessage.value = message
+        _mainSnackbarType.value = SnackbarType.ERROR
+        viewModelScope.launch {
+            delay(4000)
+            clearMainSnackbar()
+        }
     }
 
     init {
@@ -137,11 +168,12 @@ class SignupViewModel @Inject constructor(
             form.firstName.isBlank() -> "First name is required."
             form.lastName.isBlank() -> "Last name is required."
             !isEmailValid(form.email) -> "Please enter a valid email address."
+            form.phone.isBlank() -> "Phone number is required for verification."
             else -> null
         }
 
         if (errorMessage != null) {
-            showSnackbar(errorMessage, SnackbarType.WARNING)
+            showMainSnackbar(errorMessage, SnackbarType.WARNING)
             return
         }
 
@@ -267,15 +299,15 @@ class SignupViewModel @Inject constructor(
                 propertyOwnerPortfolio = propertyOwnerPortfolio
             )
 
-            requestSignupOtp(email)
+            requestSignupOtp(email, phone)
         }
     }
 
-    fun requestSignupOtp(email: String) {
-        println("🔍 STEP 1: requestSignupOtp called with email: $email, purpose: SIGNUP")
+    fun requestSignupOtp(email: String, phone: String) {
+        println("🔍 STEP 1: requestSignupOtp called with email: $email, phone: $phone, purpose: EMAIL_VERIFICATION")
         _uiState.value = SignupUiState.Loading
         viewModelScope.launch {
-            authUseCases.requestOtp(email, "SIGNUP")
+            authUseCases.requestOtp(email, "EMAIL_VERIFICATION", phone)
                 .onSuccess {
                     println("🔍 STEP 2: OTP request SUCCESS")
                     datastore.saveBasicUserInfo(
@@ -285,14 +317,12 @@ class SignupViewModel @Inject constructor(
                         phone = _formState.value.phone,
                         password = _formState.value.password
                     )
-                    showSnackbar("Verification code sent to your email!", SnackbarType.SUCCESS)
-                    // Delay before showing OTP dialog to let snackbar be visible
-                    delay(1500)
+                    // This will be shown as dialog snackbar when OTP dialog opens
                     _uiState.value = SignupUiState.OtpSent
                 }
                 .onFailure { error ->
                     println("🔍 STEP 2: OTP request FAILED: ${error.message}")
-                    showSnackbar(error.message ?: "Failed to send verification code", SnackbarType.ERROR)
+                    showMainSnackbar(error.message ?: "Failed to send verification code", SnackbarType.ERROR)
                     _uiState.value = SignupUiState.Idle
                 }
         }
@@ -308,9 +338,10 @@ class SignupViewModel @Inject constructor(
         _resendCount.value += 1
     }
 
+    // UPDATED: Handle new response with tokens and payment flow
     fun verifyAndRegister(code: String) {
         val user = pendingUser ?: run {
-            showSnackbar("Session expired. Please register again.", SnackbarType.ERROR)
+            showDialogSnackbar("Session expired. Please register again.", SnackbarType.ERROR)
             return
         }
 
@@ -321,13 +352,6 @@ class SignupViewModel @Inject constructor(
         println("🔍 email: ${user.email}")
         println("🔍 personalPhone: ${user.personalPhone}")
         println("🔍 primaryPurpose: ${user.primaryPurpose}")
-        println("🔍 jobSeekerPreferences: ${user.jobSeekerPreferences}")
-        println("🔍 skilledProfessionalProfile: ${user.skilledProfessionalProfile}")
-        println("🔍 intermediaryAgentProfile: ${user.intermediaryAgentProfile}")
-        println("🔍 housingSeekerPreferences: ${user.housingSeekerPreferences}")
-        println("🔍 supportBeneficiaryNeeds: ${user.supportBeneficiaryNeeds}")
-        println("🔍 employerRequirements: ${user.employerRequirements}")
-        println("🔍 propertyOwnerPortfolio: ${user.propertyOwnerPortfolio}")
         println("🔍 =============================================================")
 
         _uiState.value = SignupUiState.Loading
@@ -337,14 +361,82 @@ class SignupViewModel @Inject constructor(
 
             val result = authUseCases.registerUser.invoke(user, trimmedCode, pendingPassword)
 
-            result.onSuccess {
-                datastore.clear()
-                clearCache()
-                showSnackbar("Account created successfully!", SnackbarType.SUCCESS)
-                _uiState.value = SignupUiState.Success
+            result.onSuccess { signupData ->
+                when {
+                    // Auto-login successful (tokens received)
+                    !signupData.accessToken.isNullOrEmpty() -> {
+                        println("🔍 Signup successful with tokens - auto-login")
+
+                        // Save tokens to DataStore
+                        datastore.saveTokens(signupData.accessToken, signupData.refreshToken ?: "")
+                        datastore.saveUserEmail(user.email)
+
+                        // Get the complete user from Room database
+                        val userEntity = userDao.getUserByEmail(user.email)
+
+                        val authenticatedUser = if (userEntity != null) {
+                            User(
+                                uuid = userEntity.uuid,
+                                email = userEntity.email,
+                                firstName = userEntity.firstName,
+                                lastName = userEntity.lastName,
+                                userName = userEntity.userName,
+                                personalPhone = userEntity.phone,
+                                profileImage = userEntity.profileImage,
+                                accessToken = signupData.accessToken,
+                                refreshToken = signupData.refreshToken,
+                                isAuthenticated = true,
+                                primaryPurpose = userEntity.primaryPurpose,
+                                role = userEntity.role,
+                                accountType = userEntity.accountType,
+                                accountId = userEntity.accountId,
+                                accountName = userEntity.accountName,
+                                organizationUuid = userEntity.organizationUuid,
+                                planSlug = userEntity.planSlug,
+                                tokenId = userEntity.tokenId
+                            )
+                        } else {
+                            User(
+                                email = user.email,
+                                isAuthenticated = true,
+                                accessToken = signupData.accessToken,
+                                refreshToken = signupData.refreshToken
+                            )
+                        }
+
+                        datastore.clear()
+                        clearCache()
+                        _uiState.value = SignupUiState.Success(
+                            message = signupData.message,
+                            redirectTo = signupData.redirectTo ?: "/dashboard",
+                            accessToken = signupData.accessToken,
+                            refreshToken = signupData.refreshToken ?: "",
+                            user = authenticatedUser
+                        )
+                    }
+                    // Payment required (premium plan)
+                    !signupData.redirectUrl.isNullOrEmpty() -> {
+                        println("🔍 Payment required - redirect to payment")
+                        _uiState.value = SignupUiState.PaymentRequired(
+                            message = signupData.message,
+                            redirectUrl = signupData.redirectUrl,
+                            merchantReference = signupData.merchantReference
+                        )
+                    }
+                    // Just success message (fallback)
+                    else -> {
+                        println("🔍 Signup successful without tokens")
+                        datastore.clear()
+                        clearCache()
+                        _uiState.value = SignupUiState.Success(
+                            message = signupData.message,
+                            redirectTo = "/login"
+                        )
+                    }
+                }
             }.onFailure { error ->
                 println("🔍 SIGNUP ERROR: ${error.message}")
-                showSnackbar(error.message ?: "Signup failed", SnackbarType.ERROR)
+                showDialogSnackbar(error.message ?: "Signup failed", SnackbarType.ERROR)
                 _uiState.value = SignupUiState.Idle
             }
         }
@@ -359,7 +451,8 @@ class SignupViewModel @Inject constructor(
 
     fun resetState() {
         _uiState.value = SignupUiState.Idle
-        clearSnackbar()
+        clearMainSnackbar()
+        clearDialogSnackbar()
     }
 
     fun clearError() {

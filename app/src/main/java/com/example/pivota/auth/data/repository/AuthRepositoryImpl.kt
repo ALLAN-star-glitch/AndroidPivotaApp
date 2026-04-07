@@ -22,10 +22,11 @@ class AuthRepositoryImpl @Inject constructor(
     private val mapper: AuthDataMapper
 ) : AuthRepository {
 
-    override suspend fun requestOtp(email: String, purpose: String): BaseOtpResponseDto {
+    override suspend fun requestOtp(email: String, purpose: String, phone: String?): BaseOtpResponseDto {
         val request = RequestOtpRequestDto(
             email = email,
-            purpose = purpose
+            purpose = purpose,
+            phone = phone
         )
         return apiService.requestOtp(request)
     }
@@ -68,10 +69,47 @@ class AuthRepositoryImpl @Inject constructor(
 
         println("🔍 RESPONSE: success=${response.success}, message=${response.message}")
 
-        // Save basic user info if signup successful
-        if (response.success) {
-            val basicUser = user.copy(isAuthenticated = false)
-            saveBasicUserInfo(basicUser)
+        // Handle auto-login if tokens are present
+        if (response.success && response.data != null) {
+            val signupData = response.data
+
+            // Check if we have tokens (auto-login for free plan)
+            if (!signupData.accessToken.isNullOrEmpty() && !signupData.refreshToken.isNullOrEmpty()) {
+                println("🔍 Auto-login: Tokens received, saving user session")
+
+                // Extract user from token and save authenticated session
+                val authenticatedUser = extractUserFromToken(
+                    email = request.email,
+                    accessToken = signupData.accessToken,
+                    refreshToken = signupData.refreshToken
+                )
+
+                // Also save additional fields from signup
+                val finalUser = authenticatedUser.copy(
+                    firstName = request.firstName,
+                    lastName = request.lastName,
+                    personalPhone = request.phone,
+                    primaryPurpose = request.primaryPurpose
+                )
+
+                saveAuthenticatedUser(finalUser)
+
+                println("🔍 User auto-logged in successfully: ${finalUser.email}")
+            }
+            // Check if payment is required (premium plan)
+            else if (!signupData.redirectUrl.isNullOrEmpty()) {
+                println("🔍 Payment required: Redirect to ${signupData.redirectUrl}")
+                // Don't save user yet - they need to complete payment first
+                // Save only basic info for later
+                val basicUser = user.copy(isAuthenticated = false)
+                saveBasicUserInfo(basicUser)
+            }
+            // Fallback - just success message (should go to login)
+            else {
+                println("🔍 Signup successful, no tokens. User should login manually")
+                val basicUser = user.copy(isAuthenticated = false)
+                saveBasicUserInfo(basicUser)
+            }
         }
 
         return response
@@ -169,33 +207,41 @@ class AuthRepositoryImpl @Inject constructor(
             val jsonElement = Json.parseToJsonElement(payloadJson)
             val jsonObject = jsonElement.jsonObject
 
-            // Extract fields from JWT payload
-            val userUuid = jsonObject["userUuid"]?.jsonPrimitive?.contentOrNull
-            val userName = jsonObject["userName"]?.jsonPrimitive?.contentOrNull
-            val accountId = jsonObject["accountId"]?.jsonPrimitive?.contentOrNull
-            val accountName = jsonObject["accountName"]?.jsonPrimitive?.contentOrNull
+            // Extract fields from JWT payload (matching backend JwtPayload interface)
+            val userUuid = jsonObject["userUuid"]?.jsonPrimitive?.contentOrNull ?: ""
+            val userName = jsonObject["userName"]?.jsonPrimitive?.contentOrNull ?: ""
+            val accountId = jsonObject["accountId"]?.jsonPrimitive?.contentOrNull ?: ""
+            val accountName = jsonObject["accountName"]?.jsonPrimitive?.contentOrNull ?: ""
             val accountType = jsonObject["accountType"]?.jsonPrimitive?.contentOrNull
-            val tokenId = jsonObject["tokenId"]?.jsonPrimitive?.contentOrNull
+            val tokenId = jsonObject["tokenId"]?.jsonPrimitive?.contentOrNull ?: ""
             val role = jsonObject["role"]?.jsonPrimitive?.contentOrNull
             val organizationUuid = jsonObject["organizationUuid"]?.jsonPrimitive?.contentOrNull
             val planSlug = jsonObject["planSlug"]?.jsonPrimitive?.contentOrNull
 
             // Extract first name and last name from userName if available
             val firstName = jsonObject["firstName"]?.jsonPrimitive?.contentOrNull
-                ?: userName?.split(" ")?.firstOrNull()
+                ?: userName.split(" ").firstOrNull()
                 ?: ""
             val lastName = jsonObject["lastName"]?.jsonPrimitive?.contentOrNull
-                ?: userName?.split(" ")?.drop(1)?.joinToString(" ")
-                ?: ""
+                ?: userName.split(" ").drop(1).joinToString(" ")
 
-            println("🔍 [JWT Decoded] User: $userName, Role: $role, AccountType: $accountType")
+            println("🔍 [JWT Decoded]")
+            println("   - userUuid: $userUuid")
+            println("   - userName: $userName")
+            println("   - accountId: $accountId")
+            println("   - accountName: $accountName")
+            println("   - accountType: $accountType")
+            println("   - tokenId: $tokenId")
+            println("   - role: $role")
+            println("   - organizationUuid: $organizationUuid")
+            println("   - planSlug: $planSlug")
 
             User(
-                uuid = userUuid ?: "",
+                uuid = userUuid,
                 email = email,
                 firstName = firstName,
                 lastName = lastName,
-                userName = userName ?: "$firstName $lastName".trim(),
+                userName = userName,
                 accessToken = accessToken,
                 refreshToken = refreshToken,
                 isAuthenticated = true,
@@ -211,6 +257,7 @@ class AuthRepositoryImpl @Inject constructor(
             )
         } catch (e: Exception) {
             println("🔍 [JWT Decode Error] ${e.message}")
+            e.printStackTrace()
             // Fallback to basic user
             User(
                 email = email,
