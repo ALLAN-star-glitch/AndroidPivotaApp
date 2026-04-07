@@ -29,16 +29,19 @@ class AuthApiService @Inject constructor(
      * Request OTP for signup, login, or password reset
      */
     suspend fun requestOtp(request: RequestOtpRequestDto): BaseOtpResponseDto {
+        // Build request body - only include phone if it's provided
+        val requestBody = mutableMapOf<String, String>("email" to request.email)
+        request.phone?.let { requestBody["phone"] = it }
+
         // Log REQUEST
         println("🔍 ========== OTP REQUEST ==========")
         println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/otp/request?purpose=${request.purpose}")
-        println("🔍 BODY: email=${request.email}")
+        println("🔍 BODY: email=${request.email}${request.phone?.let { ", phone=$it" } ?: ""}")
         println("🔍 ==================================")
 
         val response: BaseOtpResponseDto = client.post("v1/auth-module/otp/request?purpose=${request.purpose}") {
             contentType(ContentType.Application.Json)
-            // Only send email in body, purpose goes in URL
-            setBody(mapOf("email" to request.email))
+            setBody(requestBody)
         }.body()
 
         // Log RESPONSE
@@ -158,9 +161,6 @@ class AuthApiService @Inject constructor(
     /**
      * Request password reset
      */
-    /**
-     * Request password reset OTP
-     */
     suspend fun requestPasswordReset(email: String): BaseOtpResponseDto {
         println("🔍 ========== PASSWORD RESET REQUEST ==========")
         println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/password/forgot")
@@ -190,9 +190,6 @@ class AuthApiService @Inject constructor(
         }
     }
 
-    /**
-     * Reset password with OTP
-     */
     /**
      * Reset password with OTP
      */

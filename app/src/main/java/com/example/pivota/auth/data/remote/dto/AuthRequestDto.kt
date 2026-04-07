@@ -195,7 +195,8 @@ data class VerifyMfaLoginRequestDto(
 @Serializable
 data class RequestOtpRequestDto(
     @SerialName("email") val email: String,
-    @SerialName("purpose") val purpose: String  // "SIGNUP", "FORGOT_PASSWORD", "LOGIN"
+    @SerialName("purpose") val purpose: String,  // "SIGNUP", "FORGOT_PASSWORD", "LOGIN"
+    @SerialName("phone") val phone: String? = null,
 )
 
 /* ======================================================

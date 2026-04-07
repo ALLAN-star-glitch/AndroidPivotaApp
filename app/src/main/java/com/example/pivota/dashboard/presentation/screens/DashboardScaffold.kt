@@ -426,7 +426,7 @@ fun DashboardScaffold(
                             }
                         }
 
-                        composable<SmartMatch> { SmartMatchScreen() }
+                        composable<Favorites> { FavoritesScreen () }
                         composable<Profile> { ProfileScreen(isGuestMode = isGuestMode) }
 
                         // HouseListings route
