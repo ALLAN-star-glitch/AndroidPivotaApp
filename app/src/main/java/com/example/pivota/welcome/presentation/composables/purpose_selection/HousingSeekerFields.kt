@@ -18,7 +18,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.pivota.welcome.presentation.screens.HousingSeekerData
 import com.example.pivota.welcome.presentation.state.HousingSeekerFormData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -72,14 +71,16 @@ fun HousingSeekerFields(
         onRemove(newItems)
     }
 
-    // NEW: Listing Types (multi-select)
-    val listingTypes = listOf("Rental", "House for Sale")
+    // Search Type Options
+    val searchTypes = listOf("RENTAL", "SALE", "BOTH")
 
+    // Property Types (multi-select)
     val propertyTypes = listOf(
-        "Apartment", "House", "Bedsitter", "Room",
-        "Studio", "Townhouse", "Land"
+        "APARTMENT", "HOUSE", "BEDSITTER", "ROOM",
+        "STUDIO", "TOWNHOUSE", "LAND", "CONDO", "VILLA"
     )
 
+    // Area Suggestions
     val areaSuggestions = listOf(
         "Kilimani", "Kileleshwa", "Westlands", "Lavington", "Karen",
         "Ruiru", "Thika", "Kiambu", "Embakasi", "Donholm",
@@ -107,9 +108,9 @@ fun HousingSeekerFields(
                 )
             )
 
-            // ✅ NEW: Listing Type (multi-select)
+            // Search Type (Rent / Sale / Both)
             Text(
-                text = "Looking For",
+                text = "What are you looking for?",
                 style = MaterialTheme.typography.labelMedium.copy(
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary
@@ -117,18 +118,28 @@ fun HousingSeekerFields(
             )
 
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(listingTypes) { type ->
+                items(searchTypes) { type ->
                     FilterChip(
-                        selected = data.listingTypes.contains(type),
+                        selected = data.searchType == type,
                         onClick = {
-                            val updated = if (data.listingTypes.contains(type)) {
-                                data.listingTypes.filter { it != type }
-                            } else {
-                                data.listingTypes + type
-                            }
-                            onDataChange(data.copy(listingTypes = updated))
+                            val updatedType = if (data.searchType == type) "" else type
+                            onDataChange(
+                                data.copy(
+                                    searchType = updatedType,
+                                    isLookingForRental = updatedType == "RENTAL" || updatedType == "BOTH",
+                                    isLookingToBuy = updatedType == "SALE" || updatedType == "BOTH"
+                                )
+                            )
                         },
-                        label = { Text(type) },
+                        label = {
+                            Text(
+                                when(type) {
+                                    "RENTAL" -> "For Rent"
+                                    "SALE" -> "For Sale"
+                                    else -> "Both"
+                                }
+                            )
+                        },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -137,29 +148,29 @@ fun HousingSeekerFields(
                 }
             }
 
-            if (data.listingTypes.isNotEmpty()) {
-                Text(
-                    text = "${data.listingTypes.size} option${if (data.listingTypes.size > 1) "s" else ""} selected",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // Property Type (unchanged)
+            // Property Type (multi-select)
             Text(
                 text = "Property Type",
                 style = MaterialTheme.typography.labelMedium.copy(
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary
-                )
+                ),
+                modifier = Modifier.padding(top = 8.dp)
             )
 
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(propertyTypes) { type ->
                     FilterChip(
-                        selected = data.propertyType == type,
-                        onClick = { onDataChange(data.copy(propertyType = type)) },
-                        label = { Text(type) },
+                        selected = data.propertyTypes.contains(type),
+                        onClick = {
+                            val updated = if (data.propertyTypes.contains(type)) {
+                                data.propertyTypes.filter { it != type }
+                            } else {
+                                data.propertyTypes + type
+                            }
+                            onDataChange(data.copy(propertyTypes = updated))
+                        },
+                        label = { Text(type.replaceFirstChar { it.uppercase() }) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -168,45 +179,11 @@ fun HousingSeekerFields(
                 }
             }
 
-            // Bedrooms
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = data.minBedrooms,
-                    onValueChange = { onDataChange(data.copy(minBedrooms = it)) },
-                    label = { Text("Min Bedrooms") },
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                OutlinedTextField(
-                    value = data.maxBedrooms,
-                    onValueChange = { onDataChange(data.copy(maxBedrooms = it)) },
-                    label = { Text("Max Bedrooms") },
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(12.dp)
-                )
-            }
-
-            // Budget
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = data.minBudget,
-                    onValueChange = { onDataChange(data.copy(minBudget = it)) },
-                    label = { Text("Min Budget (KES)") },
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                OutlinedTextField(
-                    value = data.maxBudget,
-                    onValueChange = { onDataChange(data.copy(maxBudget = it)) },
-                    label = { Text("Max Budget (KES)") },
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(12.dp)
+            if (data.propertyTypes.isNotEmpty()) {
+                Text(
+                    text = "${data.propertyTypes.size} type${if (data.propertyTypes.size > 1) "s" else ""} selected",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
