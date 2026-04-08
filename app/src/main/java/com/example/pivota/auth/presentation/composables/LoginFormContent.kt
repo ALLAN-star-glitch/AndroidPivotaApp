@@ -102,6 +102,16 @@ fun LoginFormContent(
         isPlaying = true
     )
 
+    // Lottie animation
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.login_animation) // Make sure you have this animation file
+    )
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        iterations = LottieConstants.IterateForever,
+        isPlaying = true
+    )
+
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = MaterialTheme.colorScheme.primary,
         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,

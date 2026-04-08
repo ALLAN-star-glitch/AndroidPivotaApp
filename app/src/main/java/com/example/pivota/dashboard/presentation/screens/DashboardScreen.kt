@@ -2574,7 +2574,6 @@ fun CompactKpiCard(
                     )
                 }
             }
-
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(
@@ -2615,6 +2614,18 @@ fun CompactKpiCard(
                 )
             }
         }
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = if (metric.change.startsWith("+")) SuccessGreen.copy(alpha = 0.1f) else errorLight.copy(alpha = 0.1f)
+        ) {
+            Text(
+                metric.change,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (metric.change.startsWith("+")) SuccessGreen else errorLight
+            )
+        }
     }
 }
 
@@ -2623,6 +2634,8 @@ fun CompactKpiCard(
 fun ProfessionalAnalyticsSection(
     primaryColor: Color,
     accentColor: Color,
+    successColor: Color,
+    warningColor: Color,
     textPrimary: Color,
     textSecondary: Color,
     borderColor: Color,
@@ -3596,11 +3609,11 @@ fun DashboardHeroHeader(
     val colorScheme = MaterialTheme.colorScheme
     val collapsed = collapseFraction > 0.85f
 
-    val maxFontSize = 34.sp
-    val minFontSize = 24.sp
+    val maxFontSize = if (isWide) 40.sp else 32.sp
+    val minFontSize = if (isWide) 28.sp else 22.sp
 
     val backgroundColor by animateColorAsState(
-        targetValue = if (collapsed) colorScheme.primary.copy(alpha = 0.95f) else Color.Transparent,
+        targetValue = if (collapsed) primaryColor.copy(alpha = 0.95f) else Color.Transparent,
         animationSpec = tween(durationMillis = 300)
     )
 
@@ -3610,7 +3623,7 @@ fun DashboardHeroHeader(
         modifier = modifier
             .fillMaxWidth()
             .height(height),
-        shadowElevation = if (collapsed) 8.dp else 0.dp
+        shadowElevation = if (collapsed) 4.dp else 0.dp
     ) {
         Box(
             modifier = Modifier
@@ -3676,7 +3689,7 @@ fun DashboardHeroHeader(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 16.dp, start = 20.dp, end = 20.dp),
+                            .padding(top = 12.dp, start = 16.dp, end = 16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -3694,7 +3707,7 @@ fun DashboardHeroHeader(
                                 )
                             }
 
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(8.dp))
 
                             Column {
                                 Text(
@@ -3717,7 +3730,7 @@ fun DashboardHeroHeader(
                         }
 
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             HeaderActionIconDashboard(
                                 icon = Icons.Default.Mail,
@@ -3744,23 +3757,22 @@ fun DashboardHeroHeader(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.CenterStart)
-                        .padding(start = 20.dp, end = 20.dp)
-                        .offset(y = 8.dp),
+                        .padding(start = 16.dp, end = 16.dp)
+                        .offset(y = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         text = "Dashboard",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            color = Color.White,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            color = if (isGuestMode) primaryColor else Color.White,
                             fontWeight = FontWeight.Black,
-                            letterSpacing = (-1.5).sp,
                             fontSize = titleFontSize
                         )
                     )
 
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         HeaderActionIconDashboard(
                             icon = Icons.Default.Mail,
@@ -3779,15 +3791,14 @@ fun DashboardHeroHeader(
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(start = 20.dp, bottom = 32.dp)
+                        .padding(start = 16.dp, bottom = 24.dp)
                         .statusBarsPadding()
                 ) {
                     Text(
                         text = "Dashboard",
                         style = MaterialTheme.typography.headlineLarge.copy(
-                            color = Color.White,
+                            color = if (isGuestMode) primaryColor else Color.White,
                             fontWeight = FontWeight.Black,
-                            letterSpacing = (-1.5).sp,
                             fontSize = titleFontSize
                         )
                     )
@@ -3799,9 +3810,10 @@ fun DashboardHeroHeader(
                             "Track your business performance, ${if (userName != "Guest") userName else ""}"
                         },
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(0.9f)
+                            color = if (isGuestMode) primaryColor.copy(0.8f) else Color.White.copy(0.9f),
+                            fontSize = 14.sp
                         ),
-                        modifier = Modifier.padding(top = 4.dp)
+                        modifier = Modifier.padding(top = 2.dp)
                     )
                 }
             }
