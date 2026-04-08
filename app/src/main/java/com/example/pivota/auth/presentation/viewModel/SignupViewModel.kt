@@ -2,86 +2,147 @@ package com.example.pivota.auth.presentation.viewModel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.pivota.auth.domain.model.AccountType
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.domain.useCase.AuthUseCases
 import com.example.pivota.auth.presentation.state.SignupUiState
+import com.example.pivota.core.database.dao.UserDao
+import com.example.pivota.core.preferences.PivotaDataStore
+import com.example.pivota.core.presentations.composables.SnackbarType
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
 import javax.inject.Inject
 
-// --- Data class for storing form fields ---
 data class RegistrationFormState(
-    val accountType: String = "Individual",
-
-    // Individual
     val firstName: String = "",
     val lastName: String = "",
     val email: String = "",
     val phone: String = "",
-
-    // Organisation
-    val orgName: String = "",
-    val orgType: String = "",
-    val orgEmail: String = "",
-    val orgPhone: String = "",
-    val orgAddress: String = "",
-    val adminFirstName: String = "",
-    val adminLastName: String = "",
-
-    // Shared
     val password: String = "",
     val agreeTerms: Boolean = false
 )
 
 @HiltViewModel
 class SignupViewModel @Inject constructor(
-    private val authUseCases: AuthUseCases
+    private val authUseCases: AuthUseCases,
+    private val datastore: PivotaDataStore,
+    private val userDao: UserDao
 ) : ViewModel() {
 
-    // --- UI state for loading, error, success ---
     private val _uiState = MutableStateFlow<SignupUiState>(SignupUiState.Idle)
     val uiState: StateFlow<SignupUiState> = _uiState.asStateFlow()
 
-    // --- Form state for preserving fields ---
+    /* ---------------- SNACKBAR STATE ---------------- */
+
+    // Main screen snackbar (for signup errors, validation errors)
+    private val _mainSnackbarMessage = MutableStateFlow<String?>(null)
+    val mainSnackbarMessage: StateFlow<String?> = _mainSnackbarMessage.asStateFlow()
+
+    private val _mainSnackbarType = MutableStateFlow(SnackbarType.INFO)
+    val mainSnackbarType: StateFlow<SnackbarType> = _mainSnackbarType.asStateFlow()
+
+    // Dialog snackbar (for OTP-related messages inside the OTP dialog)
+    private val _dialogSnackbarMessage = MutableStateFlow<String?>(null)
+    val dialogSnackbarMessage: StateFlow<String?> = _dialogSnackbarMessage.asStateFlow()
+
+    private val _dialogSnackbarType = MutableStateFlow(SnackbarType.INFO)
+    val dialogSnackbarType: StateFlow<SnackbarType> = _dialogSnackbarType.asStateFlow()
+
     private val _formState = MutableStateFlow(RegistrationFormState())
     val formState: StateFlow<RegistrationFormState> = _formState.asStateFlow()
 
-    // State to hold the 6 OTP digits
     private val _otpValues = MutableStateFlow(List(6) { "" })
     val otpValues: StateFlow<List<String>> = _otpValues.asStateFlow()
 
-    // State for resend attempts (survives rotation)
     private val _resendCount = MutableStateFlow(0)
-    val resendCount = _resendCount.asStateFlow()
+    val resendCount: StateFlow<Int> = _resendCount.asStateFlow()
 
-    // --- Pending registration data for OTP ---
     private var pendingUser: User? = null
     private var pendingPassword = ""
-    private var pendingIsOrganization = false
     var pendingEmail: String = ""
         private set
 
-    // --- Form field updaters ---
-    fun updateAccountType(value: String) = updateForm { copy(accountType = value) }
+    /* ---------------- SNACKBAR ACTIONS ---------------- */
+
+    // Show snackbar on main screen
+    private fun showMainSnackbar(message: String, type: SnackbarType = SnackbarType.ERROR) {
+        _mainSnackbarMessage.value = message
+        _mainSnackbarType.value = type
+    }
+
+    // Show snackbar inside OTP dialog
+    fun showDialogSnackbar(message: String, type: SnackbarType = SnackbarType.INFO) {
+        _dialogSnackbarMessage.value = message
+        _dialogSnackbarType.value = type
+    }
+
+    fun clearMainSnackbar() {
+        _mainSnackbarMessage.value = null
+    }
+
+    fun clearDialogSnackbar() {
+        _dialogSnackbarMessage.value = null
+    }
+
+    // Show error message (for external calls, similar to LoginViewModel)
+    fun showErrorMessage(message: String) {
+        _mainSnackbarMessage.value = message
+        _mainSnackbarType.value = SnackbarType.ERROR
+        viewModelScope.launch {
+            delay(4000)
+            clearMainSnackbar()
+        }
+    }
+
+    init {
+        loadCachedData()
+    }
+
+    private fun loadCachedData() {
+        viewModelScope.launch {
+            val firstName = datastore.getFirstName()
+            val lastName = datastore.getLastName()
+            val email = datastore.getEmail()
+            val phone = datastore.getPhone()
+            val password = datastore.getPassword()
+
+            _formState.update { form ->
+                form.copy(
+                    firstName = firstName ?: "",
+                    lastName = lastName ?: "",
+                    email = email ?: "",
+                    phone = phone ?: "",
+                    password = password ?: ""
+                )
+            }
+            pendingEmail = email ?: ""
+        }
+    }
+
+    // Map display name to API enum value
+    private fun mapToApiPurpose(displayPurpose: String?): String? {
+        return when (displayPurpose) {
+            "Find a Job" -> "FIND_JOB"
+            "Offer Skilled Services" -> "OFFER_SKILLED_SERVICES"
+            "Work as Agent" -> "WORK_AS_AGENT"
+            "Find Housing" -> "FIND_HOUSING"
+            "Get Social Support" -> "GET_SOCIAL_SUPPORT"
+            "Hire Employees" -> "HIRE_EMPLOYEES"
+            "List Properties" -> "LIST_PROPERTIES"
+            "Just Exploring" -> "JUST_EXPLORING"
+            else -> displayPurpose // Already in API format
+        }
+    }
 
     fun updateFirstName(value: String) = updateForm { copy(firstName = value) }
     fun updateLastName(value: String) = updateForm { copy(lastName = value) }
     fun updateEmail(value: String) = updateForm { copy(email = value) }
     fun updatePhone(value: String) = updateForm { copy(phone = value) }
-
-    fun updateOrgName(value: String) = updateForm { copy(orgName = value) }
-    fun updateOrgType(value: String) = updateForm { copy(orgType = value) }
-    fun updateOrgEmail(value: String) = updateForm { copy(orgEmail = value) }
-    fun updateOrgPhone(value: String) = updateForm { copy(orgPhone = value) }
-    fun updateOrgAddress(value: String) = updateForm { copy(orgAddress = value) }
-    fun updateAdminFirstName(value: String) = updateForm { copy(adminFirstName = value) }
-    fun updateAdminLastName(value: String) = updateForm { copy(adminLastName = value) }
-
     fun updatePassword(value: String) = updateForm { copy(password = value) }
     fun updateAgreeTerms(value: Boolean) = updateForm { copy(agreeTerms = value) }
 
@@ -89,7 +150,6 @@ class SignupViewModel @Inject constructor(
         _formState.value = _formState.value.block()
     }
 
-    // --- Regex Validation helpers ---
     fun isEmailValid(email: String): Boolean {
         val emailPattern = "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-z]{2,}$"
         return Pattern.matches(emailPattern, email.trim())
@@ -99,81 +159,175 @@ class SignupViewModel @Inject constructor(
         return password.trim().length >= 6
     }
 
-    // --- Start signup (OTP request) ---
     fun startSignup() {
         val form = _formState.value
 
-        // Validate form before requesting OTP
         val errorMessage = when {
-            !form.agreeTerms -> "You must agree to the terms."
+            !form.agreeTerms -> "You must agree to the terms and conditions."
             !isPasswordValid(form.password) -> "Password must be at least 6 characters."
-            form.accountType == "Individual" && form.firstName.isBlank() -> "First name is required."
-            form.accountType == "Individual" && form.lastName.isBlank() -> "Last name is required."
-            form.accountType == "Individual" && !isEmailValid(form.email) -> "Invalid email."
-            form.accountType == "Organisation" && form.orgName.isBlank() -> "Organisation name is required."
-            form.accountType == "Organisation" && !isEmailValid(form.orgEmail) -> "Invalid organisation email."
+            form.firstName.isBlank() -> "First name is required."
+            form.lastName.isBlank() -> "Last name is required."
+            !isEmailValid(form.email) -> "Please enter a valid email address."
+            form.phone.isBlank() -> "Phone number is required for verification."
             else -> null
         }
 
         if (errorMessage != null) {
-            _uiState.value = SignupUiState.Error(errorMessage)
+            showMainSnackbar(errorMessage, SnackbarType.WARNING)
             return
         }
 
-        val email = if (form.accountType == "Organisation") form.orgEmail.trim() else form.email.trim()
+        val email = form.email.trim()
         val password = form.password.trim()
-        val phone = if (form.accountType == "Organisation") form.orgPhone.trim() else form.phone.trim()
+        val phone = form.phone.trim()
 
         pendingPassword = password
-        pendingIsOrganization = form.accountType == "Organisation"
         pendingEmail = email
 
-        pendingUser = if (pendingIsOrganization) {
-            User(
-                uuid = "",
-                accountUuid = "",
-                firstName = form.adminFirstName.trim(),
-                lastName = form.adminLastName.trim(),
-                email = email,
-                personalPhone = phone,
-                accountType = AccountType.Organization(
-                    orgUuid = "",
-                    orgName = form.orgName.trim(),
-                    orgType = form.orgType.trim(),
-                    orgEmail = email,
-                    orgPhone = phone,
-                    orgAddress = form.orgAddress.trim(),
-                    adminFirstName = form.adminFirstName.trim(),
-                    adminLastName = form.adminLastName.trim()
-                )
-            )
-        } else {
-            User(
-                uuid = "",
-                accountUuid = "",
+        viewModelScope.launch {
+            datastore.debugPrintAll()
+            datastore.saveBasicUserInfo(
                 firstName = form.firstName.trim(),
                 lastName = form.lastName.trim(),
                 email = email,
-                personalPhone = phone,
-                accountType = AccountType.Individual
+                phone = phone,
+                password = password
             )
-        }
 
-        requestSignupOtp(email)
+            // Get the API-compatible purpose from DataStore
+            val rawPurpose = datastore.getPrimaryPurpose()
+            println("DEBUG: rawPurpose from DataStore = $rawPurpose")
+
+            val apiPurpose = mapToApiPurpose(rawPurpose)
+            println("DEBUG: apiPurpose after mapping = $apiPurpose")
+
+            // Get purpose-specific data from DataStore with proper type conversions
+            val jobSeekerPreferences = datastore.getJobSeekerData()?.let { data ->
+                println("🔍 DEBUG: ========== RETRIEVED JOB SEEKER DATA ==========")
+                println("🔍 DEBUG: headline: '${data.headline}'")
+                println("🔍 DEBUG: isActivelySeeking: ${data.isActivelySeeking}")
+                println("🔍 DEBUG: skills: ${data.skills}")
+                println("🔍 DEBUG: industries: ${data.industries}")
+                println("🔍 DEBUG: jobTypes: ${data.jobTypes}")
+                println("🔍 DEBUG: seniorityLevel: '${data.seniorityLevel}'")
+                println("🔍 DEBUG: expectedSalary: ${data.expectedSalary}")
+                println("🔍 DEBUG: ===============================================")
+
+                com.example.pivota.auth.domain.model.JobSeekerPreferences(
+                    headline = data.headline ?: "",
+                    isActivelySeeking = data.isActivelySeeking,
+                    skills = data.skills,
+                    industries = data.industries,
+                    jobTypes = data.jobTypes,
+                    seniorityLevel = data.seniorityLevel,
+                    expectedSalary = data.expectedSalary
+                )
+            }
+
+            val skilledProfessionalProfile = datastore.getSkilledProfessionalData()?.let { data ->
+                com.example.pivota.auth.domain.model.SkilledProfessionalProfile(
+                    profession = data.profession ?: "",
+                    specialties = data.specialties,
+                    serviceAreas = data.serviceAreas,
+                    yearsExperience = data.yearsExperience,
+                    licenseNumber = data.licenseNumber,
+                    hourlyRate = data.hourlyRate?.toDouble()
+                )
+            }
+
+            val intermediaryAgentProfile = datastore.getIntermediaryAgentData()?.let { data ->
+                com.example.pivota.auth.domain.model.IntermediaryAgentProfile(
+                    agentType = data.agentType ?: "",
+                    specializations = data.specializations,
+                    serviceAreas = data.serviceAreas,
+                    licenseNumber = data.licenseNumber,
+                    commissionRate = data.commissionRate
+                )
+            }
+
+            val housingSeekerPreferences = datastore.getHousingSeekerData()?.let { data ->
+                com.example.pivota.auth.domain.model.HousingSeekerPreferences(
+                    minBedrooms = data.minBedrooms,
+                    maxBedrooms = data.maxBedrooms,
+                    minBudget = data.minBudget?.toDouble(),
+                    maxBudget = data.maxBudget?.toDouble(),
+                    preferredCities = data.preferredCities
+                )
+            }
+
+            val supportBeneficiaryNeeds = datastore.getSupportBeneficiaryData()?.let { data ->
+                com.example.pivota.auth.domain.model.SupportBeneficiaryNeeds(
+                    needs = data.needs,
+                    urgentNeeds = data.urgentNeeds,
+                    city = data.city,
+                    familySize = data.familySize
+                )
+            }
+
+            val employerRequirements = datastore.getEmployerData()?.let { data ->
+                com.example.pivota.auth.domain.model.EmployerRequirements(
+                    businessName = data.businessName,
+                    industry = data.industry,
+                    companySize = data.companySize,
+                    description = data.description
+                )
+            }
+
+            val propertyOwnerPortfolio = datastore.getPropertyOwnerData()?.let { data ->
+                com.example.pivota.auth.domain.model.PropertyOwnerPortfolio(
+                    isProfessional = data.isProfessional,
+                    propertyCount = data.propertyCount,
+                    propertyTypes = data.propertyTypes,
+                    serviceAreas = data.serviceAreas
+                )
+            }
+
+            pendingUser = User(
+                uuid = "",
+                email = email,
+                firstName = form.firstName.trim(),
+                lastName = form.lastName.trim(),
+                personalPhone = phone.ifEmpty { null },
+                isAuthenticated = false,
+                primaryPurpose = apiPurpose,
+                jobSeekerPreferences = jobSeekerPreferences,
+                skilledProfessionalProfile = skilledProfessionalProfile,
+                intermediaryAgentProfile = intermediaryAgentProfile,
+                housingSeekerPreferences = housingSeekerPreferences,
+                supportBeneficiaryNeeds = supportBeneficiaryNeeds,
+                employerRequirements = employerRequirements,
+                propertyOwnerPortfolio = propertyOwnerPortfolio
+            )
+
+            requestSignupOtp(email, phone)
+        }
     }
 
-    fun requestSignupOtp(email: String) {
+    fun requestSignupOtp(email: String, phone: String) {
+        println("🔍 STEP 1: requestSignupOtp called with email: $email, phone: $phone, purpose: EMAIL_VERIFICATION")
         _uiState.value = SignupUiState.Loading
         viewModelScope.launch {
-            authUseCases.requestOtp(email, "SIGNUP")
-                .onSuccess { _uiState.value = SignupUiState.OtpSent }
-                .onFailure { _uiState.value = SignupUiState.Error(it.message ?: "Failed to send OTP") }
+            authUseCases.requestOtp(email, "EMAIL_VERIFICATION", phone)
+                .onSuccess {
+                    println("🔍 STEP 2: OTP request SUCCESS")
+                    datastore.saveBasicUserInfo(
+                        firstName = _formState.value.firstName,
+                        lastName = _formState.value.lastName,
+                        email = email,
+                        phone = _formState.value.phone,
+                        password = _formState.value.password
+                    )
+                    // This will be shown as dialog snackbar when OTP dialog opens
+                    _uiState.value = SignupUiState.OtpSent
+                }
+                .onFailure { error ->
+                    println("🔍 STEP 2: OTP request FAILED: ${error.message}")
+                    showMainSnackbar(error.message ?: "Failed to send verification code", SnackbarType.ERROR)
+                    _uiState.value = SignupUiState.Idle
+                }
         }
     }
 
-    /**
-     * Updates a specific index in the OTP list
-     */
     fun updateOtpDigit(index: Int, value: String) {
         val current = _otpValues.value.toMutableList()
         current[index] = value
@@ -184,40 +338,126 @@ class SignupViewModel @Inject constructor(
         _resendCount.value += 1
     }
 
+    // UPDATED: Handle new response with tokens and payment flow
     fun verifyAndRegister(code: String) {
         val user = pendingUser ?: run {
-            _uiState.value = SignupUiState.Error("Session expired. Please register again.")
+            showDialogSnackbar("Session expired. Please register again.", SnackbarType.ERROR)
             return
         }
+
+        // Log the user object before signup
+        println("🔍 ==================== USER BEFORE SIGNUP ====================")
+        println("🔍 firstName: ${user.firstName}")
+        println("🔍 lastName: ${user.lastName}")
+        println("🔍 email: ${user.email}")
+        println("🔍 personalPhone: ${user.personalPhone}")
+        println("🔍 primaryPurpose: ${user.primaryPurpose}")
+        println("🔍 =============================================================")
 
         _uiState.value = SignupUiState.Loading
         viewModelScope.launch {
             val trimmedCode = code.trim()
-            val result = if (pendingIsOrganization) {
-                authUseCases.registerUser.signupOrganization(user, trimmedCode, pendingPassword)
-            } else {
-                authUseCases.registerUser.signupIndividual(user, trimmedCode, pendingPassword)
-            }
+            datastore.setOtpCode(trimmedCode)
 
-            result.onSuccess {
-                clearCache()
-                _uiState.value = SignupUiState.Success
-            }.onFailure {
-                _uiState.value = SignupUiState.Error(it.message ?: "Signup failed")
+            val result = authUseCases.registerUser.invoke(user, trimmedCode, pendingPassword)
+
+            result.onSuccess { signupData ->
+                when {
+                    // Auto-login successful (tokens received)
+                    !signupData.accessToken.isNullOrEmpty() -> {
+                        println("🔍 Signup successful with tokens - auto-login")
+
+                        // Save tokens to DataStore
+                        datastore.saveTokens(signupData.accessToken, signupData.refreshToken ?: "")
+                        datastore.saveUserEmail(user.email)
+
+                        // Get the complete user from Room database
+                        val userEntity = userDao.getUserByEmail(user.email)
+
+                        val authenticatedUser = if (userEntity != null) {
+                            User(
+                                uuid = userEntity.uuid,
+                                email = userEntity.email,
+                                firstName = userEntity.firstName,
+                                lastName = userEntity.lastName,
+                                userName = userEntity.userName,
+                                personalPhone = userEntity.phone,
+                                profileImage = userEntity.profileImage,
+                                accessToken = signupData.accessToken,
+                                refreshToken = signupData.refreshToken,
+                                isAuthenticated = true,
+                                primaryPurpose = userEntity.primaryPurpose,
+                                role = userEntity.role,
+                                accountType = userEntity.accountType,
+                                accountId = userEntity.accountId,
+                                accountName = userEntity.accountName,
+                                organizationUuid = userEntity.organizationUuid,
+                                planSlug = userEntity.planSlug,
+                                tokenId = userEntity.tokenId
+                            )
+                        } else {
+                            User(
+                                email = user.email,
+                                isAuthenticated = true,
+                                accessToken = signupData.accessToken,
+                                refreshToken = signupData.refreshToken
+                            )
+                        }
+
+                        datastore.clear()
+                        clearCache()
+                        _uiState.value = SignupUiState.Success(
+                            message = signupData.message,
+                            redirectTo = signupData.redirectTo ?: "/dashboard",
+                            accessToken = signupData.accessToken,
+                            refreshToken = signupData.refreshToken ?: "",
+                            user = authenticatedUser
+                        )
+                    }
+                    // Payment required (premium plan)
+                    !signupData.redirectUrl.isNullOrEmpty() -> {
+                        println("🔍 Payment required - redirect to payment")
+                        _uiState.value = SignupUiState.PaymentRequired(
+                            message = signupData.message,
+                            redirectUrl = signupData.redirectUrl,
+                            merchantReference = signupData.merchantReference
+                        )
+                    }
+                    // Just success message (fallback)
+                    else -> {
+                        println("🔍 Signup successful without tokens")
+                        datastore.clear()
+                        clearCache()
+                        _uiState.value = SignupUiState.Success(
+                            message = signupData.message,
+                            redirectTo = "/login"
+                        )
+                    }
+                }
+            }.onFailure { error ->
+                println("🔍 SIGNUP ERROR: ${error.message}")
+                showDialogSnackbar(error.message ?: "Signup failed", SnackbarType.ERROR)
+                _uiState.value = SignupUiState.Idle
             }
         }
     }
 
-    // Update clearCache to also wipe the OTP values
     private fun clearCache() {
         pendingUser = null
         pendingPassword = ""
-        pendingIsOrganization = false
         _otpValues.value = List(6) { "" }
         _resendCount.value = 0
     }
 
     fun resetState() {
         _uiState.value = SignupUiState.Idle
+        clearMainSnackbar()
+        clearDialogSnackbar()
+    }
+
+    fun clearError() {
+        if (_uiState.value is SignupUiState.Error) {
+            _uiState.value = SignupUiState.Idle
+        }
     }
 }

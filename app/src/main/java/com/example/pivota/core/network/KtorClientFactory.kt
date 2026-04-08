@@ -1,12 +1,3 @@
-/**
- * Factory for creating and configuring the [HttpClient].
- * * This central engine standardizes all network communication for Pivota by:
- * - **Serialization**: Using Kotlinx Serialization to parse backend responses.
- * - **Resilience**: Enforcing request, connection, and socket timeouts.
- * - **Observability**: Logging full request/response bodies for debugging.
- * - **Defaults**: Automatically injecting the Base URL and JSON content-type headers.
- */
-
 package com.example.pivota.core.network
 
 import io.ktor.client.HttpClient
@@ -16,6 +7,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.request.header
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -25,13 +17,14 @@ import kotlinx.serialization.json.Json
 object KtorClientFactory {
     fun build(): HttpClient {
         return HttpClient(Android) {
-
+            // Configure timeouts to prevent hanging requests
             install(HttpTimeout) {
                 requestTimeoutMillis = NetworkConstants.TIMEOUT_MILLIS
-                connectTimeoutMillis = NetworkConstants.TIMEOUT_MILLIS
-                socketTimeoutMillis = NetworkConstants.TIMEOUT_MILLIS
+                connectTimeoutMillis = NetworkConstants.CONNECT_TIMEOUT_MILLIS
+                socketTimeoutMillis = NetworkConstants.SOCKET_TIMEOUT_MILLIS
             }
 
+            // Set up JSON serialization with lenient parsing
             install(ContentNegotiation) {
                 json(Json {
                     ignoreUnknownKeys = true
@@ -40,13 +33,28 @@ object KtorClientFactory {
                 })
             }
 
+            // Enable request/response logging for debugging
             install(Logging) {
                 level = LogLevel.BODY
+                logger = object : Logger {
+                    override fun log(message: String) {
+                        // Filter and print only relevant logs
+                        when {
+                            message.contains("REQUEST:") -> println("🔍 HTTP REQUEST: $message")
+                            message.contains("RESPONSE:") -> println("🔍 HTTP RESPONSE: $message")
+                            message.contains("POST") -> println("🔍 HTTP: $message")
+                            else -> println("🔍 KTOR: $message")
+                        }
+                    }
+                }
             }
 
+            // Apply default configuration to all requests
             defaultRequest {
                 url(NetworkConstants.BASE_URL)
                 header(HttpHeaders.ContentType, ContentType.Application.Json)
+                // Add ngrok bypass header
+                header("ngrok-skip-browser-warning", "true")
             }
         }
     }

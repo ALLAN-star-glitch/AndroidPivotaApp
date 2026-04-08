@@ -6,6 +6,13 @@ sealed interface LoginUiState {
     object Idle : LoginUiState
     object Loading : LoginUiState
     object OtpSent : LoginUiState
-    data class Success(val user: User) : LoginUiState
+    object PasswordResetOtpSent : LoginUiState
+    data class PasswordResetSuccess(val message: String) : LoginUiState
+    data class Success(
+        val user: User,
+        val message: String,
+        val accessToken: String,
+        val refreshToken: String
+    ) : LoginUiState
     data class Error(val message: String) : LoginUiState
 }

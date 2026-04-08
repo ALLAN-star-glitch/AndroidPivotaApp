@@ -1,4 +1,4 @@
-package com.example.pivota.welcome.presentation.composables
+package com.example.pivota.welcome.presentation.composables.welcome_content
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
@@ -30,9 +29,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import coil3.compose.AsyncImage
 import com.example.pivota.R
 import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
-import com.example.pivota.core.presentations.composables.buttons.PivotaSkipButton
 import com.example.pivota.ui.theme.InfoBlue
 
 
@@ -43,7 +42,6 @@ fun WelcomeContent(
     welcomeText: String = "Find Jobs, Housing, Services & Support Across Africa",
     onNavigateToContinueSetup: () -> Unit,
     onNavigateToLogin: () -> Unit,
-    onNavigateToSkipToDashboard: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -64,7 +62,7 @@ fun WelcomeContent(
                 .padding(top = 24.dp, bottom = 32.dp)
         ) {
             /* ───── LOGO ───── */
-            coil3.compose.AsyncImage(
+            AsyncImage(
                 model = R.drawable.transparentpivlogo,
                 contentDescription = "PivotaConnect Logo",
                 modifier = Modifier.size(120.dp)
@@ -103,13 +101,6 @@ fun WelcomeContent(
                 icon = ImageVector.vectorResource(R.drawable.ic_person)
             )
 
-            /* ───── Skip to Dashboard Button ───── */
-            PivotaSkipButton(
-                text = "Skip to Dashboard",
-                onClick = onNavigateToSkipToDashboard,
-                modifier = Modifier.fillMaxWidth(),
-                icon = ImageVector.vectorResource(R.drawable.ic_skip)
-            )
 
             /* ───── LOGIN TEXT ───── */
             Row(
