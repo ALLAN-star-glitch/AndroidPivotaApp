@@ -100,13 +100,19 @@ class AuthDataMapper @Inject constructor() {
         )
     }
 
+    // UPDATED: Include new simplified fields for housing seeker
     fun toHousingSeekerDataDto(domain: HousingSeekerPreferences): HousingSeekerProfileDataDto {
         return HousingSeekerProfileDataDto(
+            // New simplified fields
+            searchType = domain.searchType,
+            isLookingForRental = domain.isLookingForRental,
+            isLookingToBuy = domain.isLookingToBuy,
+            preferredTypes = domain.propertyTypes,  // Map propertyTypes to preferredTypes
+            // Legacy fields (kept for backward compatibility)
             minBedrooms = domain.minBedrooms,
             maxBedrooms = domain.maxBedrooms,
             minBudget = domain.minBudget,
             maxBudget = domain.maxBudget,
-            preferredTypes = domain.preferredTypes,
             preferredCities = domain.preferredCities,
             preferredNeighborhoods = domain.preferredNeighborhoods,
             moveInDate = domain.moveInDate,
@@ -162,18 +168,25 @@ class AuthDataMapper @Inject constructor() {
         )
     }
 
+    // UPDATED: Include new simplified fields for property owner
     fun toPropertyOwnerDataDto(domain: PropertyOwnerPortfolio): PropertyOwnerProfileDataDto {
         return PropertyOwnerProfileDataDto(
+            // New simplified fields
+            listingType = domain.listingType,
+            isListingForRent = domain.isListingForRent,
+            isListingForSale = domain.isListingForSale,
+            // Core fields
+            propertyCount = domain.propertyCount,
+            propertyTypes = domain.propertyTypes,
+            serviceAreas = domain.serviceAreas,
+            // Legacy fields (kept for backward compatibility)
             isProfessional = domain.isProfessional,
             licenseNumber = domain.licenseNumber,
             companyName = domain.companyName,
             yearsInBusiness = domain.yearsInBusiness,
             preferredPropertyTypes = domain.preferredPropertyTypes,
-            serviceAreas = domain.serviceAreas,
             usesAgent = domain.usesAgent,
             managingAgentUuid = domain.managingAgentUuid,
-            propertyCount = domain.propertyCount,
-            propertyTypes = domain.propertyTypes,
             propertyPurpose = domain.propertyPurpose
         )
     }
@@ -182,14 +195,9 @@ class AuthDataMapper @Inject constructor() {
     // RESPONSE DTO TO DOMAIN MAPPERS (For handling API responses)
     // ======================================================
 
-    /**
-     * Convert LoginResponseDto to LoginResponse domain model
-     * Handles both MFA required and Authenticated states
-     */
     fun toLoginResponse(response: LoginResponseDto): LoginResponse {
         return if (response.success && response.data != null) {
             if (response.data.accessToken != null) {
-                // Stage 2: Authenticated with tokens - Create full User object
                 val user = toUserFromLoginData(response.data, response.data.email ?: "")
                 LoginResponse.Authenticated(
                     user = user,
@@ -198,36 +206,29 @@ class AuthDataMapper @Inject constructor() {
                     message = response.data.message
                 )
             } else {
-                // Stage 1: MFA Required
                 LoginResponse.MfaRequired(
                     email = response.data.email ?: "",
                     uuid = response.data.userUuid ?: ""
                 )
             }
         } else {
-            // Return error - will be handled by the caller
             throw Exception(response.message)
         }
     }
 
-    /**
-     * Convert successful login data to User domain model with all JWT fields
-     * Used after MFA verification when tokens are returned
-     */
     fun toUserFromLoginData(data: LoginDataDto, email: String): User {
         return User(
             uuid = data.userUuid ?: "",
             email = data.email ?: email,
             firstName = data.firstName ?: "",
             lastName = data.lastName ?: "",
-            userName = data.userName ?: "",  // Full name from JWT
+            userName = data.userName ?: "",
             personalPhone = data.phone,
             profileImage = data.profileImage,
             accessToken = data.accessToken,
             refreshToken = data.refreshToken,
             isAuthenticated = true,
             primaryPurpose = data.primaryPurpose,
-            // JWT payload fields
             userUuid = data.userUuid,
             accountId = data.accountId,
             accountName = data.accountName,
@@ -239,10 +240,6 @@ class AuthDataMapper @Inject constructor() {
         )
     }
 
-    /**
-     * Convert successful login response to User domain model
-     * Simplified version when you only have the response DTO
-     */
     fun toUser(response: LoginResponseDto, email: String): User {
         return if (response.success && response.data != null) {
             toUserFromLoginData(response.data, email)
@@ -258,23 +255,14 @@ class AuthDataMapper @Inject constructor() {
         }
     }
 
-    /**
-     * Convert VerifyOtpResponseDto to verification result
-     */
     fun toVerificationResult(response: VerifyOtpResponseDto): Boolean {
         return response.success && response.data?.verified == true
     }
 
-    /**
-     * Get error message from response
-     */
     fun getErrorMessage(response: BaseResponseDto<*>): String {
         return response.error?.message ?: response.message
     }
 
-    /**
-     * Check if response is successful
-     */
     fun isSuccess(response: BaseResponseDto<*>): Boolean {
         return response.success
     }
@@ -348,8 +336,15 @@ class AuthDataMapper @Inject constructor() {
         )
     }
 
+    // UPDATED: Map from DTO to domain with new fields
     fun toHousingSeekerPreferences(dto: HousingSeekerProfileDataDto): HousingSeekerPreferences {
         return HousingSeekerPreferences(
+            // New simplified fields
+            searchType = dto.searchType,
+            isLookingForRental = dto.isLookingForRental,
+            isLookingToBuy = dto.isLookingToBuy,
+            propertyTypes = dto.preferredTypes,  // Map preferredTypes to propertyTypes
+            // Legacy fields
             minBedrooms = dto.minBedrooms,
             maxBedrooms = dto.maxBedrooms,
             minBudget = dto.minBudget,
@@ -410,18 +405,25 @@ class AuthDataMapper @Inject constructor() {
         )
     }
 
+    // UPDATED: Map from DTO to domain with new fields
     fun toPropertyOwnerPortfolio(dto: PropertyOwnerProfileDataDto): PropertyOwnerPortfolio {
         return PropertyOwnerPortfolio(
+            // New simplified fields
+            listingType = dto.listingType,
+            isListingForRent = dto.isListingForRent,
+            isListingForSale = dto.isListingForSale,
+            // Core fields
+            propertyCount = dto.propertyCount,
+            propertyTypes = dto.propertyTypes,
+            serviceAreas = dto.serviceAreas,
+            // Legacy fields
             isProfessional = dto.isProfessional,
             licenseNumber = dto.licenseNumber,
             companyName = dto.companyName,
             yearsInBusiness = dto.yearsInBusiness,
             preferredPropertyTypes = dto.preferredPropertyTypes,
-            serviceAreas = dto.serviceAreas,
             usesAgent = dto.usesAgent,
             managingAgentUuid = dto.managingAgentUuid,
-            propertyCount = dto.propertyCount,
-            propertyTypes = dto.propertyTypes,
             propertyPurpose = dto.propertyPurpose
         )
     }
@@ -430,23 +432,14 @@ class AuthDataMapper @Inject constructor() {
     // HELPER METHODS FOR OTHER RESPONSES
     // ======================================================
 
-    /**
-     * Convert SignupResponseDto to domain result
-     */
     fun toSignupResult(response: SignupResponseDto): Boolean {
         return response.success
     }
 
-    /**
-     * Convert ResetPassword response to domain result
-     */
     fun toResetPasswordResult(response: BaseResponseDto<Nothing>): Pair<Boolean, String> {
         return Pair(response.success, response.message)
     }
 
-    /**
-     * Convert RefreshTokenResponseDto to token pair
-     */
     fun toTokenPair(response: RefreshTokenResponseDto): Pair<String, String>? {
         return if (response.success && response.data != null) {
             Pair(response.data.accessToken, response.data.refreshToken)
@@ -455,9 +448,6 @@ class AuthDataMapper @Inject constructor() {
         }
     }
 
-    /**
-     * Convert BaseOtpResponseDto to domain result
-     */
     fun toOtpRequestResult(response: BaseOtpResponseDto): Boolean {
         return response.success
     }

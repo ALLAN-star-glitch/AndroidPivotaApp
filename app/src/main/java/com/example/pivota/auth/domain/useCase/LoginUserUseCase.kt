@@ -2,6 +2,8 @@ package com.example.pivota.auth.domain.useCase
 
 import com.example.pivota.auth.domain.model.LoginResponse
 import com.example.pivota.auth.domain.repository.AuthRepository
+import com.example.pivota.core.network.ApiResult
+import com.example.pivota.core.network.NetworkError
 import javax.inject.Inject
 
 class LoginUserUseCase @Inject constructor(
@@ -11,32 +13,45 @@ class LoginUserUseCase @Inject constructor(
      * Login user - first stage
      * @param email User's email
      * @param password User's password
-     * @return Result<LoginResponse> - MFA required or error
+     * @return ApiResult<LoginResponse> - MFA required or error
      */
-    suspend operator fun invoke(email: String, password: String): Result<LoginResponse> {
-        return try {
-            val response = repository.login(email, password)
+    suspend operator fun invoke(email: String, password: String): ApiResult<LoginResponse> {
+        return when (val result = repository.login(email, password)) {
+            is ApiResult.Success -> {
+                val response = result.data
 
-            if (response.success && response.data != null) {
-                val data = response.data
+                if (response.success && response.data != null) {
+                    val data = response.data
 
-                // Check if MFA is required (first stage)
-                if (data.message == "MFA_REQUIRED") {
-                    Result.success(
-                        LoginResponse.MfaRequired(
-                            email = email,
-                            uuid = data.uuid ?: ""
+                    // Check if MFA is required (first stage)
+                    if (data.message == "MFA_REQUIRED") {
+                        ApiResult.Success(
+                            LoginResponse.MfaRequired(
+                                email = email,
+                                uuid = data.uuid ?: ""
+                            )
                         )
-                    )
+                    } else {
+                        // This case shouldn't happen as per API flow, but handle it
+                        ApiResult.Error(
+                            networkError = NetworkError.Unknown,
+                            technicalMessage = "Invalid login response: ${response.message}"
+                        )
+                    }
                 } else {
-                    // This case shouldn't happen as per API flow, but handle it
-                    Result.failure(Exception("Invalid login response: ${response.message}"))
+                    ApiResult.Error(
+                        networkError = NetworkError.Unknown,
+                        technicalMessage = response.message ?: "Login failed"
+                    )
                 }
-            } else {
-                Result.failure(Exception(response.message ?: "Login failed"))
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+            is ApiResult.Error -> {
+                // Pass through the network error
+                result
+            }
+            ApiResult.Loading -> {
+                ApiResult.Loading
+            }
         }
     }
 }

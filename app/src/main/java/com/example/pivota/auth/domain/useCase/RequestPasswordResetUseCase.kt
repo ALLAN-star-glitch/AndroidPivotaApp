@@ -1,6 +1,8 @@
 package com.example.pivota.auth.domain.useCase
 
 import com.example.pivota.auth.domain.repository.AuthRepository
+import com.example.pivota.core.network.ApiResult
+import com.example.pivota.core.network.NetworkError
 import javax.inject.Inject
 
 class RequestPasswordResetUseCase @Inject constructor(
@@ -9,19 +11,29 @@ class RequestPasswordResetUseCase @Inject constructor(
     /**
      * Request password reset OTP
      * @param email User's email
-    @return Result<Unit> - Success or failure
+     * @return ApiResult<Unit> - Success or error
      */
-    suspend operator fun invoke(email: String): Result<Unit> {
-        return try {
-            val response = repository.requestPasswordReset(email)
+    suspend operator fun invoke(email: String): ApiResult<Unit> {
+        return when (val result = repository.requestPasswordReset(email)) {
+            is ApiResult.Success -> {
+                val response = result.data
 
-            if (response.success) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception(response.message))
+                if (response.success) {
+                    ApiResult.Success(Unit)
+                } else {
+                    ApiResult.Error(
+                        networkError = NetworkError.Unknown,
+                        technicalMessage = response.message ?: "Password reset request failed"
+                    )
+                }
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+            is ApiResult.Error -> {
+                // Pass through the network error (e.g., server unreachable, no internet)
+                result
+            }
+            ApiResult.Loading -> {
+                ApiResult.Loading
+            }
         }
     }
 }
