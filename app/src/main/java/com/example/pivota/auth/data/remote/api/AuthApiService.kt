@@ -14,8 +14,12 @@ import com.example.pivota.auth.data.remote.dto.VerifyOtpResponseDto
 import com.example.pivota.core.network.NetworkConstants
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.RedirectResponseException
+import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
@@ -39,30 +43,50 @@ class AuthApiService @Inject constructor(
         println("🔍 BODY: email=${request.email}${request.phone?.let { ", phone=$it" } ?: ""}")
         println("🔍 ==================================")
 
-        val response: BaseOtpResponseDto = client.post("v1/auth-module/otp/request?purpose=${request.purpose}") {
-            contentType(ContentType.Application.Json)
-            setBody(requestBody)
-        }.body()
+        return try {
+            val response: BaseOtpResponseDto = client.post("v1/auth-module/otp/request?purpose=${request.purpose}") {
+                contentType(ContentType.Application.Json)
+                setBody(requestBody)
+            }.body()
 
-        // Log RESPONSE
-        println("🔍 ========== OTP RESPONSE ==========")
-        println("🔍 SUCCESS: ${response.success}")
-        println("🔍 MESSAGE: ${response.message}")
-        println("🔍 CODE: ${response.code}")
-        println("🔍 ERROR: ${response.error}")
-        println("🔍 ===================================")
+            // Log RESPONSE
+            println("🔍 ========== OTP RESPONSE ==========")
+            println("🔍 SUCCESS: ${response.success}")
+            println("🔍 MESSAGE: ${response.message}")
+            println("🔍 CODE: ${response.code}")
+            println("🔍 ERROR: ${response.error}")
+            println("🔍 ===================================")
 
-        return response
+            response
+        } catch (e: ClientRequestException) {
+            // 4xx errors
+            println("❌ OTP Request Client Error (${e.response.status.value}): ${e.message}")
+            val errorBody = try { e.response.bodyAsText() } catch (ex: Exception) { "Unable to read error body" }
+            println("❌ Error Body: $errorBody")
+            throw e
+        } catch (e: ServerResponseException) {
+            // 5xx errors
+            println("❌ OTP Request Server Error (${e.response.status.value}): ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("❌ OTP Request Failed: ${e.message}")
+            throw e
+        }
     }
 
     /**
      * Verify OTP code
      */
     suspend fun verifyOtp(request: VerifyOtpRequestDto): VerifyOtpResponseDto {
-        return client.post("v1/auth-module/otp/verify") {
-            contentType(ContentType.Application.Json)
-            setBody(request)
-        }.body()
+        return try {
+            client.post("v1/auth-module/otp/verify") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }.body()
+        } catch (e: Exception) {
+            println("❌ Verify OTP Failed: ${e.message}")
+            throw e
+        }
     }
 
     /**
@@ -72,10 +96,15 @@ class AuthApiService @Inject constructor(
         val jsonString = NetworkConstants.JsonProvider.json.encodeToString(request)
         println("🔍 SIGNUP Request: $jsonString")
 
-        return client.post("v1/auth-module/signup") {
-            contentType(ContentType.Application.Json)
-            setBody(request)
-        }.body()
+        return try {
+            client.post("v1/auth-module/signup") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }.body()
+        } catch (e: Exception) {
+            println("❌ Signup Failed: ${e.message}")
+            throw e
+        }
     }
 
     /**
@@ -104,11 +133,16 @@ class AuthApiService @Inject constructor(
             println("🔍 ====================================")
 
             response
+        } catch (e: ClientRequestException) {
+            println("❌ Login Client Error (${e.response.status.value}): ${e.message}")
+            val errorBody = try { e.response.bodyAsText() } catch (ex: Exception) { "Unable to read error body" }
+            println("❌ Error Body: $errorBody")
+            throw e
+        } catch (e: ServerResponseException) {
+            println("❌ Login Server Error (${e.response.status.value}): ${e.message}")
+            throw e
         } catch (e: Exception) {
-            println("🔍 ========== LOGIN ERROR ==========")
-            println("🔍 ERROR: ${e.message}")
-            e.printStackTrace()
-            println("🔍 =================================")
+            println("❌ Login Failed: ${e.message}")
             throw e
         }
     }
@@ -140,10 +174,7 @@ class AuthApiService @Inject constructor(
 
             response
         } catch (e: Exception) {
-            println("🔍 ========== VERIFY MFA LOGIN ERROR ==========")
-            println("🔍 ERROR: ${e.message}")
-            e.printStackTrace()
-            println("🔍 ============================================")
+            println("❌ Verify MFA Login Failed: ${e.message}")
             throw e
         }
     }
@@ -152,10 +183,15 @@ class AuthApiService @Inject constructor(
      * Refresh access token
      */
     suspend fun refreshToken(refreshToken: String): RefreshTokenResponseDto {
-        return client.post("v1/auth-module/refresh") {
-            contentType(ContentType.Application.Json)
-            setBody(mapOf("refreshToken" to refreshToken))
-        }.body()
+        return try {
+            client.post("v1/auth-module/refresh") {
+                contentType(ContentType.Application.Json)
+                setBody(mapOf("refreshToken" to refreshToken))
+            }.body()
+        } catch (e: Exception) {
+            println("❌ Refresh Token Failed: ${e.message}")
+            throw e
+        }
     }
 
     /**
@@ -182,10 +218,7 @@ class AuthApiService @Inject constructor(
 
             response
         } catch (e: Exception) {
-            println("🔍 ========== PASSWORD RESET ERROR ==========")
-            println("🔍 ERROR: ${e.message}")
-            e.printStackTrace()
-            println("🔍 ==========================================")
+            println("❌ Password Reset Request Failed: ${e.message}")
             throw e
         }
     }
@@ -220,10 +253,7 @@ class AuthApiService @Inject constructor(
 
             response
         } catch (e: Exception) {
-            println("🔍 ========== RESET PASSWORD ERROR ==========")
-            println("🔍 ERROR: ${e.message}")
-            e.printStackTrace()
-            println("🔍 ==========================================")
+            println("❌ Reset Password Failed: ${e.message}")
             throw e
         }
     }
@@ -232,9 +262,14 @@ class AuthApiService @Inject constructor(
      * Logout user
      */
     suspend fun logout(refreshToken: String): BaseResponseDto<Nothing> {
-        return client.post("v1/auth-module/logout") {
-            contentType(ContentType.Application.Json)
-            setBody(mapOf("refreshToken" to refreshToken))
-        }.body()
+        return try {
+            client.post("v1/auth-module/logout") {
+                contentType(ContentType.Application.Json)
+                setBody(mapOf("refreshToken" to refreshToken))
+            }.body()
+        } catch (e: Exception) {
+            println("❌ Logout Failed: ${e.message}")
+            throw e
+        }
     }
 }

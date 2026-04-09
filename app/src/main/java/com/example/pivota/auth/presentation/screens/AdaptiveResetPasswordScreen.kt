@@ -264,12 +264,11 @@ fun AdaptiveResetPasswordScreen(
     if (showOtpDialog) {
         OtpVerificationDialog(
             email = email,
-            otpValues = otpValues,
-            onOtpDigitChange = { index, value -> viewModel.updateOtpDigit(index, value) },
+            otpValue = otpValues.joinToString(""),
+            onOtpChange = { code -> viewModel.updateOtpFull(code) }, // 👈 new
             isVerifying = isVerifying,
             otpError = otpError,
             countdown = countdown,
-            resendCount = resendCount,
             title = "Verify Your Identity",
             description = "We've sent a verification code to",
             verifyButtonText = "Reset Password",
