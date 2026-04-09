@@ -49,6 +49,7 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
+import com.example.pivota.auth.domain.model.User
 import com.example.pivota.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -157,9 +158,48 @@ fun DashboardScreen(
     onNavigateToEarnings: () -> Unit = {},
     onNavigateToEscrow: () -> Unit = {},
     userType: UserType = UserType.BOTH,
-    isGuestMode: Boolean = false
+    isGuestMode: Boolean = false,
+    user: User? = null,
+    accessToken: String? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
+
+    // Extract user information for display
+    val displayName = remember(user) {
+        when {
+            user == null -> "Guest"
+            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
+            user.firstName.isNotBlank() -> user.firstName
+            else -> user.email.split("@").firstOrNull() ?: "Guest"
+        }
+    }
+
+    val fullName = remember(user) {
+        when {
+            user == null -> "Guest"
+            user.userName.isNotBlank() -> user.userName
+            user.firstName.isNotBlank() && user.lastName.isNotBlank() -> "${user.firstName} ${user.lastName}"
+            user.firstName.isNotBlank() -> user.firstName
+            else -> user.email.split("@").firstOrNull() ?: "Guest"
+        }
+    }
+
+    val userRole = user?.role
+    val accountType = user?.accountType
+
+    // Log user info for debugging
+    LaunchedEffect(user, accessToken) {
+        if (user != null) {
+            println("🔍 [DashboardScreen] User loaded:")
+            println("   - Email: ${user.email}")
+            println("   - Name: ${user.userName}")
+            println("   - First: ${user.firstName}")
+            println("   - Last: ${user.lastName}")
+            println("   - Role: ${user.role}")
+            println("   - Account Type: ${user.accountType}")
+            println("   - Access Token: ${if (accessToken != null) "Present" else "Missing"}")
+        }
+    }
 
     // 📱 Orientation & Window Size Logic
     val configuration = LocalConfiguration.current
@@ -318,6 +358,8 @@ fun DashboardScreen(
         ListingSummary("4", "Commercial Space - Westlands", "Property", 98, 3, "Pending")
     )
 
+
+
     Scaffold(
         containerColor = colorScheme.background,
         topBar = {
@@ -329,6 +371,11 @@ fun DashboardScreen(
                 onSurfaceColor = colorScheme.onSurface,
                 isWide = isWide,
                 isGuestMode = isGuestMode,
+                userName = displayName,  // Use first name for greeting
+                fullName = fullName,     // Use full name for welcome message
+                isLoggedIn = user != null,
+                userRole = userRole,
+                accountType = accountType
             )
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -3538,17 +3585,22 @@ fun DashboardHeroHeader(
     collapseFraction: Float,
     onSurfaceColor: Color,
     isWide: Boolean,
-    isGuestMode: Boolean = false,  // Add this parameter
+    isGuestMode: Boolean = false,
+    userName: String = "Guest",
+    fullName: String = "Guest",
+    isLoggedIn: Boolean = false,
+    userRole: String? = null,
+    accountType: String? = null,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val collapsed = collapseFraction > 0.85f
 
-    val maxFontSize = if (isWide) 40.sp else 32.sp
-    val minFontSize = if (isWide) 28.sp else 22.sp
+    val maxFontSize = 34.sp
+    val minFontSize = 24.sp
 
     val backgroundColor by animateColorAsState(
-        targetValue = if (collapsed) primaryColor.copy(alpha = 0.95f) else Color.Transparent,
+        targetValue = if (collapsed) colorScheme.primary.copy(alpha = 0.95f) else Color.Transparent,
         animationSpec = tween(durationMillis = 300)
     )
 
@@ -3558,29 +3610,29 @@ fun DashboardHeroHeader(
         modifier = modifier
             .fillMaxWidth()
             .height(height),
-        shadowElevation = if (collapsed) 4.dp else 0.dp
+        shadowElevation = if (collapsed) 8.dp else 0.dp
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            // Background image (only for non-guest mode)
-            if (!isGuestMode) {
-                AnimatedVisibility(
-                    visible = !collapsed,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(R.drawable.dashbaordd)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+            // Background image - same as DiscoverScreen
+            AnimatedVisibility(
+                visible = !collapsed,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(R.drawable.nairobi_city)  // Same background image
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    placeholder = painterResource(R.drawable.nairobi_city),
+                    error = painterResource(R.drawable.nairobi_city)
+                )
             }
 
             Box(
@@ -3589,27 +3641,25 @@ fun DashboardHeroHeader(
                     .background(backgroundColor)
             )
 
-            // Gradient overlay (only for non-guest mode)
-            if (!isGuestMode) {
-                AnimatedVisibility(
-                    visible = !collapsed,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        primaryColor.copy(0.9f),
-                                        primaryColor.copy(0.6f),
-                                        Color.Transparent
-                                    )
+            // Gradient overlay - same as DiscoverScreen
+            AnimatedVisibility(
+                visible = !collapsed,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    colorScheme.primary.copy(0.95f),
+                                    colorScheme.primary.copy(0.75f),
+                                    Color.Transparent
                                 )
                             )
-                    )
-                }
+                        )
+                )
             }
 
             Column(
@@ -3617,7 +3667,7 @@ fun DashboardHeroHeader(
                     .fillMaxSize()
                     .statusBarsPadding()
             ) {
-                // Header content (different for guest mode)
+                // Top bar with avatar and actions - same as DiscoverScreen
                 AnimatedVisibility(
                     visible = !collapsed,
                     enter = fadeIn() + slideInVertically(),
@@ -3626,7 +3676,7 @@ fun DashboardHeroHeader(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 12.dp, start = 16.dp, end = 16.dp),
+                            .padding(top = 16.dp, start = 20.dp, end = 20.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -3637,44 +3687,47 @@ fun DashboardHeroHeader(
                                 HeaderAvatarDashboard(colorScheme)
                                 Box(
                                     modifier = Modifier
-                                        .size(10.dp)
-                                        .background(colorScheme.tertiary, CircleShape)
-                                        .border(1.5.dp, primaryColor, CircleShape)
+                                        .size(12.dp)
+                                        .background(colorScheme.tertiaryContainer, CircleShape)
+                                        .border(2.dp, colorScheme.primary, CircleShape)
                                         .align(Alignment.BottomEnd)
                                 )
                             }
 
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(12.dp))
 
                             Column {
                                 Text(
-                                    text = if (isGuestMode) "Hi, Guest" else "Hi, Guest",  // Update with actual user name when available
-                                    color = if (isGuestMode) primaryColor else Color.White,
+                                    text = if (isGuestMode) "Hi, Guest" else "Hi, $userName",
+                                    color = Color.White,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp
                                 )
                                 Text(
-                                    text = if (isGuestMode) "Sign in for full access" else "Welcome",
-                                    color = if (isGuestMode) primaryColor.copy(0.7f) else Color.White.copy(0.85f),
+                                    text = if (isGuestMode) {
+                                        "Welcome to Pivota"
+                                    } else {
+                                        "Welcome back, ${userName.split(" ").firstOrNull() ?: "User"}!"
+                                    },
+                                    color = Color.White.copy(0.85f),
+                                    style = MaterialTheme.typography.bodySmall,
                                     fontSize = 12.sp
                                 )
                             }
                         }
 
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             HeaderActionIconDashboard(
-                                icon = Icons.Outlined.Mail,
-                                iconTint = if (isGuestMode) primaryColor else Color.White,
-                                backgroundTint = if (isGuestMode) primaryColor.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f),
-                                size = if (isWide) 44.dp else 36.dp
+                                icon = Icons.Default.Mail,
+                                iconTint = Color.White,
+                                backgroundTint = Color.White.copy(alpha = 0.2f)
                             ) {}
                             HeaderActionIconDashboard(
-                                icon = Icons.Outlined.Notifications,
-                                iconTint = if (isGuestMode) primaryColor else Color.White,
-                                backgroundTint = if (isGuestMode) primaryColor.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f),
-                                size = if (isWide) 44.dp else 36.dp
+                                icon = Icons.Default.Notifications,
+                                iconTint = Color.White,
+                                backgroundTint = Color.White.copy(alpha = 0.2f)
                             ) {}
                         }
                     }
@@ -3685,67 +3738,70 @@ fun DashboardHeroHeader(
                 }
             }
 
-            // Collapsed header content
+            // Collapsed header - same as DiscoverScreen but with "Dashboard" title
             if (collapsed) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.CenterStart)
-                        .padding(start = 16.dp, end = 16.dp)
-                        .offset(y = 4.dp),
+                        .padding(start = 20.dp, end = 20.dp)
+                        .offset(y = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         text = "Dashboard",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            color = if (isGuestMode) primaryColor else Color.White,
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            color = Color.White,
                             fontWeight = FontWeight.Black,
+                            letterSpacing = (-1.5).sp,
                             fontSize = titleFontSize
                         )
                     )
 
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         HeaderActionIconDashboard(
-                            icon = Icons.Outlined.Mail,
-                            iconTint = if (isGuestMode) primaryColor else Color.White,
-                            backgroundTint = if (isGuestMode) primaryColor.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f),
-                            size = 36.dp
+                            icon = Icons.Default.Mail,
+                            iconTint = Color.White,
+                            backgroundTint = Color.White.copy(alpha = 0.2f)
                         ) {}
                         HeaderActionIconDashboard(
-                            icon = Icons.Outlined.Notifications,
-                            iconTint = if (isGuestMode) primaryColor else Color.White,
-                            backgroundTint = if (isGuestMode) primaryColor.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f),
-                            size = 36.dp
+                            icon = Icons.Default.Notifications,
+                            iconTint = Color.White,
+                            backgroundTint = Color.White.copy(alpha = 0.2f)
                         ) {}
                     }
                 }
             } else {
-                // Expanded header content
+                // Expanded header - same style as DiscoverScreen
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(start = 16.dp, bottom = 24.dp)
+                        .padding(start = 20.dp, bottom = 32.dp)
                         .statusBarsPadding()
                 ) {
                     Text(
                         text = "Dashboard",
                         style = MaterialTheme.typography.headlineLarge.copy(
-                            color = if (isGuestMode) primaryColor else Color.White,
+                            color = Color.White,
                             fontWeight = FontWeight.Black,
+                            letterSpacing = (-1.5).sp,
                             fontSize = titleFontSize
                         )
                     )
 
                     Text(
-                        text = if (isGuestMode) "Explore opportunities in your area" else "Manage your business",
+                        text = if (isGuestMode) {
+                            "Manage your business, track performance"
+                        } else {
+                            "Track your business performance, ${if (userName != "Guest") userName else ""}"
+                        },
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = if (isGuestMode) primaryColor.copy(0.8f) else Color.White.copy(0.9f),
-                            fontSize = 14.sp
+                            color = Color.White.copy(0.9f)
                         ),
-                        modifier = Modifier.padding(top = 2.dp)
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
             }
@@ -3756,9 +3812,9 @@ fun DashboardHeroHeader(
 @Composable
 fun HeaderActionIconDashboard(
     icon: ImageVector,
-    iconTint: Color = MaterialTheme.colorScheme.onSurface,
-    backgroundTint: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-    size: Dp = 40.dp,
+    iconTint: Color = Color.White,
+    backgroundTint: Color = Color.White.copy(alpha = 0.2f),
+    size: Dp = 48.dp,
     onClick: () -> Unit
 ) {
     IconButton(
@@ -3767,7 +3823,7 @@ fun HeaderActionIconDashboard(
     ) {
         Box(
             modifier = Modifier
-                .size(size * 0.8f)
+                .size(40.dp)
                 .background(backgroundTint, CircleShape)
                 .clip(CircleShape),
             contentAlignment = Alignment.Center
@@ -3776,7 +3832,7 @@ fun HeaderActionIconDashboard(
                 imageVector = icon,
                 contentDescription = null,
                 tint = iconTint,
-                modifier = Modifier.size(size * 0.4f)
+                modifier = Modifier.size(24.dp)
             )
         }
     }
@@ -3786,17 +3842,17 @@ fun HeaderActionIconDashboard(
 fun HeaderAvatarDashboard(colorScheme: ColorScheme) {
     Box(
         modifier = Modifier
-            .size(36.dp)
-            .background(colorScheme.onSurface.copy(0.2f), CircleShape)
-            .border(1.5.dp, colorScheme.onSurface.copy(0.5f), CircleShape)
+            .size(45.dp)
+            .background(Color.White.copy(0.2f), CircleShape)
+            .border(1.5.dp, Color.White.copy(0.5f), CircleShape)
             .clip(CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Default.PersonOutline,
             contentDescription = "User Avatar",
-            tint = colorScheme.onSurface,
-            modifier = Modifier.size(18.dp)
+            tint = Color.White,
+            modifier = Modifier.size(24.dp)
         )
     }
 }

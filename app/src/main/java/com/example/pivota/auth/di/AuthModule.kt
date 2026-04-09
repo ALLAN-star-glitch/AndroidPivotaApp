@@ -1,15 +1,9 @@
 package com.example.pivota.auth.di
 
-import com.example.pivota.auth.data.remote.AuthApiService
+import com.example.pivota.auth.data.remote.api.AuthApiService
 import com.example.pivota.auth.data.repository.AuthRepositoryImpl
 import com.example.pivota.auth.domain.repository.AuthRepository
-import com.example.pivota.auth.domain.useCase.AuthUseCases
-import com.example.pivota.auth.domain.useCase.HasSeenWelcomeUseCase
-import com.example.pivota.auth.domain.useCase.LoginUserUserUseCase
-import com.example.pivota.auth.domain.useCase.LoginWithMfaUseCase
-import com.example.pivota.auth.domain.useCase.RegisterUserUseCase
-import com.example.pivota.auth.domain.useCase.RequestOtpUseCase
-import com.example.pivota.auth.domain.useCase.SetWelcomeSeenUseCase
+import com.example.pivota.auth.domain.useCase.*
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -33,20 +27,21 @@ abstract class AuthModule {
             return AuthApiService(client)
         }
 
-
         @Provides
         @Singleton
         fun provideAuthUseCases(repository: AuthRepository): AuthUseCases {
             return AuthUseCases(
                 requestOtp = RequestOtpUseCase(repository),
                 registerUser = RegisterUserUseCase(repository),
-                loginWithMfa = LoginWithMfaUseCase(repository),
+                loginUser = LoginUserUseCase(repository),
+                verifyMfaLogin = VerifyMfaLoginUseCase(repository),
+                refreshToken = RefreshTokenUseCase(repository),
+                requestPasswordReset = RequestPasswordResetUseCase(repository),
+                resetPassword = ResetPasswordUseCase(repository),
+                logout = LogoutUseCase(repository),
                 setWelcomeSeen = SetWelcomeSeenUseCase(repository),
-                hasSeenWelcome = HasSeenWelcomeUseCase(repository),
-                loginUser = LoginUserUserUseCase(repository)
+                hasSeenWelcome = HasSeenWelcomeUseCase(repository)
             )
         }
     }
-
-
 }

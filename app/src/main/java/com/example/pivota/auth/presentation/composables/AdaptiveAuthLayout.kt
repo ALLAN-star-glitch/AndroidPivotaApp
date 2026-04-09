@@ -13,9 +13,9 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.zIndex
 import androidx.window.core.layout.WindowSizeClass
 import com.example.pivota.R
+import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 import com.example.pivota.core.presentations.composables.background_image_and_overlay.BackgroundImageAndOverlay
 
@@ -24,12 +24,14 @@ fun AdaptiveAuthLayout(
     desc1: String,
     desc2: String,
     isLoginScreen: Boolean,
-    viewModel: SignupViewModel?=null,
+    viewModel: SignupViewModel? = null,
     onRegisterClick: () -> Unit = {},
     onLoginClick: () -> Unit = {},
-    onSuccess: (String) -> Unit = {}, // Registration/OTP navigation
+    onLoginSuccess: (User, String, String, String) -> Unit = { _, _, _, _ -> },
+    onRegisterSuccess: (String, String, String, User?) -> Unit = { _, _, _, _ -> },  // Updated: 4 parameters
     onForgotPasswordClick: () -> Unit = {},
-    onGoogleLoginClick: () -> Unit = {}
+    onGoogleLoginClick: () -> Unit = {},
+    successMessage: String? = null
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
@@ -52,8 +54,8 @@ fun AdaptiveAuthLayout(
                         desc1 = desc1,
                         desc2 = desc2,
                         showUpgradeButton = false,
-                        enableCarousel = false, // Carousel disabled
-                        image = staticAuthImage // Static image
+                        enableCarousel = false,
+                        image = staticAuthImage
                     )
                 }
 
@@ -65,9 +67,11 @@ fun AdaptiveAuthLayout(
                         isLoginScreen = isLoginScreen,
                         onRegisterClick = onRegisterClick,
                         onLoginClick = onLoginClick,
-                        onSuccess = onSuccess,
+                        onLoginSuccess = onLoginSuccess,
+                        onRegisterSuccess = onRegisterSuccess,
                         onForgotPasswordClick = onForgotPasswordClick,
                         onGoogleLoginClick = onGoogleLoginClick,
+                        successMessage = successMessage,
                         viewModel = viewModel
                     )
                 }
@@ -76,19 +80,21 @@ fun AdaptiveAuthLayout(
             /* ───────── SINGLE PANE LAYOUT (Mobile Overlay) ───────── */
             Box(modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface) // Solid professional background
+                .background(MaterialTheme.colorScheme.surface)
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .imePadding() // ADD THIS: Lifts form above keyboard
+                .imePadding()
             ) {
                 AuthFormSwitcher(
                     isLoginScreen = isLoginScreen,
                     onRegisterClick = onRegisterClick,
                     onLoginClick = onLoginClick,
-                    onSuccess = onSuccess,
+                    onLoginSuccess = onLoginSuccess,
+                    onRegisterSuccess = onRegisterSuccess,
                     onForgotPasswordClick = onForgotPasswordClick,
                     onGoogleLoginClick = onGoogleLoginClick,
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    successMessage = successMessage
                 )
             }
         }
@@ -101,24 +107,27 @@ private fun AuthFormSwitcher(
     viewModel: SignupViewModel?,
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
-    onSuccess: (String) -> Unit,
+    onLoginSuccess: (User, String, String, String) -> Unit,
+    onRegisterSuccess: (String, String, String, User?) -> Unit,  // Updated: 4 parameters
     onForgotPasswordClick: () -> Unit,
-    onGoogleLoginClick: () -> Unit
+    onGoogleLoginClick: () -> Unit,
+    successMessage: String? = null
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         if (isLoginScreen) {
             LoginFormContent(
-                onLoginSuccess = onSuccess,
+                onLoginSuccess = onLoginSuccess,
                 onGoogleLoginClick = onGoogleLoginClick,
                 onRegisterLinkClick = onRegisterClick,
-                onForgotPasswordClick = onForgotPasswordClick
+                onForgotPasswordClick = onForgotPasswordClick,
+                successMessage = successMessage
             )
         } else {
             // Only call if viewModel is not null
             viewModel?.let { vm ->
                 RegistrationFormContent(
                     viewModel = vm,
-                    onRegisterSuccess = onSuccess,
+                    onRegisterSuccess = onRegisterSuccess,  // Now passes 4 parameters (message, accessToken, refreshToken, user)
                     onLoginLinkClick = onLoginClick
                 )
             }

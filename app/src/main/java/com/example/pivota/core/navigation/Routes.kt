@@ -22,3 +22,6 @@ data class VerifyOtp(
     val email: String,
     val isLogin: Boolean
 )
+@Serializable object ResetPassword
+@Serializable object ForgotPassword
+

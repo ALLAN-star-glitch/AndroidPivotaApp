@@ -1,27 +1,21 @@
 package com.example.pivota.auth.presentation.composables
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MarkEmailRead
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -29,31 +23,57 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.airbnb.lottie.compose.*
 import com.example.pivota.R
+import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.presentation.state.SignupUiState
 import com.example.pivota.auth.presentation.viewModel.SignupViewModel
+import com.example.pivota.core.presentations.composables.OtpVerificationDialog
+import com.example.pivota.core.presentations.composables.PivotaFullScreenLoading
+import com.example.pivota.core.presentations.composables.PivotaSnackbar
+import com.example.pivota.core.presentations.composables.SnackbarType
+import com.example.pivota.ui.theme.SuccessGreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun RegistrationFormContent(
     viewModel: SignupViewModel,
-    onRegisterSuccess: (String) -> Unit,
+    onRegisterSuccess: (String, String, String, User?) -> Unit,
     onLoginLinkClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     val uiState by viewModel.uiState.collectAsState()
     val formState by viewModel.formState.collectAsState()
+    val otpValues by viewModel.otpValues.collectAsState()
+    val resendCount by viewModel.resendCount.collectAsState()
+
+    // Collect dialog close signal from ViewModel
+    val shouldCloseDialog by viewModel.shouldCloseDialog.collectAsState()
+
+    // Main screen snackbar state
+    val mainSnackbarMessage by viewModel.mainSnackbarMessage.collectAsState()
+    val mainSnackbarType by viewModel.mainSnackbarType.collectAsState()
+
+    // Dialog snackbar state
+    val dialogSnackbarMessage by viewModel.dialogSnackbarMessage.collectAsState()
+    val dialogSnackbarType by viewModel.dialogSnackbarType.collectAsState()
+
     val coroutineScope = rememberCoroutineScope()
 
     var passwordVisible by remember { mutableStateOf(false) }
     var showOtpDialog by remember { mutableStateOf(false) }
-    var otpCode by remember { mutableStateOf("") }
     var isVerifying by remember { mutableStateOf(false) }
     var otpError by remember { mutableStateOf<String?>(null) }
+    var countdown by remember { mutableStateOf(0) }
+    var verificationFailed by remember { mutableStateOf(false) }
+
+    // Local password validation state
+    var localPasswordError by remember { mutableStateOf<String?>(null) }
+
+    // Track if we're in OTP request or verification
+    val isRequestingOtp = uiState is SignupUiState.Loading && !showOtpDialog
+    val isVerifyingOtp = uiState is SignupUiState.Loading && showOtpDialog
 
     // Lottie animation
     val composition by rememberLottieComposition(
@@ -65,7 +85,109 @@ fun RegistrationFormContent(
         isPlaying = true
     )
 
-    // Design-consistent field colors and shapes
+    // Password validation
+    fun validatePassword(password: String): String? {
+        return when {
+            password.isBlank() -> null
+            password.length < 8 -> "Password must be at least 8 characters"
+            !password.any { it.isUpperCase() } -> "Password must contain an uppercase letter (A-Z)"
+            !password.any { it.isLowerCase() } -> "Password must contain a lowercase letter (a-z)"
+            !password.any { it.isDigit() } -> "Password must contain a number (0-9)"
+            !password.any { it in "!@#$%^&*()_+-=[]{}|;':\",.<>/?`~" } ->
+                "Password must contain a special character"
+            else -> null
+        }
+    }
+
+    fun handlePasswordChange(newValue: String) {
+        viewModel.updatePassword(newValue)
+        localPasswordError = validatePassword(newValue)
+    }
+
+    // Countdown timer
+    LaunchedEffect(uiState) {
+        if (uiState is SignupUiState.OtpSent) {
+            countdown = 60
+            while (countdown > 0) {
+                delay(1000)
+                countdown--
+            }
+        }
+    }
+
+    // Handle dialog close signal
+    LaunchedEffect(shouldCloseDialog) {
+        if (shouldCloseDialog && showOtpDialog) {
+            showOtpDialog = false
+            isVerifying = false
+            verificationFailed = false
+            otpError = null
+            viewModel.resetDialogCloseFlag()
+        }
+    }
+
+    // Handle UI state changes
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is SignupUiState.OtpSent -> {
+                showOtpDialog = true
+                isVerifying = false
+                verificationFailed = false
+                otpError = null
+                countdown = 60
+                viewModel.resetDialogCloseFlag()
+                viewModel.showDialogSnackbar("Verification code sent to your email!", SnackbarType.SUCCESS)
+                coroutineScope.launch {
+                    delay(3000)
+                    viewModel.clearDialogSnackbar()
+                }
+            }
+            is SignupUiState.Loading -> {
+                if (showOtpDialog) {
+                    isVerifying = true
+                    verificationFailed = false
+                }
+            }
+            is SignupUiState.Success -> {
+                showOtpDialog = false
+                isVerifying = false
+                val successState = uiState as SignupUiState.Success
+                onRegisterSuccess(
+                    successState.message,
+                    successState.accessToken ?: "",
+                    successState.refreshToken ?: "",
+                    successState.user
+                )
+                viewModel.resetState()
+            }
+            is SignupUiState.PaymentRequired -> {
+                showOtpDialog = false
+                isVerifying = false
+                val paymentData = uiState as SignupUiState.PaymentRequired
+                println("🔍 Payment required: ${paymentData.redirectUrl}")
+                viewModel.resetState()
+            }
+            is SignupUiState.Error -> {
+                if (!showOtpDialog) {
+                    // Error during OTP request - handled by shouldCloseDialog
+                    isVerifying = false
+                    verificationFailed = false
+                } else {
+                    // Error during verification
+                    isVerifying = false
+                    verificationFailed = true
+                    otpError = (uiState as SignupUiState.Error).message
+                    viewModel.showDialogSnackbar(otpError ?: "Verification failed", SnackbarType.ERROR)
+                    coroutineScope.launch {
+                        delay(4000)
+                        viewModel.clearDialogSnackbar()
+                    }
+                }
+            }
+            else -> {}
+        }
+    }
+
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = MaterialTheme.colorScheme.primary,
         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
@@ -74,511 +196,308 @@ fun RegistrationFormContent(
     )
     val fieldShape = RoundedCornerShape(12.dp)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
-            .verticalScroll(scrollState)
-            .padding(horizontal = 24.dp)
-    ) {
-        /* ───────── HEADER WITH LOTTIE ANIMATION ───────── */
-        Spacer(Modifier.height(24.dp))
+    val displayPasswordError = localPasswordError
 
-        // Lottie Animation
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(180.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            LottieAnimation(
-                composition = composition,
-                progress = { progress },
-                modifier = Modifier.size(150.dp)
-            )
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // Welcome Message
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Last Step! Personal Details",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp,
-                    color = MaterialTheme.colorScheme.primary
-                ),
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                text = "Let's get you started on your journey",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(Modifier.height(4.dp))
-
-            Text(
-                text = "Create your account in just a few steps",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                ),
-                textAlign = TextAlign.Center
-            )
-        }
-
-        Spacer(Modifier.height(32.dp))
-
-        /* ───────── REGISTRATION FORM ───────── */
-        // First Name
-        OutlinedTextField(
-            value = formState.firstName,
-            onValueChange = viewModel::updateFirstName,
-            label = { Text("First Name") },
-            modifier = Modifier.fillMaxWidth(),
-            colors = textFieldColors,
-            singleLine = true,
-            shape = fieldShape
-        )
-        Spacer(Modifier.height(12.dp))
-
-        // Last Name
-        OutlinedTextField(
-            value = formState.lastName,
-            onValueChange = viewModel::updateLastName,
-            label = { Text("Last Name") },
-            modifier = Modifier.fillMaxWidth(),
-            colors = textFieldColors,
-            singleLine = true,
-            shape = fieldShape
-        )
-        Spacer(Modifier.height(12.dp))
-
-        // Phone (Optional)
-        OutlinedTextField(
-            value = formState.phone,
-            onValueChange = viewModel::updatePhone,
-            label = { Text("Phone (Optional)") },
-            modifier = Modifier.fillMaxWidth(),
-            colors = textFieldColors,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-            shape = fieldShape
-        )
-        Spacer(Modifier.height(12.dp))
-
-        // Email
-        OutlinedTextField(
-            value = formState.email,
-            onValueChange = viewModel::updateEmail,
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth(),
-            colors = textFieldColors,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            shape = fieldShape
-        )
-        Spacer(Modifier.height(12.dp))
-
-        // Password
-        OutlinedTextField(
-            value = formState.password,
-            onValueChange = viewModel::updatePassword,
-            label = { Text("Password") },
-            modifier = Modifier.fillMaxWidth(),
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(
-                        imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            },
-            colors = textFieldColors,
-            shape = fieldShape
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        // Terms and Conditions Checkbox
-        PivotaCheckBox(
-            checked = formState.agreeTerms,
-            onCheckedChange = viewModel::updateAgreeTerms,
-            text = "I agree to the terms and conditions"
-        )
-
-        Spacer(Modifier.height(24.dp))
-
-        /* ───────── REGISTER BUTTON ───────── */
-        Button(
-            onClick = {
-                if (formState.agreeTerms && formState.email.isNotEmpty() && formState.password.isNotEmpty()) {
-                    showOtpDialog = true
-                    otpError = null
-                    otpCode = ""
-                }
-            },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            enabled = formState.agreeTerms && formState.email.isNotEmpty() && formState.password.isNotEmpty(),
-            shape = RoundedCornerShape(28.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
-        ) {
-            Text(
-                "Create Account",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                color = Color.White
-            )
-        }
-
-        /* ───────── ERROR MESSAGE ───────── */
-        if (uiState is SignupUiState.Error) {
-            Text(
-                text = (uiState as SignupUiState.Error).message,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-            )
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        /* ───────── FOOTER ───────── */
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 40.dp)
-        ) {
-            Text(
-                text = "Already have an account? ",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
-            Text(
-                text = "Login",
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable { onLoginLinkClick() }
-            )
-        }
-    }
-
-    // Elegant OTP Verification Dialog
-    if (showOtpDialog) {
-        OTPVerificationDialog(
-            email = formState.email,
-            otpCode = otpCode,
-            onOtpCodeChange = { otpCode = it },
-            isVerifying = isVerifying,
-            otpError = otpError,
-            onVerify = {
-                if (otpCode.length == 6) {
-                    isVerifying = true
-                    coroutineScope.launch {
-                        delay(1500) // Simulate API call
-                        isVerifying = false
-                        showOtpDialog = false
-                        // Navigate directly to dashboard
-                        onRegisterSuccess(formState.email)
-                    }
-                } else {
-                    otpError = "Please enter a valid 6-digit code"
-                }
-            },
-            onResend = {
-                otpError = null
-                otpCode = ""
-            },
-            onCancel = {
-                if (!isVerifying) {
-                    showOtpDialog = false
-                    otpCode = ""
-                    otpError = null
-                }
-            },
-            onDismiss = {
-                if (!isVerifying) {
-                    showOtpDialog = false
-                    otpCode = ""
-                    otpError = null
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun OTPVerificationDialog(
-    email: String,
-    otpCode: String,
-    onOtpCodeChange: (String) -> Unit,
-    isVerifying: Boolean,
-    otpError: String?,
-    onVerify: () -> Unit,
-    onResend: () -> Unit,
-    onCancel: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = !isVerifying,
-            dismissOnClickOutside = !isVerifying,
-            usePlatformDefaultWidth = false
-        )
-    ) {
-        Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 24.dp)
         ) {
-            Column(
+            Spacer(Modifier.height(24.dp))
+
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(28.dp),
+                    .height(180.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                LottieAnimation(
+                    composition = composition,
+                    progress = { progress },
+                    modifier = Modifier.size(150.dp)
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Animated Icon
-                Surface(
-                    modifier = Modifier.size(80.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.MarkEmailRead,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(40.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Title
                 Text(
-                    text = "Verify Your Email",
+                    text = "Last Step! Personal Details",
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Description
-                Text(
-                    text = "We've sent a verification code to",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = email,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 28.sp,
                         color = MaterialTheme.colorScheme.primary
                     ),
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(Modifier.height(8.dp))
 
-                // OTP Digit Cells
-                OTPSixDigitInput(
-                    value = otpCode,
-                    onValueChange = onOtpCodeChange,
-                    isError = otpError != null
+                Text(
+                    text = "Let's get you started on your journey",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    textAlign = TextAlign.Center
                 )
 
-                // Error Message
-                if (otpError != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = otpError,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                Spacer(Modifier.height(4.dp))
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "Create your account in just a few steps",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    ),
+                    textAlign = TextAlign.Center
+                )
+            }
 
-                // Verify Button
-                Button(
-                    onClick = onVerify,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    enabled = !isVerifying && otpCode.length == 6,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    if (isVerifying) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = Color.White
+            Spacer(Modifier.height(32.dp))
+
+            OutlinedTextField(
+                value = formState.firstName,
+                onValueChange = viewModel::updateFirstName,
+                label = { Text("First Name") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                singleLine = true,
+                shape = fieldShape
+            )
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = formState.lastName,
+                onValueChange = viewModel::updateLastName,
+                label = { Text("Last Name") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                singleLine = true,
+                shape = fieldShape
+            )
+            Spacer(Modifier.height(12.dp))
+
+            // ✅ Phone is optional - no validation required
+            OutlinedTextField(
+                value = formState.phone,
+                onValueChange = viewModel::updatePhone,
+                label = { Text("Phone (Optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                shape = fieldShape
+            )
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = formState.email,
+                onValueChange = viewModel::updateEmail,
+                label = { Text("Email") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                shape = fieldShape
+            )
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = formState.password,
+                onValueChange = { handlePasswordChange(it) },
+                label = { Text("Password") },
+                placeholder = { Text("Enter your password") },
+                modifier = Modifier.fillMaxWidth(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Verifying...", color = Color.White)
+                    }
+                },
+                colors = textFieldColors,
+                shape = fieldShape,
+                isError = displayPasswordError != null,
+                supportingText = {
+                    if (displayPasswordError != null) {
+                        Text(
+                            text = displayPasswordError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp
+                        )
+                    } else if (formState.password.isNotEmpty()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = SuccessGreen
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Password meets requirements",
+                                fontSize = 11.sp,
+                                color = SuccessGreen
+                            )
+                        }
                     } else {
                         Text(
-                            "Verify & Create Account",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = Color.White
+                            text = "Min 8 chars: uppercase, lowercase, number, special (@ $ ! % * ? &)",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
+            )
 
-                Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-                // Resend and Cancel Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    TextButton(
-                        onClick = onResend,
-                        enabled = !isVerifying
-                    ) {
-                        Text(
-                            "Resend Code",
-                            fontSize = 13.sp,
-                            color = if (!isVerifying)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        )
+            PivotaCheckBox(
+                checked = formState.agreeTerms,
+                onCheckedChange = viewModel::updateAgreeTerms,
+                text = "I agree to the terms and conditions"
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            Button(
+                onClick = {
+                    if (formState.agreeTerms && formState.email.isNotEmpty() && displayPasswordError == null && formState.password.isNotEmpty()) {
+                        viewModel.startSignup()
                     }
-
-                    TextButton(
-                        onClick = onCancel,
-                        enabled = !isVerifying
-                    ) {
-                        Text(
-                            "Cancel",
-                            fontSize = 13.sp,
-                            color = if (!isVerifying)
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        )
-                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                enabled = formState.agreeTerms && formState.email.isNotEmpty() && displayPasswordError == null && formState.password.isNotEmpty() && !isRequestingOtp,
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                )
+            ) {
+                if (isRequestingOtp) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Sending code...", color = Color.White)
+                } else {
+                    Text("Create Account", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                 }
             }
-        }
-    }
-}
 
-@Composable
-fun OTPSixDigitInput(
-    value: String,
-    onValueChange: (String) -> Unit,
-    isError: Boolean
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Visible OTP Cells
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            for (index in 0..5) {
-                OTPSingleDigitCell(
-                    digit = if (index < value.length) value[index].toString() else "",
-                    isActive = value.length == index,
-                    isError = isError,
-                    modifier = Modifier.weight(1f)
+            Spacer(Modifier.height(24.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 40.dp)
+            ) {
+                Text(
+                    text = "Already have an account? ",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+                Text(
+                    text = "Login",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable { onLoginLinkClick() }
                 )
             }
         }
 
-        // Hidden TextField that receives input
-        BasicTextField(
-            value = value,
-            onValueChange = {
-                if (it.length <= 6 && it.all { char -> char.isDigit() }) {
-                    onValueChange(it)
+        if (isRequestingOtp) {
+            PivotaFullScreenLoading(
+                message = "Sending verification code to\n${formState.email}"
+            )
+        }
+
+        if (isVerifyingOtp) {
+            PivotaFullScreenLoading(
+                message = "Verifying your code\nCreating your account..."
+            )
+        }
+
+        if (mainSnackbarMessage != null && !showOtpDialog) {
+            PivotaSnackbar(
+                message = mainSnackbarMessage!!,
+                type = mainSnackbarType,
+                duration = 4000L,
+                onDismiss = { viewModel.clearMainSnackbar() }
+            )
+        }
+    }
+
+    if (showOtpDialog) {
+        OtpVerificationDialog(
+            email = formState.email,
+            otpValue = otpValues.joinToString(""), // Single string for all digits
+            onOtpChange = { value ->
+                viewModel.updateOtpFull(value)  // <-- new function
+            },
+            isVerifying = isVerifying,
+            otpError = if (verificationFailed) otpError else null,
+            countdown = countdown,
+            title = "Verify Your Email",
+            description = "We've sent a verification code to",
+            verifyButtonText = "Verify & Create Account",
+            onVerify = {
+                val code = otpValues.joinToString("")
+                if (code.length == 6) {
+                    verificationFailed = false
+                    viewModel.verifyAndRegister(code)
+                } else {
+                    otpError = "Please enter a valid 6-digit code"
+                    verificationFailed = true
+                    viewModel.showDialogSnackbar(otpError!!, SnackbarType.ERROR)
+                    coroutineScope.launch {
+                        delay(3000)
+                        viewModel.clearDialogSnackbar()
+                    }
                 }
             },
-            modifier = Modifier
-                .size(1.dp)
-                .background(Color.Transparent),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            singleLine = true
-        )
-    }
-}
-
-@Composable
-fun OTPSingleDigitCell(
-    digit: String,
-    isActive: Boolean,
-    isError: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val borderColor = when {
-        isError -> MaterialTheme.colorScheme.error
-        isActive -> MaterialTheme.colorScheme.primary
-        digit.isNotEmpty() -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-        else -> MaterialTheme.colorScheme.outlineVariant
-    }
-
-    val backgroundColor = when {
-        isActive -> MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
-        digit.isNotEmpty() -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-        else -> MaterialTheme.colorScheme.surface
-    }
-
-    Box(
-        modifier = modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(12.dp))
-            .background(backgroundColor)
-            .border(
-                width = if (isActive) 2.dp else 1.5.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(12.dp)
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = digit,
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-                color = if (digit.isNotEmpty())
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            ),
-            textAlign = TextAlign.Center
+            onResend = {
+                viewModel.incrementResendCount()
+                viewModel.resendOtp()
+                otpError = null
+                isVerifying = false
+                verificationFailed = false
+                viewModel.clearDialogSnackbar()
+            },
+            onCancel = {
+                if (!isVerifying) {
+                    showOtpDialog = false
+                    viewModel.resetState()
+                    otpError = null
+                    verificationFailed = false
+                    viewModel.clearDialogSnackbar()
+                }
+            },
+            snackbarMessage = dialogSnackbarMessage,
+            snackbarType = dialogSnackbarType,
+            onSnackbarDismiss = {
+                viewModel.clearDialogSnackbar()
+            },
+            shouldClose = shouldCloseDialog,
+            onDialogClosed = {
+                showOtpDialog = false
+                isVerifying = false
+                verificationFailed = false
+                otpError = null
+                viewModel.resetDialogCloseFlag()
+            }
         )
     }
 }

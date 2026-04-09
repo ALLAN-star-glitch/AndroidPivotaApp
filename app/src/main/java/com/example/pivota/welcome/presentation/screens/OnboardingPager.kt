@@ -27,17 +27,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import com.example.pivota.R
+import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.presentation.composables.AdaptiveAuthLayout
 import com.example.pivota.auth.presentation.viewModel.SignupViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.pivota.core.preferences.PivotaDataStore
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OnboardingPager(
-    onOnboardingComplete: (purpose: String, purposeData: Map<String, Any>) -> Unit,
+    modifier: Modifier = Modifier,
+    onOnboardingComplete: () -> Unit,  // For just exploring / skip
+    onSignupSuccess: (String, String, String, User?) -> Unit,  // (message, accessToken, refreshToken, user)
     onLoginClick: () -> Unit,
     signupViewModel: SignupViewModel = hiltViewModel(),
-    modifier: Modifier = Modifier
+    datastore: PivotaDataStore,
 ) {
     val pagerState = rememberPagerState(
         initialPage = 0,
@@ -47,7 +51,6 @@ fun OnboardingPager(
     val coroutineScope = rememberCoroutineScope()
     val currentPage by remember { derivedStateOf { pagerState.currentPage } }
 
-    // Handle page navigation
     fun goToNextPage() {
         coroutineScope.launch {
             pagerState.animateScrollToPage(currentPage + 1)
@@ -88,43 +91,36 @@ fun OnboardingPager(
                 ) { currentPage ->
                     when (currentPage) {
                         0 -> AdaptiveJoiningAsScreenContent(
-                            onContinue = { accountType -> goToNextPage() },
+                            onContinue = { goToNextPage() },
                             onLoginClick = onLoginClick,
                             onSkipToDashboard = {
-                                // Skip to dashboard with empty purpose
-                                onOnboardingComplete("just_exploring", emptyMap())
+                                onOnboardingComplete()
                             },
                             currentStep = currentPage,
                             totalSteps = 3
                         )
                         1 -> AdaptivePurposeSelectionScreenContent(
-                            onContinue = { purpose, purposeData ->
-                                // Store purpose data and navigate to registration
-                                goToNextPage()
-                            },
-                            currentStep = currentPage,
-                            totalSteps = 3,
+                            onContinue = { goToNextPage() },
                             onSkipToDashboard = {
-                                // Skip to dashboard with empty purpose
-                                onOnboardingComplete("just_exploring", emptyMap())
+                                onOnboardingComplete()
                             },
                             onContinueWithGoogle = {
-                                // Handle Google sign-in
-                                onOnboardingComplete("google", emptyMap())
+                                onOnboardingComplete()
                             },
-                            onJustExploring = {
-                                // Navigate directly to registration for Just Exploring
-                                goToNextPage()
-                            }
+                            onJustExploring = {},
+                            currentStep = currentPage,
+                            totalSteps = 3
                         )
                         2 -> AdaptiveAuthLayout(
                             viewModel = signupViewModel,
-                            desc1 = "After registering, you can upgrade your account to post unlimited jobs, rentals, or services",
+                            desc1 = "After registering, you can upgrade your account...",
                             desc2 = "It's free to join. Upgrade when you're ready!",
                             isLoginScreen = false,
-                            onSuccess = { email ->
-                                // On successful registration, complete onboarding
-                                onOnboardingComplete("registered", mapOf("email" to email))
+                            onRegisterSuccess = { message, accessToken, refreshToken, user ->
+                                coroutineScope.launch {
+                                    datastore.clear()
+                                }
+                                onSignupSuccess(message, accessToken, refreshToken, user)
                             },
                             onLoginClick = onLoginClick
                         )
@@ -133,7 +129,7 @@ fun OnboardingPager(
             }
         )
 
-        // Progress Indicator with animation and step counter
+        // Progress Indicator - Moved OUTSIDE of HorizontalPager
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -146,7 +142,6 @@ fun OnboardingPager(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Back Arrow Button (visible on page 1 and 2, not on page 0)
                 AnimatedVisibility(
                     visible = currentPage > 0,
                     enter = fadeIn() + scaleIn(initialScale = 0.8f),
@@ -167,12 +162,10 @@ fun OnboardingPager(
                     )
                 }
 
-                // Empty spacer when back button is hidden to maintain layout
                 if (currentPage == 0) {
                     Spacer(modifier = Modifier.size(32.dp))
                 }
 
-                // Step Counter Text
                 Text(
                     text = "Step ${currentPage + 1} of 3",
                     style = MaterialTheme.typography.bodySmall.copy(
@@ -182,7 +175,6 @@ fun OnboardingPager(
                     )
                 )
 
-                // Progress Indicators
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.animateContentSize()

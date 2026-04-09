@@ -1,16 +1,13 @@
 package com.example.pivota.dashboard.presentation.screens
 
 import HorizontalSmartMatchBadge
-import SmartMatchBadge
 import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,31 +15,22 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
-import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
@@ -53,185 +41,13 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
+import com.example.pivota.auth.domain.model.User
 import com.example.pivota.dashboard.domain.EmployerType
 import com.example.pivota.dashboard.domain.ListingStatus
 import com.example.pivota.dashboard.presentation.composables.ModernHousingCard
 import com.example.pivota.dashboard.presentation.composables.ModernJobCard
 import com.example.pivota.dashboard.presentation.composables.ModernProfessionalCard
 import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
-
-// ========== SMARTMATCH BADGE COMPOSABLES ==========
-
-/**
- * Responsive SmartMatch badge that adapts to different screen sizes
- * Shows AI-powered match count with animated gradient background
- */
-@Composable
-fun SmartMatchBadge(
-    matchCount: Int,
-    modifier: Modifier = Modifier,
-    windowSizeClass: WindowSizeClass,
-    showLabel: Boolean = true,
-    onClick: (() -> Unit)? = null,
-    animate: Boolean = true,
-    backgroundColor: Color? = null,
-    contentColor: Color = Color.White,
-    shape: RoundedCornerShape? = null,
-    icon: ImageVector = Icons.Outlined.AutoAwesome,
-    iconSize: Dp? = null,
-    fontSize: TextUnit? = null,
-    horizontalPadding: Dp? = null,
-    verticalPadding: Dp? = null,
-    maxCount: Int = 150,
-    animationDuration: Int = 3000
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val primaryColor = colorScheme.primary
-    val tertiaryColor = colorScheme.tertiary
-
-    // Responsive sizing based on window width class
-    val isExpanded = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
-    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
-    val isTablet = isExpanded || isMedium
-
-    val defaultIconSize = if (isTablet) 22.dp else 18.dp
-    val defaultFontSize = if (isTablet) 13.sp else 11.sp
-    val defaultHorizontalPadding = when {
-        horizontalPadding != null -> horizontalPadding
-        showLabel -> (if (isTablet) 16.dp else 12.dp)
-        else -> 8.dp
-    }
-    val defaultVerticalPadding = if (isTablet) 10.dp else 6.dp
-    val defaultShape = shape ?: RoundedCornerShape(if (isTablet) 24.dp else 20.dp)
-
-    // Format count with max limit
-    val displayCount = if (matchCount > maxCount) "$maxCount+" else matchCount.toString()
-
-    // Animation for gradient shift
-    val infiniteTransition = rememberInfiniteTransition()
-    val gradientOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 100f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(animationDuration, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
-
-    // State for press animation
-    var isPressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed && onClick != null) 0.95f else 1f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f),
-        label = "press_scale"
-    )
-
-    val badgeModifier = if (onClick != null) {
-        Modifier
-            .scale(scale)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        try {
-                            awaitRelease()
-                        } finally {
-                            isPressed = false
-                        }
-                    },
-                    onTap = {
-                        onClick()
-                    }
-                )
-            }
-    } else {
-        Modifier
-    }
-
-    Row(
-        modifier = modifier
-            .then(badgeModifier)
-            .clip(defaultShape)
-            .then(
-                if (backgroundColor != null) {
-                    Modifier.background(backgroundColor, defaultShape)
-                } else {
-                    Modifier.background(
-                        if (animate) {
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    primaryColor,
-                                    tertiaryColor,
-                                    primaryColor.copy(0.8f),
-                                    tertiaryColor.copy(0.8f)
-                                ),
-                                start = Offset(gradientOffset, 0f),
-                                end = Offset(gradientOffset + 100f, 100f),
-                                tileMode = TileMode.Mirror
-                            )
-                        } else {
-                            Brush.linearGradient(
-                                colors = listOf(primaryColor, tertiaryColor)
-                            )
-                        },
-                        shape = defaultShape
-                    )
-                }
-            )
-            .padding(
-                horizontal = defaultHorizontalPadding,
-                vertical = verticalPadding ?: defaultVerticalPadding
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        // Icon with micro-animation
-        Box(
-            modifier = Modifier
-                .size(iconSize ?: defaultIconSize)
-                .then(
-                    if (animate && onClick != null) {
-                        Modifier.graphicsLayer {
-                            rotationZ = if (isPressed) 0f else gradientOffset / 3
-                        }
-                    } else Modifier
-                )
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = "SmartMatch",
-                tint = contentColor,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-
-        if (showLabel) {
-            Spacer(modifier = Modifier.width(if (isTablet) 8.dp else 6.dp))
-
-            Text(
-                text = "$displayCount SmartMatch${if (matchCount != 1) "es" else ""}",
-                color = contentColor,
-                fontSize = fontSize ?: defaultFontSize,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = if (animate) {
-                    Modifier.graphicsLayer {
-                        alpha = 1f - (gradientOffset / 200f).coerceIn(0.8f, 1f)
-                    }
-                } else Modifier
-            )
-        } else {
-            Text(
-                text = displayCount,
-                color = contentColor,
-                fontSize = fontSize ?: defaultFontSize,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 2.dp)
-            )
-        }
-    }
-}
 
 
 // ========== END OF SMARTMATCH BADGE COMPOSABLES ==========
@@ -249,7 +65,9 @@ fun DiscoverScreen(
     onNavigateToAllSupport: () -> Unit = {},
     onNavigateToSmartMatch: () -> Unit = {}, // Navigation for SmartMatch
     onBookHousingClick: (HousingListingUiModel) -> Unit = {},
-    onViewHousingClick: (HousingListingUiModel) -> Unit = {}
+    onViewHousingClick: (HousingListingUiModel) -> Unit = {},
+    user: User? = null,
+    isGuestMode: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -836,7 +654,9 @@ fun DiscoverScreen(
                 colorScheme = colorScheme,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .zIndex(3f)
+                    .zIndex(3f),
+                user = user,  // Pass the user
+                isGuestMode = isGuestMode  // Pass guest mode
             )
 
             // 📌 FIXED SEARCH + PILLS SECTION
@@ -1085,84 +905,6 @@ fun SearchBarWithAudio(
     }
 }
 
-/* ─────────────────────────────────────────────
-   FILTER PILLS ROW (SmartMatch badge first, proper spacing)
-   ───────────────────────────────────────────── */
-
-@Composable
-fun FilterPillsRow(
-    selectedFilters: Set<String>,
-    onFilterSelected: (String) -> Unit,
-    accentColor: Color,
-    colorScheme: ColorScheme,
-    windowSizeClass: WindowSizeClass,
-    onSmartMatchClick: () -> Unit
-) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // SmartMatch badge as the FIRST item
-        item {
-            SmartMatchBadge(
-                matchCount = 156,
-                windowSizeClass = windowSizeClass,
-                showLabel = false,
-                onClick = onSmartMatchClick,
-                modifier = Modifier
-                    .padding(end = 4.dp) // Small padding after the badge
-            )
-        }
-
-        val filters = listOf(
-            "All" to null,
-            "Jobs" to Icons.Outlined.Work,
-            "Houses" to Icons.Outlined.Home,
-            "Professionals" to Icons.Outlined.Groups,
-            "Support" to Icons.Outlined.VolunteerActivism,
-            "Verified" to Icons.Outlined.Verified
-        )
-
-        items(filters.size) { index ->
-            val (filter, icon) = filters[index]
-            val isSelected = selectedFilters.contains(filter) || (filter == "All" && selectedFilters.isEmpty())
-
-            Surface(
-                shape = RoundedCornerShape(30.dp),
-                color = if (isSelected) accentColor else colorScheme.surface,
-                border = if (!isSelected) BorderStroke(1.dp, colorScheme.outlineVariant) else null,
-                modifier = Modifier
-                    .clickable { onFilterSelected(filter) }
-                    .shadow(
-                        elevation = if (isSelected) 2.dp else 0.dp,
-                        shape = RoundedCornerShape(30.dp),
-                        ambientColor = Color.Black.copy(0.05f)
-                    )
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (icon != null) {
-                        Icon(
-                            icon,
-                            contentDescription = null,
-                            tint = if (isSelected) colorScheme.onPrimary else colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                    }
-                    Text(
-                        text = filter,
-                        color = if (isSelected) colorScheme.onPrimary else colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                    )
-                }
-            }
-        }
-    }
-}
 
 /* ────────────── UPDATED COMPONENTS WITH HORIZONTAL PADDING ────────────── */
 
@@ -1401,12 +1143,34 @@ fun DiscoverHeroHeader(
     height: Dp,
     collapseFraction: Float,
     colorScheme: ColorScheme,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    user: User? = null,  // Add this parameter
+    isGuestMode: Boolean = false  // Add this parameter
 ) {
     val collapsed = collapseFraction > 0.85f
 
     val maxFontSize = 34.sp
     val minFontSize = 24.sp
+
+    // Extract user name for display
+    val displayName = remember(user) {
+        when {
+            user == null || isGuestMode -> "Guest"
+            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
+            user.firstName.isNotBlank() -> user.firstName
+            else -> user.email.split("@").firstOrNull() ?: "Guest"
+        }
+    }
+
+    val welcomeMessage = remember(user, isGuestMode) {
+        when {
+            isGuestMode -> "Welcome to Pivota"
+            user?.userName?.isNotBlank() == true -> "Welcome back, ${user.userName.split(" ")
+                .firstOrNull() ?: "User"}!"
+            user?.firstName?.isNotBlank() == true -> "Welcome back, ${user.firstName}!"
+            else -> "Welcome to Pivota"
+        }
+    }
 
     val backgroundColor by animateColorAsState(
         targetValue = if (collapsed) colorScheme.primary.copy(alpha = 0.95f) else Color.Transparent,
@@ -1504,14 +1268,16 @@ fun DiscoverHeroHeader(
 
                             Column {
                                 Text(
-                                    "Hi, Guest",
+                                    text = if (isGuestMode) "Hi, Guest" else "Hi, $displayName",
                                     color = Color.White,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
                                 )
                                 Text(
-                                    "Welcome to Pivota",
+                                    text = welcomeMessage,
                                     color = Color.White.copy(0.85f),
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 12.sp
                                 )
                             }
                         }
@@ -1519,7 +1285,6 @@ fun DiscoverHeroHeader(
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // SmartMatch badge removed from header
                             HeaderActionIcon(
                                 icon = Icons.Default.Mail,
                                 iconTint = Color.White,
@@ -1562,7 +1327,6 @@ fun DiscoverHeroHeader(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // SmartMatch badge removed from header
                         HeaderActionIcon(
                             icon = Icons.Default.Mail,
                             iconTint = Color.White,
@@ -1593,7 +1357,11 @@ fun DiscoverHeroHeader(
                     )
 
                     Text(
-                        text = "Life opportunities, tailored for you",
+                        text = if (isGuestMode) {
+                            "Life opportunities, tailored for you"
+                        } else {
+                            "Find opportunities ${if (displayName != "Guest") "for $displayName" else "for you"}"
+                        },
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = Color.White.copy(0.9f)
                         ),

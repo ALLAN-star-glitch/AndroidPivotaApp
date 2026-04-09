@@ -1,19 +1,33 @@
 package com.example.pivota.auth.presentation.screens
-import androidx.activity.compose.BackHandler // Fixes the unresolved reference
+
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.presentation.composables.AdaptiveAuthLayout
+import com.example.pivota.auth.presentation.viewModel.SharedAuthViewModel
 
 @Composable
 fun LoginScreen(
-    onSuccess: (String) -> Unit,
+    onLoginSuccess: (User, String, String, String) -> Unit, // Updated to accept all 4 parameters
     onRegisterClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    successMessage: String? = null,
+    sharedAuthViewModel: SharedAuthViewModel = hiltViewModel()
 ) {
-    // This intercepts the system back button and triggers your navigation logic
-    BackHandler {
-        onBack()
+    println("🔍 [LoginScreen] Received successMessage: $successMessage")
+
+    // Clear the shared message after it's been received
+    LaunchedEffect(successMessage) {
+        if (!successMessage.isNullOrBlank()) {
+            // The message has been delivered, clear it from shared ViewModel
+            sharedAuthViewModel.clearResetSuccessMessage()
+        }
     }
+
+    BackHandler { onBack() }
 
     AdaptiveAuthLayout(
         desc1 = "Access Opportunities in Kenya",
@@ -22,7 +36,7 @@ fun LoginScreen(
         onRegisterClick = onRegisterClick,
         onForgotPasswordClick = onForgotPasswordClick,
         onLoginClick = { /* Already on login screen */ },
-        onSuccess = onSuccess
+        onLoginSuccess = onLoginSuccess, // This now matches the expected signature
+        successMessage = successMessage
     )
-
 }

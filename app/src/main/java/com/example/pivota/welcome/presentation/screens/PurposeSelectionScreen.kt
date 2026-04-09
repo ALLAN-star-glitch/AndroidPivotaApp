@@ -36,35 +36,34 @@ import com.example.pivota.R
 import com.example.pivota.core.presentations.composables.buttons.AuthGoogleButton
 import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
 import com.example.pivota.core.presentations.composables.buttons.PivotaSkipButton
-import com.example.pivota.welcome.presentation.composables.purpose_selection.EmployerFields
-import com.example.pivota.welcome.presentation.composables.purpose_selection.JobSeekerFields
-import com.example.pivota.welcome.presentation.composables.purpose_selection.SkilledProfessionalFields
-import com.example.pivota.welcome.presentation.composables.purpose_selection.SupportBeneficiaryFields
+import com.example.pivota.welcome.presentation.composables.purpose_selection.*
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.pivota.welcome.presentation.state.HousingSeekerFormData
+import com.example.pivota.welcome.presentation.state.PropertyOwnerFormData
+import com.example.pivota.welcome.presentation.viewmodel.PurposeSelectionViewModel
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun AdaptivePurposeSelectionScreenContent(
-    onContinue: (purpose: String, purposeData: Map<String, Any>) -> Unit,
+    onContinue: () -> Unit,
     onSkipToDashboard: () -> Unit,
     onContinueWithGoogle: () -> Unit,
     onJustExploring: () -> Unit,
     currentStep: Int = 2,
     totalSteps: Int = 6,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: PurposeSelectionViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isMediumScreen = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
     val isExpandedScreen = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
-
-    // Hoist selectedPurpose state to share between panes
-    var selectedPurpose by remember { mutableStateOf<String?>(null) }
 
     when {
         /* TWO-PANE LAYOUT FOR TABLETS/DESKTOP */
         isMediumScreen || isExpandedScreen -> {
             Row(modifier = modifier.fillMaxSize()) {
-                // Left pane with selection card and skip button
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -72,13 +71,11 @@ fun AdaptivePurposeSelectionScreenContent(
                         .background(MaterialTheme.colorScheme.surface)
                 ) {
                     TwoPanePurposeSelectionLeftContent(
-                        selectedPurpose = selectedPurpose,
-                        onSelectedPurposeChange = { selectedPurpose = it },
+                        viewModel = viewModel,
                         onSkipToDashboard = onSkipToDashboard
                     )
                 }
 
-                // Right pane with dynamic fields and other buttons
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -86,7 +83,7 @@ fun AdaptivePurposeSelectionScreenContent(
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
                 ) {
                     TwoPanePurposeSelectionRightContent(
-                        selectedPurpose = selectedPurpose,
+                        viewModel = viewModel,
                         onContinue = onContinue,
                         onContinueWithGoogle = onContinueWithGoogle,
                         onJustExploring = onJustExploring
@@ -98,6 +95,7 @@ fun AdaptivePurposeSelectionScreenContent(
         /* SINGLE-PANE LAYOUT FOR MOBILE */
         else -> {
             PurposeSelectionScreenContent(
+                viewModel = viewModel,
                 onContinue = onContinue,
                 onSkipToDashboard = onSkipToDashboard,
                 onContinueWithGoogle = onContinueWithGoogle,
@@ -113,15 +111,13 @@ fun AdaptivePurposeSelectionScreenContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TwoPanePurposeSelectionLeftContent(
-    selectedPurpose: String?,
-    onSelectedPurposeChange: (String?) -> Unit,
+    viewModel: PurposeSelectionViewModel,
     onSkipToDashboard: () -> Unit
 ) {
-    var showBottomSheet by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
     val scrollState = rememberScrollState()
 
-    // Purpose options
     val purposeOptions = listOf(
         PurposeOption("Just Exploring", Icons.Default.Explore, "✨", "Explore what Pivota has to offer before deciding"),
         PurposeOption("Find a Job", Icons.Default.Work, "🔍", "Search and apply for jobs that match your skills"),
@@ -131,8 +127,6 @@ fun TwoPanePurposeSelectionLeftContent(
         PurposeOption("Hire Employees", Icons.Default.Business, "👔", "Find talented professionals for your business"),
         PurposeOption("Offer Skilled Services", Icons.Default.Build, "🔧", "Showcase your expertise and get hired by clients"),
         PurposeOption("Work as Agent", Icons.Default.Person, "🤝", "Help others find opportunities and earn commissions"),
-
-
     )
 
     Column(
@@ -143,7 +137,6 @@ fun TwoPanePurposeSelectionLeftContent(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.Start
     ) {
-        // Headline
         Text(
             text = "Choose Your Main Goal",
             style = MaterialTheme.typography.headlineMedium.copy(
@@ -167,11 +160,10 @@ fun TwoPanePurposeSelectionLeftContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Professional Selection Card
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { showBottomSheet = true },
+                .clickable { viewModel.showBottomSheet() },
             shape = RoundedCornerShape(16.dp),
             color = colorScheme.surface,
             tonalElevation = 2.dp,
@@ -193,7 +185,7 @@ fun TwoPanePurposeSelectionLeftContent(
                             .size(48.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(
-                                if (selectedPurpose != null)
+                                if (uiState.selectedPurpose != null)
                                     colorScheme.primary.copy(alpha = 0.1f)
                                 else
                                     colorScheme.surfaceVariant
@@ -201,11 +193,11 @@ fun TwoPanePurposeSelectionLeftContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (selectedPurpose != null) {
-                                purposeOptions.find { it.label == selectedPurpose }?.icon ?: Icons.Default.Info
+                            imageVector = if (uiState.selectedPurpose != null) {
+                                purposeOptions.find { it.label == uiState.selectedPurpose }?.icon ?: Icons.Default.Info
                             } else Icons.Default.Info,
                             contentDescription = null,
-                            tint = if (selectedPurpose != null)
+                            tint = if (uiState.selectedPurpose != null)
                                 colorScheme.primary
                             else
                                 colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
@@ -215,7 +207,7 @@ fun TwoPanePurposeSelectionLeftContent(
 
                     Column {
                         Text(
-                            text = if (selectedPurpose != null) "Selected Purpose" else "Select Your Purpose",
+                            text = if (uiState.selectedPurpose != null) "Selected Purpose" else "Select Your Purpose",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontSize = 12.sp,
                                 color = colorScheme.onSurfaceVariant,
@@ -223,10 +215,10 @@ fun TwoPanePurposeSelectionLeftContent(
                             )
                         )
                         Text(
-                            text = selectedPurpose ?: "Choose your primary focus",
+                            text = uiState.selectedPurpose ?: "Choose your primary focus",
                             style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = if (selectedPurpose != null) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (selectedPurpose != null)
+                                fontWeight = if (uiState.selectedPurpose != null) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (uiState.selectedPurpose != null)
                                     colorScheme.primary
                                 else
                                     colorScheme.onSurfaceVariant
@@ -258,7 +250,6 @@ fun TwoPanePurposeSelectionLeftContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Skip to Dashboard Button
         PivotaSkipButton(
             text = "Skip to Dashboard",
             onClick = onSkipToDashboard,
@@ -267,10 +258,9 @@ fun TwoPanePurposeSelectionLeftContent(
         )
     }
 
-    // Bottom Sheet
-    if (showBottomSheet) {
+    if (uiState.showBottomSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
+            onDismissRequest = { viewModel.hideBottomSheet() },
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             containerColor = colorScheme.surface,
             tonalElevation = 8.dp,
@@ -297,7 +287,7 @@ fun TwoPanePurposeSelectionLeftContent(
                     )
 
                     IconButton(
-                        onClick = { showBottomSheet = false },
+                        onClick = { viewModel.hideBottomSheet() },
                         modifier = Modifier.size(40.dp)
                     ) {
                         Surface(
@@ -330,11 +320,10 @@ fun TwoPanePurposeSelectionLeftContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                onSelectedPurposeChange(option.label)
-                                showBottomSheet = false
+                                viewModel.selectPurpose(option.label)
                             }
                             .padding(vertical = 4.dp),
-                        color = if (selectedPurpose == option.label)
+                        color = if (uiState.selectedPurpose == option.label)
                             colorScheme.primary.copy(alpha = 0.08f)
                         else
                             Color.Transparent,
@@ -352,7 +341,7 @@ fun TwoPanePurposeSelectionLeftContent(
                                     .size(56.dp)
                                     .clip(RoundedCornerShape(16.dp))
                                     .background(
-                                        if (selectedPurpose == option.label)
+                                        if (uiState.selectedPurpose == option.label)
                                             colorScheme.primary.copy(alpha = 0.15f)
                                         else
                                             colorScheme.surfaceVariant
@@ -362,7 +351,7 @@ fun TwoPanePurposeSelectionLeftContent(
                                 Icon(
                                     imageVector = option.icon,
                                     contentDescription = null,
-                                    tint = if (selectedPurpose == option.label)
+                                    tint = if (uiState.selectedPurpose == option.label)
                                         colorScheme.primary
                                     else
                                         colorScheme.onSurfaceVariant,
@@ -376,11 +365,11 @@ fun TwoPanePurposeSelectionLeftContent(
                                 Text(
                                     text = option.label,
                                     style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = if (selectedPurpose == option.label)
+                                        fontWeight = if (uiState.selectedPurpose == option.label)
                                             FontWeight.Bold
                                         else
                                             FontWeight.SemiBold,
-                                        color = if (selectedPurpose == option.label)
+                                        color = if (uiState.selectedPurpose == option.label)
                                             colorScheme.primary
                                         else
                                             colorScheme.onSurface
@@ -395,7 +384,7 @@ fun TwoPanePurposeSelectionLeftContent(
                                 )
                             }
 
-                            if (selectedPurpose == option.label) {
+                            if (uiState.selectedPurpose == option.label) {
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
                                     contentDescription = "Selected",
@@ -415,31 +404,21 @@ fun TwoPanePurposeSelectionLeftContent(
 
 @Composable
 fun TwoPanePurposeSelectionRightContent(
-    selectedPurpose: String?,
-    onContinue: (purpose: String, purposeData: Map<String, Any>) -> Unit,
+    viewModel: PurposeSelectionViewModel,
+    onContinue: () -> Unit,
     onContinueWithGoogle: () -> Unit,
     onJustExploring: () -> Unit
 ) {
-    // Lottie animation for empty state
+    val uiState by viewModel.uiState.collectAsState()
+
     val emptyStateComposition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(R.raw.purpose_empty_state)
     )
     val emptyStateProgress by animateLottieCompositionAsState(
         composition = emptyStateComposition,
         iterations = LottieConstants.IterateForever,
-        isPlaying = selectedPurpose == null
+        isPlaying = uiState.selectedPurpose == null
     )
-
-    // Dynamic field states
-    var jobSeekerData by remember { mutableStateOf(JobSeekerData()) }
-    var skilledProfessionalData by remember { mutableStateOf(SkilledProfessionalData()) }
-    var agentData by remember { mutableStateOf(AgentData()) }
-    var housingSeekerData by remember { mutableStateOf(HousingSeekerData()) }
-    var supportBeneficiaryData by remember { mutableStateOf(SupportBeneficiaryData()) }
-    var employerData by remember { mutableStateOf(EmployerData()) }
-    var propertyOwnerData by remember { mutableStateOf(PropertyOwnerData()) }
-
-    var isLoading by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
     val colorScheme = MaterialTheme.colorScheme
@@ -452,9 +431,7 @@ fun TwoPanePurposeSelectionRightContent(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Show empty state or dynamic fields based on selection
-        if (selectedPurpose == null) {
-            // Empty State
+        if (uiState.selectedPurpose == null) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -486,13 +463,12 @@ fun TwoPanePurposeSelectionRightContent(
                 )
             }
         } else {
-            // Dynamic Fields based on selection
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 AnimatedContent(
-                    targetState = selectedPurpose,
+                    targetState = uiState.selectedPurpose,
                     transitionSpec = {
                         fadeIn(animationSpec = tween(200)) +
                                 slideInVertically(initialOffsetY = { 20 }) togetherWith
@@ -502,32 +478,32 @@ fun TwoPanePurposeSelectionRightContent(
                 ) { purpose ->
                     when (purpose) {
                         "Find a Job" -> JobSeekerFields(
-                            data = jobSeekerData,
-                            onDataChange = { jobSeekerData = it }
+                            data = uiState.jobSeekerData,
+                            onDataChange = { viewModel.updateJobSeekerData(it) }
                         )
                         "Offer Skilled Services" -> SkilledProfessionalFields(
-                            data = skilledProfessionalData,
-                            onDataChange = { skilledProfessionalData = it }
+                            data = uiState.skilledProfessionalData,
+                            onDataChange = { viewModel.updateSkilledProfessionalData(it) }
                         )
                         "Work as Agent" -> AgentFields(
-                            data = agentData,
-                            onDataChange = { agentData = it }
+                            data = uiState.agentData,
+                            onDataChange = { viewModel.updateAgentData(it) }
                         )
                         "Find Housing" -> HousingSeekerFields(
-                            data = housingSeekerData,
-                            onDataChange = { housingSeekerData = it }
+                            data = uiState.housingSeekerData,
+                            onDataChange = { viewModel.updateHousingSeekerData(it) }
                         )
                         "Get Social Support" -> SupportBeneficiaryFields(
-                            data = supportBeneficiaryData,
-                            onDataChange = { supportBeneficiaryData = it }
+                            data = uiState.supportBeneficiaryData,
+                            onDataChange = { viewModel.updateSupportBeneficiaryData(it) }
                         )
                         "Hire Employees" -> EmployerFields(
-                            data = employerData,
-                            onDataChange = { employerData = it }
+                            data = uiState.employerData,
+                            onDataChange = { viewModel.updateEmployerData(it) }
                         )
                         "List Properties" -> PropertyOwnerFields(
-                            data = propertyOwnerData,
-                            onDataChange = { propertyOwnerData = it }
+                            data = uiState.propertyOwnerData,
+                            onDataChange = { viewModel.updatePropertyOwnerData(it) }
                         )
                         "Just Exploring" -> JustExploringMessage()
                         else -> Spacer(modifier = Modifier.height(0.dp))
@@ -536,32 +512,17 @@ fun TwoPanePurposeSelectionRightContent(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Continue Button
                 PivotaPrimaryButton(
-                    text = if (selectedPurpose == "Just Exploring") "Start Exploring" else "Continue",
+                    text = if (uiState.selectedPurpose == "Just Exploring") "Start Exploring" else "Continue",
                     onClick = {
-                        if (selectedPurpose != null && !isLoading) {
-                            if (selectedPurpose == "Just Exploring") {
-                                onJustExploring()
-                            } else {
-                                isLoading = true
-                                val purposeData = when (selectedPurpose) {
-                                    "Find a Job" -> jobSeekerData.toMap()
-                                    "Offer Skilled Services" -> skilledProfessionalData.toMap()
-                                    "Work as Agent" -> agentData.toMap()
-                                    "Find Housing" -> housingSeekerData.toMap()
-                                    "Get Social Support" -> supportBeneficiaryData.toMap()
-                                    "Hire Employees" -> employerData.toMap()
-                                    "List Properties" -> propertyOwnerData.toMap()
-                                    else -> emptyMap()
-                                }
-                                onContinue(selectedPurpose, purposeData)
-                            }
+                        if (!uiState.isLoading) {
+                            viewModel.confirmSelection()
+                            onContinue()
                         }
                     },
-                    enabled = selectedPurpose != null && !isLoading,
+                    enabled = viewModel.canProceed() && !uiState.isLoading,
                     modifier = Modifier.fillMaxWidth(),
-                    icon = if (selectedPurpose == "Just Exploring")
+                    icon = if (uiState.selectedPurpose == "Just Exploring")
                         ImageVector.vectorResource(R.drawable.ic_explore)
                     else
                         ImageVector.vectorResource(R.drawable.ic_person)
@@ -599,7 +560,7 @@ fun TwoPanePurposeSelectionRightContent(
                     )
                 }
 
-                if (isLoading) {
+                if (uiState.isLoading) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -631,7 +592,8 @@ fun TwoPanePurposeSelectionRightContent(
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PurposeSelectionScreenContent(
-    onContinue: (purpose: String, purposeData: Map<String, Any>) -> Unit,
+    viewModel: PurposeSelectionViewModel,
+    onContinue: () -> Unit,
     onSkipToDashboard: () -> Unit,
     onContinueWithGoogle: () -> Unit,
     onJustExploring: () -> Unit,
@@ -639,28 +601,16 @@ fun PurposeSelectionScreenContent(
     totalSteps: Int = 6,
     modifier: Modifier = Modifier
 ) {
-    var selectedPurpose by remember { mutableStateOf<String?>(null) }
-    var showBottomSheet by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsState()
 
-    // Lottie animation for empty state
     val emptyStateComposition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(R.raw.purpose_empty_state)
     )
     val emptyStateProgress by animateLottieCompositionAsState(
         composition = emptyStateComposition,
         iterations = LottieConstants.IterateForever,
-        isPlaying = selectedPurpose == null
+        isPlaying = uiState.selectedPurpose == null
     )
-
-    // Dynamic field states
-    var jobSeekerData by remember { mutableStateOf(JobSeekerData()) }
-    var skilledProfessionalData by remember { mutableStateOf(SkilledProfessionalData()) }
-    var agentData by remember { mutableStateOf(AgentData()) }
-    var housingSeekerData by remember { mutableStateOf(HousingSeekerData()) }
-    var supportBeneficiaryData by remember { mutableStateOf(SupportBeneficiaryData()) }
-    var employerData by remember { mutableStateOf(EmployerData()) }
-    var propertyOwnerData by remember { mutableStateOf(PropertyOwnerData()) }
 
     val scrollState = rememberScrollState()
     val colorScheme = MaterialTheme.colorScheme
@@ -714,11 +664,10 @@ fun PurposeSelectionScreenContent(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Professional Selection Card
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { showBottomSheet = true },
+                    .clickable { viewModel.showBottomSheet() },
                 shape = RoundedCornerShape(16.dp),
                 color = colorScheme.surface,
                 tonalElevation = 2.dp,
@@ -740,7 +689,7 @@ fun PurposeSelectionScreenContent(
                                 .size(48.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
-                                    if (selectedPurpose != null)
+                                    if (uiState.selectedPurpose != null)
                                         colorScheme.primary.copy(alpha = 0.1f)
                                     else
                                         colorScheme.surfaceVariant
@@ -748,11 +697,11 @@ fun PurposeSelectionScreenContent(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = if (selectedPurpose != null) {
-                                    purposeOptions.find { it.label == selectedPurpose }?.icon ?: Icons.Default.Info
+                                imageVector = if (uiState.selectedPurpose != null) {
+                                    purposeOptions.find { it.label == uiState.selectedPurpose }?.icon ?: Icons.Default.Info
                                 } else Icons.Default.Info,
                                 contentDescription = null,
-                                tint = if (selectedPurpose != null)
+                                tint = if (uiState.selectedPurpose != null)
                                     colorScheme.primary
                                 else
                                     colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
@@ -762,7 +711,7 @@ fun PurposeSelectionScreenContent(
 
                         Column {
                             Text(
-                                text = if (selectedPurpose != null) "Selected Purpose" else "Select Your Purpose",
+                                text = if (uiState.selectedPurpose != null) "Selected Purpose" else "Select Your Purpose",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontSize = 12.sp,
                                     color = colorScheme.onSurfaceVariant,
@@ -770,10 +719,10 @@ fun PurposeSelectionScreenContent(
                                 )
                             )
                             Text(
-                                text = selectedPurpose ?: "Choose your primary focus",
+                                text = uiState.selectedPurpose ?: "Choose your primary focus",
                                 style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = if (selectedPurpose != null) FontWeight.SemiBold else FontWeight.Normal,
-                                    color = if (selectedPurpose != null)
+                                    fontWeight = if (uiState.selectedPurpose != null) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (uiState.selectedPurpose != null)
                                         colorScheme.primary
                                     else
                                         colorScheme.onSurfaceVariant
@@ -803,9 +752,8 @@ fun PurposeSelectionScreenContent(
                 textAlign = TextAlign.End
             )
 
-            // Lottie Animation for empty state
             AnimatedVisibility(
-                visible = selectedPurpose == null,
+                visible = uiState.selectedPurpose == null,
                 enter = fadeIn(animationSpec = tween(300)) + scaleIn(initialScale = 0.8f),
                 exit = fadeOut(animationSpec = tween(200)) + scaleOut(targetScale = 0.8f)
             ) {
@@ -832,9 +780,8 @@ fun PurposeSelectionScreenContent(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Dynamic Fields
             AnimatedContent(
-                targetState = selectedPurpose,
+                targetState = uiState.selectedPurpose,
                 transitionSpec = {
                     fadeIn(animationSpec = tween(200)) +
                             slideInVertically(initialOffsetY = { 20 }) togetherWith
@@ -844,32 +791,32 @@ fun PurposeSelectionScreenContent(
             ) { purpose ->
                 when (purpose) {
                     "Find a Job" -> JobSeekerFields(
-                        data = jobSeekerData,
-                        onDataChange = { jobSeekerData = it }
+                        data = uiState.jobSeekerData,
+                        onDataChange = { viewModel.updateJobSeekerData(it) }
                     )
                     "Offer Skilled Services" -> SkilledProfessionalFields(
-                        data = skilledProfessionalData,
-                        onDataChange = { skilledProfessionalData = it }
+                        data = uiState.skilledProfessionalData,
+                        onDataChange = { viewModel.updateSkilledProfessionalData(it) }
                     )
                     "Work as Agent" -> AgentFields(
-                        data = agentData,
-                        onDataChange = { agentData = it }
+                        data = uiState.agentData,
+                        onDataChange = { viewModel.updateAgentData(it) }
                     )
                     "Find Housing" -> HousingSeekerFields(
-                        data = housingSeekerData,
-                        onDataChange = { housingSeekerData = it }
+                        data = uiState.housingSeekerData,
+                        onDataChange = { viewModel.updateHousingSeekerData(it) }
                     )
                     "Get Social Support" -> SupportBeneficiaryFields(
-                        data = supportBeneficiaryData,
-                        onDataChange = { supportBeneficiaryData = it }
+                        data = uiState.supportBeneficiaryData,
+                        onDataChange = { viewModel.updateSupportBeneficiaryData(it) }
                     )
                     "Hire Employees" -> EmployerFields(
-                        data = employerData,
-                        onDataChange = { employerData = it }
+                        data = uiState.employerData,
+                        onDataChange = { viewModel.updateEmployerData(it) }
                     )
                     "List Properties" -> PropertyOwnerFields(
-                        data = propertyOwnerData,
-                        onDataChange = { propertyOwnerData = it }
+                        data = uiState.propertyOwnerData,
+                        onDataChange = { viewModel.updatePropertyOwnerData(it) }
                     )
                     "Just Exploring" -> JustExploringMessage()
                     else -> Spacer(modifier = Modifier.height(0.dp))
@@ -878,32 +825,17 @@ fun PurposeSelectionScreenContent(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Continue Button
             PivotaPrimaryButton(
-                text = if (selectedPurpose == "Just Exploring") "Start Exploring" else "Continue",
+                text = if (uiState.selectedPurpose == "Just Exploring") "Start Exploring" else "Continue",
                 onClick = {
-                    if (selectedPurpose != null && !isLoading) {
-                        if (selectedPurpose == "Just Exploring") {
-                            onJustExploring()
-                        } else {
-                            isLoading = true
-                            val purposeData = when (selectedPurpose) {
-                                "Find a Job" -> jobSeekerData.toMap()
-                                "Offer Skilled Services" -> skilledProfessionalData.toMap()
-                                "Work as Agent" -> agentData.toMap()
-                                "Find Housing" -> housingSeekerData.toMap()
-                                "Get Social Support" -> supportBeneficiaryData.toMap()
-                                "Hire Employees" -> employerData.toMap()
-                                "List Properties" -> propertyOwnerData.toMap()
-                                else -> emptyMap()
-                            }
-                            onContinue(selectedPurpose!!, purposeData)
-                        }
+                    if (uiState.selectedPurpose != null && !uiState.isLoading) {
+                        viewModel.confirmSelection()
+                        onContinue()
                     }
                 },
-                enabled = selectedPurpose != null && !isLoading,
+                enabled = viewModel.canProceed() && !uiState.isLoading,
                 modifier = Modifier.fillMaxWidth(),
-                icon = if (selectedPurpose == "Just Exploring")
+                icon = if (uiState.selectedPurpose == "Just Exploring")
                     ImageVector.vectorResource(R.drawable.ic_explore)
                 else
                     ImageVector.vectorResource(R.drawable.ic_person)
@@ -950,7 +882,7 @@ fun PurposeSelectionScreenContent(
                 icon = ImageVector.vectorResource(R.drawable.ic_skip)
             )
 
-            if (isLoading) {
+            if (uiState.isLoading) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -977,10 +909,9 @@ fun PurposeSelectionScreenContent(
         }
     }
 
-    // Bottom Sheet
-    if (showBottomSheet) {
+    if (uiState.showBottomSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
+            onDismissRequest = { viewModel.hideBottomSheet() },
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             containerColor = colorScheme.surface,
             tonalElevation = 8.dp,
@@ -1007,7 +938,7 @@ fun PurposeSelectionScreenContent(
                     )
 
                     IconButton(
-                        onClick = { showBottomSheet = false },
+                        onClick = { viewModel.hideBottomSheet() },
                         modifier = Modifier.size(40.dp)
                     ) {
                         Surface(
@@ -1040,11 +971,10 @@ fun PurposeSelectionScreenContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                selectedPurpose = option.label
-                                showBottomSheet = false
+                                viewModel.selectPurpose(option.label)
                             }
                             .padding(vertical = 4.dp),
-                        color = if (selectedPurpose == option.label)
+                        color = if (uiState.selectedPurpose == option.label)
                             colorScheme.primary.copy(alpha = 0.08f)
                         else
                             Color.Transparent,
@@ -1062,7 +992,7 @@ fun PurposeSelectionScreenContent(
                                     .size(56.dp)
                                     .clip(RoundedCornerShape(16.dp))
                                     .background(
-                                        if (selectedPurpose == option.label)
+                                        if (uiState.selectedPurpose == option.label)
                                             colorScheme.primary.copy(alpha = 0.15f)
                                         else
                                             colorScheme.surfaceVariant
@@ -1072,7 +1002,7 @@ fun PurposeSelectionScreenContent(
                                 Icon(
                                     imageVector = option.icon,
                                     contentDescription = null,
-                                    tint = if (selectedPurpose == option.label)
+                                    tint = if (uiState.selectedPurpose == option.label)
                                         colorScheme.primary
                                     else
                                         colorScheme.onSurfaceVariant,
@@ -1086,11 +1016,11 @@ fun PurposeSelectionScreenContent(
                                 Text(
                                     text = option.label,
                                     style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = if (selectedPurpose == option.label)
+                                        fontWeight = if (uiState.selectedPurpose == option.label)
                                             FontWeight.Bold
                                         else
                                             FontWeight.SemiBold,
-                                        color = if (selectedPurpose == option.label)
+                                        color = if (uiState.selectedPurpose == option.label)
                                             colorScheme.primary
                                         else
                                             colorScheme.onSurface
@@ -1105,7 +1035,7 @@ fun PurposeSelectionScreenContent(
                                 )
                             }
 
-                            if (selectedPurpose == option.label) {
+                            if (uiState.selectedPurpose == option.label) {
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
                                     contentDescription = "Selected",
@@ -1123,76 +1053,11 @@ fun PurposeSelectionScreenContent(
     }
 }
 
-// Updated PurposeOption with description
 data class PurposeOption(
     val label: String,
     val icon: ImageVector,
     val emoji: String,
     val description: String
-)
-
-// Data classes for dynamic fields
-data class JobSeekerData(
-    var headline: String = "",
-    var isActivelySeeking: Boolean = true,
-    var skills: String = "",
-    var industries: String = "",
-    var jobTypes: String = "",
-    var seniorityLevel: String = "",
-    var expectedSalary: String = "",
-    var noticePeriod: String = "",
-    var workAuthorization: String = ""
-)
-
-data class SkilledProfessionalData(
-    var profession: String = "",
-    var otherProfession: String = "",
-    var specialties: String = "",
-    var yearsExperience: String = "",
-    var serviceAreas: String = "",
-    var hourlyRate: String = "",
-    var licenseNumber: String = ""
-)
-
-data class AgentData(
-    var agentType: String = "",
-    var specializations: String = "",
-    var serviceAreas: String = "",
-    var commissionRate: String = "",
-    var licenseNumber: String = ""
-)
-
-data class HousingSeekerData(
-    var propertyType: String = "",
-    var minBedrooms: String = "",
-    var maxBedrooms: String = "",
-    var minBudget: String = "",
-    var maxBudget: String = "",
-    var preferredAreas: String = "",
-    var moveInDate: String = "",
-    val listingTypes: List<String> = emptyList(),
-)
-
-data class SupportBeneficiaryData(
-    var supportTypes: List<String> = emptyList(),
-    var urgentNeeds: String = "",
-    var location: String = "",
-    var familySize: String = ""
-)
-
-data class EmployerData(
-    var businessName: String = "",
-    var industrySector: String = "",
-    var companySize: String = "",
-    var preferredSkills: String = "",
-    var otherIndustry: String = ""
-)
-
-data class PropertyOwnerData(
-    var professionalStatus: String = "",
-    var propertyCount: String = "",
-    var propertyTypes: String = "",
-    var serviceAreas: String = ""
 )
 
 @Composable
@@ -1247,7 +1112,7 @@ fun JustExploringMessage() {
     }
 }
 
-// Extension functions to convert data to Map
+// Extension functions to convert data to Map (updated for new fields)
 fun JobSeekerData.toMap() = mapOf(
     "skills" to skills,
     "expectedSalary" to expectedSalary,
@@ -1271,13 +1136,10 @@ fun AgentData.toMap() = mapOf(
 )
 
 fun HousingSeekerData.toMap() = mapOf(
-    "propertyType" to propertyType,
-    "minBedrooms" to minBedrooms,
-    "maxBedrooms" to maxBedrooms,
-    "minBudget" to minBudget,
-    "maxBudget" to maxBudget,
-    "preferredAreas" to preferredAreas,
-    "moveInDate" to moveInDate
+    "searchType" to searchType,
+    "isLookingForRental" to isLookingForRental,
+    "isLookingToBuy" to isLookingToBuy,
+    "propertyTypes" to propertyTypes.joinToString(",")
 )
 
 fun SupportBeneficiaryData.toMap() = mapOf(
@@ -1295,8 +1157,72 @@ fun EmployerData.toMap() = mapOf(
 )
 
 fun PropertyOwnerData.toMap() = mapOf(
-    "professionalStatus" to professionalStatus,
+    "listingType" to listingType,
+    "isListingForRent" to isListingForRent,
+    "isListingForSale" to isListingForSale,
     "propertyCount" to propertyCount,
     "propertyTypes" to propertyTypes,
     "serviceAreas" to serviceAreas
+)
+
+// Data classes for dynamic fields (updated)
+data class JobSeekerData(
+    var headline: String = "",
+    var isActivelySeeking: Boolean = true,
+    var skills: String = "",
+    var industries: String = "",
+    var jobTypes: String = "",
+    var seniorityLevel: String = "",
+    var expectedSalary: String = "",
+    var noticePeriod: String = "",
+    var workAuthorization: String = ""
+)
+
+data class SkilledProfessionalData(
+    var profession: String = "",
+    var otherProfession: String = "",
+    var specialties: String = "",
+    var yearsExperience: String = "",
+    var serviceAreas: String = "",
+    var hourlyRate: String = "",
+    var licenseNumber: String = ""
+)
+
+data class AgentData(
+    var agentType: String = "",
+    var specializations: String = "",
+    var serviceAreas: String = "",
+    var commissionRate: String = "",
+    var licenseNumber: String = ""
+)
+
+data class HousingSeekerData(
+    var searchType: String = "",  // "RENTAL", "SALE", "BOTH"
+    var isLookingForRental: Boolean = false,
+    var isLookingToBuy: Boolean = false,
+    var propertyTypes: List<String> = emptyList()
+)
+
+data class SupportBeneficiaryData(
+    var supportTypes: List<String> = emptyList(),
+    var urgentNeeds: String = "",
+    var location: String = "",
+    var familySize: String = ""
+)
+
+data class EmployerData(
+    var businessName: String = "",
+    var industrySector: String = "",
+    var companySize: String = "",
+    var preferredSkills: String = "",
+    var otherIndustry: String = ""
+)
+
+data class PropertyOwnerData(
+    var listingType: String = "",  // "RENT", "SALE", "BOTH"
+    var isListingForRent: Boolean = false,
+    var isListingForSale: Boolean = false,
+    var propertyCount: String = "",
+    var propertyTypes: String = "",
+    var serviceAreas: String = ""
 )
