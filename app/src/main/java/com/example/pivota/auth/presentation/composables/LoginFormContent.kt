@@ -102,16 +102,6 @@ fun LoginFormContent(
         isPlaying = true
     )
 
-    // Lottie animation
-    val composition by rememberLottieComposition(
-        LottieCompositionSpec.RawRes(R.raw.login_animation) // Make sure you have this animation file
-    )
-    val progress by animateLottieCompositionAsState(
-        composition = composition,
-        iterations = LottieConstants.IterateForever,
-        isPlaying = true
-    )
-
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = MaterialTheme.colorScheme.primary,
         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
@@ -416,21 +406,18 @@ fun LoginFormContent(
     if (showOtpDialog) {
         OtpVerificationDialog(
             email = email,
-            otpValues = otpValues,
-            onOtpDigitChange = { index, value -> viewModel.updateOtpDigit(index, value) },
+            otpValue = otpValues.joinToString(""), // Combine all digits
+            onOtpChange = { value -> viewModel.updateOtpFull(value) }, // New ViewModel function
             isVerifying = isVerifying,
             otpError = if (verificationFailed) otpError else null,
             countdown = countdown,
-            resendCount = resendCount,
             title = "Verify Your Login",
             description = "We've sent a verification code to",
             verifyButtonText = "Verify & Login",
             onVerify = {
-                val code = otpValues.joinToString("")
-                if (code.length == 6) {
-                    println("🔍 [LoginFormContent] Verify clicked with code: $code")
+                if (otpValues.joinToString("").length == 6) {
                     verificationFailed = false
-                    viewModel.verifyMfaLogin(code)
+                    viewModel.verifyMfaLogin(otpValues.joinToString(""))
                 } else {
                     otpError = "Please enter a valid 6-digit code"
                     verificationFailed = true
@@ -439,7 +426,6 @@ fun LoginFormContent(
                 }
             },
             onResend = {
-                println("🔍 [LoginFormContent] Resend clicked")
                 viewModel.resendOtp()
                 otpError = null
                 verificationFailed = false
@@ -451,7 +437,6 @@ fun LoginFormContent(
                 }
             },
             onCancel = {
-                println("🔍 [LoginFormContent] Cancel clicked")
                 if (!isVerifying) {
                     showOtpDialog = false
                     viewModel.resetState()
@@ -462,10 +447,7 @@ fun LoginFormContent(
             },
             snackbarMessage = dialogSnackbarMessage,
             snackbarType = dialogSnackbarType,
-            onSnackbarDismiss = {
-                println("🔍 [LoginFormContent] Snackbar dismissed")
-                dialogSnackbarMessage = null
-            }
+            onSnackbarDismiss = { dialogSnackbarMessage = null }
         )
     }
 }

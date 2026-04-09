@@ -181,6 +181,7 @@ class PivotaDataStore @Inject constructor(
         println("OB_EMAIL = ${prefs[OB_EMAIL]}")
         println("=====================================")
     }
+
     suspend fun setPrimaryPurpose(purpose: String) {
         println("🔍 DEBUG: setPrimaryPurpose called with = '$purpose'")
         println("🔍 DEBUG: Calling stacktrace:")
@@ -504,6 +505,15 @@ data class IntermediaryAgentData(
 
 @Serializable
 data class HousingSeekerData(
+    // Search Type (what are they looking for)
+    val searchType: String? = null,  // "RENTAL", "SALE", "BOTH"
+    val isLookingForRental: Boolean = false,
+    val isLookingToBuy: Boolean = false,
+
+    // Property Types (multi-select)
+    val propertyTypes: List<String> = emptyList(),  // "APARTMENT", "HOUSE", etc.
+
+    // Legacy fields (kept for backward compatibility)
     val minBedrooms: Int? = null,
     val maxBedrooms: Int? = null,
     val minBudget: Int? = null,
@@ -532,9 +542,17 @@ data class EmployerData(
 
 @Serializable
 data class PropertyOwnerData(
-    val isProfessional: Boolean = false,
+    // Listing Type (what are they listing)
+    val listingType: String? = null,  // "RENT", "SALE", "BOTH"
+    val isListingForRent: Boolean = false,
+    val isListingForSale: Boolean = false,
+
+    // Property details
     val propertyCount: Int? = null,
     val propertyTypes: List<String> = emptyList(),
-    val preferredPropertyTypes: List<String> = emptyList(),
-    val serviceAreas: List<String> = emptyList()
+    val serviceAreas: List<String> = emptyList(),
+
+    // Legacy fields (kept for backward compatibility)
+    val isProfessional: Boolean = false,
+    val preferredPropertyTypes: List<String> = emptyList()
 )

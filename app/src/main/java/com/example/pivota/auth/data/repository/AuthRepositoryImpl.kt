@@ -8,6 +8,8 @@ import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.domain.repository.AuthRepository
 import com.example.pivota.core.database.dao.UserDao
 import com.example.pivota.core.database.entity.UserEntity
+import com.example.pivota.core.network.ApiResult
+import com.example.pivota.core.network.safeApiCall
 import com.example.pivota.core.preferences.PivotaDataStore
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
@@ -22,29 +24,33 @@ class AuthRepositoryImpl @Inject constructor(
     private val mapper: AuthDataMapper
 ) : AuthRepository {
 
-    override suspend fun requestOtp(email: String, purpose: String, phone: String?): BaseOtpResponseDto {
+    override suspend fun requestOtp(email: String, purpose: String, phone: String?): ApiResult<BaseOtpResponseDto> {
         val request = RequestOtpRequestDto(
             email = email,
             purpose = purpose,
             phone = phone
         )
-        return apiService.requestOtp(request)
+        return safeApiCall {
+            apiService.requestOtp(request)
+        }
     }
 
-    override suspend fun verifyOtp(email: String, code: String, purpose: String): VerifyOtpResponseDto {
+    override suspend fun verifyOtp(email: String, code: String, purpose: String): ApiResult<VerifyOtpResponseDto> {
         val request = VerifyOtpRequestDto(
             email = email,
             code = code,
             purpose = purpose
         )
-        return apiService.verifyOtp(request)
+        return safeApiCall {
+            apiService.verifyOtp(request)
+        }
     }
 
     override suspend fun signupIndividual(
         user: User,
         code: String,
         password: String
-    ): SignupResponseDto {
+    ): ApiResult<SignupResponseDto> {
         val request = mapper.toSignupRequestDto(user, code, password)
 
         // ========== LOG THE FULL REQUEST ==========
@@ -65,116 +71,166 @@ class AuthRepositoryImpl @Inject constructor(
         println("🔍 propertyOwnerData: ${request.propertyOwnerData}")
         println("🔍 =========================================================")
 
-        val response = apiService.signup(request)
+        return safeApiCall {
+            apiService.signup(request)
+        }.let { apiResult ->
+            when (apiResult) {
+                is ApiResult.Success -> {
+                    val response = apiResult.data
+                    println("🔍 RESPONSE: success=${response.success}, message=${response.message}")
 
-        println("🔍 RESPONSE: success=${response.success}, message=${response.message}")
+                    // Handle auto-login if tokens are present
+                    if (response.success && response.data != null) {
+                        val signupData = response.data
 
-        // Handle auto-login if tokens are present
-        if (response.success && response.data != null) {
-            val signupData = response.data
+                        // Check if we have tokens (auto-login for free plan)
+                        if (!signupData.accessToken.isNullOrEmpty() && !signupData.refreshToken.isNullOrEmpty()) {
+                            println("🔍 Auto-login: Tokens received, saving user session")
 
-            // Check if we have tokens (auto-login for free plan)
-            if (!signupData.accessToken.isNullOrEmpty() && !signupData.refreshToken.isNullOrEmpty()) {
-                println("🔍 Auto-login: Tokens received, saving user session")
+                            // Extract user from token and save authenticated session
+                            val authenticatedUser = extractUserFromToken(
+                                email = request.email,
+                                accessToken = signupData.accessToken,
+                                refreshToken = signupData.refreshToken
+                            )
 
-                // Extract user from token and save authenticated session
-                val authenticatedUser = extractUserFromToken(
-                    email = request.email,
-                    accessToken = signupData.accessToken,
-                    refreshToken = signupData.refreshToken
-                )
+                            // Also save additional fields from signup
+                            val finalUser = authenticatedUser.copy(
+                                firstName = request.firstName,
+                                lastName = request.lastName,
+                                personalPhone = request.phone,
+                                primaryPurpose = request.primaryPurpose
+                            )
 
-                // Also save additional fields from signup
-                val finalUser = authenticatedUser.copy(
-                    firstName = request.firstName,
-                    lastName = request.lastName,
-                    personalPhone = request.phone,
-                    primaryPurpose = request.primaryPurpose
-                )
+                            saveAuthenticatedUser(finalUser)
 
-                saveAuthenticatedUser(finalUser)
-
-                println("🔍 User auto-logged in successfully: ${finalUser.email}")
-            }
-            // Check if payment is required (premium plan)
-            else if (!signupData.redirectUrl.isNullOrEmpty()) {
-                println("🔍 Payment required: Redirect to ${signupData.redirectUrl}")
-                // Don't save user yet - they need to complete payment first
-                // Save only basic info for later
-                val basicUser = user.copy(isAuthenticated = false)
-                saveBasicUserInfo(basicUser)
-            }
-            // Fallback - just success message (should go to login)
-            else {
-                println("🔍 Signup successful, no tokens. User should login manually")
-                val basicUser = user.copy(isAuthenticated = false)
-                saveBasicUserInfo(basicUser)
+                            println("🔍 User auto-logged in successfully: ${finalUser.email}")
+                        }
+                        // Check if payment is required (premium plan)
+                        else if (!signupData.redirectUrl.isNullOrEmpty()) {
+                            println("🔍 Payment required: Redirect to ${signupData.redirectUrl}")
+                            // Don't save user yet - they need to complete payment first
+                            // Save only basic info for later
+                            val basicUser = user.copy(isAuthenticated = false)
+                            saveBasicUserInfo(basicUser)
+                        }
+                        // Fallback - just success message (should go to login)
+                        else {
+                            println("🔍 Signup successful, no tokens. User should login manually")
+                            val basicUser = user.copy(isAuthenticated = false)
+                            saveBasicUserInfo(basicUser)
+                        }
+                    }
+                    apiResult
+                }
+                is ApiResult.Error -> {
+                    println("❌ Signup failed: ${apiResult.networkError.userFriendlyMessage}")
+                    apiResult
+                }
+                ApiResult.Loading -> {
+                    // Loading state - do nothing, just return
+                    apiResult
+                }
             }
         }
-
-        return response
     }
 
-    override suspend fun login(email: String, password: String): LoginResponseDto {
+    override suspend fun login(email: String, password: String): ApiResult<LoginResponseDto> {
         val request = LoginRequestDto(
             email = email,
             password = password
         )
-        return apiService.login(request)
+        return safeApiCall {
+            apiService.login(request)
+        }
     }
 
-    override suspend fun verifyMfaLogin(email: String, code: String): LoginResponseDto {
+    override suspend fun verifyMfaLogin(email: String, code: String): ApiResult<LoginResponseDto> {
         val request = VerifyMfaLoginRequestDto(
             email = email,
             code = code
         )
-        val response = apiService.verifyMfaLogin(request)
-
-        // Save authenticated user if login successful
-        if (response.success && response.data?.accessToken != null) {
-            val data = response.data
-            // Decode JWT token to extract user information
-            val user = extractUserFromToken(
-                email = email,
-                accessToken = data.accessToken!!,
-                refreshToken = data.refreshToken
-            )
-            saveAuthenticatedUser(user)
+        return safeApiCall {
+            apiService.verifyMfaLogin(request)
+        }.let { apiResult ->
+            when (apiResult) {
+                is ApiResult.Success -> {
+                    val response = apiResult.data
+                    // Save authenticated user if login successful
+                    if (response.success && response.data?.accessToken != null) {
+                        val data = response.data
+                        // Decode JWT token to extract user information
+                        val user = extractUserFromToken(
+                            email = email,
+                            accessToken = data.accessToken!!,
+                            refreshToken = data.refreshToken
+                        )
+                        saveAuthenticatedUser(user)
+                    }
+                    apiResult
+                }
+                is ApiResult.Error -> {
+                    println("❌ MFA verification failed: ${apiResult.networkError.userFriendlyMessage}")
+                    apiResult
+                }
+                ApiResult.Loading -> {
+                    // Loading state - do nothing, just return
+                    apiResult
+                }
+            }
         }
-
-        return response
     }
 
-    override suspend fun refreshToken(refreshToken: String): RefreshTokenResponseDto {
-        val response = apiService.refreshToken(refreshToken)
-
-        // Update stored tokens if refresh successful
-        if (response.success && response.data != null) {
-            preferences.saveAccessToken(response.data.accessToken)
-            preferences.saveRefreshToken(response.data.refreshToken)
+    override suspend fun refreshToken(refreshToken: String): ApiResult<RefreshTokenResponseDto> {
+        return safeApiCall {
+            apiService.refreshToken(refreshToken)
+        }.let { apiResult ->
+            when (apiResult) {
+                is ApiResult.Success -> {
+                    val response = apiResult.data
+                    // Update stored tokens if refresh successful
+                    if (response.success && response.data != null) {
+                        preferences.saveAccessToken(response.data.accessToken)
+                        preferences.saveRefreshToken(response.data.refreshToken)
+                    }
+                    apiResult
+                }
+                is ApiResult.Error -> apiResult
+                ApiResult.Loading -> apiResult
+            }
         }
-
-        return response
     }
 
-    override suspend fun requestPasswordReset(email: String): BaseOtpResponseDto {
-        return apiService.requestPasswordReset(email)
-    }
-
-    override suspend fun resetPassword(email: String, code: String, newPassword: String): BaseResponseDto<Nothing> {
-        return apiService.resetPassword(email, code, newPassword)
-    }
-
-    override suspend fun logout(refreshToken: String): BaseResponseDto<Nothing> {
-        val response = apiService.logout(refreshToken)
-
-        if (response.success) {
-            // Clear local user data
-            preferences.clearUserData()
-            userDao.deleteAll()
+    override suspend fun requestPasswordReset(email: String): ApiResult<BaseOtpResponseDto> {
+        return safeApiCall {
+            apiService.requestPasswordReset(email)
         }
+    }
 
-        return response
+    override suspend fun resetPassword(email: String, code: String, newPassword: String): ApiResult<BaseResponseDto<Nothing>> {
+        return safeApiCall {
+            apiService.resetPassword(email, code, newPassword)
+        }
+    }
+
+    override suspend fun logout(refreshToken: String): ApiResult<BaseResponseDto<Nothing>> {
+        return safeApiCall {
+            apiService.logout(refreshToken)
+        }.let { apiResult ->
+            when (apiResult) {
+                is ApiResult.Success -> {
+                    val response = apiResult.data
+                    if (response.success) {
+                        // Clear local user data
+                        preferences.clearUserData()
+                        userDao.deleteAll()
+                    }
+                    apiResult
+                }
+                is ApiResult.Error -> apiResult
+                ApiResult.Loading -> apiResult
+            }
+        }
     }
 
     /**
@@ -346,5 +402,4 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun hasSeenWelcomeScreen(): Boolean {
         return preferences.isWelcomeScreenSeen()
     }
-
 }

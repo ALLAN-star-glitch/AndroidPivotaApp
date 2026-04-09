@@ -38,13 +38,15 @@ import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryBu
 import com.example.pivota.core.presentations.composables.buttons.PivotaSkipButton
 import com.example.pivota.welcome.presentation.composables.purpose_selection.*
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.pivota.welcome.presentation.state.HousingSeekerFormData
+import com.example.pivota.welcome.presentation.state.PropertyOwnerFormData
 import com.example.pivota.welcome.presentation.viewmodel.PurposeSelectionViewModel
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun AdaptivePurposeSelectionScreenContent(
-    onContinue: () -> Unit,  // Changed: no parameters, ViewModel handles caching
+    onContinue: () -> Unit,
     onSkipToDashboard: () -> Unit,
     onContinueWithGoogle: () -> Unit,
     onJustExploring: () -> Unit,
@@ -62,7 +64,6 @@ fun AdaptivePurposeSelectionScreenContent(
         /* TWO-PANE LAYOUT FOR TABLETS/DESKTOP */
         isMediumScreen || isExpandedScreen -> {
             Row(modifier = modifier.fillMaxSize()) {
-                // Left pane with selection card and skip button
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -75,7 +76,6 @@ fun AdaptivePurposeSelectionScreenContent(
                     )
                 }
 
-                // Right pane with dynamic fields and other buttons
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -118,7 +118,6 @@ fun TwoPanePurposeSelectionLeftContent(
     val colorScheme = MaterialTheme.colorScheme
     val scrollState = rememberScrollState()
 
-    // Purpose options
     val purposeOptions = listOf(
         PurposeOption("Just Exploring", Icons.Default.Explore, "✨", "Explore what Pivota has to offer before deciding"),
         PurposeOption("Find a Job", Icons.Default.Work, "🔍", "Search and apply for jobs that match your skills"),
@@ -161,7 +160,6 @@ fun TwoPanePurposeSelectionLeftContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Professional Selection Card
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -260,7 +258,6 @@ fun TwoPanePurposeSelectionLeftContent(
         )
     }
 
-    // Bottom Sheet
     if (uiState.showBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = { viewModel.hideBottomSheet() },
@@ -414,7 +411,6 @@ fun TwoPanePurposeSelectionRightContent(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Lottie animation for empty state
     val emptyStateComposition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(R.raw.purpose_empty_state)
     )
@@ -436,7 +432,6 @@ fun TwoPanePurposeSelectionRightContent(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (uiState.selectedPurpose == null) {
-            // Empty State
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -468,7 +463,6 @@ fun TwoPanePurposeSelectionRightContent(
                 )
             }
         } else {
-            // Dynamic Fields based on selection
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -523,7 +517,6 @@ fun TwoPanePurposeSelectionRightContent(
                     onClick = {
                         if (!uiState.isLoading) {
                             viewModel.confirmSelection()
-                            // ALWAYS navigate to the next screen
                             onContinue()
                         }
                     },
@@ -610,7 +603,6 @@ fun PurposeSelectionScreenContent(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Lottie animation for empty state
     val emptyStateComposition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(R.raw.purpose_empty_state)
     )
@@ -672,7 +664,6 @@ fun PurposeSelectionScreenContent(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Professional Selection Card
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -761,7 +752,6 @@ fun PurposeSelectionScreenContent(
                 textAlign = TextAlign.End
             )
 
-            // Lottie Animation for empty state
             AnimatedVisibility(
                 visible = uiState.selectedPurpose == null,
                 enter = fadeIn(animationSpec = tween(300)) + scaleIn(initialScale = 0.8f),
@@ -790,7 +780,6 @@ fun PurposeSelectionScreenContent(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Dynamic Fields
             AnimatedContent(
                 targetState = uiState.selectedPurpose,
                 transitionSpec = {
@@ -841,7 +830,6 @@ fun PurposeSelectionScreenContent(
                 onClick = {
                     if (uiState.selectedPurpose != null && !uiState.isLoading) {
                         viewModel.confirmSelection()
-                        // ALWAYS navigate to the next screen
                         onContinue()
                     }
                 },
@@ -921,7 +909,6 @@ fun PurposeSelectionScreenContent(
         }
     }
 
-    // Bottom Sheet
     if (uiState.showBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = { viewModel.hideBottomSheet() },
@@ -1066,75 +1053,11 @@ fun PurposeSelectionScreenContent(
     }
 }
 
-// Updated PurposeOption with description
 data class PurposeOption(
     val label: String,
     val icon: ImageVector,
     val emoji: String,
     val description: String
-)
-
-// Data classes for dynamic fields
-data class JobSeekerData(
-    var headline: String = "",
-    var isActivelySeeking: Boolean = true,
-    var skills: String = "",
-    var industries: String = "",
-    var jobTypes: String = "",
-    var seniorityLevel: String = "",
-    var expectedSalary: String = "",
-    var noticePeriod: String = "",
-    var workAuthorization: String = ""
-)
-
-data class SkilledProfessionalData(
-    var profession: String = "",
-    var otherProfession: String = "",
-    var specialties: String = "",
-    var yearsExperience: String = "",
-    var serviceAreas: String = "",
-    var hourlyRate: String = "",
-    var licenseNumber: String = ""
-)
-
-data class AgentData(
-    var agentType: String = "",
-    var specializations: String = "",
-    var serviceAreas: String = "",
-    var commissionRate: String = "",
-    var licenseNumber: String = ""
-)
-
-data class HousingSeekerData(
-    var propertyType: String = "",
-    var minBedrooms: String = "",
-    var maxBedrooms: String = "",
-    var minBudget: String = "",
-    var maxBudget: String = "",
-    var preferredAreas: String = "",
-    val listingTypes: List<String> = emptyList(),
-)
-
-data class SupportBeneficiaryData(
-    var supportTypes: List<String> = emptyList(),
-    var urgentNeeds: String = "",
-    var location: String = "",
-    var familySize: String = ""
-)
-
-data class EmployerData(
-    var businessName: String = "",
-    var industrySector: String = "",
-    var companySize: String = "",
-    var preferredSkills: String = "",
-    var otherIndustry: String = ""
-)
-
-data class PropertyOwnerData(
-    var professionalStatus: String = "",
-    var propertyCount: String = "",
-    var propertyTypes: String = "",
-    var serviceAreas: String = ""
 )
 
 @Composable
@@ -1189,7 +1112,7 @@ fun JustExploringMessage() {
     }
 }
 
-// Extension functions to convert data to Map
+// Extension functions to convert data to Map (updated for new fields)
 fun JobSeekerData.toMap() = mapOf(
     "skills" to skills,
     "expectedSalary" to expectedSalary,
@@ -1213,12 +1136,10 @@ fun AgentData.toMap() = mapOf(
 )
 
 fun HousingSeekerData.toMap() = mapOf(
-    "propertyType" to propertyType,
-    "minBedrooms" to minBedrooms,
-    "maxBedrooms" to maxBedrooms,
-    "minBudget" to minBudget,
-    "maxBudget" to maxBudget,
-    "preferredAreas" to preferredAreas
+    "searchType" to searchType,
+    "isLookingForRental" to isLookingForRental,
+    "isLookingToBuy" to isLookingToBuy,
+    "propertyTypes" to propertyTypes.joinToString(",")
 )
 
 fun SupportBeneficiaryData.toMap() = mapOf(
@@ -1236,8 +1157,72 @@ fun EmployerData.toMap() = mapOf(
 )
 
 fun PropertyOwnerData.toMap() = mapOf(
-    "professionalStatus" to professionalStatus,
+    "listingType" to listingType,
+    "isListingForRent" to isListingForRent,
+    "isListingForSale" to isListingForSale,
     "propertyCount" to propertyCount,
     "propertyTypes" to propertyTypes,
     "serviceAreas" to serviceAreas
+)
+
+// Data classes for dynamic fields (updated)
+data class JobSeekerData(
+    var headline: String = "",
+    var isActivelySeeking: Boolean = true,
+    var skills: String = "",
+    var industries: String = "",
+    var jobTypes: String = "",
+    var seniorityLevel: String = "",
+    var expectedSalary: String = "",
+    var noticePeriod: String = "",
+    var workAuthorization: String = ""
+)
+
+data class SkilledProfessionalData(
+    var profession: String = "",
+    var otherProfession: String = "",
+    var specialties: String = "",
+    var yearsExperience: String = "",
+    var serviceAreas: String = "",
+    var hourlyRate: String = "",
+    var licenseNumber: String = ""
+)
+
+data class AgentData(
+    var agentType: String = "",
+    var specializations: String = "",
+    var serviceAreas: String = "",
+    var commissionRate: String = "",
+    var licenseNumber: String = ""
+)
+
+data class HousingSeekerData(
+    var searchType: String = "",  // "RENTAL", "SALE", "BOTH"
+    var isLookingForRental: Boolean = false,
+    var isLookingToBuy: Boolean = false,
+    var propertyTypes: List<String> = emptyList()
+)
+
+data class SupportBeneficiaryData(
+    var supportTypes: List<String> = emptyList(),
+    var urgentNeeds: String = "",
+    var location: String = "",
+    var familySize: String = ""
+)
+
+data class EmployerData(
+    var businessName: String = "",
+    var industrySector: String = "",
+    var companySize: String = "",
+    var preferredSkills: String = "",
+    var otherIndustry: String = ""
+)
+
+data class PropertyOwnerData(
+    var listingType: String = "",  // "RENT", "SALE", "BOTH"
+    var isListingForRent: Boolean = false,
+    var isListingForSale: Boolean = false,
+    var propertyCount: String = "",
+    var propertyTypes: String = "",
+    var serviceAreas: String = ""
 )

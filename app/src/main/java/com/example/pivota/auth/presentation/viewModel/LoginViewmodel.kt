@@ -7,6 +7,9 @@ import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.domain.repository.AuthRepository
 import com.example.pivota.auth.presentation.state.LoginUiState
 import com.example.pivota.core.database.dao.UserDao
+import com.example.pivota.core.network.ApiResult
+import com.example.pivota.core.network.NetworkError
+import com.example.pivota.core.network.getUserFriendlyMessage
 import com.example.pivota.core.preferences.PivotaDataStore
 import com.example.pivota.core.presentations.composables.SnackbarType
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -52,9 +55,17 @@ class LoginViewModel @Inject constructor(
     private val _snackbarType = MutableStateFlow(SnackbarType.INFO)
     val snackbarType: StateFlow<SnackbarType> = _snackbarType.asStateFlow()
 
+    // Signal to close the OTP dialog when OTP sending fails
+    private val _shouldCloseDialog = MutableStateFlow(false)
+    val shouldCloseDialog: StateFlow<Boolean> = _shouldCloseDialog.asStateFlow()
+
     private fun showSnackbar(message: String, type: SnackbarType = SnackbarType.ERROR) {
         _snackbarMessage.value = message
         _snackbarType.value = type
+        viewModelScope.launch {
+            delay(4000)
+            clearSnackbar()
+        }
     }
 
     fun updateEmail(newEmail: String) {
@@ -73,15 +84,17 @@ class LoginViewModel @Inject constructor(
         _snackbarMessage.value = null
     }
 
-    fun updateOtpDigit(index: Int, value: String) {
-        if (index !in 0..5) return
-        val current = _otpValues.value.toMutableList()
-        current[index] = value
-        _otpValues.value = current
+    fun updateOtpFull(value: String) {
+        // Convert string to List<String> for compatibility with existing code
+        _otpValues.value = List(6) { index -> value.getOrNull(index)?.toString() ?: "" }
     }
 
     private fun clearOtp() {
         _otpValues.value = List(6) { "" }
+    }
+
+    fun resetDialogCloseFlag() {
+        _shouldCloseDialog.value = false
     }
 
     // ==================== LOGIN FLOW ====================
@@ -94,21 +107,39 @@ class LoginViewModel @Inject constructor(
 
         _uiState.value = LoginUiState.Loading
         pendingEmail = email
+        _shouldCloseDialog.value = false
 
         viewModelScope.launch {
-            val response = authRepository.login(email, password)
+            val result = authRepository.login(email, password)
 
-            if (response.success && response.data != null) {
-                val data = response.data
+            when (result) {
+                is ApiResult.Success -> {
+                    val response = result.data
 
-                // Stage 1: MFA Required (User is NOT authenticated yet)
-                if (data.message == "MFA_REQUIRED") {
-                    _uiState.value = LoginUiState.OtpSent
-                } else {
-                    _uiState.value = LoginUiState.Error("Invalid login response")
+                    if (response.success && response.data != null) {
+                        val data = response.data
+
+                        // Stage 1: MFA Required (User is NOT authenticated yet)
+                        if (data.message == "MFA_REQUIRED") {
+                            _uiState.value = LoginUiState.OtpSent
+                        } else {
+                            _uiState.value = LoginUiState.Error("Invalid login response")
+                        }
+                    } else {
+                        val errorMessage = response.message ?: "Login failed"
+                        _uiState.value = LoginUiState.Error(errorMessage)
+                        showSnackbar(errorMessage, SnackbarType.ERROR)
+                    }
                 }
-            } else {
-                _uiState.value = LoginUiState.Error(response.message)
+                is ApiResult.Error -> {
+                    val errorMessage = result.getUserFriendlyMessage()
+                    _uiState.value = LoginUiState.Error(errorMessage)
+                    showSnackbar(errorMessage, SnackbarType.ERROR)
+                    _shouldCloseDialog.value = true
+                }
+                ApiResult.Loading -> {
+                    // Already in loading state
+                }
             }
         }
     }
@@ -122,63 +153,81 @@ class LoginViewModel @Inject constructor(
         _uiState.value = LoginUiState.Loading
 
         viewModelScope.launch {
-            val response = authRepository.verifyMfaLogin(pendingEmail, code)
+            val result = authRepository.verifyMfaLogin(pendingEmail, code)
 
-            if (response.success && response.data != null) {
-                val data = response.data
+            when (result) {
+                is ApiResult.Success -> {
+                    val response = result.data
 
-                if (data.accessToken != null && data.refreshToken != null) {
-                    // Save tokens to DataStore (simple data)
-                    datastore.saveTokens(data.accessToken, data.refreshToken)
-                    datastore.saveUserEmail(pendingEmail)
+                    if (response.success && response.data != null) {
+                        val data = response.data
 
-                    // Get the complete user from Room database (already saved by repository with all JWT fields)
-                    val userEntity = userDao.getUserByEmail(pendingEmail)
+                        if (data.accessToken != null && data.refreshToken != null) {
+                            // Save tokens to DataStore (simple data)
+                            datastore.saveTokens(data.accessToken, data.refreshToken)
+                            datastore.saveUserEmail(pendingEmail)
 
-                    val user = if (userEntity != null) {
-                        // Convert Room entity to Domain User model with complete data
-                        User(
-                            uuid = userEntity.uuid,
-                            email = userEntity.email,
-                            firstName = userEntity.firstName,
-                            lastName = userEntity.lastName,
-                            userName = userEntity.userName,
-                            personalPhone = userEntity.phone,
-                            profileImage = userEntity.profileImage,
-                            accessToken = data.accessToken,
-                            refreshToken = data.refreshToken,
-                            isAuthenticated = true,
-                            primaryPurpose = userEntity.primaryPurpose,
-                            // JWT payload fields
-                            role = userEntity.role,
-                            accountType = userEntity.accountType,
-                            accountId = userEntity.accountId,
-                            accountName = userEntity.accountName,
-                            organizationUuid = userEntity.organizationUuid,
-                            planSlug = userEntity.planSlug,
-                            tokenId = userEntity.tokenId
-                        )
+                            // Get the complete user from Room database (already saved by repository with all JWT fields)
+                            val userEntity = userDao.getUserByEmail(pendingEmail)
+
+                            val user = if (userEntity != null) {
+                                // Convert Room entity to Domain User model with complete data
+                                User(
+                                    uuid = userEntity.uuid,
+                                    email = userEntity.email,
+                                    firstName = userEntity.firstName,
+                                    lastName = userEntity.lastName,
+                                    userName = userEntity.userName,
+                                    personalPhone = userEntity.phone,
+                                    profileImage = userEntity.profileImage,
+                                    accessToken = data.accessToken,
+                                    refreshToken = data.refreshToken,
+                                    isAuthenticated = true,
+                                    primaryPurpose = userEntity.primaryPurpose,
+                                    // JWT payload fields
+                                    role = userEntity.role,
+                                    accountType = userEntity.accountType,
+                                    accountId = userEntity.accountId,
+                                    accountName = userEntity.accountName,
+                                    organizationUuid = userEntity.organizationUuid,
+                                    planSlug = userEntity.planSlug,
+                                    tokenId = userEntity.tokenId
+                                )
+                            } else {
+                                // Fallback if user not found in Room (should not happen)
+                                User(
+                                    email = pendingEmail,
+                                    isAuthenticated = true,
+                                    accessToken = data.accessToken,
+                                    refreshToken = data.refreshToken
+                                )
+                            }
+
+                            _uiState.value = LoginUiState.Success(
+                                user = user,
+                                message = response.message,
+                                accessToken = data.accessToken,
+                                refreshToken = data.refreshToken
+                            )
+                        } else {
+                            val errorMessage = "Invalid MFA verification response"
+                            _uiState.value = LoginUiState.Error(errorMessage)
+                            showSnackbar(errorMessage, SnackbarType.ERROR)
+                        }
                     } else {
-                        // Fallback if user not found in Room (should not happen)
-                        User(
-                            email = pendingEmail,
-                            isAuthenticated = true,
-                            accessToken = data.accessToken,
-                            refreshToken = data.refreshToken
-                        )
+                        val errorMessage = response.message ?: "MFA verification failed"
+                        _uiState.value = LoginUiState.Error(errorMessage)
+                        showSnackbar(errorMessage, SnackbarType.ERROR)
                     }
-
-                    _uiState.value = LoginUiState.Success(
-                        user = user,
-                        message = response.message,
-                        accessToken = data.accessToken,
-                        refreshToken = data.refreshToken
-                    )
-                } else {
-                    _uiState.value = LoginUiState.Error("Invalid MFA verification response")
                 }
-            } else {
-                _uiState.value = LoginUiState.Error(response.message)
+                is ApiResult.Error -> {
+                    val errorMessage = result.getUserFriendlyMessage()
+                    _uiState.value = LoginUiState.Error(errorMessage)
+                    showSnackbar(errorMessage, SnackbarType.ERROR)
+                }
+                ApiResult.Loading -> {
+                    // Already in loading state
+                }
             }
         }
     }
@@ -187,14 +236,30 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             _resendCount.update { it + 1 }
             clearOtp()
+            _shouldCloseDialog.value = false
 
-            val response = authRepository.login(pendingEmail, "")
+            val result = authRepository.login(pendingEmail, "")
 
-            if (response.success && response.data?.message == "MFA_REQUIRED") {
-                showSnackbar("New verification code sent!", SnackbarType.SUCCESS)
-                _uiState.value = LoginUiState.OtpSent
-            } else {
-                showSnackbar(response.message, SnackbarType.ERROR)
+            when (result) {
+                is ApiResult.Success -> {
+                    val response = result.data
+                    if (response.success && response.data?.message == "MFA_REQUIRED") {
+                        showSnackbar("New verification code sent!", SnackbarType.SUCCESS)
+                        _uiState.value = LoginUiState.OtpSent
+                    } else {
+                        val errorMessage = response.message ?: "Failed to resend code"
+                        showSnackbar(errorMessage, SnackbarType.ERROR)
+                        _shouldCloseDialog.value = true
+                    }
+                }
+                is ApiResult.Error -> {
+                    val errorMessage = result.getUserFriendlyMessage()
+                    showSnackbar(errorMessage, SnackbarType.ERROR)
+                    _shouldCloseDialog.value = true
+                }
+                ApiResult.Loading -> {
+                    // Loading state - do nothing
+                }
             }
         }
     }
@@ -216,16 +281,34 @@ class LoginViewModel @Inject constructor(
         }
 
         _uiState.value = LoginUiState.Loading
+        _shouldCloseDialog.value = false
 
         viewModelScope.launch {
-            val response = authRepository.requestPasswordReset(email)
+            val result = authRepository.requestPasswordReset(email)
 
-            if (response.success) {
-                datastore.saveResetPasswordEmail(email)
-                showSnackbar("Verification code sent to your email!", SnackbarType.SUCCESS)
-                _uiState.value = LoginUiState.PasswordResetOtpSent
-            } else {
-                _uiState.value = LoginUiState.Error(response.message)
+            when (result) {
+                is ApiResult.Success -> {
+                    val response = result.data
+                    if (response.success) {
+                        datastore.saveResetPasswordEmail(email)
+                        showSnackbar("Verification code sent to your email!", SnackbarType.SUCCESS)
+                        _uiState.value = LoginUiState.PasswordResetOtpSent
+                    } else {
+                        val errorMessage = response.message ?: "Password reset request failed"
+                        _uiState.value = LoginUiState.Error(errorMessage)
+                        showSnackbar(errorMessage, SnackbarType.ERROR)
+                        _shouldCloseDialog.value = true
+                    }
+                }
+                is ApiResult.Error -> {
+                    val errorMessage = result.getUserFriendlyMessage()
+                    _uiState.value = LoginUiState.Error(errorMessage)
+                    showSnackbar(errorMessage, SnackbarType.ERROR)
+                    _shouldCloseDialog.value = true
+                }
+                ApiResult.Loading -> {
+                    // Already in loading state
+                }
             }
         }
     }
@@ -255,13 +338,28 @@ class LoginViewModel @Inject constructor(
                 return@launch
             }
 
-            val response = authRepository.resetPassword(email, code, resetNewPassword)
+            val result = authRepository.resetPassword(email, code, resetNewPassword)
 
-            if (response.success) {
-                datastore.clearResetPasswordEmail()
-                _uiState.value = LoginUiState.PasswordResetSuccess(response.message)
-            } else {
-                _uiState.value = LoginUiState.Error(response.message)
+            when (result) {
+                is ApiResult.Success -> {
+                    val response = result.data
+                    if (response.success) {
+                        datastore.clearResetPasswordEmail()
+                        _uiState.value = LoginUiState.PasswordResetSuccess(response.message)
+                    } else {
+                        val errorMessage = response.message ?: "Password reset failed"
+                        _uiState.value = LoginUiState.Error(errorMessage)
+                        showSnackbar(errorMessage, SnackbarType.ERROR)
+                    }
+                }
+                is ApiResult.Error -> {
+                    val errorMessage = result.getUserFriendlyMessage()
+                    _uiState.value = LoginUiState.Error(errorMessage)
+                    showSnackbar(errorMessage, SnackbarType.ERROR)
+                }
+                ApiResult.Loading -> {
+                    // Already in loading state
+                }
             }
         }
     }
@@ -275,16 +373,34 @@ class LoginViewModel @Inject constructor(
             }
 
             _uiState.value = LoginUiState.Loading
+            _shouldCloseDialog.value = false
 
-            val response = authRepository.requestPasswordReset(email)
+            val result = authRepository.requestPasswordReset(email)
 
-            if (response.success) {
-                _resendCount.update { it + 1 }
-                clearOtp()
-                showSnackbar("New verification code sent!", SnackbarType.SUCCESS)
-                _uiState.value = LoginUiState.PasswordResetOtpSent
-            } else {
-                _uiState.value = LoginUiState.Error(response.message)
+            when (result) {
+                is ApiResult.Success -> {
+                    val response = result.data
+                    if (response.success) {
+                        _resendCount.update { it + 1 }
+                        clearOtp()
+                        showSnackbar("New verification code sent!", SnackbarType.SUCCESS)
+                        _uiState.value = LoginUiState.PasswordResetOtpSent
+                    } else {
+                        val errorMessage = response.message ?: "Failed to resend code"
+                        _uiState.value = LoginUiState.Error(errorMessage)
+                        showSnackbar(errorMessage, SnackbarType.ERROR)
+                        _shouldCloseDialog.value = true
+                    }
+                }
+                is ApiResult.Error -> {
+                    val errorMessage = result.getUserFriendlyMessage()
+                    _uiState.value = LoginUiState.Error(errorMessage)
+                    showSnackbar(errorMessage, SnackbarType.ERROR)
+                    _shouldCloseDialog.value = true
+                }
+                ApiResult.Loading -> {
+                    // Already in loading state
+                }
             }
         }
     }
@@ -357,14 +473,31 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             val refreshToken = datastore.getRefreshToken()
             if (refreshToken != null) {
-                authRepository.logout(refreshToken)
+                val result = authRepository.logout(refreshToken)
+                when (result) {
+                    is ApiResult.Success -> {
+                        println("✅ Logout successful")
+                    }
+                    is ApiResult.Error -> {
+                        println("❌ Logout failed: ${result.getUserFriendlyMessage()}")
+                    }
+                    ApiResult.Loading -> {
+                        // Do nothing
+                    }
+                }
             }
             datastore.clearSession()
-            // Clear user from Room (optional - you might want to keep for offline access)
-            // val email = datastore.getUserEmail()
-            // email?.let { userDao.deleteUser(it) }
             resetState()
         }
+    }
+
+    // Add to LoginViewModel.kt
+
+    fun updateOtpDigit(index: Int, value: String) {
+        if (index !in 0..5) return
+        val current = _otpValues.value.toMutableList()
+        current[index] = value
+        _otpValues.value = current
     }
 
     fun showErrorMessage(message: String) {
@@ -382,5 +515,6 @@ class LoginViewModel @Inject constructor(
         _resendCount.value = 0
         pendingEmail = ""
         clearSnackbar()
+        _shouldCloseDialog.value = false
     }
 }

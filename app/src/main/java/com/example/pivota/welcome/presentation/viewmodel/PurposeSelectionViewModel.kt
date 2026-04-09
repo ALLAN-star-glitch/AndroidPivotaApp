@@ -15,7 +15,6 @@ import javax.inject.Inject
 @HiltViewModel
 class PurposeSelectionViewModel @Inject constructor(
     private val datastore: PivotaDataStore
-    // purposeMapper removed - not used
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PurposeSelectionUiState())
@@ -152,14 +151,13 @@ class PurposeSelectionViewModel @Inject constructor(
                             val data = _uiState.value.housingSeekerData
                             datastore.setHousingSeekerData(
                                 com.example.pivota.core.preferences.HousingSeekerData(
-                                    minBedrooms = data.minBedrooms.toIntOrNull(),
-                                    maxBedrooms = data.maxBedrooms.toIntOrNull(),
-                                    minBudget = data.minBudget.toIntOrNull(),
-                                    maxBudget = data.maxBudget.toIntOrNull(),
-                                    preferredCities = parseCommaSeparated(data.preferredAreas),
+                                    searchType = data.searchType.takeIf { it.isNotBlank() },
+                                    isLookingForRental = data.isLookingForRental,
+                                    isLookingToBuy = data.isLookingToBuy,
+                                    propertyTypes = data.propertyTypes,
                                 )
                             )
-                            println("🔍 DEBUG: Saved HousingSeekerData")
+                            println("🔍 DEBUG: Saved HousingSeekerData with searchType=${data.searchType}, propertyTypes=${data.propertyTypes}")
                         }
                         "GET_SOCIAL_SUPPORT" -> {
                             val data = _uiState.value.supportBeneficiaryData
@@ -189,13 +187,15 @@ class PurposeSelectionViewModel @Inject constructor(
                             val data = _uiState.value.propertyOwnerData
                             datastore.setPropertyOwnerData(
                                 com.example.pivota.core.preferences.PropertyOwnerData(
-                                    isProfessional = data.professionalStatus == "Professional",
+                                    listingType = data.listingType.takeIf { it.isNotBlank() },
+                                    isListingForRent = data.isListingForRent,
+                                    isListingForSale = data.isListingForSale,
                                     propertyCount = data.propertyCount.toIntOrNull(),
                                     propertyTypes = parseCommaSeparated(data.propertyTypes),
                                     serviceAreas = parseCommaSeparated(data.serviceAreas)
                                 )
                             )
-                            println("🔍 DEBUG: Saved PropertyOwnerData")
+                            println("🔍 DEBUG: Saved PropertyOwnerData with listingType=${data.listingType}")
                         }
                         "JUST_EXPLORING" -> {
                             // No additional data to cache, but purpose is already saved
@@ -240,10 +240,16 @@ class PurposeSelectionViewModel @Inject constructor(
                 "Find a Job" -> _uiState.value.jobSeekerData.headline.isNotBlank()
                 "Offer Skilled Services" -> _uiState.value.skilledProfessionalData.profession.isNotBlank()
                 "Work as Agent" -> _uiState.value.agentData.agentType.isNotBlank()
-                "Find Housing" -> true
+                "Find Housing" -> {
+                    val data = _uiState.value.housingSeekerData
+                    data.searchType.isNotBlank() && data.propertyTypes.isNotEmpty()
+                }
                 "Get Social Support" -> _uiState.value.supportBeneficiaryData.supportTypes.isNotEmpty()
                 "Hire Employees" -> _uiState.value.employerData.businessName.isNotBlank()
-                "List Properties" -> true
+                "List Properties" -> {
+                    val data = _uiState.value.propertyOwnerData
+                    data.listingType.isNotBlank()
+                }
                 else -> true
             }
         } else {
