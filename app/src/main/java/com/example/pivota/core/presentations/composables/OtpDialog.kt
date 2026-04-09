@@ -1,12 +1,9 @@
 package com.example.pivota.core.presentations.composables
 
 import android.annotation.SuppressLint
-import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.repeatable
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -19,20 +16,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -47,22 +41,23 @@ import kotlinx.coroutines.launch
 @Composable
 fun OtpVerificationDialog(
     email: String,
-    otpValues: List<String>,
-    onOtpDigitChange: (Int, String) -> Unit,
+    otpLength: Int = 6,
+    otpValue: String,
+    onOtpChange: (String) -> Unit,
     isVerifying: Boolean,
     otpError: String?,
     countdown: Int,
-    resendCount: Int,
     title: String = "Verify Your Email",
     description: String = "We've sent a verification code to",
     verifyButtonText: String = "Verify",
     onVerify: () -> Unit,
     onResend: () -> Unit,
     onCancel: () -> Unit,
-    // Snackbar parameters
     snackbarMessage: String? = null,
     snackbarType: SnackbarType = SnackbarType.ERROR,
-    onSnackbarDismiss: () -> Unit = {}
+    onSnackbarDismiss: () -> Unit = {},
+    shouldClose: Boolean = false,
+    onDialogClosed: () -> Unit = {}
 ) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
@@ -70,9 +65,31 @@ fun OtpVerificationDialog(
     val isLandscape = screenWidth > screenHeight
     val isTablet = screenWidth > 600.dp
     val scrollState = rememberScrollState()
-
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var isFocused by remember { mutableStateOf(false) }
     var shakeError by remember { mutableStateOf(false) }
+    var isDialogVisible by remember { mutableStateOf(true) }
 
+    // Use TextFieldValue to control cursor position
+    var textFieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = otpValue,
+                selection = androidx.compose.ui.text.TextRange(0)
+            )
+        )
+    }
+
+    // Close dialog if parent requests
+    LaunchedEffect(shouldClose) {
+        if (shouldClose) {
+            isDialogVisible = false
+            onDialogClosed()
+        }
+    }
+
+    // Shake animation trigger
     LaunchedEffect(otpError) {
         if (otpError != null) {
             shakeError = true
@@ -81,44 +98,32 @@ fun OtpVerificationDialog(
         }
     }
 
+    // Update textFieldValue when otpValue changes externally
+    LaunchedEffect(otpValue) {
+        if (textFieldValue.text != otpValue) {
+            val cursorPos = textFieldValue.selection.start.coerceAtMost(otpValue.length)
+            textFieldValue = TextFieldValue(
+                text = otpValue,
+                selection = androidx.compose.ui.text.TextRange(cursorPos)
+            )
+        }
+    }
+
+    if (!isDialogVisible) return
+
+    // Auto-focus and show keyboard when dialog appears
+    LaunchedEffect(Unit) {
+        delay(100)
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
     val dialogWidth = when {
         isTablet -> screenWidth * 0.45f
         isLandscape -> screenWidth * 0.7f
         else -> screenWidth * 0.92f
     }
-
     val dialogMaxHeight = if (isLandscape) screenHeight * 0.9f else screenHeight * 0.8f
-
-    val focusRequesters = List(6) { FocusRequester() }
-    val focusManager = LocalFocusManager.current
-    val keyboardController = LocalSoftwareKeyboardController.current
-
-    // Handle focus and keyboard
-    LaunchedEffect(otpValues) {
-        val filledCount = otpValues.count { it.isNotEmpty() }
-        if (filledCount < 6) {
-            focusRequesters[filledCount].requestFocus()
-            keyboardController?.show()
-        } else {
-            focusManager.clearFocus()
-            keyboardController?.hide()
-        }
-    }
-
-    fun handleDelete(index: Int) {
-        when {
-            otpValues[index].isNotEmpty() -> {
-                onOtpDigitChange(index, "")
-                focusRequesters[index].requestFocus()
-            }
-            index > 0 -> {
-                focusRequesters[index - 1].requestFocus()
-                if (otpValues[index - 1].isNotEmpty()) {
-                    onOtpDigitChange(index - 1, "")
-                }
-            }
-        }
-    }
 
     val otpComposition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(R.raw.otp_verification_animation)
@@ -129,15 +134,22 @@ fun OtpVerificationDialog(
         isPlaying = true
     )
 
+    // Create underscore display string
+    val underscoreDisplay = (1..otpLength).joinToString(" ") { "_" }
+
     Dialog(
-        onDismissRequest = { if (!isVerifying) onCancel() },
+        onDismissRequest = {
+            if (!isVerifying) {
+                isDialogVisible = false
+                onCancel()
+            }
+        },
         properties = DialogProperties(
             dismissOnBackPress = !isVerifying,
             dismissOnClickOutside = !isVerifying,
             usePlatformDefaultWidth = false
         )
     ) {
-        // Main Dialog Surface with snackbar inside it
         Surface(
             modifier = Modifier
                 .width(dialogWidth)
@@ -148,7 +160,6 @@ fun OtpVerificationDialog(
             shadowElevation = 24.dp
         ) {
             Box {
-                // Scrollable content
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -201,84 +212,100 @@ fun OtpVerificationDialog(
                         )
                     }
 
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(if (isLandscape) 8.dp else if (isTablet) 14.dp else 10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        for (index in 0..5) {
-                            val cellSize = when {
-                                isLandscape -> 48.dp
-                                isTablet -> 64.dp
-                                else -> 52.dp
+                    // OTP input with visible cursor
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                focusRequester.requestFocus()
+                                keyboardController?.show()
                             }
-
-                            OtpSquareDigitCell(
-                                digit = otpValues.getOrElse(index) { "" },
-                                isActive = otpValues[index].isEmpty() && otpValues.take(index).all { it.isNotEmpty() },
-                                isError = otpError != null,
-                                hasValue = otpValues[index].isNotEmpty(),
-                                fontSize = if (isLandscape) 20.sp else if (isTablet) 28.sp else 22.sp,
-                                cellSize = cellSize,
-                                focusRequester = focusRequesters[index],
-                                shakeError = shakeError,
-                                modifier = Modifier.weight(1f),
-                                onDigitChange = { digit ->
-                                    if (digit.length <= 1 && (digit.isEmpty() || digit.all { it.isDigit() })) {
-                                        onOtpDigitChange(index, digit)
-                                        if (digit.isNotEmpty() && index < 5) {
-                                            focusRequesters[index + 1].requestFocus()
-                                        }
-                                    }
-                                },
-                                onDelete = { handleDelete(index) }
-                            )
-                        }
-                    }
-
-                    AnimatedVisibility(
-                        visible = otpError != null,
-                        enter = fadeIn() + slideInVertically(initialOffsetY = { 20 }),
-                        exit = fadeOut() + slideOutVertically(targetOffsetY = { -20 })
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f),
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        ) {
-                            Text(
-                                text = otpError ?: "",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = if (isLandscape) 11.sp else if (isTablet) 13.sp else 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.error
-                                ),
+                        // Hidden text field for input (but with visible cursor)
+                        BasicTextField(
+                            value = textFieldValue,
+                            onValueChange = { newValue ->
+                                val filtered = newValue.text.filter { it.isDigit() }.take(otpLength)
+                                textFieldValue = newValue.copy(text = filtered)
+                                onOtpChange(filtered)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester)
+                                .onFocusChanged { focusState ->
+                                    isFocused = focusState.isFocused
+                                },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.headlineLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 32.sp,
+                                letterSpacing = 12.sp,
                                 textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-                            )
-                        }
+                                color = Color.Transparent // Text is invisible
+                            ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary), // Visible cursor
+                            decorationBox = { innerTextField ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    // Show underscores and digits overlay
+                                    Text(
+                                        text = if (textFieldValue.text.isEmpty()) underscoreDisplay else textFieldValue.text,
+                                        style = MaterialTheme.typography.headlineLarge.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 32.sp,
+                                            letterSpacing = 12.sp,
+                                            textAlign = TextAlign.Center,
+                                            color = when {
+                                                otpError != null -> MaterialTheme.colorScheme.error
+                                                else -> MaterialTheme.colorScheme.onSurface
+                                            }
+                                        )
+                                    )
+                                    innerTextField()
+                                }
+                            }
+                        )
                     }
 
-                    // Verify Button
+                    // Error message
+                    if (otpError != null) {
+                        Text(
+                            text = otpError,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+
+                    // Verify button
                     Button(
                         onClick = onVerify,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(if (isLandscape) 48.dp else if (isTablet) 56.dp else 52.dp),
                         shape = RoundedCornerShape(28.dp),
-                        enabled = !isVerifying && otpValues.joinToString("").length == 6,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
+                        enabled = otpValue.length == otpLength && !isVerifying,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         if (isVerifying) {
-                            PivotaButtonLoading(
-                                text = "Verifying...",
-                                textColor = Color.White,
-                                indicatorColor = Color.White
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Verifying...", color = Color.White)
                         } else {
                             Text(
-                                verifyButtonText,
+                                text = verifyButtonText,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = if (isLandscape) 13.sp else 14.sp,
                                 color = Color.White
@@ -286,12 +313,14 @@ fun OtpVerificationDialog(
                         }
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
+                    // Resend & Cancel
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         OutlinedButton(
-                            onClick = onResend,
+                            onClick = {
+                                onResend()
+                                shakeError = false
+                                textFieldValue = TextFieldValue(text = "", selection = androidx.compose.ui.text.TextRange(0))
+                            },
                             enabled = !isVerifying && countdown == 0,
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(24.dp),
@@ -303,14 +332,19 @@ fun OtpVerificationDialog(
                             )
                         ) {
                             Text(
-                                if (countdown > 0) "Resend (${countdown}s)" else "Resend",
+                                if (countdown > 0) "Resend ($countdown)" else "Resend",
                                 fontSize = if (isLandscape) 12.sp else 13.sp,
                                 fontWeight = FontWeight.Medium
                             )
                         }
 
                         TextButton(
-                            onClick = onCancel,
+                            onClick = {
+                                if (!isVerifying) {
+                                    isDialogVisible = false
+                                    onCancel()
+                                }
+                            },
                             enabled = !isVerifying,
                             modifier = Modifier.weight(1f)
                         ) {
@@ -327,7 +361,7 @@ fun OtpVerificationDialog(
                     }
                 }
 
-                // Snackbar INSIDE the dialog (overlays on top of content)
+                // Snackbar
                 if (snackbarMessage != null) {
                     PivotaSnackbar(
                         message = snackbarMessage,
@@ -340,138 +374,5 @@ fun OtpVerificationDialog(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun OtpSquareDigitCell(
-    digit: String,
-    isActive: Boolean,
-    isError: Boolean,
-    hasValue: Boolean,
-    fontSize: TextUnit,
-    cellSize: Dp,
-    focusRequester: FocusRequester,
-    shakeError: Boolean,
-    modifier: Modifier = Modifier,
-    onDigitChange: (String) -> Unit,
-    onDelete: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    var isFocused by remember { mutableStateOf(false) }
-
-    // Shake animation for error
-    val shakeAnim by animateFloatAsState(
-        targetValue = if (shakeError && isActive) 10f else 0f,
-        animationSpec = repeatable(
-            iterations = 3,
-            animation = keyframes {
-                durationMillis = 200
-                0f at 0
-                10f at 50
-                -10f at 100
-                10f at 150
-                0f at 200
-            }
-        ),
-        label = "shake"
-    )
-
-    val borderColor = when {
-        isError -> MaterialTheme.colorScheme.error
-        isFocused -> MaterialTheme.colorScheme.primary
-        hasValue -> MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-        else -> MaterialTheme.colorScheme.outlineVariant
-    }
-
-    val borderWidth = when {
-        isFocused -> 2.dp
-        hasValue -> 1.8.dp
-        else -> 1.2.dp
-    }
-
-    val backgroundColor = when {
-        isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-        hasValue -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-        else -> MaterialTheme.colorScheme.surface
-    }
-
-    val scale = if (isFocused) 1.02f else 1f
-
-    Box(
-        modifier = modifier
-            .size(cellSize)
-            .scale(scale)
-            .then(
-                if (shakeError && isActive) {
-                    Modifier.offset(x = shakeAnim.dp, y = 0.dp)
-                } else Modifier
-            )
-            .clip(RoundedCornerShape(16.dp))
-            .background(backgroundColor)
-            .border(
-                width = borderWidth,
-                color = borderColor,
-                shape = RoundedCornerShape(16.dp)
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = isActive
-            ) {
-                if (isActive) {
-                    focusRequester.requestFocus()
-                }
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        BasicTextField(
-            value = digit,
-            onValueChange = { newValue ->
-                if (newValue.length <= 1 && (newValue.isEmpty() || newValue.all { it.isDigit() })) {
-                    if (newValue.isEmpty()) {
-                        onDelete()
-                    } else {
-                        onDigitChange(newValue)
-                    }
-                }
-            },
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Transparent)
-                .focusRequester(focusRequester)
-                .onFocusChanged { focusState ->
-                    isFocused = focusState.isFocused
-                },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            textStyle = MaterialTheme.typography.headlineLarge.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = fontSize,
-                color = when {
-                    hasValue -> MaterialTheme.colorScheme.primary
-                    isFocused -> MaterialTheme.colorScheme.primary
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                },
-                textAlign = TextAlign.Center
-            ),
-            singleLine = true,
-            enabled = true,
-            decorationBox = { innerTextField ->
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (digit.isEmpty() && !isFocused) {
-                        Text(
-                            text = "—",
-                            fontSize = fontSize,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                        )
-                    } else {
-                        innerTextField()
-                    }
-                }
-            }
-        )
     }
 }

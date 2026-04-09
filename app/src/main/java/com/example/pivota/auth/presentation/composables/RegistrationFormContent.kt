@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun RegistrationFormContent(
     viewModel: SignupViewModel,
-    onRegisterSuccess: (String, String, String, User?) -> Unit,  // (message, accessToken, refreshToken, user)
+    onRegisterSuccess: (String, String, String, User?) -> Unit,
     onLoginLinkClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -48,11 +48,14 @@ fun RegistrationFormContent(
     val otpValues by viewModel.otpValues.collectAsState()
     val resendCount by viewModel.resendCount.collectAsState()
 
-    // Main screen snackbar state (for signup errors, validation errors)
+    // Collect dialog close signal from ViewModel
+    val shouldCloseDialog by viewModel.shouldCloseDialog.collectAsState()
+
+    // Main screen snackbar state
     val mainSnackbarMessage by viewModel.mainSnackbarMessage.collectAsState()
     val mainSnackbarType by viewModel.mainSnackbarType.collectAsState()
 
-    // Dialog snackbar state (for OTP-related messages)
+    // Dialog snackbar state
     val dialogSnackbarMessage by viewModel.dialogSnackbarMessage.collectAsState()
     val dialogSnackbarType by viewModel.dialogSnackbarType.collectAsState()
 
@@ -65,14 +68,14 @@ fun RegistrationFormContent(
     var countdown by remember { mutableStateOf(0) }
     var verificationFailed by remember { mutableStateOf(false) }
 
-    // ✅ Local password validation state
+    // Local password validation state
     var localPasswordError by remember { mutableStateOf<String?>(null) }
 
     // Track if we're in OTP request or verification
     val isRequestingOtp = uiState is SignupUiState.Loading && !showOtpDialog
     val isVerifyingOtp = uiState is SignupUiState.Loading && showOtpDialog
 
-    // Lottie animation for the form header
+    // Lottie animation
     val composition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(R.raw.signup_animation)
     )
@@ -82,10 +85,10 @@ fun RegistrationFormContent(
         isPlaying = true
     )
 
-    // ✅ Real-time password validation (matches backend requirements)
+    // Password validation
     fun validatePassword(password: String): String? {
         return when {
-            password.isBlank() -> null  // Don't show error while empty
+            password.isBlank() -> null
             password.length < 8 -> "Password must be at least 8 characters"
             !password.any { it.isUpperCase() } -> "Password must contain an uppercase letter (A-Z)"
             !password.any { it.isLowerCase() } -> "Password must contain a lowercase letter (a-z)"
@@ -96,13 +99,12 @@ fun RegistrationFormContent(
         }
     }
 
-    // ✅ Update password and local validation
     fun handlePasswordChange(newValue: String) {
         viewModel.updatePassword(newValue)
         localPasswordError = validatePassword(newValue)
     }
 
-    // Countdown timer for resend button
+    // Countdown timer
     LaunchedEffect(uiState) {
         if (uiState is SignupUiState.OtpSent) {
             countdown = 60
@@ -113,7 +115,18 @@ fun RegistrationFormContent(
         }
     }
 
-    // Handle OTP dialog visibility based on UI state
+    // Handle dialog close signal
+    LaunchedEffect(shouldCloseDialog) {
+        if (shouldCloseDialog && showOtpDialog) {
+            showOtpDialog = false
+            isVerifying = false
+            verificationFailed = false
+            otpError = null
+            viewModel.resetDialogCloseFlag()
+        }
+    }
+
+    // Handle UI state changes
     LaunchedEffect(uiState) {
         when (uiState) {
             is SignupUiState.OtpSent -> {
@@ -122,7 +135,7 @@ fun RegistrationFormContent(
                 verificationFailed = false
                 otpError = null
                 countdown = 60
-                // Show success message inside dialog when it opens
+                viewModel.resetDialogCloseFlag()
                 viewModel.showDialogSnackbar("Verification code sent to your email!", SnackbarType.SUCCESS)
                 coroutineScope.launch {
                     delay(3000)
@@ -138,7 +151,6 @@ fun RegistrationFormContent(
             is SignupUiState.Success -> {
                 showOtpDialog = false
                 isVerifying = false
-                // Pass the success message, tokens, and user to the callback
                 val successState = uiState as SignupUiState.Success
                 onRegisterSuccess(
                     successState.message,
@@ -149,16 +161,19 @@ fun RegistrationFormContent(
                 viewModel.resetState()
             }
             is SignupUiState.PaymentRequired -> {
-                // Handle payment required (redirect to payment page)
                 showOtpDialog = false
                 isVerifying = false
                 val paymentData = uiState as SignupUiState.PaymentRequired
-                // TODO: Navigate to payment screen with redirectUrl and merchantReference
                 println("🔍 Payment required: ${paymentData.redirectUrl}")
                 viewModel.resetState()
             }
             is SignupUiState.Error -> {
-                if (showOtpDialog) {
+                if (!showOtpDialog) {
+                    // Error during OTP request - handled by shouldCloseDialog
+                    isVerifying = false
+                    verificationFailed = false
+                } else {
+                    // Error during verification
                     isVerifying = false
                     verificationFailed = true
                     otpError = (uiState as SignupUiState.Error).message
@@ -173,7 +188,6 @@ fun RegistrationFormContent(
         }
     }
 
-    // Design-consistent field colors and shapes
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = MaterialTheme.colorScheme.primary,
         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
@@ -182,11 +196,9 @@ fun RegistrationFormContent(
     )
     val fieldShape = RoundedCornerShape(12.dp)
 
-    // ✅ Display password error (prioritize local validation)
     val displayPasswordError = localPasswordError
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Main content
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -194,7 +206,6 @@ fun RegistrationFormContent(
                 .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp)
         ) {
-            /* ───────── HEADER WITH LOTTIE ANIMATION ───────── */
             Spacer(Modifier.height(24.dp))
 
             Box(
@@ -251,7 +262,6 @@ fun RegistrationFormContent(
 
             Spacer(Modifier.height(32.dp))
 
-            // First Name
             OutlinedTextField(
                 value = formState.firstName,
                 onValueChange = viewModel::updateFirstName,
@@ -263,7 +273,6 @@ fun RegistrationFormContent(
             )
             Spacer(Modifier.height(12.dp))
 
-            // Last Name
             OutlinedTextField(
                 value = formState.lastName,
                 onValueChange = viewModel::updateLastName,
@@ -275,7 +284,7 @@ fun RegistrationFormContent(
             )
             Spacer(Modifier.height(12.dp))
 
-            // Phone (Optional)
+            // ✅ Phone is optional - no validation required
             OutlinedTextField(
                 value = formState.phone,
                 onValueChange = viewModel::updatePhone,
@@ -287,7 +296,6 @@ fun RegistrationFormContent(
             )
             Spacer(Modifier.height(12.dp))
 
-            // Email
             OutlinedTextField(
                 value = formState.email,
                 onValueChange = viewModel::updateEmail,
@@ -299,7 +307,6 @@ fun RegistrationFormContent(
             )
             Spacer(Modifier.height(12.dp))
 
-            // ✅ Password field with real-time validation
             OutlinedTextField(
                 value = formState.password,
                 onValueChange = { handlePasswordChange(it) },
@@ -355,7 +362,6 @@ fun RegistrationFormContent(
 
             Spacer(Modifier.height(16.dp))
 
-            // Terms and Conditions Checkbox
             PivotaCheckBox(
                 checked = formState.agreeTerms,
                 onCheckedChange = viewModel::updateAgreeTerms,
@@ -364,7 +370,6 @@ fun RegistrationFormContent(
 
             Spacer(Modifier.height(24.dp))
 
-            // ✅ Register Button - Enabled only when password is valid
             Button(
                 onClick = {
                     if (formState.agreeTerms && formState.email.isNotEmpty() && displayPasswordError == null && formState.password.isNotEmpty()) {
@@ -413,21 +418,18 @@ fun RegistrationFormContent(
             }
         }
 
-        // Full screen loading for OTP request
         if (isRequestingOtp) {
             PivotaFullScreenLoading(
                 message = "Sending verification code to\n${formState.email}"
             )
         }
 
-        // Full screen loading for OTP verification
         if (isVerifyingOtp) {
             PivotaFullScreenLoading(
                 message = "Verifying your code\nCreating your account..."
             )
         }
 
-        // ✅ Main Snackbar for signup errors, validation errors, and success messages
         if (mainSnackbarMessage != null && !showOtpDialog) {
             PivotaSnackbar(
                 message = mainSnackbarMessage!!,
@@ -438,18 +440,16 @@ fun RegistrationFormContent(
         }
     }
 
-    // OTP Verification Dialog with its own snackbar
     if (showOtpDialog) {
         OtpVerificationDialog(
             email = formState.email,
-            otpValues = otpValues,
-            onOtpDigitChange = { index, value ->
-                viewModel.updateOtpDigit(index, value)
+            otpValue = otpValues.joinToString(""), // Single string for all digits
+            onOtpChange = { value ->
+                viewModel.updateOtpFull(value)  // <-- new function
             },
             isVerifying = isVerifying,
             otpError = if (verificationFailed) otpError else null,
             countdown = countdown,
-            resendCount = resendCount,
             title = "Verify Your Email",
             description = "We've sent a verification code to",
             verifyButtonText = "Verify & Create Account",
@@ -470,14 +470,11 @@ fun RegistrationFormContent(
             },
             onResend = {
                 viewModel.incrementResendCount()
-                viewModel.requestSignupOtp(formState.email, formState.phone)
+                viewModel.resendOtp()
                 otpError = null
+                isVerifying = false
                 verificationFailed = false
-                viewModel.showDialogSnackbar("New verification code sent!", SnackbarType.SUCCESS)
-                coroutineScope.launch {
-                    delay(3000)
-                    viewModel.clearDialogSnackbar()
-                }
+                viewModel.clearDialogSnackbar()
             },
             onCancel = {
                 if (!isVerifying) {
@@ -485,12 +482,21 @@ fun RegistrationFormContent(
                     viewModel.resetState()
                     otpError = null
                     verificationFailed = false
+                    viewModel.clearDialogSnackbar()
                 }
             },
             snackbarMessage = dialogSnackbarMessage,
             snackbarType = dialogSnackbarType,
             onSnackbarDismiss = {
                 viewModel.clearDialogSnackbar()
+            },
+            shouldClose = shouldCloseDialog,
+            onDialogClosed = {
+                showOtpDialog = false
+                isVerifying = false
+                verificationFailed = false
+                otpError = null
+                viewModel.resetDialogCloseFlag()
             }
         )
     }
