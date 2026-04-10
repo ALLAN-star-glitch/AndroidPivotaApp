@@ -1,5 +1,7 @@
 package com.example.pivota.auth.presentation.composables
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -67,6 +69,13 @@ fun RegistrationFormContent(
     var otpError by remember { mutableStateOf<String?>(null) }
     var countdown by remember { mutableStateOf(0) }
     var verificationFailed by remember { mutableStateOf(false) }
+    var showContent by remember { mutableStateOf(false) }
+
+    // Animate content entrance
+    LaunchedEffect(Unit) {
+        delay(300)
+        showContent = true
+    }
 
     // Local password validation state
     var localPasswordError by remember { mutableStateOf<String?>(null) }
@@ -208,213 +217,309 @@ fun RegistrationFormContent(
         ) {
             Spacer(Modifier.height(24.dp))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp),
-                contentAlignment = Alignment.Center
+            // Animated Lottie Animation
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(600, easing = FastOutSlowInEasing)) +
+                        scaleIn(initialScale = 0.8f, animationSpec = tween(600, easing = FastOutSlowInEasing))
             ) {
-                LottieAnimation(
-                    composition = composition,
-                    progress = { progress },
-                    modifier = Modifier.size(150.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LottieAnimation(
+                        composition = composition,
+                        progress = { progress },
+                        modifier = Modifier.size(150.dp)
+                    )
+                }
             }
 
             Spacer(Modifier.height(16.dp))
 
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // Animated Header
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(600, delayMillis = 100, easing = FastOutSlowInEasing)) +
+                        slideInVertically(
+                            initialOffsetY = { -30 },
+                            animationSpec = tween(600, delayMillis = 100, easing = FastOutSlowInEasing)
+                        )
             ) {
-                Text(
-                    text = "Last Step! Personal Details",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 28.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    ),
-                    textAlign = TextAlign.Center
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Last Step! Personal Details",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 28.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        ),
+                        textAlign = TextAlign.Center
+                    )
 
-                Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
 
-                Text(
-                    text = "Let's get you started on your journey",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    textAlign = TextAlign.Center
-                )
+                    Text(
+                        text = "Let's get you started on your journey",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        textAlign = TextAlign.Center
+                    )
 
-                Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(4.dp))
 
-                Text(
-                    text = "Create your account in just a few steps",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                    ),
-                    textAlign = TextAlign.Center
-                )
+                    Text(
+                        text = "Create your account in just a few steps",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
 
             Spacer(Modifier.height(32.dp))
 
-            OutlinedTextField(
-                value = formState.firstName,
-                onValueChange = viewModel::updateFirstName,
-                label = { Text("First Name") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = textFieldColors,
-                singleLine = true,
-                shape = fieldShape
-            )
-            Spacer(Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = formState.lastName,
-                onValueChange = viewModel::updateLastName,
-                label = { Text("Last Name") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = textFieldColors,
-                singleLine = true,
-                shape = fieldShape
-            )
-            Spacer(Modifier.height(12.dp))
-
-            // ✅ Phone is optional - no validation required
-            OutlinedTextField(
-                value = formState.phone,
-                onValueChange = viewModel::updatePhone,
-                label = { Text("Phone (Optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = textFieldColors,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                shape = fieldShape
-            )
-            Spacer(Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = formState.email,
-                onValueChange = viewModel::updateEmail,
-                label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = textFieldColors,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                shape = fieldShape
-            )
-            Spacer(Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = formState.password,
-                onValueChange = { handlePasswordChange(it) },
-                label = { Text("Password") },
-                placeholder = { Text("Enter your password") },
-                modifier = Modifier.fillMaxWidth(),
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+            // Animated First Name Field
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(
+                            initialOffsetX = { -50 },
+                            animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)
                         )
-                    }
-                },
-                colors = textFieldColors,
-                shape = fieldShape,
-                isError = displayPasswordError != null,
-                supportingText = {
-                    if (displayPasswordError != null) {
-                        Text(
-                            text = displayPasswordError!!,
-                            color = MaterialTheme.colorScheme.error,
-                            fontSize = 12.sp
+            ) {
+                OutlinedTextField(
+                    value = formState.firstName,
+                    onValueChange = viewModel::updateFirstName,
+                    label = { Text("First Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = textFieldColors,
+                    singleLine = true,
+                    shape = fieldShape
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Animated Last Name Field
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 250, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(
+                            initialOffsetX = { -50 },
+                            animationSpec = tween(500, delayMillis = 250, easing = FastOutSlowInEasing)
                         )
-                    } else if (formState.password.isNotEmpty()) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+            ) {
+                OutlinedTextField(
+                    value = formState.lastName,
+                    onValueChange = viewModel::updateLastName,
+                    label = { Text("Last Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = textFieldColors,
+                    singleLine = true,
+                    shape = fieldShape
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Animated Phone Field
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 300, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(
+                            initialOffsetX = { -50 },
+                            animationSpec = tween(500, delayMillis = 300, easing = FastOutSlowInEasing)
+                        )
+            ) {
+                OutlinedTextField(
+                    value = formState.phone,
+                    onValueChange = viewModel::updatePhone,
+                    label = { Text("Phone (Optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = textFieldColors,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    shape = fieldShape
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Animated Email Field
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 350, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(
+                            initialOffsetX = { -50 },
+                            animationSpec = tween(500, delayMillis = 350, easing = FastOutSlowInEasing)
+                        )
+            ) {
+                OutlinedTextField(
+                    value = formState.email,
+                    onValueChange = viewModel::updateEmail,
+                    label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = textFieldColors,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    shape = fieldShape
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Animated Password Field
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 400, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(
+                            initialOffsetX = { -50 },
+                            animationSpec = tween(500, delayMillis = 400, easing = FastOutSlowInEasing)
+                        )
+            ) {
+                OutlinedTextField(
+                    value = formState.password,
+                    onValueChange = { handlePasswordChange(it) },
+                    label = { Text("Password") },
+                    placeholder = { Text("Enter your password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
                             Icon(
-                                imageVector = Icons.Default.CheckCircle,
+                                imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
                                 contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = SuccessGreen
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Password meets requirements",
-                                fontSize = 11.sp,
-                                color = SuccessGreen
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
-                    } else {
-                        Text(
-                            text = "Min 8 chars: uppercase, lowercase, number, special (@ $ ! % * ? &)",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    },
+                    colors = textFieldColors,
+                    shape = fieldShape,
+                    isError = displayPasswordError != null,
+                    supportingText = {
+                        if (displayPasswordError != null) {
+                            Text(
+                                text = displayPasswordError!!,
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp
+                            )
+                        } else if (formState.password.isNotEmpty()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(12.dp),
+                                    tint = SuccessGreen
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Password meets requirements",
+                                    fontSize = 11.sp,
+                                    color = SuccessGreen
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = "Min 8 chars: uppercase, lowercase, number, special (@ $ ! % * ? &)",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                }
-            )
+                )
+            }
 
             Spacer(Modifier.height(16.dp))
 
-            PivotaCheckBox(
-                checked = formState.agreeTerms,
-                onCheckedChange = viewModel::updateAgreeTerms,
-                text = "I agree to the terms and conditions"
-            )
+            // Animated Terms Checkbox
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 500, easing = FastOutSlowInEasing))
+            ) {
+                PivotaCheckBox(
+                    checked = formState.agreeTerms,
+                    onCheckedChange = viewModel::updateAgreeTerms,
+                    text = "I agree to the terms and conditions"
+                )
+            }
 
             Spacer(Modifier.height(24.dp))
 
-            Button(
-                onClick = {
-                    if (formState.agreeTerms && formState.email.isNotEmpty() && displayPasswordError == null && formState.password.isNotEmpty()) {
-                        viewModel.startSignup()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                enabled = formState.agreeTerms && formState.email.isNotEmpty() && displayPasswordError == null && formState.password.isNotEmpty() && !isRequestingOtp,
-                shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    disabledContainerColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                )
+            // Animated Create Account Button
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 600, easing = FastOutSlowInEasing)) +
+                        slideInVertically(
+                            initialOffsetY = { 50 },
+                            animationSpec = tween(500, delayMillis = 600, easing = FastOutSlowInEasing)
+                        )
             ) {
-                if (isRequestingOtp) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(22.dp),
-                        strokeWidth = 2.dp,
-                        color = Color.White
+                Button(
+                    onClick = {
+                        if (formState.agreeTerms && formState.email.isNotEmpty() && displayPasswordError == null && formState.password.isNotEmpty()) {
+                            viewModel.startSignup()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    enabled = formState.agreeTerms && formState.email.isNotEmpty() && displayPasswordError == null && formState.password.isNotEmpty() && !isRequestingOtp,
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        disabledContainerColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Sending code...", color = Color.White)
-                } else {
-                    Text("Create Account", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                ) {
+                    if (isRequestingOtp) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sending code...", color = Color.White)
+                    } else {
+                        Text("Create Account", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                    }
                 }
             }
 
             Spacer(Modifier.height(24.dp))
 
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 40.dp)
+            // Animated Login Link
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 750, easing = FastOutSlowInEasing)) +
+                        slideInVertically(
+                            initialOffsetY = { 30 },
+                            animationSpec = tween(500, delayMillis = 750, easing = FastOutSlowInEasing)
+                        )
             ) {
-                Text(
-                    text = "Already have an account? ",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 40.dp)
+                ) {
+                    Text(
+                        text = "Already have an account? ",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
-                )
-                Text(
-                    text = "Login",
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable { onLoginLinkClick() }
-                )
+                    Text(
+                        text = "Login",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { onLoginLinkClick() }
+                    )
+                }
             }
         }
 
