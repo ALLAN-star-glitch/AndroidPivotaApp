@@ -125,9 +125,6 @@ fun OnboardingPager(
                             onSkipToDashboard = {
                                 onOnboardingComplete()
                             },
-                            onContinueWithGoogle = {
-                                onOnboardingComplete()
-                            },
                             onJustExploring = {},
                             currentStep = currentPageValue,
                             totalSteps = 3
@@ -143,6 +140,7 @@ fun OnboardingPager(
                                 }
                                 onSignupSuccess(message, accessToken, refreshToken, user)
                             },
+                            onGoogleLoginClick = {},
                             onLoginClick = onLoginClick
                         )
                     }

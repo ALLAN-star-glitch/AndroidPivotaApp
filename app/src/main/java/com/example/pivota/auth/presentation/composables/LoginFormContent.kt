@@ -211,13 +211,13 @@ fun LoginFormContent(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp),
+                        .height(160.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     LottieAnimation(
                         composition = composition,
                         progress = { progress },
-                        modifier = Modifier.size(160.dp)
+                        modifier = Modifier.size(140.dp)
                     )
                 }
             }
@@ -243,7 +243,7 @@ fun LoginFormContent(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(4.dp))
                     Text(
                         text = "Sign in to continue your journey",
                         style = MaterialTheme.typography.bodyMedium,
@@ -252,15 +252,70 @@ fun LoginFormContent(
                 }
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
+
+            // Google Button at the TOP (after header)
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)) +
+                        slideInVertically(
+                            initialOffsetY = { 30 },
+                            animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)
+                        )
+            ) {
+                Column {
+                    OutlinedButton(
+                        onClick = onGoogleLoginClick,
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(28.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                    ) {
+                        Icon(
+                            painterResource(id = R.drawable.ic_google),
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Continue with Google", fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        HorizontalDivider(
+                            modifier = Modifier.weight(1f),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                        Text(
+                            text = " OR sign in with email ",
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.weight(1f),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
 
             // Animated Email Field
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)) +
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 300, easing = FastOutSlowInEasing)) +
                         slideInHorizontally(
                             initialOffsetX = { -50 },
-                            animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)
+                            animationSpec = tween(500, delayMillis = 300, easing = FastOutSlowInEasing)
                         )
             ) {
                 OutlinedTextField(
@@ -280,10 +335,10 @@ fun LoginFormContent(
             // Animated Password Field
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 300, easing = FastOutSlowInEasing)) +
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 350, easing = FastOutSlowInEasing)) +
                         slideInHorizontally(
                             initialOffsetX = { -50 },
-                            animationSpec = tween(500, delayMillis = 300, easing = FastOutSlowInEasing)
+                            animationSpec = tween(500, delayMillis = 350, easing = FastOutSlowInEasing)
                         )
             ) {
                 OutlinedTextField(
@@ -308,7 +363,7 @@ fun LoginFormContent(
             // Animated Forgot Password Link
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(400, delayMillis = 400, easing = FastOutSlowInEasing))
+                enter = fadeIn(animationSpec = tween(400, delayMillis = 450, easing = FastOutSlowInEasing))
             ) {
                 TextButton(
                     onClick = onForgotPasswordClick,
@@ -324,10 +379,10 @@ fun LoginFormContent(
             // Animated Fingerprint Row
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 500, easing = FastOutSlowInEasing)) +
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 550, easing = FastOutSlowInEasing)) +
                         slideInHorizontally(
                             initialOffsetX = { -50 },
-                            animationSpec = tween(500, delayMillis = 500, easing = FastOutSlowInEasing)
+                            animationSpec = tween(500, delayMillis = 550, easing = FastOutSlowInEasing)
                         )
             ) {
                 Row(
@@ -360,7 +415,7 @@ fun LoginFormContent(
             // Animated Terms Checkbox
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 600, easing = FastOutSlowInEasing))
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 650, easing = FastOutSlowInEasing))
             ) {
                 PivotaCheckBox(
                     checked = agreeTerms,
@@ -374,10 +429,10 @@ fun LoginFormContent(
             // Animated Login Button
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 700, easing = FastOutSlowInEasing)) +
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 750, easing = FastOutSlowInEasing)) +
                         slideInVertically(
                             initialOffsetY = { 50 },
-                            animationSpec = tween(500, delayMillis = 700, easing = FastOutSlowInEasing)
+                            animationSpec = tween(500, delayMillis = 750, easing = FastOutSlowInEasing)
                         )
             ) {
                 Button(
@@ -397,70 +452,20 @@ fun LoginFormContent(
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
-
-            // Animated Divider
-            AnimatedVisibility(
-                visible = showContent,
-                enter = fadeIn(animationSpec = tween(400, delayMillis = 850, easing = FastOutSlowInEasing))
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
-                    Text(
-                        text = " OR ",
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-                    HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            // Animated Google Button
-            AnimatedVisibility(
-                visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 900, easing = FastOutSlowInEasing)) +
-                        slideInVertically(
-                            initialOffsetY = { 50 },
-                            animationSpec = tween(500, delayMillis = 900, easing = FastOutSlowInEasing)
-                        )
-            ) {
-                OutlinedButton(
-                    onClick = onGoogleLoginClick,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                ) {
-                    Icon(
-                        painterResource(id = R.drawable.ic_google),
-                        contentDescription = null,
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Login with Google", fontWeight = FontWeight.SemiBold)
-                }
-            }
-
             Spacer(Modifier.height(24.dp))
 
             // Animated Register Link
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 1050, easing = FastOutSlowInEasing)) +
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 850, easing = FastOutSlowInEasing)) +
                         slideInVertically(
                             initialOffsetY = { 30 },
-                            animationSpec = tween(500, delayMillis = 1050, easing = FastOutSlowInEasing)
+                            animationSpec = tween(500, delayMillis = 850, easing = FastOutSlowInEasing)
                         )
             ) {
                 Row(
                     horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 40.dp)
                 ) {
                     Text(
                         text = "Don't have an account? ",
