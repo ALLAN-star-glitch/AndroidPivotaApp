@@ -6,34 +6,49 @@
 
 ---
 
+## Screenshots
+
+| Onboarding | Home Screen | Job Listings |
+|------------|-------------|--------------|
+| ![Onboarding](your-onboarding-image-link) | ![Home](your-home-image-link) | ![Jobs](your-jobs-image-link) |
+
+| Property Detail | Professional Booking | M-PESA Payment |
+|-----------------|---------------------|----------------|
+| ![Property](your-property-image-link) | ![Booking](your-booking-image-link) | ![Payment](your-payment-image-link) |
+
+| Profile Screen | Chat Screen | Trust Score |
+|---------------|-------------|-------------|
+| ![Profile](your-profile-image-link) | ![Chat](your-chat-image-link) | ![Trust](your-trust-image-link) |
+
+---
+
 ## Table of Contents
 
 1. [Project Overview](#project-overview)
 2. [Features](#features)
-3. [Screenshots](#screenshots)
-4. [Architecture](#architecture)
-5. [Technology Stack](#technology-stack)
-6. [Project Structure](#project-structure)
-7. [Prerequisites](#prerequisites)
-8. [Getting Started](#getting-started)
-9. [Environment Configuration](#environment-configuration)
-10. [Build Variants](#build-variants)
-11. [Dependencies](#dependencies)
-12. [Authentication Flow](#authentication-flow)
-13. [Data Layer](#data-layer)
-14. [UI Layer](#ui-layer)
-15. [Offline Support](#offline-support)
-16. [Push Notifications](#push-notifications)
-17. [Localization](#localization)
-18. [Accessibility](#accessibility)
-19. [Testing](#testing)
-20. [Performance Optimization](#performance-optimization)
-21. [Security](#security)
-22. [Analytics & Monitoring](#analytics--monitoring)
-23. [Building for Production](#building-for-production)
-24. [Release Process](#release-process)
-25. [Contributing](#contributing)
-26. [License](#license)
+3. [Architecture](#architecture)
+4. [Technology Stack](#technology-stack)
+5. [Project Structure](#project-structure)
+6. [Prerequisites](#prerequisites)
+7. [Getting Started](#getting-started)
+8. [Environment Configuration](#environment-configuration)
+9. [Build Variants](#build-variants)
+10. [Dependencies](#dependencies)
+11. [Authentication Flow](#authentication-flow)
+12. [Data Layer](#data-layer)
+13. [UI Layer](#ui-layer)
+14. [Offline Support](#offline-support)
+15. [Push Notifications](#push-notifications)
+16. [Localization](#localization)
+17. [Accessibility](#accessibility)
+18. [Testing](#testing)
+19. [Performance Optimization](#performance-optimization)
+20. [Security](#security)
+21. [Analytics & Monitoring](#analytics--monitoring)
+22. [Building for Production](#building-for-production)
+23. [Release Process](#release-process)
+24. [Contributing](#contributing)
+25. [License](#license)
 
 ---
 
@@ -122,22 +137,6 @@ Democratize access to opportunities for every African—from the formal professi
 - Data saver mode
 - Voice search
 - Share listings via WhatsApp
-
----
-
-## Screenshots
-
-[Insert Screenshots Here]
-
-Placeholder for:
-- Onboarding screens
-- Home screen with three pillars
-- Job listing screen
-- Property detail screen
-- Professional booking flow
-- Profile screen
-- Chat interface
-- Payment screen with M-PESA
 
 ---
 
