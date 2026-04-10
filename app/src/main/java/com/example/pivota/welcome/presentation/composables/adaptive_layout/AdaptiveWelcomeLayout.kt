@@ -1,251 +1,216 @@
 package com.example.pivota.welcome.presentation.composables.adaptive_layout
 
-
-import android.annotation.SuppressLint
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowSizeClass
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.sp
-import com.example.pivota.R
-import com.example.pivota.core.presentations.composables.background_image_and_overlay.BackgroundImageAndOverlay
-import com.example.pivota.core.presentations.composables.buttons.AuthGoogleButton
-import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
-import com.example.pivota.ui.theme.InfoBlue
-import com.example.pivota.welcome.presentation.composables.welcome_content.WelcomeContent
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
+import com.example.pivota.core.presentations.composables.background_image_and_overlay.EnhancedBackgroundImage
+import com.example.pivota.welcome.presentation.composables.welcome_content.EnhancedWelcomeContent
 
-@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun AdaptiveWelcomeLayout(
     header: String,
     welcomeText: String,
     onNavigateToContinueSetup: () -> Unit,
     onNavigateToContinueWithGoogle: () -> Unit,
-    onNavigateToLogin: () -> Unit,
+    onNavigateToLogin: () -> Unit
 ) {
-    Box {
-        val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
-        val isMediumScreen = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
-        val isExpandedScreen = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp >= 600
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
-        val carouselImages = listOf(
-            R.drawable.happypeople,
-            R.drawable.nairobi_city,
-            R.drawable.mama_mboga,
-            R.drawable.organizationpic
+    // Carousel messages for each image
+    val carouselMessages = listOf(
+        "Find your dream job with verified employers across Africa",
+        "Discover quality housing and accommodation options",
+        "Access essential services and community support"
+    )
+
+    val backgroundImages = listOf(
+        com.example.pivota.R.drawable.nairobi_city,
+        com.example.pivota.R.drawable.houses,
+        com.example.pivota.R.drawable.happy_clients
+    )
+
+    when {
+        isTablet && !isLandscape -> TabletPortraitWelcomeLayout(
+            header = header,
+            welcomeText = welcomeText,
+            onNavigateToContinueSetup = onNavigateToContinueSetup,
+            onNavigateToContinueWithGoogle = onNavigateToContinueWithGoogle,
+            onNavigateToLogin = onNavigateToLogin,
+            backgroundImages = backgroundImages,
+            carouselMessages = carouselMessages
+        )
+        isLandscape -> LandscapeWelcomeLayout(
+            header = header,
+            welcomeText = welcomeText,
+            onNavigateToContinueSetup = onNavigateToContinueSetup,
+            onNavigateToContinueWithGoogle = onNavigateToContinueWithGoogle,
+            onNavigateToLogin = onNavigateToLogin,
+            backgroundImages = backgroundImages,
+            carouselMessages = carouselMessages
+        )
+        else -> MobilePortraitWelcomeLayout(
+            header = header,
+            welcomeText = welcomeText,
+            onNavigateToContinueSetup = onNavigateToContinueSetup,
+            onNavigateToContinueWithGoogle = onNavigateToContinueWithGoogle,
+            onNavigateToLogin = onNavigateToLogin,
+            backgroundImages = backgroundImages,
+            carouselMessages = carouselMessages
+        )
+    }
+}
+
+// MOBILE PORTRAIT - White card CENTERED with opacity
+@Composable
+private fun MobilePortraitWelcomeLayout(
+    header: String,
+    welcomeText: String,
+    onNavigateToContinueSetup: () -> Unit,
+    onNavigateToContinueWithGoogle: () -> Unit,
+    onNavigateToLogin: () -> Unit,
+    backgroundImages: List<Int>,
+    carouselMessages: List<String>
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Full screen background with carousel
+        EnhancedBackgroundImage(
+            images = backgroundImages,
+            carouselMessages = carouselMessages,
+            enableCarousel = true,
+            overlayOpacity = 0.55f
         )
 
-        val carouselMessages = listOf(
-            "Connect, Discover, Grow",
-            "Built for Kenya. Ready for Africa",
-            "Empowering Every Mwananchi",
-            "Trusted by Leading Organizations"
-        )
-
-        when {
-            /* TWO-PANE LAYOUT FOR TABLETS/DESKTOP */
-            isMediumScreen || isExpandedScreen -> {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    // Left pane with image carousel
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .weight(1f)
-                            .background(Color.White)
-                    ) {
-                        BackgroundImageAndOverlay(
-                            isWideScreen = true,
-                            showUpgradeButton = false,
-                            enableCarousel = true,
-                            images = carouselImages,
-                            messages = carouselMessages
-                        )
-                    }
-
-                    // Right pane with all four buttons
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .weight(1f)
-                            .background(Color.White)
-                    ) {
-                        TwoPaneWelcomeContent(
-                            header = header,
-                            welcomeText = welcomeText,
-                            onNavigateToContinueSetup = onNavigateToContinueSetup,
-                            onNavigateToLogin = onNavigateToLogin
-                        )
-                    }
-                }
-            }
-
-            /* SINGLE-PANE LAYOUT FOR MOBILE */
-            else -> {
-                val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-                val screenHeight = configuration.screenHeightDp.dp
-                val dynamicTopPadding = screenHeight * 0.42f
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.White)
-                ) {
-                    BackgroundImageAndOverlay(
-                        isWideScreen = false,
-                        showUpgradeButton = false,
-                        enableCarousel = true,
-                        images = carouselImages,
-                        messages = carouselMessages
+        // Centered white content card with opacity
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(32.dp))
+                    .background(
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.92f) // 92% opacity (slightly transparent)
                     )
-
-                    WelcomeContent(
-                        header = header,
-                        welcomeText = welcomeText,
-                        topPadding = dynamicTopPadding,
-                        onNavigateToContinueSetup = onNavigateToContinueSetup,
-                        onNavigateToLogin = onNavigateToLogin
-                    )
-                }
+            ) {
+                EnhancedWelcomeContent(
+                    header = header,
+                    welcomeText = welcomeText,
+                    onNavigateToContinueSetup = onNavigateToContinueSetup,
+                    onNavigateToLogin = onNavigateToLogin,
+                    modifier = Modifier.fillMaxWidth(),
+                    isCompact = true,
+                    hasWhiteBackground = true
+                )
             }
         }
     }
 }
 
+// TABLET PORTRAIT - White card CENTERED with opacity
 @Composable
-fun TwoPaneWelcomeContent(
+private fun TabletPortraitWelcomeLayout(
     header: String,
     welcomeText: String,
     onNavigateToContinueSetup: () -> Unit,
-    onNavigateToLogin: () -> Unit
+    onNavigateToContinueWithGoogle: () -> Unit,
+    onNavigateToLogin: () -> Unit,
+    backgroundImages: List<Int>,
+    carouselMessages: List<String>
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 48.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Logo
-        coil3.compose.AsyncImage(
-            model = R.drawable.transparentpivlogo,
-            contentDescription = "PivotaConnect Logo",
-            modifier = Modifier.size(120.dp)
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Full screen background with carousel
+        EnhancedBackgroundImage(
+            images = backgroundImages,
+            carouselMessages = carouselMessages,
+            enableCarousel = true,
+            overlayOpacity = 0.55f
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Header
-        Text(
-            text = header,
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 28.sp,
-                color = MaterialTheme.colorScheme.primary,
-                lineHeight = 36.sp
-            ),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Welcome text
-        Text(
-            text = welcomeText,
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = 15.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                lineHeight = 22.sp
-            ),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp)
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // All Buttons
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
+        // Centered white content card with opacity
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(48.dp),
+            contentAlignment = Alignment.Center
         ) {
-            // Get Started Button
-            PivotaPrimaryButton(
-                text = "Get Started",
-                onClick = onNavigateToContinueSetup,
-                modifier = Modifier.fillMaxWidth(),
-                icon = ImageVector.vectorResource(R.drawable.ic_person)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+                    .clip(RoundedCornerShape(32.dp))
+                    .background(
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.92f) // 92% opacity (slightly transparent)
+                    )
+            ) {
+                EnhancedWelcomeContent(
+                    header = header,
+                    welcomeText = welcomeText,
+                    onNavigateToContinueSetup = onNavigateToContinueSetup,
+                    onNavigateToLogin = onNavigateToLogin,
+                    modifier = Modifier.fillMaxWidth(),
+                    isCompact = false,
+                    hasWhiteBackground = true
+                )
+            }
+        }
+    }
+}
+
+// LANDSCAPE - Split screen with white card on right (with opacity)
+@Composable
+private fun LandscapeWelcomeLayout(
+    header: String,
+    welcomeText: String,
+    onNavigateToContinueSetup: () -> Unit,
+    onNavigateToContinueWithGoogle: () -> Unit,
+    onNavigateToLogin: () -> Unit,
+    backgroundImages: List<Int>,
+    carouselMessages: List<String>
+) {
+    Row(modifier = Modifier.fillMaxSize()) {
+        // Left side - Full image with carousel
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        ) {
+            EnhancedBackgroundImage(
+                images = backgroundImages,
+                carouselMessages = carouselMessages,
+                enableCarousel = true,
+                overlayOpacity = 0.6f
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Login Text (Clickable)
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = "Already have an account? ",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+        // Right side - White content card with opacity
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .background(
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
                 )
-            )
-            Text(
-                text = "Log in",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = InfoBlue
-                ),
-                modifier = Modifier.clickable { onNavigateToLogin() }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Footer Links
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                text = "Terms of Service",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                modifier = Modifier.clickable { /* Navigate to Terms */ }
-            )
-            Text(
-                text = " • ",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
-            )
-            Text(
-                text = "Privacy Policy",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                modifier = Modifier.clickable { /* Navigate to Privacy */ }
+            EnhancedWelcomeContent(
+                header = header,
+                welcomeText = welcomeText,
+                onNavigateToContinueSetup = onNavigateToContinueSetup,
+                onNavigateToLogin = onNavigateToLogin,
+                modifier = Modifier.fillMaxSize(),
+                isCompact = false,
+                hasWhiteBackground = true
             )
         }
     }
