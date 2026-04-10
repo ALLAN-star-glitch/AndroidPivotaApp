@@ -34,6 +34,7 @@ import com.example.pivota.core.presentations.composables.OtpVerificationDialog
 import com.example.pivota.core.presentations.composables.PivotaFullScreenLoading
 import com.example.pivota.core.presentations.composables.PivotaSnackbar
 import com.example.pivota.core.presentations.composables.SnackbarType
+import com.example.pivota.core.presentations.composables.buttons.AuthGoogleButton
 import com.example.pivota.ui.theme.SuccessGreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -42,8 +43,14 @@ import kotlinx.coroutines.launch
 fun RegistrationFormContent(
     viewModel: SignupViewModel,
     onRegisterSuccess: (String, String, String, User?) -> Unit,
-    onLoginLinkClick: () -> Unit
+    onLoginLinkClick: () -> Unit,
+    onGoogleSignUpClick: () -> Unit
 ) {
+    // Add logging to debug tablet visibility
+    LaunchedEffect(Unit) {
+        println("🔍 [RegistrationFormContent] Composed - should be visible")
+    }
+
     val scrollState = rememberScrollState()
     val uiState by viewModel.uiState.collectAsState()
     val formState by viewModel.formState.collectAsState()
@@ -178,11 +185,9 @@ fun RegistrationFormContent(
             }
             is SignupUiState.Error -> {
                 if (!showOtpDialog) {
-                    // Error during OTP request - handled by shouldCloseDialog
                     isVerifying = false
                     verificationFailed = false
                 } else {
-                    // Error during verification
                     isVerifying = false
                     verificationFailed = true
                     otpError = (uiState as SignupUiState.Error).message
@@ -207,17 +212,24 @@ fun RegistrationFormContent(
 
     val displayPasswordError = localPasswordError
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // Use a Box with fillMaxSize to ensure it takes full space in the right pane
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp)
+                .padding(top = 32.dp, bottom = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(24.dp))
+            // Reduced spacing for tablet
+            Spacer(Modifier.height(16.dp))
 
-            // Animated Lottie Animation
+            // Animated Lottie Animation - smaller on tablet
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(600, easing = FastOutSlowInEasing)) +
@@ -226,18 +238,18 @@ fun RegistrationFormContent(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp),
+                        .height(120.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     LottieAnimation(
                         composition = composition,
                         progress = { progress },
-                        modifier = Modifier.size(150.dp)
+                        modifier = Modifier.size(100.dp)
                     )
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
 
             // Animated Header
             AnimatedVisibility(
@@ -253,22 +265,11 @@ fun RegistrationFormContent(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Last Step! Personal Details",
-                        style = MaterialTheme.typography.headlineSmall.copy(
+                        text = "Create your account",
+                        style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 28.sp,
+                            fontSize = 22.sp,
                             color = MaterialTheme.colorScheme.primary
-                        ),
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Text(
-                        text = "Let's get you started on your journey",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
                         textAlign = TextAlign.Center
                     )
@@ -276,25 +277,70 @@ fun RegistrationFormContent(
                     Spacer(Modifier.height(4.dp))
 
                     Text(
-                        text = "Create your account in just a few steps",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        text = "Join Pivota to access opportunities",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
                         textAlign = TextAlign.Center
                     )
                 }
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(20.dp))
+
+            // Google Button at the TOP (after header)
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)) +
+                        slideInVertically(
+                            initialOffsetY = { 30 },
+                            animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)
+                        )
+            ) {
+                Column {
+                    AuthGoogleButton(
+                        onClick = onGoogleSignUpClick,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        HorizontalDivider(
+                            modifier = Modifier.weight(1f),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                        Text(
+                            text = " OR sign up with email ",
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.weight(1f),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
 
             // Animated First Name Field
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)) +
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 300, easing = FastOutSlowInEasing)) +
                         slideInHorizontally(
                             initialOffsetX = { -50 },
-                            animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)
+                            animationSpec = tween(500, delayMillis = 300, easing = FastOutSlowInEasing)
                         )
             ) {
                 OutlinedTextField(
@@ -308,15 +354,15 @@ fun RegistrationFormContent(
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
 
             // Animated Last Name Field
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 250, easing = FastOutSlowInEasing)) +
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 350, easing = FastOutSlowInEasing)) +
                         slideInHorizontally(
                             initialOffsetX = { -50 },
-                            animationSpec = tween(500, delayMillis = 250, easing = FastOutSlowInEasing)
+                            animationSpec = tween(500, delayMillis = 350, easing = FastOutSlowInEasing)
                         )
             ) {
                 OutlinedTextField(
@@ -330,15 +376,15 @@ fun RegistrationFormContent(
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
 
             // Animated Phone Field
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 300, easing = FastOutSlowInEasing)) +
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 400, easing = FastOutSlowInEasing)) +
                         slideInHorizontally(
                             initialOffsetX = { -50 },
-                            animationSpec = tween(500, delayMillis = 300, easing = FastOutSlowInEasing)
+                            animationSpec = tween(500, delayMillis = 400, easing = FastOutSlowInEasing)
                         )
             ) {
                 OutlinedTextField(
@@ -352,15 +398,15 @@ fun RegistrationFormContent(
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
 
             // Animated Email Field
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 350, easing = FastOutSlowInEasing)) +
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 450, easing = FastOutSlowInEasing)) +
                         slideInHorizontally(
                             initialOffsetX = { -50 },
-                            animationSpec = tween(500, delayMillis = 350, easing = FastOutSlowInEasing)
+                            animationSpec = tween(500, delayMillis = 450, easing = FastOutSlowInEasing)
                         )
             ) {
                 OutlinedTextField(
@@ -374,15 +420,15 @@ fun RegistrationFormContent(
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
 
             // Animated Password Field
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 400, easing = FastOutSlowInEasing)) +
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 500, easing = FastOutSlowInEasing)) +
                         slideInHorizontally(
                             initialOffsetX = { -50 },
-                            animationSpec = tween(500, delayMillis = 400, easing = FastOutSlowInEasing)
+                            animationSpec = tween(500, delayMillis = 500, easing = FastOutSlowInEasing)
                         )
             ) {
                 OutlinedTextField(
@@ -409,7 +455,7 @@ fun RegistrationFormContent(
                             Text(
                                 text = displayPasswordError!!,
                                 color = MaterialTheme.colorScheme.error,
-                                fontSize = 12.sp
+                                fontSize = 11.sp
                             )
                         } else if (formState.password.isNotEmpty()) {
                             Row(
@@ -418,20 +464,20 @@ fun RegistrationFormContent(
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
                                     contentDescription = null,
-                                    modifier = Modifier.size(12.dp),
+                                    modifier = Modifier.size(10.dp),
                                     tint = SuccessGreen
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = "Password meets requirements",
-                                    fontSize = 11.sp,
+                                    fontSize = 10.sp,
                                     color = SuccessGreen
                                 )
                             }
                         } else {
                             Text(
-                                text = "Min 8 chars: uppercase, lowercase, number, special (@ $ ! % * ? &)",
-                                fontSize = 11.sp,
+                                text = "Min 8 chars: uppercase, lowercase, number, special",
+                                fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -439,12 +485,12 @@ fun RegistrationFormContent(
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
             // Animated Terms Checkbox
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 500, easing = FastOutSlowInEasing))
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 600, easing = FastOutSlowInEasing))
             ) {
                 PivotaCheckBox(
                     checked = formState.agreeTerms,
@@ -453,15 +499,15 @@ fun RegistrationFormContent(
                 )
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
 
             // Animated Create Account Button
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 600, easing = FastOutSlowInEasing)) +
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 700, easing = FastOutSlowInEasing)) +
                         slideInVertically(
                             initialOffsetY = { 50 },
-                            animationSpec = tween(500, delayMillis = 600, easing = FastOutSlowInEasing)
+                            animationSpec = tween(500, delayMillis = 700, easing = FastOutSlowInEasing)
                         )
             ) {
                 Button(
@@ -470,9 +516,9 @@ fun RegistrationFormContent(
                             viewModel.startSignup()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
                     enabled = formState.agreeTerms && formState.email.isNotEmpty() && displayPasswordError == null && formState.password.isNotEmpty() && !isRequestingOtp,
-                    shape = RoundedCornerShape(28.dp),
+                    shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         disabledContainerColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
@@ -480,42 +526,44 @@ fun RegistrationFormContent(
                 ) {
                     if (isRequestingOtp) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(22.dp),
+                            modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp,
                             color = Color.White
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Sending code...", color = Color.White)
+                        Text("Sending code...", color = Color.White, fontSize = 14.sp)
                     } else {
-                        Text("Create Account", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                        Text("Create Account", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
                     }
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
 
             // Animated Login Link
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 750, easing = FastOutSlowInEasing)) +
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 800, easing = FastOutSlowInEasing)) +
                         slideInVertically(
                             initialOffsetY = { 30 },
-                            animationSpec = tween(500, delayMillis = 750, easing = FastOutSlowInEasing)
+                            animationSpec = tween(500, delayMillis = 800, easing = FastOutSlowInEasing)
                         )
             ) {
                 Row(
                     horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 40.dp)
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
                 ) {
                     Text(
                         text = "Already have an account? ",
                         style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
                     Text(
                         text = "Login",
                         fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable { onLoginLinkClick() }
                     )
@@ -548,9 +596,9 @@ fun RegistrationFormContent(
     if (showOtpDialog) {
         OtpVerificationDialog(
             email = formState.email,
-            otpValue = otpValues.joinToString(""), // Single string for all digits
+            otpValue = otpValues.joinToString(""),
             onOtpChange = { value ->
-                viewModel.updateOtpFull(value)  // <-- new function
+                viewModel.updateOtpFull(value)
             },
             isVerifying = isVerifying,
             otpError = if (verificationFailed) otpError else null,

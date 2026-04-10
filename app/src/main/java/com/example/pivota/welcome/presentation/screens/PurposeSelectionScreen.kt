@@ -33,7 +33,6 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.pivota.R
-import com.example.pivota.core.presentations.composables.buttons.AuthGoogleButton
 import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryButton
 import com.example.pivota.core.presentations.composables.buttons.PivotaSkipButton
 import com.example.pivota.welcome.presentation.composables.purpose_selection.*
@@ -49,7 +48,6 @@ import kotlinx.coroutines.delay
 fun AdaptivePurposeSelectionScreenContent(
     onContinue: () -> Unit,
     onSkipToDashboard: () -> Unit,
-    onContinueWithGoogle: () -> Unit,
     onJustExploring: () -> Unit,
     currentStep: Int = 2,
     totalSteps: Int = 6,
@@ -86,7 +84,6 @@ fun AdaptivePurposeSelectionScreenContent(
                     TwoPanePurposeSelectionRightContent(
                         viewModel = viewModel,
                         onContinue = onContinue,
-                        onContinueWithGoogle = onContinueWithGoogle,
                         onJustExploring = onJustExploring
                     )
                 }
@@ -99,7 +96,6 @@ fun AdaptivePurposeSelectionScreenContent(
                 viewModel = viewModel,
                 onContinue = onContinue,
                 onSkipToDashboard = onSkipToDashboard,
-                onContinueWithGoogle = onContinueWithGoogle,
                 onJustExploring = onJustExploring,
                 currentStep = currentStep,
                 totalSteps = totalSteps,
@@ -465,7 +461,6 @@ fun TwoPanePurposeSelectionLeftContent(
 fun TwoPanePurposeSelectionRightContent(
     viewModel: PurposeSelectionViewModel,
     onContinue: () -> Unit,
-    onContinueWithGoogle: () -> Unit,
     onJustExploring: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -637,51 +632,6 @@ fun TwoPanePurposeSelectionRightContent(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Animated Google Button
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(animationSpec = tween(500, delayMillis = 350, easing = FastOutSlowInEasing)) +
-                                slideInVertically(initialOffsetY = { 30 }, animationSpec = tween(500, delayMillis = 350, easing = FastOutSlowInEasing))
-                    ) {
-                        AuthGoogleButton(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = onContinueWithGoogle
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Animated Divider
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(animationSpec = tween(400, delayMillis = 500, easing = FastOutSlowInEasing))
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            HorizontalDivider(
-                                modifier = Modifier.weight(1f),
-                                thickness = 1.dp,
-                                color = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                            Text(
-                                text = " OR ",
-                                modifier = Modifier.padding(horizontal = 12.dp),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            )
-                            HorizontalDivider(
-                                modifier = Modifier.weight(1f),
-                                thickness = 1.dp,
-                                color = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        }
-                    }
-
                     if (uiState.isLoading) {
                         Box(
                             modifier = Modifier
@@ -718,7 +668,6 @@ fun PurposeSelectionScreenContent(
     viewModel: PurposeSelectionViewModel,
     onContinue: () -> Unit,
     onSkipToDashboard: () -> Unit,
-    onContinueWithGoogle: () -> Unit,
     onJustExploring: () -> Unit,
     currentStep: Int = 2,
     totalSteps: Int = 6,
@@ -1028,61 +977,13 @@ fun PurposeSelectionScreenContent(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Animated Google Button
+            // Animated Skip Button
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(500, delayMillis = 550, easing = FastOutSlowInEasing)) +
                         slideInVertically(
                             initialOffsetY = { 50 },
                             animationSpec = tween(500, delayMillis = 550, easing = FastOutSlowInEasing)
-                        )
-            ) {
-                AuthGoogleButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onContinueWithGoogle
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Animated Divider
-            AnimatedVisibility(
-                visible = showContent,
-                enter = fadeIn(animationSpec = tween(400, delayMillis = 700, easing = FastOutSlowInEasing))
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    HorizontalDivider(
-                        modifier = Modifier.weight(1f),
-                        thickness = 1.dp,
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                    Text(
-                        text = " OR ",
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.weight(1f),
-                        thickness = 1.dp,
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Animated Skip Button
-            AnimatedVisibility(
-                visible = showContent,
-                enter = fadeIn(animationSpec = tween(500, delayMillis = 850, easing = FastOutSlowInEasing)) +
-                        slideInVertically(
-                            initialOffsetY = { 50 },
-                            animationSpec = tween(500, delayMillis = 850, easing = FastOutSlowInEasing)
                         )
             ) {
                 PivotaSkipButton(

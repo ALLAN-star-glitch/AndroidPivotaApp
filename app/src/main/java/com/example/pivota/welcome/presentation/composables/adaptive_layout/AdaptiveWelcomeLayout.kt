@@ -24,7 +24,8 @@ fun AdaptiveWelcomeLayout(
 ) {
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape =
+        configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
     // Carousel messages for each image
     val carouselMessages = listOf(
@@ -49,6 +50,7 @@ fun AdaptiveWelcomeLayout(
             backgroundImages = backgroundImages,
             carouselMessages = carouselMessages
         )
+
         isLandscape -> LandscapeWelcomeLayout(
             header = header,
             welcomeText = welcomeText,
@@ -58,6 +60,7 @@ fun AdaptiveWelcomeLayout(
             backgroundImages = backgroundImages,
             carouselMessages = carouselMessages
         )
+
         else -> MobilePortraitWelcomeLayout(
             header = header,
             welcomeText = welcomeText,
