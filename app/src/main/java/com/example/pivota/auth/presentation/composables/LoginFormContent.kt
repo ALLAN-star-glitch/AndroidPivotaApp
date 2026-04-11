@@ -1,5 +1,7 @@
 package com.example.pivota.auth.presentation.composables
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -64,6 +66,13 @@ fun LoginFormContent(
 
     var passwordVisible by remember { mutableStateOf(false) }
     var enableFingerprint by remember { mutableStateOf(false) }
+    var showContent by remember { mutableStateOf(false) }
+
+    // Animate content entrance
+    LaunchedEffect(Unit) {
+        delay(300)
+        showContent = true
+    }
 
     // OTP Dialog state
     var showOtpDialog by remember { mutableStateOf(false) }
@@ -193,182 +202,282 @@ fun LoginFormContent(
         ) {
             Spacer(Modifier.height(24.dp))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                contentAlignment = Alignment.Center
+            // Animated Lottie Animation
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(600, easing = FastOutSlowInEasing)) +
+                        scaleIn(initialScale = 0.8f, animationSpec = tween(600, easing = FastOutSlowInEasing))
             ) {
-                LottieAnimation(
-                    composition = composition,
-                    progress = { progress },
-                    modifier = Modifier.size(160.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LottieAnimation(
+                        composition = composition,
+                        progress = { progress },
+                        modifier = Modifier.size(140.dp)
+                    )
+                }
             }
 
             Spacer(Modifier.height(8.dp))
 
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // Animated Welcome Text
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(600, delayMillis = 100, easing = FastOutSlowInEasing)) +
+                        slideInVertically(
+                            initialOffsetY = { -30 },
+                            animationSpec = tween(600, delayMillis = 100, easing = FastOutSlowInEasing)
+                        )
             ) {
-                Text(
-                    text = "Welcome Back!",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "Sign in to continue your journey",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(Modifier.height(32.dp))
-
-            OutlinedTextField(
-                value = email,
-                onValueChange = viewModel::updateEmail,
-                label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = textFieldColors,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = password,
-                onValueChange = viewModel::updatePassword,
-                label = { Text("Password") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                colors = textFieldColors,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                trailingIcon = {
-                    val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(imageVector = image, contentDescription = "Toggle Password Visibility")
-                    }
-                }
-            )
-
-            TextButton(
-                onClick = onForgotPasswordClick,
-                contentPadding = PaddingValues(0.dp),
-                modifier = Modifier.align(Alignment.End)
-            ) {
-                Text("Forgot Password?", color = MaterialTheme.colorScheme.primary)
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.fingerprint_24px),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "Enable fingerprint login",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Switch(
-                    checked = enableFingerprint,
-                    onCheckedChange = { enableFingerprint = it },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.primary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Welcome Back!",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
-                )
-            }
-
-            PivotaCheckBox(
-                checked = agreeTerms,
-                onCheckedChange = viewModel::updateAgreeTerms,
-                text = "I agree to the terms and conditions"
-            )
-
-            Spacer(Modifier.height(32.dp))
-
-            Button(
-                onClick = {
-                    if (email.isNotEmpty() && password.isNotEmpty() && agreeTerms) {
-                        viewModel.authenticateUser(email, password)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(28.dp),
-                enabled = email.isNotEmpty() && password.isNotEmpty() && agreeTerms,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Text("Login", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
-                Text(
-                    text = " OR ",
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-                HorizontalDivider(modifier = Modifier.weight(1f), thickness = 1.dp, color = Color.LightGray)
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            OutlinedButton(
-                onClick = onGoogleLoginClick,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(28.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-            ) {
-                Icon(
-                    painterResource(id = R.drawable.ic_google),
-                    contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Login with Google", fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Sign in to continue your journey",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             Spacer(Modifier.height(24.dp))
 
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
+            // Google Button at the TOP (after header)
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)) +
+                        slideInVertically(
+                            initialOffsetY = { 30 },
+                            animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)
+                        )
             ) {
-                Text(
-                    text = "Don't have an account? ",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                Column {
+                    OutlinedButton(
+                        onClick = onGoogleLoginClick,
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(28.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                    ) {
+                        Icon(
+                            painterResource(id = R.drawable.ic_google),
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Continue with Google", fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        HorizontalDivider(
+                            modifier = Modifier.weight(1f),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                        Text(
+                            text = " OR sign in with email ",
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.weight(1f),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // Animated Email Field
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 300, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(
+                            initialOffsetX = { -50 },
+                            animationSpec = tween(500, delayMillis = 300, easing = FastOutSlowInEasing)
+                        )
+            ) {
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = viewModel::updateEmail,
+                    label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = textFieldColors,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
                 )
-                Text(
-                    text = "Register",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { onRegisterLinkClick() }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Animated Password Field
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 350, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(
+                            initialOffsetX = { -50 },
+                            animationSpec = tween(500, delayMillis = 350, easing = FastOutSlowInEasing)
+                        )
+            ) {
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = viewModel::updatePassword,
+                    label = { Text("Password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    colors = textFieldColors,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                    trailingIcon = {
+                        val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(imageVector = image, contentDescription = "Toggle Password Visibility")
+                        }
+                    }
                 )
+            }
+
+            // Animated Forgot Password Link
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(400, delayMillis = 450, easing = FastOutSlowInEasing))
+            ) {
+                TextButton(
+                    onClick = onForgotPasswordClick,
+                    contentPadding = PaddingValues(0.dp),
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Forgot Password?", color = MaterialTheme.colorScheme.primary)
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Animated Fingerprint Row
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 550, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(
+                            initialOffsetX = { -50 },
+                            animationSpec = tween(500, delayMillis = 550, easing = FastOutSlowInEasing)
+                        )
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.fingerprint_24px),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Enable fingerprint login",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Switch(
+                        checked = enableFingerprint,
+                        onCheckedChange = { enableFingerprint = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        )
+                    )
+                }
+            }
+
+            // Animated Terms Checkbox
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 650, easing = FastOutSlowInEasing))
+            ) {
+                PivotaCheckBox(
+                    checked = agreeTerms,
+                    onCheckedChange = viewModel::updateAgreeTerms,
+                    text = "I agree to the terms and conditions"
+                )
+            }
+
+            Spacer(Modifier.height(32.dp))
+
+            // Animated Login Button
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 750, easing = FastOutSlowInEasing)) +
+                        slideInVertically(
+                            initialOffsetY = { 50 },
+                            animationSpec = tween(500, delayMillis = 750, easing = FastOutSlowInEasing)
+                        )
+            ) {
+                Button(
+                    onClick = {
+                        if (email.isNotEmpty() && password.isNotEmpty() && agreeTerms) {
+                            viewModel.authenticateUser(email, password)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    enabled = email.isNotEmpty() && password.isNotEmpty() && agreeTerms,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Login", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // Animated Register Link
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(500, delayMillis = 850, easing = FastOutSlowInEasing)) +
+                        slideInVertically(
+                            initialOffsetY = { 30 },
+                            animationSpec = tween(500, delayMillis = 850, easing = FastOutSlowInEasing)
+                        )
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 40.dp)
+                ) {
+                    Text(
+                        text = "Don't have an account? ",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Register",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { onRegisterLinkClick() }
+                    )
+                }
             }
         }
 
