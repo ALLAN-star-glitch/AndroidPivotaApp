@@ -25,3 +25,9 @@ data class VerifyOtp(
 @Serializable object ResetPassword
 @Serializable object ForgotPassword
 
+// Book Service Flow
+@Serializable object BookServiceFlow
+@Serializable object SelectService
+@Serializable object ScheduleService
+@Serializable object ServiceDetails
+@Serializable object ReviewAndPay

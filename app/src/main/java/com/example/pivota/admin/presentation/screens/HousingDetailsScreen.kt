@@ -48,7 +48,6 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
-// Add this data class for dialog configuration
 data class DialogConfig(
     val title: String,
     val message: String,
@@ -56,7 +55,7 @@ data class DialogConfig(
     val color: Color
 )
 
-// Add this data class for management actions
+
 data class ManagementActionHousingDetails(
     val label: String,
     val icon: ImageVector,

@@ -5,17 +5,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
-import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.presentation.screens.AdaptiveResetPasswordScreen
 import com.example.pivota.auth.presentation.screens.LoginScreen
 import com.example.pivota.auth.presentation.screens.SplashScreen
 import com.example.pivota.auth.presentation.viewModel.SharedAuthViewModel
+import com.example.pivota.dashboard.presentation.bookservice.ReviewAndPayScreen
+import com.example.pivota.dashboard.presentation.bookservice.ScheduleServiceScreen
+import com.example.pivota.dashboard.presentation.bookservice.SelectServiceScreen
+import com.example.pivota.dashboard.presentation.bookservice.ServiceDetailsScreen
 import com.example.pivota.core.preferences.PivotaDataStore
 import com.example.pivota.dashboard.presentation.screens.DashboardScaffold
 import com.example.pivota.welcome.presentation.screens.OnboardingPager
@@ -23,7 +24,6 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.android.EntryPointAccessors
-import kotlinx.serialization.json.Json
 
 @Composable
 fun NavHostSetup(modifier: Modifier = Modifier) {
@@ -180,6 +180,39 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                     sharedAuthViewModel.clearLoginSuccessMessage()
                 }
             )
+        }
+
+        /* ───────── BOOK SERVICE FLOW (NESTED) ───────── */
+        navigation<BookServiceFlow>(startDestination = SelectService) {
+            composable<SelectService> {
+                SelectServiceScreen(
+                    onBack = { navController.popBackStack() },
+                    onContinue = { navController.navigate(ScheduleService) }
+                )
+            }
+            composable<ScheduleService> {
+                ScheduleServiceScreen(
+                    onBack = { navController.popBackStack() },
+                    onContinue = { navController.navigate(ServiceDetails) }
+                )
+            }
+            composable<ServiceDetails> {
+                ServiceDetailsScreen(
+                    onBack = { navController.popBackStack() },
+                    onContinue = { navController.navigate(ReviewAndPay) }
+                )
+            }
+            composable<ReviewAndPay> {
+                ReviewAndPayScreen(
+                    onBack = { navController.popBackStack() },
+                    onConfirm = {
+                        // Handle booking confirmation
+                        navController.navigate(Dashboard) {
+                            popUpTo(BookServiceFlow) { inclusive = true }
+                        }
+                    }
+                )
+            }
         }
     }
 }
