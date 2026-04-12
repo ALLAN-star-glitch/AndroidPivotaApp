@@ -198,3 +198,30 @@ data class SessionDto(
 )
 
 typealias GetActiveSessionsResponseDto = BaseResponseDto<List<SessionDto>>
+
+/* ======================================================
+   GOOGLE SIGN-IN REQUEST (Matches proto GoogleLoginRequest)
+   Note: clientInfo is handled by the gateway decorator, not passed in body
+====================================================== */
+
+@Serializable
+data class GoogleSignInRequestDto(
+    @SerialName("token") val token: String,
+    @SerialName("onboardingData") val onboardingData: GoogleOnboardingDataDto? = null
+)
+
+/* ======================================================
+   GOOGLE ONBOARDING DATA (Matches proto GoogleOnboardingData)
+====================================================== */
+
+@Serializable
+data class GoogleOnboardingDataDto(
+    @SerialName("primaryPurpose") val primaryPurpose: String? = null,
+    @SerialName("jobSeekerData") val jobSeekerData: JobSeekerProfileDataDto? = null,
+    @SerialName("housingSeekerData") val housingSeekerData: HousingSeekerProfileDataDto? = null,
+    @SerialName("skilledProfessionalData") val skilledProfessionalData: SkilledProfessionalProfileDataDto? = null,
+    @SerialName("intermediaryAgentData") val intermediaryAgentData: IntermediaryAgentProfileDataDto? = null,
+    @SerialName("supportBeneficiaryData") val supportBeneficiaryData: SupportBeneficiaryProfileDataDto? = null,
+    @SerialName("employerData") val employerData: EmployerProfileDataDto? = null,
+    @SerialName("propertyOwnerData") val propertyOwnerData: PropertyOwnerProfileDataDto? = null
+)

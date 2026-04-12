@@ -18,7 +18,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -26,6 +28,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.lifecycle.viewModelScope
 import com.airbnb.lottie.compose.*
 import com.example.pivota.R
@@ -36,6 +44,9 @@ import com.example.pivota.core.presentations.composables.OtpVerificationDialog
 import com.example.pivota.core.presentations.composables.PivotaFullScreenLoading
 import com.example.pivota.core.presentations.composables.PivotaSnackbar
 import com.example.pivota.core.presentations.composables.SnackbarType
+import com.example.pivota.core.presentations.composables.buttons.AuthGoogleButton
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -43,24 +54,127 @@ import kotlinx.coroutines.launch
 fun LoginFormContent(
     viewModel: LoginViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
     onLoginSuccess: (User, String, String, String) -> Unit,
-    onGoogleLoginClick: () -> Unit,
     onRegisterLinkClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
     successMessage: String? = null
 ) {
     println("🔍 [LoginFormContent] ENTERED WITH successMessage: $successMessage")
 
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    // Credential Manager
+    val credentialManager = remember { CredentialManager.create(context) }
+
+    // Google Sign-In State
+    val googleSignInState by viewModel.googleSignInState.collectAsState()
+    var isGettingGoogleToken by remember { mutableStateOf(false) }
+
+    // Get Web Client ID from strings.xml
+    val webClientId = stringResource(R.string.default_web_client_id)
+
+    // Function to sign in with Google - Login only (no onboarding data)
+    suspend fun signInWithGoogle() {
+        try {
+            println("🔍 [Google Sign-In] Starting Google Sign-In...")
+            println("🔍 [Google Sign-In] Web Client ID: $webClientId")
+
+            val googleIdOption = GetGoogleIdOption.Builder()
+                .setServerClientId(webClientId)
+                .setFilterByAuthorizedAccounts(false)  // Show all accounts
+                .setAutoSelectEnabled(false)           // Force show picker
+                .build()
+
+            val request = GetCredentialRequest.Builder()
+                .addCredentialOption(googleIdOption)
+                .build()
+
+            println("🔍 [Google Sign-In] Request built, calling credential manager...")
+            val response = credentialManager.getCredential(context, request)
+            println("✅ [Google Sign-In] Got credential response")
+
+            val credential = response.credential
+            println("🔍 [Google Sign-In] Credential type: ${credential.type}")
+
+            if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                val idToken = googleIdTokenCredential.idToken
+                println("🔍 [Google Sign-In] ID Token received: ${idToken?.take(50)}...")
+                if (!idToken.isNullOrEmpty()) {
+                    println("✅ [Google Sign-In Login] ID Token received, sending to backend...")
+                    viewModel.signInWithGoogle(idToken)
+                } else {
+                    isGettingGoogleToken = false
+                    viewModel.showErrorMessage("Failed to get ID token")
+                }
+            } else {
+                isGettingGoogleToken = false
+                println("❌ [Google Sign-In] Invalid credential type: ${credential.type}")
+                viewModel.showErrorMessage("Invalid credential type")
+            }
+        } catch (e: NoCredentialException) {
+            // No credentials - this should trigger the account picker
+            isGettingGoogleToken = false
+            println("ℹ️ [Google Sign-In] No credentials available - account picker should appear")
+            println("ℹ️ [Google Sign-In] Exception details: ${e.message}")
+            // Don't show error - let system handle it
+        } catch (e: GetCredentialException) {
+            isGettingGoogleToken = false
+            println("❌ [Google Sign-In] GetCredentialException: ${e.message}")
+            println("❌ [Google Sign-In] Exception type: ${e::class.simpleName}")
+            viewModel.showErrorMessage("Google Sign-In failed: ${e.message}")
+        } catch (e: Exception) {
+            isGettingGoogleToken = false
+            println("❌ [Google Sign-In] Unexpected Exception: ${e.message}")
+            println("❌ [Google Sign-In] Exception type: ${e::class.simpleName}")
+            e.printStackTrace()
+            viewModel.showErrorMessage("Google Sign-In failed: ${e.message}")
+        }
+    }
+
+    // Handle Google Sign-In success
+    LaunchedEffect(googleSignInState) {
+        when (val state = googleSignInState) {
+            is LoginViewModel.GoogleSignInState.Success -> {
+                println("✅ [Google Sign-In Login] Success! Navigating to dashboard...")
+                isGettingGoogleToken = false
+                onLoginSuccess(
+                    state.user,
+                    "Google sign-in successful",
+                    state.accessToken,
+                    state.refreshToken
+                )
+                viewModel.resetGoogleSignInState()
+            }
+            is LoginViewModel.GoogleSignInState.Error -> {
+                println("❌ [Google Sign-In Login] Error: ${state.message}")
+                isGettingGoogleToken = false
+                viewModel.resetGoogleSignInState()
+            }
+            is LoginViewModel.GoogleSignInState.Loading -> {
+                println("⏳ [Google Sign-In Login] Processing...")
+            }
+            else -> {}
+        }
+    }
+
+    // Show loading overlay for Google Sign-In
+    val showGoogleLoading = isGettingGoogleToken || googleSignInState is LoginViewModel.GoogleSignInState.Loading
+
+    if (showGoogleLoading) {
+        PivotaFullScreenLoading(message = "Please wait...")
+        return
+    }
+
     val scrollState = rememberScrollState()
     val uiState by viewModel.uiState.collectAsState()
     val otpValues by viewModel.otpValues.collectAsState()
     val resendCount by viewModel.resendCount.collectAsState()
 
-    // Collect form state from ViewModel (survives rotation)
     val email by viewModel.email.collectAsState()
     val password by viewModel.password.collectAsState()
     val agreeTerms by viewModel.agreeTerms.collectAsState()
 
-    // Main snackbar state (for login errors)
     val mainSnackbarMessage by viewModel.snackbarMessage.collectAsState()
     val mainSnackbarType by viewModel.snackbarType.collectAsState()
 
@@ -68,27 +182,22 @@ fun LoginFormContent(
     var enableFingerprint by remember { mutableStateOf(false) }
     var showContent by remember { mutableStateOf(false) }
 
-    // Animate content entrance
     LaunchedEffect(Unit) {
         delay(300)
         showContent = true
     }
 
-    // OTP Dialog state
     var showOtpDialog by remember { mutableStateOf(false) }
     var isVerifying by remember { mutableStateOf(false) }
     var otpError by remember { mutableStateOf<String?>(null) }
     var countdown by remember { mutableStateOf(0) }
 
-    // Track verification state
     var verificationFailed by remember { mutableStateOf(false) }
     var dialogSnackbarMessage by remember { mutableStateOf<String?>(null) }
     var dialogSnackbarType by remember { mutableStateOf(SnackbarType.INFO) }
 
-    // Track loading states
     val isLoggingIn = uiState is LoginUiState.Loading && !showOtpDialog
 
-    // Success snackbar state (from password reset)
     var showSimpleSnackbar by remember { mutableStateOf(false) }
     var simpleMessage by remember { mutableStateOf("") }
 
@@ -101,7 +210,6 @@ fun LoginFormContent(
         }
     }
 
-    // Lottie animation
     val composition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(R.raw.login_animation)
     )
@@ -118,7 +226,6 @@ fun LoginFormContent(
         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer
     )
 
-    // Handle UI state changes
     LaunchedEffect(uiState) {
         when (uiState) {
             is LoginUiState.OtpSent -> {
@@ -128,10 +235,9 @@ fun LoginFormContent(
                 verificationFailed = false
                 otpError = null
                 countdown = 60
-                // Show success snackbar INSIDE the dialog when it opens
                 dialogSnackbarMessage = "Verification code sent to your email!"
                 dialogSnackbarType = SnackbarType.SUCCESS
-                launch {
+                coroutineScope.launch {
                     delay(3000)
                     dialogSnackbarMessage = null
                 }
@@ -147,7 +253,6 @@ fun LoginFormContent(
                 println("🔍 [LoginFormContent] Success state")
                 showOtpDialog = false
                 isVerifying = false
-                // Extract all data from Success state and pass to callback
                 val successState = uiState as LoginUiState.Success
                 onLoginSuccess(
                     successState.user,
@@ -160,19 +265,16 @@ fun LoginFormContent(
             is LoginUiState.Error -> {
                 println("🔍 [LoginFormContent] Error state - message: ${(uiState as LoginUiState.Error).message}")
                 if (showOtpDialog) {
-                    // OTP verification error - show inside dialog
                     isVerifying = false
                     verificationFailed = true
                     otpError = (uiState as LoginUiState.Error).message
                     dialogSnackbarMessage = otpError
                     dialogSnackbarType = SnackbarType.ERROR
-                    launch {
+                    coroutineScope.launch {
                         delay(4000)
                         dialogSnackbarMessage = null
                     }
                 } else {
-                    // ✅ Login error (wrong password, etc.) - show as snackbar on main screen
-                    // This uses the same pattern as AdaptiveResetPasswordScreen
                     val errorMessage = (uiState as LoginUiState.Error).message
                     if (!errorMessage.isNullOrBlank()) {
                         viewModel.showErrorMessage(errorMessage)
@@ -183,7 +285,6 @@ fun LoginFormContent(
         }
     }
 
-    // Countdown timer for resend button
     LaunchedEffect(countdown) {
         while (countdown > 0) {
             delay(1000)
@@ -192,7 +293,6 @@ fun LoginFormContent(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Main content
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -202,7 +302,6 @@ fun LoginFormContent(
         ) {
             Spacer(Modifier.height(24.dp))
 
-            // Animated Lottie Animation
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(600, easing = FastOutSlowInEasing)) +
@@ -224,7 +323,6 @@ fun LoginFormContent(
 
             Spacer(Modifier.height(8.dp))
 
-            // Animated Welcome Text
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(600, delayMillis = 100, easing = FastOutSlowInEasing)) +
@@ -254,7 +352,6 @@ fun LoginFormContent(
 
             Spacer(Modifier.height(24.dp))
 
-            // Google Button at the TOP (after header)
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)) +
@@ -264,21 +361,16 @@ fun LoginFormContent(
                         )
             ) {
                 Column {
-                    OutlinedButton(
-                        onClick = onGoogleLoginClick,
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(28.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                    ) {
-                        Icon(
-                            painterResource(id = R.drawable.ic_google),
-                            contentDescription = null,
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("Continue with Google", fontWeight = FontWeight.SemiBold)
-                    }
+                    AuthGoogleButton(
+                        onClick = {
+                            println("🔍 [LoginFormContent] Google button clicked")
+                            isGettingGoogleToken = true
+                            coroutineScope.launch {
+                                signInWithGoogle()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
                     Spacer(Modifier.height(16.dp))
 
@@ -309,7 +401,6 @@ fun LoginFormContent(
 
             Spacer(Modifier.height(24.dp))
 
-            // Animated Email Field
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(500, delayMillis = 300, easing = FastOutSlowInEasing)) +
@@ -332,7 +423,6 @@ fun LoginFormContent(
 
             Spacer(Modifier.height(16.dp))
 
-            // Animated Password Field
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(500, delayMillis = 350, easing = FastOutSlowInEasing)) +
@@ -360,7 +450,6 @@ fun LoginFormContent(
                 )
             }
 
-            // Animated Forgot Password Link
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(400, delayMillis = 450, easing = FastOutSlowInEasing))
@@ -376,7 +465,6 @@ fun LoginFormContent(
 
             Spacer(Modifier.height(16.dp))
 
-            // Animated Fingerprint Row
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(500, delayMillis = 550, easing = FastOutSlowInEasing)) +
@@ -412,7 +500,6 @@ fun LoginFormContent(
                 }
             }
 
-            // Animated Terms Checkbox
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(500, delayMillis = 650, easing = FastOutSlowInEasing))
@@ -426,7 +513,6 @@ fun LoginFormContent(
 
             Spacer(Modifier.height(32.dp))
 
-            // Animated Login Button
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(500, delayMillis = 750, easing = FastOutSlowInEasing)) +
@@ -454,7 +540,6 @@ fun LoginFormContent(
 
             Spacer(Modifier.height(24.dp))
 
-            // Animated Register Link
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(500, delayMillis = 850, easing = FastOutSlowInEasing)) +
@@ -481,14 +566,11 @@ fun LoginFormContent(
             }
         }
 
-        // Full screen loading for login
         if (isLoggingIn) {
             PivotaFullScreenLoading(message = "Signing you in...")
         }
 
-        // ✅ Main Snackbar for login errors (wrong password, rate limiting, etc.)
-        // This uses the same pattern as AdaptiveResetPasswordScreen
-        if (mainSnackbarMessage != null && !showOtpDialog) {
+        if (mainSnackbarMessage != null && !showOtpDialog && !showGoogleLoading) {
             PivotaSnackbar(
                 message = mainSnackbarMessage!!,
                 type = mainSnackbarType,
@@ -497,7 +579,6 @@ fun LoginFormContent(
             )
         }
 
-        // Success Snackbar for password reset
         if (showSimpleSnackbar && simpleMessage.isNotBlank()) {
             PivotaSnackbar(
                 message = simpleMessage,
@@ -511,12 +592,11 @@ fun LoginFormContent(
         }
     }
 
-    // OTP Verification Dialog
     if (showOtpDialog) {
         OtpVerificationDialog(
             email = email,
-            otpValue = otpValues.joinToString(""), // Combine all digits
-            onOtpChange = { value -> viewModel.updateOtpFull(value) }, // New ViewModel function
+            otpValue = otpValues.joinToString(""),
+            onOtpChange = { value -> viewModel.updateOtpFull(value) },
             isVerifying = isVerifying,
             otpError = if (verificationFailed) otpError else null,
             countdown = countdown,
