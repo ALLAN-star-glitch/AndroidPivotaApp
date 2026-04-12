@@ -70,8 +70,15 @@ fun LoginFormContent(
     val googleSignInState by viewModel.googleSignInState.collectAsState()
     var isGettingGoogleToken by remember { mutableStateOf(false) }
 
+    // Force loading to stay visible during navigation
+    var forceShowLoading by remember { mutableStateOf(false) }
+    var hasNavigated by remember { mutableStateOf(false) }
+
     // Get Web Client ID from strings.xml
     val webClientId = stringResource(R.string.default_web_client_id)
+
+    // Dialog state for adding account
+    var showAddAccountDialog by remember { mutableStateOf(false) }
 
     // Function to sign in with Google - Login only (no onboarding data)
     suspend fun signInWithGoogle() {
@@ -112,23 +119,34 @@ fun LoginFormContent(
                 println("❌ [Google Sign-In] Invalid credential type: ${credential.type}")
                 viewModel.showErrorMessage("Invalid credential type")
             }
-        } catch (e: NoCredentialException) {
-            // No credentials - this should trigger the account picker
-            isGettingGoogleToken = false
-            println("ℹ️ [Google Sign-In] No credentials available - account picker should appear")
-            println("ℹ️ [Google Sign-In] Exception details: ${e.message}")
-            // Don't show error - let system handle it
         } catch (e: GetCredentialException) {
             isGettingGoogleToken = false
-            println("❌ [Google Sign-In] GetCredentialException: ${e.message}")
-            println("❌ [Google Sign-In] Exception type: ${e::class.simpleName}")
-            viewModel.showErrorMessage("Google Sign-In failed: ${e.message}")
+            println("❌ [Google Sign-In] Error: ${e.message}")
+
+            // ONLY show dialog if the error explicitly says no credentials
+            val shouldShowDialog = e.message?.contains("NO_CREDENTIALS", ignoreCase = true) == true ||
+                    e.message?.contains("No credentials", ignoreCase = true) == true ||
+                    e.message?.contains("CREDENTIAL_NOT_FOUND", ignoreCase = true) == true
+
+            if (shouldShowDialog) {
+                println("No Google accounts found - showing add account dialog")
+                showAddAccountDialog = true
+            } else if (e.message?.contains("canceled", ignoreCase = true) == true) {
+                println("User cancelled - doing nothing")
+            } else {
+                // For any other error (including what happens on devices WITH accounts)
+                println("Other error - not showing dialog: ${e.message}")
+                // Optionally show a snackbar for unexpected errors
+                if (e.message?.isNotBlank() == true) {
+                    viewModel.showErrorMessage("Google Sign-In failed: ${e.message}")
+                }
+            }
         } catch (e: Exception) {
             isGettingGoogleToken = false
-            println("❌ [Google Sign-In] Unexpected Exception: ${e.message}")
-            println("❌ [Google Sign-In] Exception type: ${e::class.simpleName}")
-            e.printStackTrace()
-            viewModel.showErrorMessage("Google Sign-In failed: ${e.message}")
+            println("❌ [Google Sign-In] Exception: ${e.message}")
+            if (!e.message?.contains("cancel", ignoreCase = true)!!) {
+                viewModel.showErrorMessage("Google Sign-In failed: ${e.message}")
+            }
         }
     }
 
@@ -137,29 +155,41 @@ fun LoginFormContent(
         when (val state = googleSignInState) {
             is LoginViewModel.GoogleSignInState.Success -> {
                 println("✅ [Google Sign-In Login] Success! Navigating to dashboard...")
+                forceShowLoading = true
                 isGettingGoogleToken = false
-                onLoginSuccess(
-                    state.user,
-                    "Google sign-in successful",
-                    state.accessToken,
-                    state.refreshToken
-                )
+
+                // Show loading for a moment before navigating
+                delay(800)
+
+                if (!hasNavigated) {
+                    hasNavigated = true
+                    onLoginSuccess(
+                        state.user,
+                        "Google sign-in successful",
+                        state.accessToken,
+                        state.refreshToken
+                    )
+                }
                 viewModel.resetGoogleSignInState()
             }
             is LoginViewModel.GoogleSignInState.Error -> {
                 println("❌ [Google Sign-In Login] Error: ${state.message}")
                 isGettingGoogleToken = false
+                forceShowLoading = false
                 viewModel.resetGoogleSignInState()
             }
             is LoginViewModel.GoogleSignInState.Loading -> {
                 println("⏳ [Google Sign-In Login] Processing...")
+                forceShowLoading = true
             }
             else -> {}
         }
     }
 
     // Show loading overlay for Google Sign-In
-    val showGoogleLoading = isGettingGoogleToken || googleSignInState is LoginViewModel.GoogleSignInState.Loading
+    val showGoogleLoading = isGettingGoogleToken ||
+            googleSignInState is LoginViewModel.GoogleSignInState.Loading ||
+            forceShowLoading
 
     if (showGoogleLoading) {
         PivotaFullScreenLoading(message = "Please wait...")
@@ -365,6 +395,8 @@ fun LoginFormContent(
                         onClick = {
                             println("🔍 [LoginFormContent] Google button clicked")
                             isGettingGoogleToken = true
+                            forceShowLoading = false
+                            hasNavigated = false
                             coroutineScope.launch {
                                 signInWithGoogle()
                             }
@@ -637,6 +669,64 @@ fun LoginFormContent(
             snackbarMessage = dialogSnackbarMessage,
             snackbarType = dialogSnackbarType,
             onSnackbarDismiss = { dialogSnackbarMessage = null }
+        )
+    }
+
+    // Add Account Dialog for devices without Google accounts
+    if (showAddAccountDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showAddAccountDialog = false
+                isGettingGoogleToken = false
+            },
+            title = {
+                Text(
+                    "No Google Account Found",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "To continue with Google Sign-In, you need to add a Google account to this device.",
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Text(
+                        "Would you like to add an account now?",
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showAddAccountDialog = false
+                        try {
+                            val intent = android.content.Intent(android.provider.Settings.ACTION_ADD_ACCOUNT)
+                            intent.putExtra(android.provider.Settings.EXTRA_AUTHORITIES, arrayOf("com.google"))
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            println("Failed to launch account addition: ${e.message}")
+                            viewModel.showErrorMessage("Please add a Google account in device Settings")
+                        }
+                    }
+                ) {
+                    Text("Add Account")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAddAccountDialog = false
+                        viewModel.showInfoMessage(
+                            "You can sign in with email instead. Register manually instead and login manually."
+                        )
+                    }
+                ) {
+                    Text("Use Email Instead")
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
         )
     }
 }

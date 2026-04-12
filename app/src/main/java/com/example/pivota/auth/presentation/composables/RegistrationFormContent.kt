@@ -70,12 +70,18 @@ fun RegistrationFormContent(
     // Get Web Client ID from strings.xml
     val webClientId = stringResource(R.string.default_web_client_id)
 
+    var showAddAccountDialog by remember { mutableStateOf(false) }
+
     // Function to sign in with Google
+
     suspend fun signInWithGoogle() {
         try {
+            println("🔐 [Google Sign-In] Starting Google Sign-In flow...")
+
             val googleIdOption = GetGoogleIdOption.Builder()
                 .setServerClientId(webClientId)
                 .setFilterByAuthorizedAccounts(false)
+                .setAutoSelectEnabled(false)
                 .build()
 
             val request = GetCredentialRequest.Builder()
@@ -89,7 +95,6 @@ fun RegistrationFormContent(
                 val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
                 val idToken = googleIdTokenCredential.idToken
                 if (!idToken.isNullOrEmpty()) {
-                    println("✅ [Google Sign-In] ID Token received, sending to backend...")
                     viewModel.signUpWithGoogle(idToken)
                 } else {
                     isGettingGoogleToken = false
@@ -102,11 +107,31 @@ fun RegistrationFormContent(
         } catch (e: GetCredentialException) {
             isGettingGoogleToken = false
             println("❌ [Google Sign-In] Error: ${e.message}")
-            viewModel.showMainSnackbar("Google Sign-In failed: ${e.message}", SnackbarType.ERROR)
+
+            // ONLY show dialog if the error explicitly says no credentials
+            val shouldShowDialog = e.message?.contains("NO_CREDENTIALS", ignoreCase = true) == true ||
+                    e.message?.contains("No credentials", ignoreCase = true) == true ||
+                    e.message?.contains("CREDENTIAL_NOT_FOUND", ignoreCase = true) == true
+
+            if (shouldShowDialog) {
+                println("No Google accounts found - showing add account dialog")
+                showAddAccountDialog = true
+            } else if (e.message?.contains("canceled", ignoreCase = true) == true) {
+                println("User cancelled - doing nothing")
+            } else {
+                // For any other error (including what happens on devices WITH accounts)
+                println("Other error - not showing dialog: ${e.message}")
+                // Optionally show a snackbar for unexpected errors
+                if (e.message?.isNotBlank() == true) {
+                    viewModel.showMainSnackbar("Google Sign-In failed: ${e.message}", SnackbarType.ERROR)
+                }
+            }
         } catch (e: Exception) {
             isGettingGoogleToken = false
             println("❌ [Google Sign-In] Exception: ${e.message}")
-            viewModel.showMainSnackbar("Google Sign-In failed: ${e.message}", SnackbarType.ERROR)
+            if (!e.message?.contains("cancel", ignoreCase = true)!!) {
+                viewModel.showMainSnackbar("Google Sign-In failed: ${e.message}", SnackbarType.ERROR)
+            }
         }
     }
 
@@ -745,6 +770,66 @@ fun RegistrationFormContent(
                 otpError = null
                 viewModel.resetDialogCloseFlag()
             }
+        )
+
+
+    }
+
+    if (showAddAccountDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showAddAccountDialog = false
+                isGettingGoogleToken = false
+            },
+            title = {
+                Text(
+                    "No Google Account Found",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "To continue with Google Sign-In, you need to add a Google account to this device.",
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Text(
+                        "Would you like to add an account now?",
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showAddAccountDialog = false
+                        try {
+                            val intent = android.content.Intent(android.provider.Settings.ACTION_ADD_ACCOUNT)
+                            intent.putExtra(android.provider.Settings.EXTRA_AUTHORITIES, arrayOf("com.google"))
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            println("Failed to launch account addition: ${e.message}")
+                            viewModel.showMainSnackbar("Please add a Google account in device Settings", SnackbarType.ERROR)
+                        }
+                    }
+                ) {
+                    Text("Add Account")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAddAccountDialog = false
+                        viewModel.showMainSnackbar(
+                            "You can sign up with email instead. Fill in the form below instead.",
+                            SnackbarType.INFO
+                        )
+                    }
+                ) {
+                    Text("Use Email Instead")
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
         )
     }
 }

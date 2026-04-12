@@ -530,6 +530,16 @@ class LoginViewModel @Inject constructor(
         }
     }
 
+    fun showInfoMessage(message: String) {
+        _snackbarMessage.value = message
+        _snackbarType.value = SnackbarType.INFO
+        viewModelScope.launch {
+            delay(4000)
+            clearSnackbar()
+        }
+
+    }
+
     fun resetState() {
         _uiState.value = LoginUiState.Idle
         clearOtp()
