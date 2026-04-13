@@ -792,7 +792,7 @@ fun RegistrationFormContent(
         )
     }
 
-    // Add Account Dialog for devices without Google accounts
+    // Add Account Dialog for devices without Google accounts - this should only show once
     if (showAddAccountDialog) {
         AlertDialog(
             onDismissRequest = {
