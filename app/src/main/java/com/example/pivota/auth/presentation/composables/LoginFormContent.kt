@@ -80,11 +80,16 @@ fun LoginFormContent(
     // Dialog state for adding account
     var showAddAccountDialog by remember { mutableStateOf(false) }
 
+    var hasShownAccountPicker by remember { mutableStateOf(false) }
+
     // Function to sign in with Google - Login only (no onboarding data)
     suspend fun signInWithGoogle() {
         try {
             println("🔍 [Google Sign-In] Starting Google Sign-In...")
             println("🔍 [Google Sign-In] Web Client ID: $webClientId")
+
+            // Reset the flag when starting
+            hasShownAccountPicker = false
 
             val googleIdOption = GetGoogleIdOption.Builder()
                 .setServerClientId(webClientId)
@@ -99,6 +104,9 @@ fun LoginFormContent(
             println("🔍 [Google Sign-In] Request built, calling credential manager...")
             val response = credentialManager.getCredential(context, request)
             println("✅ [Google Sign-In] Got credential response")
+
+            // If we get here, the account picker was shown and user selected something
+            hasShownAccountPicker = true
 
             val credential = response.credential
             println("🔍 [Google Sign-In] Credential type: ${credential.type}")
@@ -121,25 +129,30 @@ fun LoginFormContent(
             }
         } catch (e: GetCredentialException) {
             isGettingGoogleToken = false
-            println("❌ [Google Sign-In] Error: ${e.message}")
+            println("❌ [Google Sign-In] GetCredentialException: ${e::class.simpleName}")
+            println("❌ [Google Sign-In] Error message: '${e.message}'")
+            e.printStackTrace()
 
-            // ONLY show dialog if the error explicitly says no credentials
-            val shouldShowDialog = e.message?.contains("NO_CREDENTIALS", ignoreCase = true) == true ||
-                    e.message?.contains("No credentials", ignoreCase = true) == true ||
-                    e.message?.contains("CREDENTIAL_NOT_FOUND", ignoreCase = true) == true
+            val errorMessage = e.message ?: ""
 
-            if (shouldShowDialog) {
+            // If the account picker was shown and we get an error, it's likely a cancellation
+            if (hasShownAccountPicker) {
+                println("Account picker was shown but got error - likely user cancelled")
+                return
+            }
+
+            // Check if this is a "no credentials" error (device has no Google accounts)
+            if (errorMessage.contains("NO_CREDENTIALS", ignoreCase = true) ||
+                errorMessage.contains("No credentials", ignoreCase = true) ||
+                errorMessage.contains("CREDENTIAL_NOT_FOUND", ignoreCase = true)) {
                 println("No Google accounts found - showing add account dialog")
                 showAddAccountDialog = true
-            } else if (e.message?.contains("canceled", ignoreCase = true) == true) {
-                println("User cancelled - doing nothing")
             } else {
-                // For any other error (including what happens on devices WITH accounts)
-                println("Other error - not showing dialog: ${e.message}")
-                // Optionally show a snackbar for unexpected errors
-                if (e.message?.isNotBlank() == true) {
-                    viewModel.showErrorMessage("Google Sign-In failed: ${e.message}")
-                }
+                // For devices WITH accounts, the first attempt might fail differently
+                // We should retry or just let the user try again
+                println("Error on device with accounts - user should try again: $errorMessage")
+                // Don't show dialog, just a friendly message
+                viewModel.showInfoMessage("Please try again or use email sign in")
             }
         } catch (e: Exception) {
             isGettingGoogleToken = false
@@ -688,30 +701,64 @@ fun LoginFormContent(
             text = {
                 Column {
                     Text(
-                        "To continue with Google Sign-In, you need to add a Google account to this device.",
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        "To use Google Sign-In, you need a Google account on this device.",
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(bottom = 12.dp)
                     )
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "📱 How to add a Google account:",
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            Text("1. Open device Settings", modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
+                            Text("2. Tap on 'Accounts' or 'Users & accounts'", modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
+                            Text("3. Tap 'Add account'", modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
+                            Text("4. Select 'Google'", modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
+                            Text("5. Follow the prompts to sign in or create account", modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+
                     Text(
-                        "Would you like to add an account now?",
-                        fontWeight = FontWeight.Medium
+                        "After adding your account, return to the app and try Google Sign-In again.",
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                 }
             },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         showAddAccountDialog = false
                         try {
-                            val intent = android.content.Intent(android.provider.Settings.ACTION_ADD_ACCOUNT)
-                            intent.putExtra(android.provider.Settings.EXTRA_AUTHORITIES, arrayOf("com.google"))
+                            // Open device account settings
+                            val intent = android.content.Intent(android.provider.Settings.ACTION_SYNC_SETTINGS)
                             context.startActivity(intent)
                         } catch (e: Exception) {
-                            println("Failed to launch account addition: ${e.message}")
-                            viewModel.showErrorMessage("Please add a Google account in device Settings")
+                            try {
+                                // Alternative: Open settings main page
+                                val intent = android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
+                                context.startActivity(intent)
+                            } catch (ex: Exception) {
+                                viewModel.showInfoMessage("Please add a Google account in Settings > Accounts")
+                            }
                         }
-                    }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Add Account")
+                    Text("Open Settings")
                 }
             },
             dismissButton = {
@@ -719,9 +766,10 @@ fun LoginFormContent(
                     onClick = {
                         showAddAccountDialog = false
                         viewModel.showInfoMessage(
-                            "You can sign in with email instead. Register manually instead and login manually."
+                            "You can sign in with email instead."
                         )
-                    }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Use Email Instead")
                 }
