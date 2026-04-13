@@ -1,6 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,12 +7,15 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     id("com.google.dagger.hilt.android")
-
 }
 
 android {
     namespace = "com.example.pivota"
     compileSdk = 36
+
+    kotlin {
+        jvmToolchain(17)
+    }
 
     defaultConfig {
         applicationId = "com.example.pivota"
@@ -21,7 +23,6 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -46,6 +47,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -54,11 +56,11 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.compose.ui.unit)
+
     val nav_version = "2.9.0"
     val room_version = "2.8.4"
     val ktorVersion = "3.0.0"
@@ -71,6 +73,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -79,67 +82,56 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
-    //For Navigation - Jetpack Compose
+    // Navigation
     implementation("androidx.navigation:navigation-compose:$nav_version")
-
-    // Testing Navigation.
     androidTestImplementation("androidx.navigation:navigation-testing:$nav_version")
-
-    //Navigation Suite
     implementation("androidx.compose.material3:material3-adaptive-navigation-suite-android:1.3.0-beta01")
 
-    //For Adaptability
+    // Adaptability
     implementation("androidx.compose.material3.adaptive:adaptive:1.2.0-alpha04")
-    implementation ("androidx.compose.material3.adaptive:adaptive-layout:1.2.0-alpha04")
-    implementation ("androidx.compose.material3.adaptive:adaptive-navigation:1.2.0-alpha04")
+    implementation("androidx.compose.material3.adaptive:adaptive-layout:1.2.0-alpha04")
+    implementation("androidx.compose.material3.adaptive:adaptive-navigation:1.2.0-alpha04")
 
-    //Google Fonts
+    // Google Fonts
     implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
 
-    //Coil for images
+    // Coil
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
-
-    
-    // Add this line to get FavoriteBorder and others
     implementation("androidx.compose.material:material-icons-extended")
 
+    // Hilt
     implementation("com.google.dagger:hilt-android:2.57.1")
     ksp("com.google.dagger:hilt-android-compiler:2.57.1")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
-
-
+    // Room
     implementation("androidx.room:room-runtime:$room_version")
-
-    // If this project uses any Kotlin source, use Kotlin Symbol Processing (KSP)
-    // See Add the KSP plugin to your project
     ksp("androidx.room:room-compiler:$room_version")
-
-    // optional - Kotlin Extensions and Coroutines support for Room
     implementation("androidx.room:room-ktx:${room_version}")
 
-    // Preferences DataStore (SharedPreferences like APIs)
+    // DataStore
     implementation("androidx.datastore:datastore-preferences:1.2.0")
-
-
-    // Typed DataStore for custom data objects (for example, using Proto or JSON).
     implementation("androidx.datastore:datastore:1.2.0")
 
-
+    // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
 
+    // Lottie
     implementation("com.airbnb.android:lottie-compose:6.4.0")
 
+    // Ktor
     implementation("io.ktor:ktor-client-android:${ktorVersion}")
     implementation("io.ktor:ktor-client-content-negotiation:${ktorVersion}")
     implementation("io.ktor:ktor-serialization-kotlinx-json:${ktorVersion}")
     implementation("io.ktor:ktor-client-logging:${ktorVersion}")
 
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
 
-
-
-
-
+    // Credential Manager (as per documentation)
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 }

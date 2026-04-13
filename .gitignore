@@ -13,3 +13,12 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Ignore all build outputs and APK files
+*.apk
+*.aab
+*.dm
+
+# Ignore Android Studio IDE specific settings
+.idea/
+.idea/deploymentTargetSelector.xml

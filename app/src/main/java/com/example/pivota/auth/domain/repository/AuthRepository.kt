@@ -6,6 +6,7 @@ import com.example.pivota.auth.data.remote.dto.LoginResponseDto
 import com.example.pivota.auth.data.remote.dto.RefreshTokenResponseDto
 import com.example.pivota.auth.data.remote.dto.SignupResponseDto
 import com.example.pivota.auth.data.remote.dto.VerifyOtpResponseDto
+import com.example.pivota.auth.domain.model.LoginResponse
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.core.network.ApiResult
 
@@ -40,6 +41,19 @@ interface AuthRepository {
      * Backend returns: LoginResponseDto (BaseResponseDto<LoginDataDto>)
      */
     suspend fun verifyMfaLogin(email: String, code: String): ApiResult<LoginResponseDto>
+
+    /**
+     * Google Sign-In - Login or Register using Google OAuth token
+     *
+     * @param idToken The Google ID token from the client
+     * @param onboardingData Optional onboarding data collected from previous screens
+     *                       (primaryPurpose, jobSeekerData, housingSeekerData, etc.)
+     * @return LoginResponseDto with tokens and user info (same as regular login)
+     */
+    suspend fun googleSignIn(
+        idToken: String,
+        onboardingData: Map<String, Any?>? = null
+    ): ApiResult<LoginResponse>
 
     /**
      * Refresh expired access token

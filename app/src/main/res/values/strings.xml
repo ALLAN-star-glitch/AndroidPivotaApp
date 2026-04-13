@@ -4,4 +4,7 @@
     <string name="post">Post</string>
     <string name="manage">Manage</string>
     <string name="settings">Settings\n\n</string>
+
+    <!-- Google Sign-In Web Client ID - Used for backend token verification -->
+    <string name="default_web_client_id" translatable="false">759373816085-4o3n6e05g7ck3k6nb3f016c4civles7h.apps.googleusercontent.com</string>
 </resources>

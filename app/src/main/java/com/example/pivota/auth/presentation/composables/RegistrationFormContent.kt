@@ -18,6 +18,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -25,6 +27,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
 import com.airbnb.lottie.compose.*
 import com.example.pivota.R
 import com.example.pivota.auth.domain.model.User
@@ -36,6 +42,8 @@ import com.example.pivota.core.presentations.composables.PivotaSnackbar
 import com.example.pivota.core.presentations.composables.SnackbarType
 import com.example.pivota.core.presentations.composables.buttons.AuthGoogleButton
 import com.example.pivota.ui.theme.SuccessGreen
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -43,32 +51,167 @@ import kotlinx.coroutines.launch
 fun RegistrationFormContent(
     viewModel: SignupViewModel,
     onRegisterSuccess: (String, String, String, User?) -> Unit,
-    onLoginLinkClick: () -> Unit,
-    onGoogleSignUpClick: () -> Unit
+    onLoginLinkClick: () -> Unit
 ) {
-    // Add logging to debug tablet visibility
-    LaunchedEffect(Unit) {
-        println("🔍 [RegistrationFormContent] Composed - should be visible")
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    // Credential Manager
+    val credentialManager = remember { CredentialManager.create(context) }
+
+    // Google Sign-In State
+    val googleSignInState by viewModel.googleSignInState.collectAsState()
+    var isGettingGoogleToken by remember { mutableStateOf(false) }
+
+    // Force loading to stay visible during navigation
+    var forceShowLoading by remember { mutableStateOf(false) }
+    var hasNavigated by remember { mutableStateOf(false) }
+
+    // Get Web Client ID from strings.xml
+    val webClientId = stringResource(R.string.default_web_client_id)
+
+    // Dialog state for adding account
+    var showAddAccountDialog by remember { mutableStateOf(false) }
+    var hasShownAccountPicker by remember { mutableStateOf(false) }
+
+    // Function to sign in with Google
+    suspend fun signInWithGoogle() {
+        try {
+            println("🔐 [Google Sign-In] Starting Google Sign-In flow...")
+
+            // Reset the flag when starting
+            hasShownAccountPicker = false
+
+            val googleIdOption = GetGoogleIdOption.Builder()
+                .setServerClientId(webClientId)
+                .setFilterByAuthorizedAccounts(false)
+                .setAutoSelectEnabled(false)
+                .build()
+
+            val request = GetCredentialRequest.Builder()
+                .addCredentialOption(googleIdOption)
+                .build()
+
+            println("🔐 [Google Sign-In] Request built, calling credential manager...")
+            val response = credentialManager.getCredential(context, request)
+            println("✅ [Google Sign-In] Got credential response")
+
+            // If we get here, the account picker was shown and user selected something
+            hasShownAccountPicker = true
+
+            val credential = response.credential
+            if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                val idToken = googleIdTokenCredential.idToken
+                if (!idToken.isNullOrEmpty()) {
+                    println("✅ [Google Sign-In] ID Token received, sending to backend...")
+                    viewModel.signUpWithGoogle(idToken)
+                } else {
+                    isGettingGoogleToken = false
+                    viewModel.showMainSnackbar("Failed to get ID token", SnackbarType.ERROR)
+                }
+            } else {
+                isGettingGoogleToken = false
+                viewModel.showMainSnackbar("Invalid credential type", SnackbarType.ERROR)
+            }
+        } catch (e: GetCredentialException) {
+            isGettingGoogleToken = false
+            println("❌ [Google Sign-In] GetCredentialException: ${e::class.simpleName}")
+            println("❌ [Google Sign-In] Error message: '${e.message}'")
+            e.printStackTrace()
+
+            val errorMessage = e.message ?: ""
+
+            // If the account picker was shown and we get an error, it's likely a cancellation
+            if (hasShownAccountPicker) {
+                println("Account picker was shown but got error - likely user cancelled")
+                return
+            }
+
+            // ONLY show dialog if the error explicitly says no credentials
+            val shouldShowDialog = errorMessage.contains("NO_CREDENTIALS", ignoreCase = true) ||
+                    errorMessage.contains("No credentials", ignoreCase = true) ||
+                    errorMessage.contains("CREDENTIAL_NOT_FOUND", ignoreCase = true)
+
+            if (shouldShowDialog) {
+                println("No Google accounts found - showing add account dialog")
+                showAddAccountDialog = true
+            } else if (errorMessage.contains("canceled", ignoreCase = true)) {
+                println("User cancelled - doing nothing")
+            } else {
+                // For any other error (including what happens on devices WITH accounts)
+                println("Other error - not showing dialog: ${e.message}")
+                if (errorMessage.isNotBlank()) {
+                    viewModel.showMainSnackbar("Google Sign-In failed: ${e.message}", SnackbarType.ERROR)
+                }
+            }
+        } catch (e: Exception) {
+            isGettingGoogleToken = false
+            println("❌ [Google Sign-In] Exception: ${e.message}")
+            if (!e.message?.contains("cancel", ignoreCase = true)!!) {
+                viewModel.showMainSnackbar("Google Sign-In failed: ${e.message}", SnackbarType.ERROR)
+            }
+        }
     }
 
+    // Handle Google Sign-In success
+    LaunchedEffect(googleSignInState) {
+        when (val state = googleSignInState) {
+            is SignupViewModel.GoogleSignInState.Success -> {
+                println("✅ [Google Sign-In] Success! Preparing to navigate...")
+                // Force loading to stay visible
+                forceShowLoading = true
+                isGettingGoogleToken = false
+
+                // Show loading for a moment before navigating
+                delay(800)
+
+                if (!hasNavigated) {
+                    hasNavigated = true
+                    println("✅ [Google Sign-In] Navigating to dashboard now...")
+                    onRegisterSuccess(
+                        "Google sign-in successful",
+                        state.accessToken,
+                        state.refreshToken,
+                        state.user
+                    )
+                }
+            }
+            is SignupViewModel.GoogleSignInState.Error -> {
+                println("❌ [Google Sign-In] Error: ${state.message}")
+                isGettingGoogleToken = false
+                forceShowLoading = false
+            }
+            is SignupViewModel.GoogleSignInState.Loading -> {
+                println("⏳ [Google Sign-In] Processing...")
+                forceShowLoading = true
+            }
+            else -> {}
+        }
+    }
+
+    // Show single continuous loading overlay
+    val showGoogleLoading = isGettingGoogleToken ||
+            googleSignInState is SignupViewModel.GoogleSignInState.Loading ||
+            forceShowLoading
+
+    if (showGoogleLoading) {
+        // Single consistent message throughout the entire process
+        PivotaFullScreenLoading(message = "Please wait...")
+        return
+    }
+
+    // Rest of your UI code (only rendered when not loading)
     val scrollState = rememberScrollState()
     val uiState by viewModel.uiState.collectAsState()
     val formState by viewModel.formState.collectAsState()
     val otpValues by viewModel.otpValues.collectAsState()
     val resendCount by viewModel.resendCount.collectAsState()
-
-    // Collect dialog close signal from ViewModel
     val shouldCloseDialog by viewModel.shouldCloseDialog.collectAsState()
-
-    // Main screen snackbar state
     val mainSnackbarMessage by viewModel.mainSnackbarMessage.collectAsState()
     val mainSnackbarType by viewModel.mainSnackbarType.collectAsState()
-
-    // Dialog snackbar state
     val dialogSnackbarMessage by viewModel.dialogSnackbarMessage.collectAsState()
     val dialogSnackbarType by viewModel.dialogSnackbarType.collectAsState()
-
-    val coroutineScope = rememberCoroutineScope()
 
     var passwordVisible by remember { mutableStateOf(false) }
     var showOtpDialog by remember { mutableStateOf(false) }
@@ -78,20 +221,16 @@ fun RegistrationFormContent(
     var verificationFailed by remember { mutableStateOf(false) }
     var showContent by remember { mutableStateOf(false) }
 
-    // Animate content entrance
     LaunchedEffect(Unit) {
         delay(300)
         showContent = true
     }
 
-    // Local password validation state
     var localPasswordError by remember { mutableStateOf<String?>(null) }
 
-    // Track if we're in OTP request or verification
     val isRequestingOtp = uiState is SignupUiState.Loading && !showOtpDialog
     val isVerifyingOtp = uiState is SignupUiState.Loading && showOtpDialog
 
-    // Lottie animation
     val composition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(R.raw.signup_animation)
     )
@@ -101,7 +240,6 @@ fun RegistrationFormContent(
         isPlaying = true
     )
 
-    // Password validation
     fun validatePassword(password: String): String? {
         return when {
             password.isBlank() -> null
@@ -120,7 +258,6 @@ fun RegistrationFormContent(
         localPasswordError = validatePassword(newValue)
     }
 
-    // Countdown timer
     LaunchedEffect(uiState) {
         if (uiState is SignupUiState.OtpSent) {
             countdown = 60
@@ -131,7 +268,6 @@ fun RegistrationFormContent(
         }
     }
 
-    // Handle dialog close signal
     LaunchedEffect(shouldCloseDialog) {
         if (shouldCloseDialog && showOtpDialog) {
             showOtpDialog = false
@@ -142,7 +278,6 @@ fun RegistrationFormContent(
         }
     }
 
-    // Handle UI state changes
     LaunchedEffect(uiState) {
         when (uiState) {
             is SignupUiState.OtpSent -> {
@@ -212,7 +347,6 @@ fun RegistrationFormContent(
 
     val displayPasswordError = localPasswordError
 
-    // Use a Box with fillMaxSize to ensure it takes full space in the right pane
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -226,10 +360,8 @@ fun RegistrationFormContent(
                 .padding(top = 32.dp, bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Reduced spacing for tablet
             Spacer(Modifier.height(16.dp))
 
-            // Animated Lottie Animation - smaller on tablet
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(600, easing = FastOutSlowInEasing)) +
@@ -251,7 +383,6 @@ fun RegistrationFormContent(
 
             Spacer(Modifier.height(8.dp))
 
-            // Animated Header
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(600, delayMillis = 100, easing = FastOutSlowInEasing)) +
@@ -289,7 +420,7 @@ fun RegistrationFormContent(
 
             Spacer(Modifier.height(20.dp))
 
-            // Google Button at the TOP (after header)
+            // Google Button with Credential Manager
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)) +
@@ -300,7 +431,14 @@ fun RegistrationFormContent(
             ) {
                 Column {
                     AuthGoogleButton(
-                        onClick = onGoogleSignUpClick,
+                        onClick = {
+                            isGettingGoogleToken = true
+                            forceShowLoading = false
+                            hasNavigated = false
+                            coroutineScope.launch {
+                                signInWithGoogle()
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -651,6 +789,100 @@ fun RegistrationFormContent(
                 otpError = null
                 viewModel.resetDialogCloseFlag()
             }
+        )
+    }
+
+    // Add Account Dialog for devices without Google accounts - this should only show once
+    if (showAddAccountDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showAddAccountDialog = false
+                isGettingGoogleToken = false
+            },
+            title = {
+                Text(
+                    "No Google Account Found",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "To use Google Sign-In, you need a Google account on this device.",
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "📱 How to add a Google account:",
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            Text("1. Open device Settings", modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
+                            Text("2. Tap on 'Accounts' or 'Users & accounts'", modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
+                            Text("3. Tap 'Add account'", modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
+                            Text("4. Select 'Google'", modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
+                            Text("5. Follow the prompts to sign in or create account", modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+
+                    Text(
+                        "After adding your account, return to the app and try Google Sign-In again.",
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showAddAccountDialog = false
+                        try {
+                            // Open device account settings
+                            val intent = android.content.Intent(android.provider.Settings.ACTION_SYNC_SETTINGS)
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            try {
+                                // Alternative: Open settings main page
+                                val intent = android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
+                                context.startActivity(intent)
+                            } catch (ex: Exception) {
+                                viewModel.showMainSnackbar("Please add a Google account in Settings > Accounts", SnackbarType.INFO)
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Open Settings")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAddAccountDialog = false
+                        viewModel.showMainSnackbar(
+                            "You can sign up with email instead. Fill in the form below.",
+                            SnackbarType.INFO
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Use Email Instead")
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
         )
     }
 }

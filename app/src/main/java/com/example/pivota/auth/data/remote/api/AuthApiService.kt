@@ -2,6 +2,7 @@ package com.example.pivota.auth.data.remote.api
 
 import com.example.pivota.auth.data.remote.dto.BaseOtpResponseDto
 import com.example.pivota.auth.data.remote.dto.BaseResponseDto
+import com.example.pivota.auth.data.remote.dto.GoogleSignInRequestDto
 import com.example.pivota.auth.data.remote.dto.LoginRequestDto
 import com.example.pivota.auth.data.remote.dto.LoginResponseDto
 import com.example.pivota.auth.data.remote.dto.RefreshTokenResponseDto
@@ -175,6 +176,56 @@ class AuthApiService @Inject constructor(
             response
         } catch (e: Exception) {
             println("❌ Verify MFA Login Failed: ${e.message}")
+            throw e
+        }
+    }
+
+    // ======================================================
+    // GOOGLE SIGN-IN
+    // ======================================================
+
+    /**
+     * Google Sign-In - Login or Register using Google OAuth token
+     *
+     * @param request Contains Google ID token and optional onboarding data
+     * @return LoginResponseDto with tokens and user info (same as regular login)
+     */
+    suspend fun googleSignIn(request: GoogleSignInRequestDto): LoginResponseDto {
+        // Log REQUEST
+        println("🔍 ========== GOOGLE SIGN-IN REQUEST ==========")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/google")
+        println("🔍 TOKEN: ${request.token.take(20)}...") // Only show first 20 chars
+        println("🔍 HAS ONBOARDING DATA: ${request.onboardingData != null}")
+        request.onboardingData?.primaryPurpose?.let {
+            println("🔍 PRIMARY PURPOSE: $it")
+        }
+        println("🔍 ============================================")
+
+        return try {
+            val response: LoginResponseDto = client.post("v1/auth-module/google") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }.body()
+
+            // Log RESPONSE
+            println("🔍 ========== GOOGLE SIGN-IN RESPONSE ==========")
+            println("🔍 SUCCESS: ${response.success}")
+            println("🔍 MESSAGE: ${response.message}")
+            println("🔍 CODE: ${response.code}")
+            println("🔍 HAS TOKENS: ${response.data?.accessToken != null}")
+            println("🔍 =============================================")
+
+            response
+        } catch (e: ClientRequestException) {
+            println("❌ Google Sign-In Client Error (${e.response.status.value}): ${e.message}")
+            val errorBody = try { e.response.bodyAsText() } catch (ex: Exception) { "Unable to read error body" }
+            println("❌ Error Body: $errorBody")
+            throw e
+        } catch (e: ServerResponseException) {
+            println("❌ Google Sign-In Server Error (${e.response.status.value}): ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("❌ Google Sign-In Failed: ${e.message}")
             throw e
         }
     }

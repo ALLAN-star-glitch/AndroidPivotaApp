@@ -11,6 +11,7 @@ data class AuthUseCases(
     val requestPasswordReset: RequestPasswordResetUseCase,
     val resetPassword: ResetPasswordUseCase,
     val logout: LogoutUseCase,
+    val googleSignIn: GoogleSignInUseCase,
     val hasSeenWelcome: HasSeenWelcomeUseCase,
     val setWelcomeSeen: SetWelcomeSeenUseCase
 )

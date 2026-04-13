@@ -40,7 +40,8 @@ abstract class AuthModule {
                 resetPassword = ResetPasswordUseCase(repository),
                 logout = LogoutUseCase(repository),
                 setWelcomeSeen = SetWelcomeSeenUseCase(repository),
-                hasSeenWelcome = HasSeenWelcomeUseCase(repository)
+                hasSeenWelcome = HasSeenWelcomeUseCase(repository),
+                googleSignIn = GoogleSignInUseCase(repository)
             )
         }
     }

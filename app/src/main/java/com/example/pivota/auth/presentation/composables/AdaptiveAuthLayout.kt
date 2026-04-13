@@ -150,7 +150,6 @@ private fun AuthFormSwitcher(
         if (isLoginScreen) {
             LoginFormContent(
                 onLoginSuccess = onLoginSuccess,
-                onGoogleLoginClick = onGoogleLoginClick,
                 onRegisterLinkClick = onRegisterClick,
                 onForgotPasswordClick = onForgotPasswordClick,
                 successMessage = successMessage
@@ -161,8 +160,7 @@ private fun AuthFormSwitcher(
                 RegistrationFormContent(
                     viewModel = vm,
                     onRegisterSuccess = onRegisterSuccess,
-                    onLoginLinkClick = onLoginClick,
-                    onGoogleSignUpClick = onGoogleSignUpClick
+                    onLoginLinkClick = onLoginClick
                 )
             }
         }
