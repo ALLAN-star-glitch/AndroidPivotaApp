@@ -22,3 +22,5 @@ local.properties
 # Ignore Android Studio IDE specific settings
 .idea/
 .idea/deploymentTargetSelector.xml
+.idea/
+app/release/
