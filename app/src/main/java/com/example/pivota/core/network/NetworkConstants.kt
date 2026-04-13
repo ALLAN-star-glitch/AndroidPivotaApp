@@ -4,6 +4,7 @@ import kotlinx.serialization.json.Json
 
 object NetworkConstants {
     const val BASE_URL = "https://revisionary-leanne-diffusely.ngrok-free.dev/"
+    //const val BASE_URL = "http://localhost:10000/"
 
     // Increased timeout values
     const val TIMEOUT_MILLIS = 60000L           // 60 seconds (was 30000)
