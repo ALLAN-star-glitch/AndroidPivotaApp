@@ -16,6 +16,8 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
+import com.example.pivota.auth.domain.model.LoginResponse
+import com.example.pivota.core.network.NetworkError
 
 class AuthRepositoryImpl @Inject constructor(
     private val apiService: AuthApiService,
@@ -176,6 +178,65 @@ class AuthRepositoryImpl @Inject constructor(
                 ApiResult.Loading -> {
                     // Loading state - do nothing, just return
                     apiResult
+                }
+            }
+        }
+    }
+
+    // ======================================================
+    // GOOGLE SIGN-IN
+    // ======================================================
+
+    override suspend fun googleSignIn(
+        idToken: String,
+        onboardingData: Map<String, Any?>?
+    ): ApiResult<LoginResponse> {
+        val request = GoogleSignInRequestDto(
+            token = idToken,
+            onboardingData = onboardingData?.let { data ->
+                GoogleOnboardingDataDto(
+                    primaryPurpose = data["primaryPurpose"] as? String,
+                    jobSeekerData = data["jobSeekerData"] as? JobSeekerProfileDataDto,
+                    housingSeekerData = data["housingSeekerData"] as? HousingSeekerProfileDataDto,
+                    skilledProfessionalData = data["skilledProfessionalData"] as? SkilledProfessionalProfileDataDto,
+                    intermediaryAgentData = data["intermediaryAgentData"] as? IntermediaryAgentProfileDataDto,
+                    supportBeneficiaryData = data["supportBeneficiaryData"] as? SupportBeneficiaryProfileDataDto,
+                    employerData = data["employerData"] as? EmployerProfileDataDto,
+                    propertyOwnerData = data["propertyOwnerData"] as? PropertyOwnerProfileDataDto
+                )
+            }
+        )
+
+        return safeApiCall {
+            apiService.googleSignIn(request)
+        }.let { apiResult ->
+            when (apiResult) {
+                is ApiResult.Success -> {
+                    val response = apiResult.data
+                    println("🔍 [Google Sign-In] Response: success=${response.success}, message=${response.message}")
+
+                    try {
+                        // Use the existing mapper to convert DTO to domain model
+                        val loginResponse = mapper.toLoginResponse(response)
+
+                        // Save authenticated user if login successful
+                        if (loginResponse is LoginResponse.Authenticated) {
+                            saveAuthenticatedUser(loginResponse.user)
+                            println("🔍 [Google Sign-In] User authenticated: ${loginResponse.user.email}")
+                        }
+
+                        ApiResult.Success(loginResponse)
+                    } catch (e: Exception) {
+                        println("❌ [Google Sign-In] Parse error: ${e.message}")
+                        ApiResult.Error(NetworkError.ParsingError)
+                    }
+                }
+                is ApiResult.Error -> {
+                    println("❌ [Google Sign-In] Failed: ${apiResult.networkError.userFriendlyMessage}")
+                    ApiResult.Error(apiResult.networkError)
+                }
+                ApiResult.Loading -> {
+                    ApiResult.Loading
                 }
             }
         }

@@ -425,6 +425,63 @@ class PivotaDataStore @Inject constructor(
             it.remove(WELCOME_SCREEN_SEEN)
         }
     }
+
+
+
+
+    suspend fun clearPrimaryPurpose() {
+        dataStore.edit { it.remove(OB_PRIMARY_PURPOSE) }
+    }
+
+    suspend fun clearJobSeekerData() {
+        dataStore.edit { it.remove(OB_JOB_SEEKER_DATA) }
+    }
+
+    suspend fun clearSkilledProfessionalData() {
+        dataStore.edit { it.remove(OB_SKILLED_PROFESSIONAL_DATA) }
+    }
+
+    suspend fun clearIntermediaryAgentData() {
+        dataStore.edit { it.remove(OB_INTERMEDIARY_AGENT_DATA) }
+    }
+
+    suspend fun clearHousingSeekerData() {
+        dataStore.edit { it.remove(OB_HOUSING_SEEKER_DATA) }
+    }
+
+    suspend fun clearSupportBeneficiaryData() {
+        dataStore.edit { it.remove(OB_SUPPORT_BENEFICIARY_DATA) }
+    }
+
+    suspend fun clearEmployerData() {
+        dataStore.edit { it.remove(OB_EMPLOYER_DATA) }
+    }
+
+    suspend fun clearPropertyOwnerData() {
+        dataStore.edit { it.remove(OB_PROPERTY_OWNER_DATA) }
+    }
+
+    suspend fun clearAllOnboardingData() {
+        dataStore.edit {
+            it.remove(OB_ACCOUNT_TYPE)
+            it.remove(OB_PRIMARY_PURPOSE)
+            it.remove(OB_FIRST_NAME)
+            it.remove(OB_LAST_NAME)
+            it.remove(OB_EMAIL)
+            it.remove(OB_PHONE)
+            it.remove(OB_PASSWORD)
+            it.remove(OB_OTP_CODE)
+            it.remove(OB_PLAN_SLUG)
+            it.remove(OB_PROFILE_IMAGE)
+            it.remove(OB_JOB_SEEKER_DATA)
+            it.remove(OB_SKILLED_PROFESSIONAL_DATA)
+            it.remove(OB_INTERMEDIARY_AGENT_DATA)
+            it.remove(OB_HOUSING_SEEKER_DATA)
+            it.remove(OB_SUPPORT_BENEFICIARY_DATA)
+            it.remove(OB_EMPLOYER_DATA)
+            it.remove(OB_PROPERTY_OWNER_DATA)
+        }
+    }
 }
 
 // ======================================================
@@ -556,3 +613,4 @@ data class PropertyOwnerData(
     val isProfessional: Boolean = false,
     val preferredPropertyTypes: List<String> = emptyList()
 )
+

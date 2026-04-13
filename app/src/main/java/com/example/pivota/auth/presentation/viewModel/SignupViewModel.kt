@@ -2,6 +2,7 @@ package com.example.pivota.auth.presentation.viewModel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.pivota.auth.domain.model.LoginResponse
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.domain.useCase.AuthUseCases
 import com.example.pivota.auth.presentation.state.SignupUiState
@@ -72,9 +73,19 @@ class SignupViewModel @Inject constructor(
     var pendingEmail: String = ""
         private set
 
+    private val _googleSignInState = MutableStateFlow<GoogleSignInState>(GoogleSignInState.Idle)
+    val googleSignInState: StateFlow<GoogleSignInState> = _googleSignInState.asStateFlow()
+
+    sealed class GoogleSignInState {
+        object Idle : GoogleSignInState()
+        object Loading : GoogleSignInState()
+        data class Success(val user: User, val accessToken: String, val refreshToken: String) : GoogleSignInState()
+        data class Error(val message: String) : GoogleSignInState()
+    }
+
     /* ---------------- SNACKBAR ACTIONS ---------------- */
 
-    private fun showMainSnackbar(message: String, type: SnackbarType = SnackbarType.ERROR) {
+    fun showMainSnackbar(message: String, type: SnackbarType = SnackbarType.ERROR) {
         _mainSnackbarMessage.value = message
         _mainSnackbarType.value = type
         viewModelScope.launch {
@@ -521,6 +532,195 @@ class SignupViewModel @Inject constructor(
     fun clearError() {
         if (_uiState.value is SignupUiState.Error) {
             _uiState.value = SignupUiState.Idle
+        }
+    }
+
+    // Add this method to SignupViewModel
+
+    fun signUpWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            _googleSignInState.value = GoogleSignInState.Loading
+
+            // Build onboarding data from DataStore (collected from purpose selection)
+            val onboardingData = buildGoogleOnboardingData()
+
+            val result = authUseCases.googleSignIn(idToken, onboardingData)
+
+            when (result) {
+                is ApiResult.Success -> {
+                    val loginResponse = result.data
+                    when (loginResponse) {
+                        is LoginResponse.Authenticated -> {
+                            val user = loginResponse.user
+
+                            // Save user session
+                            datastore.saveTokens(loginResponse.accessToken, loginResponse.refreshToken)
+                            datastore.saveUserEmail(user.email)
+                            datastore.markOnboardingComplete(true)
+
+                            // Save to local database
+                            val userEntity = com.example.pivota.core.database.entity.UserEntity(
+                                uuid = user.uuid,
+                                email = user.email,
+                                firstName = user.firstName,
+                                lastName = user.lastName,
+                                userName = user.userName,
+                                phone = user.personalPhone,
+                                profileImage = user.profileImage,
+                                isAuthenticated = true,
+                                isOnboardingComplete = true,
+                                hasSeenWelcomeScreen = true,
+                                primaryPurpose = user.primaryPurpose,
+                                role = user.role,
+                                accountType = user.accountType,
+                                accountId = user.accountId,
+                                accountName = user.accountName,
+                                organizationUuid = user.organizationUuid,
+                                planSlug = user.planSlug,
+                                tokenId = user.tokenId,
+                                updatedAt = System.currentTimeMillis()
+                            )
+                            userDao.insertUser(userEntity)
+
+                            // Clear onboarding data from DataStore
+                            clearOnboardingData()
+
+                            _googleSignInState.value = GoogleSignInState.Success(
+                                user = user,
+                                accessToken = loginResponse.accessToken,
+                                refreshToken = loginResponse.refreshToken
+                            )
+                        }
+                        is LoginResponse.MfaRequired -> {
+                            // Handle MFA if needed (unlikely for Google sign-in)
+                            _googleSignInState.value = GoogleSignInState.Error(
+                                "MFA verification required. Please check your email."
+                            )
+                        }
+                    }
+                }
+                is ApiResult.Error -> {
+                    val errorMessage = result.getUserFriendlyMessage()
+                    _googleSignInState.value = GoogleSignInState.Error(errorMessage)
+                    showMainSnackbar(errorMessage, SnackbarType.ERROR)
+                }
+                ApiResult.Loading -> {
+                    // Already handled
+                }
+            }
+        }
+    }
+
+    // Add this method to SignupViewModel (replacing the previous version)
+
+    private suspend fun buildGoogleOnboardingData(): Map<String, Any?>? {
+        val primaryPurpose = datastore.getPrimaryPurpose()
+        if (primaryPurpose.isNullOrBlank()) return null
+
+        val onboardingData = mutableMapOf<String, Any?>(
+            "primaryPurpose" to mapToApiPurpose(primaryPurpose)
+        )
+
+        // Add purpose-specific data using DOMAIN MODELS (not DTOs)
+        when (primaryPurpose) {
+            "Find a Job" -> {
+                datastore.getJobSeekerData()?.let { data ->
+                    onboardingData["jobSeekerData"] = mapOf(
+                        "headline" to (data.headline ?: ""),
+                        "isActivelySeeking" to data.isActivelySeeking,
+                        "skills" to data.skills,
+                        "industries" to data.industries,
+                        "jobTypes" to data.jobTypes,
+                        "seniorityLevel" to data.seniorityLevel,
+                        "expectedSalary" to data.expectedSalary,
+                    )
+                }
+            }
+            "Find Housing" -> {
+                datastore.getHousingSeekerData()?.let { data ->
+                    onboardingData["housingSeekerData"] = mapOf(
+                        "searchType" to data.searchType,
+                        "isLookingForRental" to data.isLookingForRental,
+                        "isLookingToBuy" to data.isLookingToBuy,
+                        "preferredTypes" to data.propertyTypes,
+                        "preferredCities" to data.preferredCities,
+                        "minBudget" to data.minBudget,
+                        "maxBudget" to data.maxBudget,
+                        "minBedrooms" to data.minBedrooms,
+                        "maxBedrooms" to data.maxBedrooms,
+                    )
+                }
+            }
+            "Offer Skilled Services" -> {
+                datastore.getSkilledProfessionalData()?.let { data ->
+                    onboardingData["skilledProfessionalData"] = mapOf(
+                        "profession" to (data.profession ?: ""),
+                        "specialties" to data.specialties,
+                        "serviceAreas" to data.serviceAreas,
+                        "yearsExperience" to data.yearsExperience,
+                        "licenseNumber" to data.licenseNumber,
+                        "hourlyRate" to data.hourlyRate
+                    )
+                }
+            }
+            "Work as Agent" -> {
+                datastore.getIntermediaryAgentData()?.let { data ->
+                    onboardingData["intermediaryAgentData"] = mapOf(
+                        "agentType" to (data.agentType ?: ""),
+                        "specializations" to data.specializations,
+                        "serviceAreas" to data.serviceAreas,
+                        "licenseNumber" to data.licenseNumber,
+                        "commissionRate" to data.commissionRate
+                    )
+                }
+            }
+            "Get Social Support" -> {
+                datastore.getSupportBeneficiaryData()?.let { data ->
+                    onboardingData["supportBeneficiaryData"] = mapOf(
+                        "needs" to data.needs,
+                        "urgentNeeds" to data.urgentNeeds,
+                        "city" to data.city,
+                        "familySize" to data.familySize
+                    )
+                }
+            }
+            "Hire Employees" -> {
+                datastore.getEmployerData()?.let { data ->
+                    onboardingData["employerData"] = mapOf(
+                        "businessName" to (data.businessName ?: ""),
+                        "industry" to data.industry,
+                        "companySize" to data.companySize,
+                        "description" to data.description
+                    )
+                }
+            }
+            "List Properties" -> {
+                datastore.getPropertyOwnerData()?.let { data ->
+                    onboardingData["propertyOwnerData"] = mapOf(
+                        "listingType" to data.listingType,
+                        "isListingForRent" to data.isListingForRent,
+                        "isListingForSale" to data.isListingForSale,
+                        "propertyCount" to data.propertyCount,
+                        "propertyTypes" to data.propertyTypes,
+                        "serviceAreas" to data.serviceAreas
+                    )
+                }
+            }
+        }
+
+        return onboardingData
+    }
+
+    private fun clearOnboardingData() {
+        viewModelScope.launch {
+            datastore.clearPrimaryPurpose()
+            datastore.clearJobSeekerData()
+            datastore.clearHousingSeekerData()
+            datastore.clearSkilledProfessionalData()
+            datastore.clearIntermediaryAgentData()
+            datastore.clearSupportBeneficiaryData()
+            datastore.clearEmployerData()
+            datastore.clearPropertyOwnerData()
         }
     }
 }
