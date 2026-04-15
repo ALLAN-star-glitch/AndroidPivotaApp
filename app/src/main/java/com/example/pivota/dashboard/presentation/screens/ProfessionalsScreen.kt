@@ -5,13 +5,18 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -21,16 +26,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -38,9 +40,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.dashboard.presentation.composables.*
@@ -106,23 +105,41 @@ fun ProfessionalsScreen(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val professionals by viewModel.filteredProfessionals.collectAsStateWithLifecycle()
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp
 
     // Get window size class for responsive design
     val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
-    val isExpanded = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
-    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
-    val isTablet = isExpanded || isMedium
+    val windowWidthClass = windowSizeClass.windowWidthSizeClass
+    val isExpanded = windowWidthClass == WindowWidthSizeClass.EXPANDED
+    val isMedium = windowWidthClass == WindowWidthSizeClass.MEDIUM
 
     // Adaptive grid columns based on screen size
-    val professionalGridColumns = when {
-        isExpanded -> 3
-        isMedium -> 2
+    val gridColumns = when {
+        windowWidthClass == WindowWidthSizeClass.EXPANDED -> 3
+        windowWidthClass == WindowWidthSizeClass.MEDIUM -> 2
+        screenWidth >= 900 -> 3
+        screenWidth >= 600 -> 2
         else -> 1
+    }
+
+    // Adaptive content padding
+    val horizontalPadding = when {
+        windowWidthClass == WindowWidthSizeClass.EXPANDED -> 32.dp
+        windowWidthClass == WindowWidthSizeClass.MEDIUM -> 24.dp
+        else -> 20.dp
+    }
+
+    // Adaptive grid spacing
+    val gridSpacing = when {
+        windowWidthClass == WindowWidthSizeClass.EXPANDED -> 20.dp
+        windowWidthClass == WindowWidthSizeClass.MEDIUM -> 16.dp
+        else -> 12.dp
     }
 
     // State for search and filters
     var searchQuery by remember { mutableStateOf("") }
-    var selectedPill by remember { mutableStateOf("All") }
+    var selectedCategory by remember { mutableStateOf(ProfessionalCategoryType.ALL) }
     var filterState by remember { mutableStateOf(ProfessionalFilterState()) }
     var priceRange by remember { mutableStateOf(PriceRange()) }
     var showFilterModal by remember { mutableStateOf(false) }
@@ -131,22 +148,11 @@ fun ProfessionalsScreen(
     var isRecording by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
-    val listState = rememberLazyListState()
-
-    val primaryColor = colorScheme.primary
-    val softBackground = colorScheme.background
-
-    val horizontalPadding = when {
-        isExpanded -> 24.dp
-        isMedium -> 20.dp
-        else -> 16.dp
-    }
-
-    // Track if search bar should be pinned (only search and pills are sticky)
+    // Track if search bar should be pinned
+    val gridState = rememberLazyGridState()
     val isSearchBarPinned by remember {
         derivedStateOf {
-            listState.firstVisibleItemIndex > 1 ||
-                    (listState.firstVisibleItemIndex == 1 && listState.firstVisibleItemScrollOffset > 0)
+            gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0
         }
     }
 
@@ -165,19 +171,18 @@ fun ProfessionalsScreen(
     }
 
     // Filter professionals
-    val filteredProfessionals = remember(debouncedQuery.value, selectedPill, filterState, priceRange, professionals) {
+    val filteredProfessionals = remember(debouncedQuery.value, selectedCategory, filterState, priceRange, professionals) {
         professionals.filter { professional ->
             var matches = true
 
-            when (selectedPill) {
-                "All" -> matches = true
-                "Electrician" -> matches = professional.category == "Electrician"
-                "Plumber" -> matches = professional.category == "Plumber"
-                "Designer" -> matches = professional.category == "Designer"
-                "Legal" -> matches = professional.category == "Legal Services"
-                "Property" -> matches = professional.category == "Property Management"
-                "Carpenter" -> matches = professional.category == "Carpenter"
-                else -> matches = true
+            when (selectedCategory) {
+                ProfessionalCategoryType.ALL -> matches = true
+                ProfessionalCategoryType.ELECTRICIAN -> matches = professional.category == "Electrician"
+                ProfessionalCategoryType.PLUMBER -> matches = professional.category == "Plumber"
+                ProfessionalCategoryType.DESIGNER -> matches = professional.category == "Designer"
+                ProfessionalCategoryType.LEGAL -> matches = professional.category == "Legal Services"
+                ProfessionalCategoryType.PROPERTY -> matches = professional.category == "Property Management"
+                ProfessionalCategoryType.CARPENTER -> matches = professional.category == "Carpenter"
             }
 
             if (filterState.minRating > 0 && matches) {
@@ -224,89 +229,83 @@ fun ProfessionalsScreen(
     }
 
     Scaffold(
-        containerColor = softBackground,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues ->
+        containerColor = colorScheme.background
+    ) { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = paddingValues.calculateBottomPadding())
+                .padding(padding)
         ) {
-            // SCROLL CONTENT - Header is inside LazyColumn (scrolls away)
-            LazyColumn(
-                state = listState,
+            // SCROLLABLE CONTENT
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(gridColumns),
+                state = gridState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 80.dp),
-                horizontalAlignment = Alignment.Start
+                contentPadding = PaddingValues(
+                    start = horizontalPadding,
+                    end = horizontalPadding,
+                    top = 0.dp,
+                    bottom = 100.dp
+                ),
+                horizontalArrangement = Arrangement.spacedBy(gridSpacing),
+                verticalArrangement = Arrangement.spacedBy(gridSpacing)
             ) {
-                // HEADER IS NOW INSIDE LAZYCOLUMN - IT SCROLLS AWAY
-                item {
-                    NonStickyHeaderProfessionals(
+                // Header section (back button, title, subtitle) - scrolls away
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    ProfessionalsHeader(
+                        onNavigateBack = onNavigateBack,
                         colorScheme = colorScheme,
-                        user = user,
-                        isGuestMode = isGuestMode,
-                        modifier = Modifier.fillMaxWidth()
+                        isExpanded = isExpanded
                     )
                 }
 
-                // Search and Pills Section (scrolls with content)
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = horizontalPadding, vertical = 12.dp)
-                    ) {
-                        ProfessionalsSearchBarWithAudio(
-                            query = searchQuery,
-                            onQueryChange = { searchQuery = it },
-                            onAudioClick = { isRecording = !isRecording },
+                // Search Bar and Category Pills - ONLY show when NOT pinned
+                if (!isSearchBarPinned) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        ProfessionalsSearchAndPillsSection(
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = { searchQuery = it },
+                            isSearching = isSearching,
                             isRecording = isRecording,
-                            accentColor = primaryColor,
-                            colorScheme = colorScheme,
+                            onAudioClick = { isRecording = !isRecording },
+                            onFilterClick = { showFilterModal = true },
                             activeFilterCount = activeFilterCount,
-                            onFilterClick = { showFilterModal = true }
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        ProfessionalsFilterPillsRow(
-                            selectedPill = selectedPill,
-                            onPillSelected = { pill ->
-                                selectedPill = pill
-                            },
-                            accentColor = primaryColor,
-                            colorScheme = colorScheme
+                            selectedCategory = selectedCategory,
+                            onCategorySelected = { selectedCategory = it },
+                            colorScheme = colorScheme,
+                            isExpanded = isExpanded,
+                            isSticky = false
                         )
                     }
                 }
 
                 // Search results info
-                if (debouncedQuery.value.isNotEmpty()) {
-                    item {
+                if (debouncedQuery.value.isNotEmpty() && filteredProfessionals.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = horizontalPadding, vertical = 8.dp),
+                                .padding(vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Search results for \"${searchQuery}\"",
-                                fontSize = 14.sp,
+                                text = "Search results for \"$searchQuery\"",
+                                fontSize = if (isExpanded) 15.sp else 13.sp,
                                 color = colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Medium
                             )
                             if (isSearching) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
+                                    modifier = Modifier.size(if (isExpanded) 20.dp else 16.dp),
                                     strokeWidth = 2.dp,
-                                    color = primaryColor
+                                    color = colorScheme.primary
                                 )
                             } else {
                                 Text(
                                     text = "${filteredProfessionals.size} professionals found",
-                                    fontSize = 13.sp,
-                                    color = primaryColor,
+                                    fontSize = if (isExpanded) 14.sp else 12.sp,
+                                    color = colorScheme.primary,
                                     fontWeight = FontWeight.Medium
                                 )
                             }
@@ -314,174 +313,56 @@ fun ProfessionalsScreen(
                     }
                 }
 
-                // Empty state
-                if (filteredProfessionals.isEmpty() && !isSearching) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                if (searchQuery.isNotEmpty() || selectedPill != "All" ||
-                                    filterState.minRating > 0 || filterState.isVerifiedOnly || filterState.isSmartMatchOnly ||
-                                    priceRange.min != null || priceRange.max != null) {
-                                    Icon(
-                                        Icons.Outlined.SearchOff,
-                                        contentDescription = null,
-                                        tint = colorScheme.onSurfaceVariant.copy(0.5f),
-                                        modifier = Modifier.size(48.dp)
-                                    )
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text(
-                                        text = "No professionals found",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "Try adjusting your filters or search terms",
-                                        fontSize = 14.sp,
-                                        color = colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Button(
-                                        onClick = {
-                                            searchQuery = ""
-                                            selectedPill = "All"
-                                            filterState = ProfessionalFilterState()
-                                            priceRange = PriceRange()
-                                            activeFilterCount = 0
-                                            focusManager.clearFocus()
-                                        },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = primaryColor
-                                        ),
-                                        shape = RoundedCornerShape(16.dp)
-                                    ) {
-                                        Text("Clear Filters")
-                                    }
-                                } else {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.ic_work),
-                                        contentDescription = null,
-                                        tint = primaryColor.copy(0.5f),
-                                        modifier = Modifier.size(48.dp)
-                                    )
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text(
-                                        text = "No professionals yet",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "Check back later for professionals in your area",
-                                        fontSize = 14.sp,
-                                        color = colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                            }
+                // Empty state or listings
+                if (filteredProfessionals.isEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        if (searchQuery.isNotEmpty() || selectedCategory != ProfessionalCategoryType.ALL ||
+                            filterState.minRating > 0 || filterState.isVerifiedOnly || filterState.isSmartMatchOnly ||
+                            priceRange.min != null || priceRange.max != null) {
+                            ProfessionalsNoResultsEmptyState(
+                                onClearFilters = {
+                                    searchQuery = ""
+                                    selectedCategory = ProfessionalCategoryType.ALL
+                                    filterState = ProfessionalFilterState()
+                                    priceRange = PriceRange()
+                                    activeFilterCount = 0
+                                    focusManager.clearFocus()
+                                },
+                                colorScheme = colorScheme,
+                                isExpanded = isExpanded
+                            )
+                        } else {
+                            ProfessionalsEmptyState(
+                                colorScheme = colorScheme,
+                                isExpanded = isExpanded
+                            )
                         }
                     }
-                }
-
-                // Professional Cards Grid with proper spacing
-                if (filteredProfessionals.isNotEmpty()) {
-                    items((filteredProfessionals.size + professionalGridColumns - 1) / professionalGridColumns) { rowIndex ->
-                        val startIndex = rowIndex * professionalGridColumns
-
-                        if (professionalGridColumns == 1) {
-                            // Single column - vertical layout with 16dp spacing between cards
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = horizontalPadding),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                for (i in 0 until professionalGridColumns) {
-                                    val index = startIndex + i
-                                    if (index < filteredProfessionals.size) {
-                                        val professional = filteredProfessionals[index]
-                                        ModernProfessionalCardV2(
-                                            imageUrl = professional.profileImageUrl,
-                                            name = professional.name,
-                                            profession = professional.category,
-                                            location = professional.location,
-                                            postedTime = "Active today",
-                                            professionalType = if (professional.businessName != null)
-                                                ProfessionalType.ORGANIZATION else ProfessionalType.INDIVIDUAL,
-                                            rating = professional.rating.toFloat(),
-                                            jobsCompleted = professional.completedJobs,
-                                            onViewDetailsClick = { onProfessionalClick(professional) },
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
-                                }
-                            }
-                        } else {
-                            // Multiple columns - use Row with 16dp spacing
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = horizontalPadding),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                                ) {
-                                    for (i in 0 until professionalGridColumns) {
-                                        val index = startIndex + i
-                                        if (index < filteredProfessionals.size) {
-                                            val professional = filteredProfessionals[index]
-                                            Box(
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .fillMaxWidth()
-                                            ) {
-                                                ModernProfessionalCardV2(
-                                                    imageUrl = professional.profileImageUrl,
-                                                    name = professional.name,
-                                                    profession = professional.category,
-                                                    location = professional.location,
-                                                    postedTime = "Active today",
-                                                    professionalType = if (professional.businessName != null)
-                                                        ProfessionalType.ORGANIZATION else ProfessionalType.INDIVIDUAL,
-                                                    rating = professional.rating.toFloat(),
-                                                    jobsCompleted = professional.completedJobs,
-                                                    onViewDetailsClick = { onProfessionalClick(professional) }
-                                                )
-                                            }
-                                        } else {
-                                            Spacer(modifier = Modifier.weight(1f))
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                } else {
+                    items(filteredProfessionals, key = { it.id }) { professional ->
+                        ModernProfessionalCardV2(
+                            imageUrl = professional.profileImageUrl,
+                            name = professional.name,
+                            profession = professional.category,
+                            location = professional.location,
+                            postedTime = "Active today",
+                            professionalType = if (professional.businessName != null)
+                                ProfessionalType.ORGANIZATION else ProfessionalType.INDIVIDUAL,
+                            rating = professional.rating.toFloat(),
+                            jobsCompleted = professional.completedJobs,
+                            onViewDetailsClick = { onProfessionalClick(professional) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
             }
 
-            // STICKY SEARCH + PILLS SECTION (appears when scrolled past the original search)
+            // STICKY SEARCH + CATEGORY PILLS SECTION (appears when scrolled)
             if (isSearchBarPinned) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.TopCenter)
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
-                            ambientColor = Color.Black.copy(0.08f)
-                        )
                         .zIndex(10f),
                     shape = RoundedCornerShape(
                         topStart = 0.dp,
@@ -490,33 +371,29 @@ fun ProfessionalsScreen(
                         bottomEnd = 20.dp
                     ),
                     color = colorScheme.surface,
-                    tonalElevation = 4.dp
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = horizontalPadding, vertical = 12.dp)
-                    ) {
-                        ProfessionalsSearchBarWithAudio(
-                            query = searchQuery,
-                            onQueryChange = { searchQuery = it },
-                            onAudioClick = { isRecording = !isRecording },
+                    Column {
+                        ProfessionalsSearchAndPillsSection(
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = { searchQuery = it },
+                            isSearching = isSearching,
                             isRecording = isRecording,
-                            accentColor = primaryColor,
-                            colorScheme = colorScheme,
+                            onAudioClick = { isRecording = !isRecording },
+                            onFilterClick = { showFilterModal = true },
                             activeFilterCount = activeFilterCount,
-                            onFilterClick = { showFilterModal = true }
+                            selectedCategory = selectedCategory,
+                            onCategorySelected = { selectedCategory = it },
+                            colorScheme = colorScheme,
+                            isExpanded = isExpanded,
+                            isSticky = true
                         )
 
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        ProfessionalsFilterPillsRow(
-                            selectedPill = selectedPill,
-                            onPillSelected = { pill ->
-                                selectedPill = pill
-                            },
-                            accentColor = primaryColor,
-                            colorScheme = colorScheme
+                        Divider(
+                            color = colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            thickness = 1.dp,
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         )
                     }
                 }
@@ -524,373 +401,611 @@ fun ProfessionalsScreen(
         }
     }
 
-    // Filter Modal Bottom Sheet
+    // Filter Modal - Adaptive presentation
     if (showFilterModal) {
-        ProfessionalsFilterBottomSheet(
-            filterState = filterState,
-            priceRange = priceRange,
-            onFilterChange = { filterState = it },
-            onPriceRangeChange = { priceRange = it },
-            onDismiss = { showFilterModal = false },
-            onApply = { showFilterModal = false },
-            onReset = {
-                filterState = ProfessionalFilterState()
-                priceRange = PriceRange()
-                activeFilterCount = 0
-                showFilterModal = false
-            },
-            accentColor = primaryColor,
-            colorScheme = colorScheme
+        if (windowWidthClass == WindowWidthSizeClass.COMPACT) {
+            ProfessionalsFilterBottomSheet(
+                filterState = filterState,
+                priceRange = priceRange,
+                onFilterChange = { filterState = it },
+                onPriceRangeChange = { priceRange = it },
+                onDismiss = { showFilterModal = false },
+                onApply = { showFilterModal = false },
+                onReset = {
+                    filterState = ProfessionalFilterState()
+                    priceRange = PriceRange()
+                    activeFilterCount = 0
+                    showFilterModal = false
+                },
+                colorScheme = colorScheme,
+                isExpanded = isExpanded
+            )
+        } else {
+            AlertDialog(
+                onDismissRequest = { showFilterModal = false },
+                title = {
+                    Text(
+                        "Filter Professionals",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    ProfessionalsFilterDialogContent(
+                        filterState = filterState,
+                        priceRange = priceRange,
+                        onFilterChange = { filterState = it },
+                        onPriceRangeChange = { priceRange = it },
+                        colorScheme = colorScheme
+                    )
+                },
+                confirmButton = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        TextButton(
+                            onClick = {
+                                filterState = ProfessionalFilterState()
+                                priceRange = PriceRange()
+                                activeFilterCount = 0
+                                showFilterModal = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Reset")
+                        }
+                        Button(
+                            onClick = { showFilterModal = false },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Apply")
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showFilterModal = false }) {
+                        Text("Cancel")
+                    }
+                },
+                shape = RoundedCornerShape(24.dp)
+            )
+        }
+    }
+}
+
+/* ────────────── HEADER WITH BACK BUTTON, TITLE, SUBTITLE ────────────── */
+
+@Composable
+private fun ProfessionalsHeader(
+    onNavigateBack: () -> Unit,
+    colorScheme: ColorScheme,
+    isExpanded: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(colorScheme.background)
+            .padding(
+                horizontal = if (isExpanded) 32.dp else 16.dp,
+                vertical = if (isExpanded) 20.dp else 12.dp
+            )
+    ) {
+        // Back button row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            IconButton(
+                onClick = onNavigateBack,
+                modifier = Modifier.size(if (isExpanded) 48.dp else 40.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = colorScheme.primary.copy(0.08f)
+                ) {
+                    Box(
+                        modifier = Modifier.size(if (isExpanded) 48.dp else 40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(if (isExpanded) 28.dp else 20.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+        }
+
+        Spacer(modifier = Modifier.height(if (isExpanded) 12.dp else 8.dp))
+
+        // Title
+        Text(
+            text = "Professionals",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.ExtraBold,
+                color = colorScheme.onSurface,
+                letterSpacing = (-0.5).sp,
+                fontSize = if (isExpanded) 36.sp else 28.sp
+            )
+        )
+
+        Spacer(modifier = Modifier.height(if (isExpanded) 8.dp else 4.dp))
+
+        // Subtitle
+        Text(
+            text = "Find trusted professionals near you",
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = colorScheme.onSurfaceVariant,
+                fontSize = if (isExpanded) 16.sp else 14.sp
+            )
         )
     }
 }
 
-// NON-STICKY HEADER - Same as DiscoverScreen (scrolls away)
-@Composable
-fun NonStickyHeaderProfessionals(
-    colorScheme: ColorScheme,
-    user: User? = null,
-    isGuestMode: Boolean = false,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    val profileUrl = user?.profileImageUrl?.takeIf { it.isNotBlank() }
+/* ────────────── SEARCH AND PILLS SECTION ────────────── */
 
-    Surface(
-        modifier = modifier
+@Composable
+private fun ProfessionalsSearchAndPillsSection(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    isSearching: Boolean,
+    isRecording: Boolean,
+    onAudioClick: () -> Unit,
+    onFilterClick: () -> Unit,
+    activeFilterCount: Int,
+    selectedCategory: ProfessionalCategoryType,
+    onCategorySelected: (ProfessionalCategoryType) -> Unit,
+    colorScheme: ColorScheme,
+    isExpanded: Boolean = false,
+    isSticky: Boolean = false
+) {
+    Column(
+        modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding(),
-        color = colorScheme.surface,
-        shadowElevation = 0.dp
+            .background(colorScheme.background)
+            .padding(
+                horizontal = if (isExpanded) 32.dp else 16.dp,
+                vertical = if (isSticky) if (isExpanded) 16.dp else 12.dp else 0.dp
+            )
     ) {
-        Column {
+        // Search Bar
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(
+                    elevation = if (isSticky) 4.dp else 0.dp,
+                    shape = RoundedCornerShape(16.dp),
+                    ambientColor = colorScheme.scrim.copy(0.08f)
+                ),
+            shape = RoundedCornerShape(16.dp),
+            color = colorScheme.surface,
+            tonalElevation = if (isSticky) 2.dp else 0.dp
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .padding(horizontal = if (isExpanded) 20.dp else 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Logo
-                AsyncImage(
-                    model = R.drawable.logofinale,
-                    contentDescription = "Logo",
-                    modifier = Modifier
-                        .height(34.dp)
-                        .width(120.dp),
-                    error = painterResource(R.drawable.ic_launcher_foreground)
+                Icon(
+                    Icons.Outlined.Search,
+                    contentDescription = "Search",
+                    tint = colorScheme.onSurfaceVariant.copy(0.6f),
+                    modifier = Modifier.size(if (isExpanded) 24.dp else 20.dp)
                 )
 
-                // Right icons + profile
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    HeaderIconProfessionals(Icons.Outlined.MailOutline, colorScheme)
-                    HeaderIconProfessionals(Icons.Outlined.NotificationsNone, colorScheme)
+                Spacer(modifier = Modifier.width(12.dp))
 
-                    // Profile
-                    Box(
-                        modifier = Modifier.size(42.dp),
-                        contentAlignment = Alignment.Center
+                BasicTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    modifier = Modifier.weight(1f),
+                    decorationBox = { innerTextField ->
+                        Box {
+                            if (searchQuery.isEmpty()) {
+                                Text(
+                                    text = "Search professionals...",
+                                    color = colorScheme.onSurfaceVariant.copy(0.5f),
+                                    fontSize = if (isExpanded) 16.sp else 14.sp,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            innerTextField()
+                        }
+                    },
+                    textStyle = LocalTextStyle.current.copy(
+                        fontSize = if (isExpanded) 16.sp else 14.sp,
+                        color = colorScheme.onSurface
+                    )
+                )
+
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(
+                        onClick = { onSearchQueryChange("") },
+                        modifier = Modifier.size(if (isExpanded) 36.dp else 32.dp)
                     ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(profileUrl)
-                                .size(128)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Profile",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clip(CircleShape)
-                                .border(
-                                    1.dp,
-                                    colorScheme.outlineVariant.copy(alpha = 0.3f),
-                                    CircleShape
-                                ),
-                            placeholder = painterResource(R.drawable.job_placeholder3),
-                            error = painterResource(R.drawable.job_placeholder3),
-                            fallback = painterResource(R.drawable.job_placeholder3)
+                        Icon(
+                            Icons.Outlined.Close,
+                            contentDescription = "Clear",
+                            tint = colorScheme.onSurfaceVariant.copy(0.6f),
+                            modifier = Modifier.size(if (isExpanded) 20.dp else 16.dp)
                         )
+                    }
+                } else {
+                    if (isSearching) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(if (isExpanded) 24.dp else 20.dp),
+                            strokeWidth = 2.dp,
+                            color = colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
+                    IconButton(
+                        onClick = onAudioClick,
+                        modifier = Modifier
+                            .size(if (isExpanded) 44.dp else 40.dp)
+                            .then(
+                                if (isRecording) {
+                                    Modifier.background(
+                                        color = colorScheme.primary.copy(0.1f),
+                                        shape = CircleShape
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
+                    ) {
+                        Icon(
+                            imageVector = if (isRecording)
+                                Icons.Filled.Mic
+                            else
+                                Icons.Outlined.Mic,
+                            contentDescription = if (isRecording) "Stop recording" else "Start voice search",
+                            tint = if (isRecording) colorScheme.primary else colorScheme.onSurfaceVariant.copy(0.6f),
+                            modifier = Modifier.size(if (isExpanded) 24.dp else 20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    if (isRecording) {
+                        Box(
+                            modifier = Modifier
+                                .size(if (isExpanded) 10.dp else 8.dp)
+                                .background(
+                                    color = colorScheme.error,
+                                    shape = CircleShape
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+
+                    Box {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = colorScheme.primary.copy(0.08f),
+                            modifier = Modifier
+                                .clickable { onFilterClick() }
+                                .padding(horizontal = if (isExpanded) 14.dp else 10.dp, vertical = if (isExpanded) 8.dp else 6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Tune,
+                                    contentDescription = "Filter",
+                                    tint = colorScheme.primary,
+                                    modifier = Modifier.size(if (isExpanded) 18.dp else 14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    "Filters",
+                                    fontSize = if (isExpanded) 14.sp else 12.sp,
+                                    color = colorScheme.primary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        if (activeFilterCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 8.dp, y = (-4).dp)
+                            ) {
+                                Surface(
+                                    color = colorScheme.primary,
+                                    shape = CircleShape,
+                                    modifier = Modifier.size(if (isExpanded) 20.dp else 16.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = activeFilterCount.toString(),
+                                            color = colorScheme.onPrimary,
+                                            fontSize = if (isExpanded) 11.sp else 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
-
-            // Subtle divider
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(colorScheme.outlineVariant.copy(alpha = 0.15f))
-            )
         }
-    }
-}
 
-@Composable
-fun HeaderIconProfessionals(
-    icon: ImageVector,
-    colorScheme: ColorScheme
-) {
-    Box(
-        modifier = Modifier
-            .size(38.dp)
-            .clip(CircleShape)
-            .background(colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .clickable { },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp)
+        if (!isSticky) {
+            Spacer(modifier = Modifier.height(if (isExpanded) 16.dp else 12.dp))
+        }
+
+        ProfessionalsCategoryFilterPills(
+            selectedCategory = selectedCategory,
+            onCategorySelected = onCategorySelected,
+            colorScheme = colorScheme,
+            isExpanded = isExpanded
         )
     }
 }
 
-/* ─────────────────────────────────────────────
-   SEARCH BAR WITH AUDIO ICON
-   ───────────────────────────────────────────── */
+/* ────────────── CATEGORY FILTER PILLS ────────────── */
 
 @Composable
-fun ProfessionalsSearchBarWithAudio(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onAudioClick: () -> Unit,
-    isRecording: Boolean,
-    accentColor: Color,
+private fun ProfessionalsCategoryFilterPills(
+    selectedCategory: ProfessionalCategoryType,
+    onCategorySelected: (ProfessionalCategoryType) -> Unit,
     colorScheme: ColorScheme,
-    activeFilterCount: Int,
-    onFilterClick: () -> Unit
+    isExpanded: Boolean = false
 ) {
-    Surface(
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 0.dp, vertical = if (isExpanded) 12.dp else 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (isExpanded) 12.dp else 8.dp)
+    ) {
+        val categories = listOf(
+            ProfessionalCategoryType.ALL to "All",
+            ProfessionalCategoryType.ELECTRICIAN to "Electrician",
+            ProfessionalCategoryType.PLUMBER to "Plumber",
+            ProfessionalCategoryType.DESIGNER to "Designer",
+            ProfessionalCategoryType.LEGAL to "Legal",
+            ProfessionalCategoryType.PROPERTY to "Property",
+            ProfessionalCategoryType.CARPENTER to "Carpenter"
+        )
+
+        items(categories) { (category, displayName) ->
+            val isSelected = selectedCategory == category
+
+            Surface(
+                onClick = { onCategorySelected(category) },
+                shape = RoundedCornerShape(20.dp),
+                color = if (isSelected) colorScheme.secondary else colorScheme.surface,
+                border = if (isSelected) null else BorderStroke(1.dp, colorScheme.outlineVariant),
+                modifier = Modifier.height(if (isExpanded) 44.dp else 36.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = if (isExpanded) 16.dp else 12.dp)
+                ) {
+                    Text(
+                        text = displayName,
+                        color = if (isSelected) colorScheme.onSecondary else colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = if (isExpanded) 15.sp else 13.sp
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+/* ────────────── FILTER DIALOG CONTENT (for tablets) ────────────── */
+
+@Composable
+private fun ProfessionalsFilterDialogContent(
+    filterState: ProfessionalFilterState,
+    priceRange: PriceRange,
+    onFilterChange: (ProfessionalFilterState) -> Unit,
+    onPriceRangeChange: (PriceRange) -> Unit,
+    colorScheme: ColorScheme
+) {
+    var localFilterState by remember { mutableStateOf(filterState) }
+    var localMinPrice by remember { mutableStateOf(priceRange.min?.toString() ?: "") }
+    var localMaxPrice by remember { mutableStateOf(priceRange.max?.toString() ?: "") }
+
+    LaunchedEffect(localFilterState, localMinPrice, localMaxPrice) {
+        onFilterChange(localFilterState)
+        onPriceRangeChange(PriceRange(min = localMinPrice.toIntOrNull(), max = localMaxPrice.toIntOrNull()))
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 2.dp,
-                shape = RoundedCornerShape(16.dp),
-                ambientColor = Color.Black.copy(0.05f)
-            ),
-        shape = RoundedCornerShape(16.dp),
-        color = colorScheme.surface,
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+        Column {
+            Text(
+                text = "Price Range (KES)",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedTextField(
+                    value = localMinPrice,
+                    onValueChange = { localMinPrice = it.filter { char -> char.isDigit() } },
+                    label = { Text("Min") },
+                    placeholder = { Text("Any") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(16.dp),
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = localMaxPrice,
+                    onValueChange = { localMaxPrice = it.filter { char -> char.isDigit() } },
+                    label = { Text("Max") },
+                    placeholder = { Text("Any") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(16.dp),
+                    singleLine = true
+                )
+            }
+        }
+
+        Column {
+            Text(
+                text = "Minimum Rating",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val ratings = listOf(0.0, 3.5, 4.0, 4.5)
+                ratings.forEach { rating ->
+                    val isSelected = localFilterState.minRating == rating
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            localFilterState = localFilterState.copy(minRating = rating)
+                        },
+                        label = {
+                            Text(
+                                if (rating == 0.0) "Any" else "$rating+",
+                                fontSize = 13.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = colorScheme.primary,
+                            selectedLabelColor = colorScheme.onPrimary,
+                            containerColor = colorScheme.surface,
+                            labelColor = colorScheme.onSurfaceVariant
+                        ),
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) colorScheme.primary else colorScheme.outlineVariant
+                        ),
+                        shape = RoundedCornerShape(30.dp)
+                    )
+                }
+            }
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+                .clickable {
+                    localFilterState = localFilterState.copy(
+                        isVerifiedOnly = !localFilterState.isVerifiedOnly
+                    )
+                }
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                Icons.Outlined.Search,
-                contentDescription = null,
-                tint = colorScheme.onSurfaceVariant.copy(0.6f),
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-
-            BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                modifier = Modifier.weight(1f),
-                decorationBox = { innerTextField ->
-                    Box {
-                        if (query.isEmpty()) {
-                            Text(
-                                "Search professionals...",
-                                color = colorScheme.onSurfaceVariant.copy(0.5f),
-                                fontSize = 14.sp
-                            )
-                        }
-                        innerTextField()
-                    }
-                },
-                textStyle = LocalTextStyle.current.copy(
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Outlined.Verified,
+                    contentDescription = null,
+                    tint = colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    "Verified professionals only",
                     fontSize = 14.sp,
                     color = colorScheme.onSurface
                 )
+            }
+            Switch(
+                checked = localFilterState.isVerifiedOnly,
+                onCheckedChange = {
+                    localFilterState = localFilterState.copy(isVerifiedOnly = it)
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = colorScheme.primary,
+                    checkedTrackColor = colorScheme.primary.copy(0.5f),
+                    uncheckedThumbColor = colorScheme.onSurfaceVariant,
+                    uncheckedTrackColor = colorScheme.outlineVariant
+                )
             )
-
-            if (query.isNotEmpty()) {
-                IconButton(
-                    onClick = { onQueryChange("") },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        Icons.Outlined.Close,
-                        contentDescription = "Clear",
-                        tint = colorScheme.onSurfaceVariant.copy(0.6f),
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            } else {
-                // Audio Icon
-                IconButton(
-                    onClick = onAudioClick,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .then(
-                            if (isRecording) {
-                                Modifier.background(
-                                    color = accentColor.copy(0.1f),
-                                    shape = CircleShape
-                                )
-                            } else {
-                                Modifier
-                            }
-                        )
-                ) {
-                    Icon(
-                        imageVector = if (isRecording)
-                            Icons.Filled.Mic
-                        else
-                            Icons.Outlined.Mic,
-                        contentDescription = if (isRecording) "Stop recording" else "Start voice search",
-                        tint = if (isRecording) accentColor else colorScheme.onSurfaceVariant.copy(0.6f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(4.dp))
-
-                if (isRecording) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(
-                                color = colorScheme.error,
-                                shape = CircleShape
-                            )
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                }
-
-                // Filter button with badge
-                BadgedBox(
-                    badge = {
-                        if (activeFilterCount > 0) {
-                            Surface(
-                                color = accentColor,
-                                shape = CircleShape,
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .offset(x = (-4).dp, y = (4).dp)
-                            ) {
-                                Text(
-                                    text = activeFilterCount.toString(),
-                                    color = colorScheme.onPrimary,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.align(Alignment.Center as Alignment.Vertical)
-                                )
-                            }
-                        }
-                    }
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = accentColor.copy(0.08f),
-                        modifier = Modifier
-                            .clickable { onFilterClick() }
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Outlined.Tune,
-                                contentDescription = "Filter",
-                                tint = accentColor,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                "Filters",
-                                fontSize = 12.sp,
-                                color = accentColor,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                }
-            }
         }
-    }
-}
 
-/* ─────────────────────────────────────────────
-   FILTER PILLS ROW
-   ───────────────────────────────────────────── */
-
-@Composable
-fun ProfessionalsFilterPillsRow(
-    selectedPill: String,
-    onPillSelected: (String) -> Unit,
-    accentColor: Color,
-    colorScheme: ColorScheme
-) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        val filters = listOf(
-            "All" to null,
-            "Electrician" to Icons.Outlined.Bolt,
-            "Plumber" to Icons.Outlined.Plumbing,
-            "Designer" to Icons.Outlined.Brush,
-            "Legal" to Icons.Outlined.Gavel,
-            "Property" to Icons.Outlined.Apartment,
-            "Carpenter" to Icons.Outlined.Handyman
-        )
-
-        items(filters.size) { index ->
-            val (filter, icon) = filters[index]
-            val isSelected = selectedPill == filter
-
-            Surface(
-                shape = RoundedCornerShape(30.dp),
-                color = if (isSelected) accentColor else colorScheme.surface,
-                border = if (!isSelected) BorderStroke(1.dp, colorScheme.outlineVariant) else null,
-                modifier = Modifier
-                    .clickable { onPillSelected(filter) }
-                    .shadow(
-                        elevation = if (isSelected) 2.dp else 0.dp,
-                        shape = RoundedCornerShape(30.dp),
-                        ambientColor = Color.Black.copy(0.05f)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    localFilterState = localFilterState.copy(
+                        isSmartMatchOnly = !localFilterState.isSmartMatchOnly
                     )
+                }
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (icon != null) {
-                        Icon(
-                            icon,
-                            contentDescription = null,
-                            tint = if (isSelected) colorScheme.onPrimary else colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                    }
-                    Text(
-                        text = filter,
-                        color = if (isSelected) colorScheme.onPrimary else colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                    )
-                }
+                Icon(
+                    Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = colorScheme.tertiary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    "SmartMatch professionals only",
+                    fontSize = 14.sp,
+                    color = colorScheme.onSurface
+                )
             }
+            Switch(
+                checked = localFilterState.isSmartMatchOnly,
+                onCheckedChange = {
+                    localFilterState = localFilterState.copy(isSmartMatchOnly = it)
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = colorScheme.tertiary,
+                    checkedTrackColor = colorScheme.tertiary.copy(0.5f),
+                    uncheckedThumbColor = colorScheme.onSurfaceVariant,
+                    uncheckedTrackColor = colorScheme.outlineVariant
+                )
+            )
         }
     }
 }
 
-/* ────────────── FILTER BOTTOM SHEET ────────────── */
+/* ────────────── FILTER BOTTOM SHEET (for phones) ────────────── */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfessionalsFilterBottomSheet(
+private fun ProfessionalsFilterBottomSheet(
     filterState: ProfessionalFilterState,
     priceRange: PriceRange,
     onFilterChange: (ProfessionalFilterState) -> Unit,
@@ -898,8 +1013,8 @@ fun ProfessionalsFilterBottomSheet(
     onDismiss: () -> Unit,
     onApply: () -> Unit,
     onReset: () -> Unit,
-    accentColor: Color,
-    colorScheme: ColorScheme
+    colorScheme: ColorScheme,
+    isExpanded: Boolean = false
 ) {
     var localFilterState by remember { mutableStateOf(filterState) }
     var localMinPrice by remember { mutableStateOf(priceRange.min?.toString() ?: "") }
@@ -915,10 +1030,9 @@ fun ProfessionalsFilterBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = if (isExpanded) 32.dp else 20.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -955,7 +1069,6 @@ fun ProfessionalsFilterBottomSheet(
                 }
             }
 
-            // Price Range Section
             Text(
                 text = "Price Range (KES)",
                 fontSize = 15.sp,
@@ -976,7 +1089,7 @@ fun ProfessionalsFilterBottomSheet(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = accentColor,
+                        focusedBorderColor = colorScheme.primary,
                         unfocusedBorderColor = colorScheme.outlineVariant
                     ),
                     singleLine = true
@@ -990,7 +1103,7 @@ fun ProfessionalsFilterBottomSheet(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = accentColor,
+                        focusedBorderColor = colorScheme.primary,
                         unfocusedBorderColor = colorScheme.outlineVariant
                     ),
                     singleLine = true
@@ -999,7 +1112,6 @@ fun ProfessionalsFilterBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Rating Section
             Text(
                 text = "Minimum Rating",
                 fontSize = 15.sp,
@@ -1010,7 +1122,7 @@ fun ProfessionalsFilterBottomSheet(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 val ratings = listOf(0.0, 3.5, 4.0, 4.5)
                 ratings.forEach { rating ->
@@ -1023,20 +1135,20 @@ fun ProfessionalsFilterBottomSheet(
                         label = {
                             Text(
                                 if (rating == 0.0) "Any" else "$rating+",
-                                fontSize = 14.sp,
+                                fontSize = 13.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                         },
                         modifier = Modifier.weight(1f),
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = accentColor,
+                            selectedContainerColor = colorScheme.primary,
                             selectedLabelColor = colorScheme.onPrimary,
                             containerColor = colorScheme.surface,
                             labelColor = colorScheme.onSurfaceVariant
                         ),
                         border = BorderStroke(
                             1.dp,
-                            if (isSelected) accentColor else colorScheme.outlineVariant
+                            if (isSelected) colorScheme.primary else colorScheme.outlineVariant
                         ),
                         shape = RoundedCornerShape(30.dp)
                     )
@@ -1045,7 +1157,6 @@ fun ProfessionalsFilterBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Verified Only Toggle
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1064,7 +1175,7 @@ fun ProfessionalsFilterBottomSheet(
                     Icon(
                         Icons.Outlined.Verified,
                         contentDescription = null,
-                        tint = accentColor,
+                        tint = colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
@@ -1080,8 +1191,8 @@ fun ProfessionalsFilterBottomSheet(
                         localFilterState = localFilterState.copy(isVerifiedOnly = it)
                     },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = accentColor,
-                        checkedTrackColor = accentColor.copy(0.5f),
+                        checkedThumbColor = colorScheme.primary,
+                        checkedTrackColor = colorScheme.primary.copy(0.5f),
                         uncheckedThumbColor = colorScheme.onSurfaceVariant,
                         uncheckedTrackColor = colorScheme.outlineVariant
                     )
@@ -1090,7 +1201,6 @@ fun ProfessionalsFilterBottomSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // SmartMatch Only Toggle
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1133,9 +1243,6 @@ fun ProfessionalsFilterBottomSheet(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Selected count indicator
             val selectedCount = listOfNotNull(
                 if (localFilterState.minRating > 0) 1 else null,
                 if (localFilterState.isVerifiedOnly) 1 else null,
@@ -1144,8 +1251,9 @@ fun ProfessionalsFilterBottomSheet(
             ).size
 
             if (selectedCount > 0) {
+                Spacer(modifier = Modifier.height(16.dp))
                 Surface(
-                    color = accentColor.copy(0.1f),
+                    color = colorScheme.primary.copy(0.1f),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1154,7 +1262,7 @@ fun ProfessionalsFilterBottomSheet(
                     Text(
                         text = "$selectedCount filter${if (selectedCount > 1) "s" else ""} selected",
                         fontSize = 12.sp,
-                        color = accentColor,
+                        color = colorScheme.primary,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
@@ -1164,7 +1272,6 @@ fun ProfessionalsFilterBottomSheet(
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // Action Buttons
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1210,7 +1317,7 @@ fun ProfessionalsFilterBottomSheet(
                         .height(52.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = accentColor,
+                        containerColor = colorScheme.primary,
                         contentColor = colorScheme.onPrimary
                     ),
                     elevation = ButtonDefaults.buttonElevation(
@@ -1229,17 +1336,112 @@ fun ProfessionalsFilterBottomSheet(
     }
 }
 
+/* ────────────── NO RESULTS EMPTY STATE ────────────── */
+
 @Composable
-fun BadgedBox(
-    badge: @Composable () -> Unit,
-    content: @Composable () -> Unit
+private fun ProfessionalsNoResultsEmptyState(
+    onClearFilters: () -> Unit,
+    colorScheme: ColorScheme,
+    isExpanded: Boolean = false
 ) {
-    Box {
-        content()
-        Box(
-            modifier = Modifier.align(Alignment.TopEnd)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Surface(
+            modifier = Modifier.size(if (isExpanded) 100.dp else 80.dp),
+            color = colorScheme.primary.copy(0.05f),
+            shape = CircleShape
         ) {
-            badge()
+            Icon(
+                Icons.Outlined.SearchOff,
+                null,
+                tint = colorScheme.primary,
+                modifier = Modifier.padding(if (isExpanded) 24.dp else 20.dp)
+            )
         }
+        Spacer(Modifier.height(if (isExpanded) 28.dp else 24.dp))
+        Text(
+            "No matching professionals",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.onSurface,
+                fontSize = if (isExpanded) 20.sp else 18.sp
+            )
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Try adjusting your filters or search terms",
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = colorScheme.onSurfaceVariant,
+                fontSize = if (isExpanded) 15.sp else 14.sp
+            ),
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(if (isExpanded) 36.dp else 32.dp))
+        Button(
+            onClick = onClearFilters,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colorScheme.primary
+            ),
+            shape = RoundedCornerShape(16.dp),
+            contentPadding = PaddingValues(horizontal = if (isExpanded) 40.dp else 32.dp, vertical = if (isExpanded) 16.dp else 12.dp)
+        ) {
+            Text(
+                "Clear Filters",
+                fontWeight = FontWeight.Bold,
+                fontSize = if (isExpanded) 16.sp else 14.sp
+            )
+        }
+    }
+}
+
+/* ────────────── EMPTY STATE ────────────── */
+
+@Composable
+private fun ProfessionalsEmptyState(
+    colorScheme: ColorScheme,
+    isExpanded: Boolean = false
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Surface(
+            modifier = Modifier.size(if (isExpanded) 100.dp else 80.dp),
+            color = colorScheme.primary.copy(0.05f),
+            shape = CircleShape
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_work),
+                contentDescription = null,
+                tint = colorScheme.primary,
+                modifier = Modifier.padding(if (isExpanded) 24.dp else 20.dp)
+            )
+        }
+        Spacer(Modifier.height(if (isExpanded) 28.dp else 24.dp))
+        Text(
+            "No professionals yet",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.onSurface,
+                fontSize = if (isExpanded) 20.sp else 18.sp
+            )
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Check back later for professionals in your area",
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = colorScheme.onSurfaceVariant,
+                fontSize = if (isExpanded) 15.sp else 14.sp
+            ),
+            textAlign = TextAlign.Center
+        )
     }
 }

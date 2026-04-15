@@ -47,11 +47,14 @@ import androidx.window.core.layout.WindowWidthSizeClass
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.ui.theme.*
 import kotlinx.coroutines.delay
+import com.example.pivota.dashboard.presentation.screens.NonStickyHeader
+import com.example.pivota.dashboard.presentation.screens.ProfileMenuBottomSheet
 import kotlin.math.roundToInt
 
 // Data classes
@@ -371,11 +374,13 @@ fun DashboardScreen(
                 onSurfaceColor = colorScheme.onSurface,
                 isWide = isWide,
                 isGuestMode = isGuestMode,
-                userName = displayName,  // Use first name for greeting
-                fullName = fullName,     // Use full name for welcome message
+                userName = displayName,
+                fullName = fullName,
                 isLoggedIn = user != null,
                 userRole = userRole,
-                accountType = accountType
+                accountType = accountType,
+                user = user,  // Add this line
+                modifier = Modifier
             )
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -3591,9 +3596,14 @@ fun DashboardHeroHeader(
     isLoggedIn: Boolean = false,
     userRole: String? = null,
     accountType: String? = null,
+    user: User? = null,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val profileUrl = user?.profileImageUrl?.takeIf { it.isNotBlank() }
+    var showMenuBottomSheet by remember { mutableStateOf(false) }
+
     val collapsed = collapseFraction > 0.85f
 
     val maxFontSize = 34.sp
@@ -3606,6 +3616,25 @@ fun DashboardHeroHeader(
 
     val titleFontSize = ((maxFontSize.value - collapseFraction * (maxFontSize.value - minFontSize.value))).sp
 
+    // Get user info
+    val firstName = remember(user, isGuestMode) {
+        when {
+            user == null || isGuestMode -> "Guest"
+            user.firstName.isNotBlank() -> user.firstName
+            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
+            else -> "Guest"
+        }
+    }
+
+    val userRoleDisplay = remember(user, isGuestMode) {
+        when {
+            isGuestMode -> "Guest User"
+            user?.role?.equals("admin", ignoreCase = true) == true -> "Administrator"
+            user?.role?.equals("professional", ignoreCase = true) == true -> "Professional"
+            else -> "General User"
+        }
+    }
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -3616,7 +3645,7 @@ fun DashboardHeroHeader(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            // Background image - same as DiscoverScreen
+            // Background image
             AnimatedVisibility(
                 visible = !collapsed,
                 enter = fadeIn(),
@@ -3624,7 +3653,7 @@ fun DashboardHeroHeader(
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(R.drawable.nairobi_city)  // Same background image
+                        .data(R.drawable.nairobi_city)
                         .crossfade(true)
                         .build(),
                     contentDescription = null,
@@ -3641,7 +3670,7 @@ fun DashboardHeroHeader(
                     .background(backgroundColor)
             )
 
-            // Gradient overlay - same as DiscoverScreen
+            // Gradient overlay
             AnimatedVisibility(
                 visible = !collapsed,
                 enter = fadeIn(),
@@ -3662,83 +3691,7 @@ fun DashboardHeroHeader(
                 )
             }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-            ) {
-                // Top bar with avatar and actions - same as DiscoverScreen
-                AnimatedVisibility(
-                    visible = !collapsed,
-                    enter = fadeIn() + slideInVertically(),
-                    exit = fadeOut() + slideOutVertically()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp, start = 20.dp, end = 20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box {
-                                HeaderAvatarDashboard(colorScheme)
-                                Box(
-                                    modifier = Modifier
-                                        .size(12.dp)
-                                        .background(colorScheme.tertiaryContainer, CircleShape)
-                                        .border(2.dp, colorScheme.primary, CircleShape)
-                                        .align(Alignment.BottomEnd)
-                                )
-                            }
-
-                            Spacer(Modifier.width(12.dp))
-
-                            Column {
-                                Text(
-                                    text = if (isGuestMode) "Hi, Guest" else "Hi, $userName",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    text = if (isGuestMode) {
-                                        "Welcome to Pivota"
-                                    } else {
-                                        "Welcome back, ${userName.split(" ").firstOrNull() ?: "User"}!"
-                                    },
-                                    color = Color.White.copy(0.85f),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontSize = 12.sp
-                                )
-                            }
-                        }
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            HeaderActionIconDashboard(
-                                icon = Icons.Default.Mail,
-                                iconTint = Color.White,
-                                backgroundTint = Color.White.copy(alpha = 0.2f)
-                            ) {}
-                            HeaderActionIconDashboard(
-                                icon = Icons.Default.Notifications,
-                                iconTint = Color.White,
-                                backgroundTint = Color.White.copy(alpha = 0.2f)
-                            ) {}
-                        }
-                    }
-                }
-
-                if (!collapsed) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-
-            // Collapsed header - same as DiscoverScreen but with "Dashboard" title
+            // Collapsed header
             if (collapsed) {
                 Row(
                     modifier = Modifier
@@ -3775,37 +3728,216 @@ fun DashboardHeroHeader(
                     }
                 }
             } else {
-                // Expanded header - same style as DiscoverScreen
+                // Expanded header - matching DiscoverScreen style
                 Column(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 20.dp, bottom = 32.dp)
+                        .fillMaxSize()
                         .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
-                    Text(
-                        text = "Dashboard",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-1.5).sp,
-                            fontSize = titleFontSize
-                        )
-                    )
+                    // Profile header - same as DiscoverScreen
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(
+                                elevation = 8.dp,
+                                shape = RoundedCornerShape(24.dp),
+                                ambientColor = Color.Black.copy(alpha = 0.08f),
+                                spotColor = Color.Black.copy(alpha = 0.06f)
+                            ),
+                        shape = RoundedCornerShape(24.dp),
+                        color = Color.White.copy(alpha = 0.95f),
+                        tonalElevation = 0.dp
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Left side - Profile Avatar and User Info
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Profile Avatar (Clickable)
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .clickable { showMenuBottomSheet = true },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isGuestMode || profileUrl.isNullOrBlank()) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(
+                                                    color = colorScheme.primary.copy(alpha = 0.1f),
+                                                    shape = CircleShape
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Outlined.AccountCircle,
+                                                contentDescription = "Profile",
+                                                tint = colorScheme.primary,
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                        }
+                                    } else {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(context)
+                                                .data(profileUrl)
+                                                .size(128)
+                                                .allowHardware(false)
+                                                .crossfade(true)
+                                                .build(),
+                                            contentDescription = "Profile",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clip(CircleShape)
+                                                .border(
+                                                    2.dp,
+                                                    colorScheme.tertiary.copy(alpha = 0.5f),
+                                                    CircleShape
+                                                ),
+                                            placeholder = painterResource(R.drawable.job_placeholder3),
+                                            error = painterResource(R.drawable.job_placeholder3)
+                                        )
+                                    }
+                                }
 
-                    Text(
-                        text = if (isGuestMode) {
-                            "Manage your business, track performance"
-                        } else {
-                            "Track your business performance, ${if (userName != "Guest") userName else ""}"
-                        },
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(0.9f)
-                        ),
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+                                // User Info Column
+                                Column(
+                                    modifier = Modifier.clickable { showMenuBottomSheet = true }
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            text = "Hi, $firstName",
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = colorScheme.onSurface,
+                                            letterSpacing = 0.2.sp
+                                        )
+                                        Icon(
+                                            Icons.Outlined.KeyboardArrowDown,
+                                            contentDescription = "Menu",
+                                            tint = colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = userRoleDisplay,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Normal,
+                                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        letterSpacing = 0.1.sp
+                                    )
+                                }
+                            }
+
+                            // Right side - Action icons
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                HeaderActionIconDashboard(
+                                    icon = Icons.Outlined.MailOutline,
+                                    iconTint = colorScheme.onSurfaceVariant,
+                                    backgroundTint = colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                ) {}
+
+                                Box {
+                                    HeaderActionIconDashboard(
+                                        icon = Icons.Outlined.NotificationsNone,
+                                        iconTint = colorScheme.onSurfaceVariant,
+                                        backgroundTint = colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    ) {}
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .offset(x = 4.dp, y = 4.dp)
+                                            .size(10.dp)
+                                            .background(
+                                                color = colorScheme.tertiary,
+                                                shape = CircleShape
+                                            )
+                                            .border(
+                                                width = 1.5.dp,
+                                                color = Color.White,
+                                                shape = CircleShape
+                                            )
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Dashboard title
+                    Column(
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    ) {
+                        Text(
+                            text = "Dashboard",
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                color = Color.White,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = (-1.5).sp,
+                                fontSize = titleFontSize
+                            )
+                        )
+                        Text(
+                            text = if (isGuestMode) {
+                                "Manage your business, track performance"
+                            } else {
+                                "Track your business performance, ${if (firstName != "Guest") firstName else ""}"
+                            },
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = Color.White.copy(0.9f)
+                            ),
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                 }
             }
         }
+    }
+
+    // Profile Menu Bottom Sheet
+    if (showMenuBottomSheet) {
+        ProfileMenuBottomSheet(
+            onDismiss = { showMenuBottomSheet = false },
+            colorScheme = colorScheme,
+            onMyAccountClick = {
+                showMenuBottomSheet = false
+                // Navigate to My Account
+            },
+            onMyListingsClick = {
+                showMenuBottomSheet = false
+                // Navigate to My Listings
+            },
+            onMyFavoritesClick = {
+                showMenuBottomSheet = false
+                // Navigate to My Favorites
+            },
+            onPostClick = {
+                showMenuBottomSheet = false
+                // Navigate to Post
+            },
+            onLogoutClick = {
+                showMenuBottomSheet = false
+                // Handle logout
+            }
+        )
     }
 }
 
@@ -3814,27 +3946,23 @@ fun HeaderActionIconDashboard(
     icon: ImageVector,
     iconTint: Color = Color.White,
     backgroundTint: Color = Color.White.copy(alpha = 0.2f),
-    size: Dp = 48.dp,
+    size: Dp = 38.dp,
     onClick: () -> Unit
 ) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.size(size)
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(backgroundTint)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(backgroundTint, CircleShape)
-                .clip(CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(24.dp)
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = iconTint,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 

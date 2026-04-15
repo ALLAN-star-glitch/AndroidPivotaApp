@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.size.Size
 import com.example.pivota.R
 import com.example.pivota.ui.theme.PivotaConnectTheme
 
@@ -66,7 +67,6 @@ fun ModernHousingCardV2(
     val secondaryColor = MaterialTheme.colorScheme.secondary
     val tertiaryColor = MaterialTheme.colorScheme.tertiary
 
-
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -92,16 +92,18 @@ fun ModernHousingCardV2(
                     .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer)
             ) {
-                if (imageUrl != null) {
+                if (imageUrl != null && imageUrl.toString().isNotBlank()) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(imageUrl)
                             .crossfade(true)
+                            .size(Size(360, 360)) // Limit image size to prevent memory issues
                             .build(),
                         contentDescription = "$title image",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
-                        error = painterResource(id = R.drawable.houses)
+                        error = painterResource(id = R.drawable.houses),
+                        fallback = painterResource(id = R.drawable.houses)
                     )
                 } else {
                     Box(

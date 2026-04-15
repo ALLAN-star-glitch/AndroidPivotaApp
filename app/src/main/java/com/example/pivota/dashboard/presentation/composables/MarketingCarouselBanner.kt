@@ -78,6 +78,14 @@ fun MarketingCarouselBanner(
                 title = { _, _ -> "Hire Trusted Professionals" },
                 subtitle = { _ -> "Verified experts ready to help" },
                 ctaText = { _ -> "Find Professionals →" }
+            ),
+            // ✅ NEW: Social Support Pillar (Fourth Banner)
+            BannerItem(
+                type = BannerType.SOCIAL_SUPPORT,
+                imageRes = R.drawable.find_support,
+                title = { _, _ -> "Find Social Support" },
+                subtitle = { _ -> "Food aid, counseling, grants & more - Verified NGOs" },
+                ctaText = { _ -> "Get Support →" }
             )
         )
     }
@@ -108,7 +116,7 @@ fun MarketingCarouselBanner(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(160.dp) // Slightly increased height for better visibility
+                .height(160.dp)
         ) {
             HorizontalPager(
                 state = pagerState,
@@ -127,7 +135,6 @@ fun MarketingCarouselBanner(
                 ) {
                     Box(Modifier.fillMaxSize()) {
 
-                        // ✅ FIXED: Lowered image with Alignment.TopCenter to show head/face
                         AsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(banner.imageRes)
@@ -137,12 +144,12 @@ fun MarketingCarouselBanner(
                                 .build(),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
-                            alignment = Alignment.TopCenter, // 👈 KEY CHANGE: aligns image to top
+                            alignment = Alignment.TopCenter,
                             modifier = Modifier.fillMaxSize(),
                             error = painterResource(R.drawable.property_placeholder1)
                         )
 
-                        // Gradient overlay (adjusted to work better with lower image)
+                        // Gradient overlay
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -159,7 +166,7 @@ fun MarketingCarouselBanner(
                                 )
                         )
 
-                        // Content (slightly adjusted padding)
+                        // Content
                         Row(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -256,5 +263,6 @@ enum class BannerType {
     WELCOME_BACK,
     JOBS,
     HOUSING,
-    PROFESSIONALS
+    PROFESSIONALS,
+    SOCIAL_SUPPORT
 }

@@ -1,7 +1,6 @@
 package com.example.pivota.dashboard.presentation.screens
 
 import android.annotation.SuppressLint
-import android.icu.number.Precision
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -108,14 +106,19 @@ fun DiscoverScreen(
 
     LaunchedEffect(selectedFilters) {
         when {
-            selectedFilters.contains("Houses") -> {
+            selectedFilters.contains("Properties") -> {
                 onNavigateToHouseListings()
-                selectedFilters = selectedFilters - "Houses"
+                selectedFilters = selectedFilters - "Properties"
             }
             selectedFilters.contains("Jobs") -> {
                 onNavigateToJobListings()
                 selectedFilters = selectedFilters - "Jobs"
             }
+            selectedFilters.contains("Professionals") -> {
+                onNavigateToAllProviders()
+                selectedFilters = selectedFilters - "Professionals"
+            }
+
         }
     }
 
@@ -175,6 +178,7 @@ fun DiscoverScreen(
                                 BannerType.JOBS -> onNavigateToAllJobs()
                                 BannerType.HOUSING -> onNavigateToAllHousing()
                                 BannerType.PROFESSIONALS -> onNavigateToAllProviders()
+                                BannerType.SOCIAL_SUPPORT -> {}
                             }
                         }
                     )
@@ -413,6 +417,7 @@ fun DiscoverScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.TopCenter)
+                        // No statusBarsPadding() here - surface touches top edge
                         .shadow(
                             elevation = 8.dp,
                             shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
@@ -425,12 +430,13 @@ fun DiscoverScreen(
                         bottomStart = 20.dp,
                         bottomEnd = 20.dp
                     ),
-                    color = colorScheme.surface,
+                    color = colorScheme.surface,  // Original color
                     tonalElevation = 4.dp
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .statusBarsPadding()  // Add status bar padding to content only
                             .padding(horizontal = horizontalPadding, vertical = 12.dp)
                     ) {
                         SearchBarWithAudio(
@@ -440,7 +446,7 @@ fun DiscoverScreen(
                             isRecording = isRecording,
                             primaryColor = primaryColor,
                             colorScheme = colorScheme,
-                            modifier = Modifier.fillMaxWidth()  // Added explicit fillMaxWidth
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -542,7 +548,8 @@ private val supportItems = listOf(
     SupportItem("Food for All", "Community Food Programs", "Nairobi & Kiambu", false)
 )
 
-// NON-STICKY HEADER - Elegant with brand colors
+// NON-STICKY HEADER - With appropriate top spacing
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NonStickyHeader(
     colorScheme: ColorScheme,
@@ -551,50 +558,84 @@ fun NonStickyHeader(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-
     val profileUrl = user?.profileImageUrl?.takeIf { it.isNotBlank() }
+    var showMenuBottomSheet by remember { mutableStateOf(false) }
+
+    // Get user info
+    val firstName = remember(user, isGuestMode) {
+        when {
+            user == null || isGuestMode -> "Guest"
+            user.firstName.isNotBlank() -> user.firstName
+            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
+            else -> "Guest"
+        }
+    }
+
+    // Get user role
+    val userRole = remember(user, isGuestMode) {
+        when {
+            isGuestMode -> "Guest User"
+            user?.role?.equals("admin", ignoreCase = true) == true -> "Administrator"
+            user?.role?.equals("professional", ignoreCase = true) == true -> "Professional"
+            else -> "General User"
+        }
+    }
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .statusBarsPadding(),
-        color = colorScheme.surface.copy(alpha = 0.95f),
-        tonalElevation = 2.dp
+            .statusBarsPadding()  // Add status bar padding back for non-sticky header
+            .padding(horizontal = 16.dp)
+            .padding(top = 8.dp, bottom = 8.dp)  // Small top padding
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(24.dp),
+                ambientColor = Color.Black.copy(alpha = 0.08f),
+                spotColor = Color.Black.copy(alpha = 0.06f)
+            ),
+        shape = RoundedCornerShape(24.dp),
+        color = colorScheme.surface.copy(alpha = 0.98f),
+        tonalElevation = 0.dp
     ) {
-        Column {
-
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left side - Profile Avatar and User Info
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
-                // Logo
-                AsyncImage(
-                    model = R.drawable.logofinale,
-                    contentDescription = "Logo",
+                // Profile Avatar (Clickable)
+                Box(
                     modifier = Modifier
-                        .height(34.dp)
-                        .width(120.dp),
-                    error = painterResource(R.drawable.ic_launcher_foreground)
-                )
-
-                // Right icons + profile
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .clickable { showMenuBottomSheet = true },
+                    contentAlignment = Alignment.Center
                 ) {
-
-                    HeaderIcon(Icons.Outlined.MailOutline, colorScheme)
-                    HeaderIcon(Icons.Outlined.NotificationsNone, colorScheme)
-
-                    // Profile
-                    Box(
-                        modifier = Modifier.size(42.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    if (isGuestMode || profileUrl.isNullOrBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    color = colorScheme.primary.copy(alpha = 0.1f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Outlined.AccountCircle,
+                                contentDescription = "Profile",
+                                tint = colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    } else {
                         AsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(profileUrl)
@@ -605,29 +646,285 @@ fun NonStickyHeader(
                             contentDescription = "Profile",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
-                                .matchParentSize()
+                                .fillMaxSize()
                                 .clip(CircleShape)
                                 .border(
-                                    1.dp,
-                                    colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                    2.dp,
+                                    colorScheme.tertiary.copy(alpha = 0.5f),
                                     CircleShape
                                 ),
                             placeholder = painterResource(R.drawable.job_placeholder3),
-                            error = painterResource(R.drawable.job_placeholder3),
-                            fallback = painterResource(R.drawable.job_placeholder3)
+                            error = painterResource(R.drawable.job_placeholder3)
                         )
                     }
                 }
+
+                // User Info Column
+                Column(
+                    modifier = Modifier.clickable { showMenuBottomSheet = true }
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Hi, $firstName",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.onSurface,
+                            letterSpacing = 0.2.sp
+                        )
+                        // Dropdown Icon - Now next to the name
+                        Icon(
+                            Icons.Outlined.KeyboardArrowDown,
+                            contentDescription = "Menu",
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Text(
+                        text = userRole,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        letterSpacing = 0.1.sp
+                    )
+                }
             }
 
-            // Divider
+            // Right side - Action icons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Message Icon
+                HeaderIcon(Icons.Outlined.MailOutline, colorScheme)
+
+                // Notifications Icon with badge
+                Box {
+                    HeaderIcon(Icons.Outlined.NotificationsNone, colorScheme)
+                    // Notification badge
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 4.dp, y = 4.dp)
+                            .size(10.dp)
+                            .background(
+                                color = colorScheme.tertiary,
+                                shape = CircleShape
+                            )
+                            .border(
+                                width = 1.5.dp,
+                                color = colorScheme.error,
+                                shape = CircleShape
+                            )
+                    )
+                }
+            }
+        }
+    }
+
+    // Profile Menu Bottom Sheet
+    if (showMenuBottomSheet) {
+        ProfileMenuBottomSheet(
+            onDismiss = { showMenuBottomSheet = false },
+            colorScheme = colorScheme,
+            onMyAccountClick = {
+                showMenuBottomSheet = false
+                // Navigate to My Account
+            },
+            onMyListingsClick = {
+                showMenuBottomSheet = false
+                // Navigate to My Listings
+            },
+            onMyFavoritesClick = {
+                showMenuBottomSheet = false
+                // Navigate to My Favorites
+            },
+            onPostClick = {
+                showMenuBottomSheet = false
+                // Navigate to Post
+            },
+            onLogoutClick = {
+                showMenuBottomSheet = false
+                // Handle logout
+            }
+        )
+    }
+}
+
+
+// Profile Menu Bottom Sheet
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileMenuBottomSheet(
+    onDismiss: () -> Unit,
+    colorScheme: ColorScheme,
+    onMyAccountClick: () -> Unit,
+    onMyListingsClick: () -> Unit,
+    onMyFavoritesClick: () -> Unit,
+    onPostClick: () -> Unit,
+    onLogoutClick: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = false
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        dragHandle = {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(colorScheme.outlineVariant.copy(alpha = 0.15f))
+                    .padding(vertical = 12.dp)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .background(
+                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(2.dp)
+                    )
             )
         }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Menu Items
+            ProfileMenuItem(
+                icon = Icons.Outlined.Person,
+                title = "My Account",
+                subtitle = "Manage your profile and settings",
+                onClick = onMyAccountClick,
+                colorScheme = colorScheme
+            )
+
+            Divider(
+                color = colorScheme.outlineVariant.copy(alpha = 0.3f),
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+
+            ProfileMenuItem(
+                icon = Icons.Outlined.List,
+                title = "My Listings",
+                subtitle = "View and manage your listings",
+                onClick = onMyListingsClick,
+                colorScheme = colorScheme
+            )
+
+            Divider(
+                color = colorScheme.outlineVariant.copy(alpha = 0.3f),
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+
+            ProfileMenuItem(
+                icon = Icons.Outlined.FavoriteBorder,
+                title = "My Favorites",
+                subtitle = "Saved opportunities",
+                onClick = onMyFavoritesClick,
+                colorScheme = colorScheme
+            )
+
+            Divider(
+                color = colorScheme.outlineVariant.copy(alpha = 0.3f),
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+
+            ProfileMenuItem(
+                icon = Icons.Outlined.AddCircle,
+                title = "Post",
+                subtitle = "Create a new listing",
+                onClick = onPostClick,
+                colorScheme = colorScheme
+            )
+
+            Divider(
+                color = colorScheme.outlineVariant.copy(alpha = 0.3f),
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+
+            ProfileMenuItem(
+                icon = Icons.Outlined.Logout,
+                title = "Logout",
+                subtitle = "Sign out from your account",
+                onClick = onLogoutClick,
+                colorScheme = colorScheme,
+                isDestructive = true
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun ProfileMenuItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    colorScheme: ColorScheme,
+    isDestructive: Boolean = false
+) {
+    val textColor = if (isDestructive) colorScheme.error else colorScheme.onSurface
+    val iconColor = if (isDestructive) colorScheme.error else colorScheme.primary
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Icon Container
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(
+                    color = if (isDestructive) colorScheme.error.copy(alpha = 0.1f)
+                    else colorScheme.primary.copy(alpha = 0.08f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = title,
+                tint = iconColor,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        // Text Content
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = textColor
+            )
+            Text(
+                text = subtitle,
+                fontSize = 13.sp,
+                color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+
+        // Chevron Icon
+        Icon(
+            Icons.Outlined.ChevronRight,
+            contentDescription = null,
+            tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
@@ -650,113 +947,6 @@ fun HeaderIcon(
             tint = colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp)
         )
-    }
-}
-
-// POSTER-STYLE MARKETING BANNER with Stronger African Sapphire Gradient
-@Composable
-fun MarketingBannerPoster(
-    horizontalPadding: Dp = 16.dp,
-    user: User? = null,
-    isGuestMode: Boolean = false
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val displayName = remember(user) {
-        when {
-            user == null || isGuestMode -> "Guest"
-            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
-            user.firstName.isNotBlank() -> user.firstName
-            else -> "there"
-        }
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = horizontalPadding, vertical = 8.dp)
-            .height(140.dp),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Background Image
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(R.drawable.happy_clients)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = "Marketing Banner",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-                error = painterResource(R.drawable.property_placeholder1)
-            )
-
-            // Balanced African Sapphire Gradient - Perfect middle ground
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                colorScheme.primary.copy(alpha = 0.7f),   // Visible but not overwhelming
-                                colorScheme.primary.copy(alpha = 0.5f),   // Medium
-                                colorScheme.primary.copy(alpha = 0.3f),   // Lighter
-                                colorScheme.primary.copy(alpha = 0.1f),   // Very light
-                                Color.Transparent                          // Transparent on right
-                            )
-                        )
-                    )
-            )
-
-            // Content
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(
-                    modifier = Modifier.weight(0.6f)
-                ) {
-                    Text(
-                        text = if (isGuestMode) "Start Your Journey" else "Welcome Back, $displayName",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = if (isGuestMode) {
-                            "Create an account to access all features"
-                        } else {
-                            "Upgrade to Pro plan and unlock premium listings"
-                        },
-                        fontSize = 13.sp,
-                        color = Color.White.copy(alpha = 0.9f),
-                        maxLines = 2
-                    )
-                }
-
-                Button(
-                    onClick = { /* Handle CTA click */ },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorScheme.tertiary,
-                        contentColor = colorScheme.onTertiary
-                    ),
-                    shape = RoundedCornerShape(24.dp),
-                    modifier = Modifier.height(40.dp)
-                ) {
-                    Text(
-                        text = if (isGuestMode) "Sign Up →" else "Upgrade",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -802,7 +992,7 @@ fun SearchAndPillsSection(
     }
 }
 
-// FILTER PILLS ROW - Using brand colors
+// NAVIGATION ROW - Simple navigation items without filtering/active states
 @Composable
 fun FilterPillsRow(
     selectedFilters: Set<String>,
@@ -812,54 +1002,40 @@ fun FilterPillsRow(
     isTablet: Boolean
 ) {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        val filters = listOf(
-            "All" to null,
+        val navItems = listOf(
             "Jobs" to Icons.Outlined.Work,
-            "Houses" to Icons.Outlined.Home,
+            "Properties" to Icons.Outlined.Home,
             "Professionals" to Icons.Outlined.Build,
             "Support" to Icons.Outlined.VolunteerActivism,
             "Verified" to Icons.Outlined.Verified
         )
 
-        items(filters.size) { index ->
-            val (filter, icon) = filters[index]
-            val isSelected = selectedFilters.contains(filter) || (filter == "All" && selectedFilters.isEmpty())
+        items(navItems.size) { index ->
+            val (label, icon) = navItems[index]
 
-            Surface(
-                shape = RoundedCornerShape(30.dp),
-                color = if (isSelected) primaryColor else colorScheme.surface,
-                border = if (!isSelected) BorderStroke(1.dp, colorScheme.outlineVariant) else null,
+            Row(
                 modifier = Modifier
-                    .clickable { onFilterSelected(filter) }
-                    .shadow(
-                        elevation = if (isSelected) 2.dp else 0.dp,
-                        shape = RoundedCornerShape(30.dp),
-                        ambientColor = Color.Black.copy(0.05f)
-                    )
+                    .clickable { onFilterSelected(label) }
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (icon != null) {
-                        Icon(
-                            icon,
-                            contentDescription = null,
-                            tint = if (isSelected) colorScheme.onPrimary else colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                    }
-                    Text(
-                        text = filter,
-                        color = if (isSelected) colorScheme.onPrimary else colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                    )
-                }
+                Icon(
+                    icon,
+                    contentDescription = label,
+                    tint = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = label,
+                    color = colorScheme.onSurfaceVariant,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }

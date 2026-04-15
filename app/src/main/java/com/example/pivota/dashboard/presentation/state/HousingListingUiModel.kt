@@ -17,6 +17,9 @@ data class HousingListingUiModel(
     val bathrooms: Int,
     val squareMeters: Int,
 
+    val postedTime: String? = null,
+
+
     // 🔹 BACKWARD COMPATIBILITY (single image)
     val imageRes: Int? = null,
 

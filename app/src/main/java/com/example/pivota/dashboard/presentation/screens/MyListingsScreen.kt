@@ -522,17 +522,22 @@ private fun MyListingsHeader(
                                             .size(16.dp)
                                             .offset(x = (-4).dp, y = (4).dp)
                                     ) {
-                                        Text(
-                                            text = activeFilterCount.toString(),
-                                            color = colorScheme.onPrimary,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.align(Alignment.Center as Alignment.Vertical)
-                                        )
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = activeFilterCount.toString(),
+                                                color = colorScheme.onPrimary,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
                             }
                         ) {
+                            // Your filter button content
                             Surface(
                                 shape = RoundedCornerShape(20.dp),
                                 color = colorScheme.primary.copy(0.08f),

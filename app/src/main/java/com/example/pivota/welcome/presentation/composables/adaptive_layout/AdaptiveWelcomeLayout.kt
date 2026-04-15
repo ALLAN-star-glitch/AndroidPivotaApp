@@ -31,13 +31,15 @@ fun AdaptiveWelcomeLayout(
     val carouselMessages = listOf(
         "Find your dream job with verified employers across Africa",
         "Discover quality housing and accommodation options",
+        "Find Trusted Professionals",
         "Access essential services and community support"
     )
 
     val backgroundImages = listOf(
-        com.example.pivota.R.drawable.nairobi_city,
-        com.example.pivota.R.drawable.houses,
-        com.example.pivota.R.drawable.happy_clients
+        com.example.pivota.R.drawable.find_job,
+        com.example.pivota.R.drawable.found_property,
+        com.example.pivota.R.drawable.trusted_professional,
+        com.example.pivota.R.drawable.find_support
     )
 
     when {
