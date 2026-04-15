@@ -7,10 +7,6 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,27 +25,25 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
+import androidx.window.core.layout.WindowWidthSizeClass
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
-import com.example.pivota.dashboard.presentation.composables.ModernProfessionalCard
-import com.example.pivota.dashboard.domain.ProfessionalType
+import com.example.pivota.auth.domain.model.User
+import com.example.pivota.dashboard.presentation.composables.*
 import com.example.pivota.dashboard.presentation.viewmodels.ProfessionalsViewModel
 import kotlinx.coroutines.delay
 
@@ -81,8 +75,8 @@ data class EnhancedProfessionalData(
     val id: String,
     val name: String,
     val businessName: String?,
-    val profileImageRes: Int? = null,
-    val coverImageRes: Int? = null,
+    val profileImageUrl: String? = null,
+    val coverImageUrl: String? = null,
     val category: String,
     val specialties: List<String>,
     val rating: Double,
@@ -106,12 +100,27 @@ data class EnhancedProfessionalData(
 fun ProfessionalsScreen(
     viewModel: ProfessionalsViewModel = hiltViewModel(),
     onProfessionalClick: (EnhancedProfessionalData) -> Unit = {},
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    user: User? = null,
+    isGuestMode: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val professionals by viewModel.filteredProfessionals.collectAsStateWithLifecycle()
 
-    // State for search and filters - exactly like DiscoverScreen
+    // Get window size class for responsive design
+    val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isExpanded = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val isTablet = isExpanded || isMedium
+
+    // Adaptive grid columns based on screen size
+    val professionalGridColumns = when {
+        isExpanded -> 3
+        isMedium -> 2
+        else -> 1
+    }
+
+    // State for search and filters
     var searchQuery by remember { mutableStateOf("") }
     var selectedPill by remember { mutableStateOf("All") }
     var filterState by remember { mutableStateOf(ProfessionalFilterState()) }
@@ -124,46 +133,21 @@ fun ProfessionalsScreen(
 
     val listState = rememberLazyListState()
 
-    // 📏 Header sizes
-    val maxHeight = 220.dp
-    val minHeight = 90.dp
+    val primaryColor = colorScheme.primary
+    val softBackground = colorScheme.background
 
-    val density = LocalDensity.current
-    val collapseRangePx = with(density) {
-        (maxHeight - minHeight).toPx()
+    val horizontalPadding = when {
+        isExpanded -> 24.dp
+        isMedium -> 20.dp
+        else -> 16.dp
     }
 
-    // 🔥 Collapse logic
-    val scrollY = when (listState.firstVisibleItemIndex) {
-        0 -> listState.firstVisibleItemScrollOffset.toFloat()
-        else -> collapseRangePx
-    }
-
-    val collapseFraction =
-        (scrollY / collapseRangePx).coerceIn(0f, 1f)
-
-    val animatedHeight =
-        lerp(maxHeight, minHeight, collapseFraction)
-
-    // Track if we're past the threshold to show shadow
-    val isPastThreshold = remember {
+    // Track if search bar should be pinned (only search and pills are sticky)
+    val isSearchBarPinned by remember {
         derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 100
+            listState.firstVisibleItemIndex > 1 ||
+                    (listState.firstVisibleItemIndex == 1 && listState.firstVisibleItemScrollOffset > 0)
         }
-    }
-
-    // Get screen width for adaptive layout
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
-    val isTablet = screenWidth > 600.dp
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-
-    // Determine grid columns based on screen size
-    val gridColumns = when {
-        isTablet && isLandscape -> 3
-        isTablet -> 2
-        screenWidth > 480.dp -> 2
-        else -> 1
     }
 
     // Debounce search
@@ -180,12 +164,11 @@ fun ProfessionalsScreen(
         }
     }
 
-    // Filter professionals based on category, filters, price, and search
+    // Filter professionals
     val filteredProfessionals = remember(debouncedQuery.value, selectedPill, filterState, priceRange, professionals) {
         professionals.filter { professional ->
             var matches = true
 
-            // Apply category filter based on selected pill
             when (selectedPill) {
                 "All" -> matches = true
                 "Electrician" -> matches = professional.category == "Electrician"
@@ -197,22 +180,18 @@ fun ProfessionalsScreen(
                 else -> matches = true
             }
 
-            // Apply rating filter
             if (filterState.minRating > 0 && matches) {
                 matches = professional.rating >= filterState.minRating
             }
 
-            // Apply verified filter
             if (filterState.isVerifiedOnly && matches) {
                 matches = professional.isVerified
             }
 
-            // Apply SmartMatch filter
             if (filterState.isSmartMatchOnly && matches) {
                 matches = professional.isSmartMatch
             }
 
-            // Apply price range filter
             if (matches) {
                 priceRange.min?.let {
                     if (professional.startingPrice < it) matches = false
@@ -222,7 +201,6 @@ fun ProfessionalsScreen(
                 }
             }
 
-            // Apply search filter
             if (debouncedQuery.value.isNotEmpty() && matches) {
                 matches = professional.name.lowercase().contains(debouncedQuery.value) ||
                         professional.businessName?.lowercase()?.contains(debouncedQuery.value) == true ||
@@ -246,16 +224,7 @@ fun ProfessionalsScreen(
     }
 
     Scaffold(
-        containerColor = colorScheme.background,
-        topBar = {
-            ProfessionalsHeroHeader(
-                primaryColor = colorScheme.primary,
-                tertiaryColor = colorScheme.tertiary,
-                height = animatedHeight,
-                collapseFraction = collapseFraction,
-                colorScheme = colorScheme
-            )
-        },
+        containerColor = softBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Box(
@@ -263,21 +232,61 @@ fun ProfessionalsScreen(
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
-            // 📜 SCROLL CONTENT - Using contentPadding like DiscoverScreen
+            // SCROLL CONTENT - Header is inside LazyColumn (scrolls away)
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = maxHeight + 180.dp // Combined height of header + search + pills
-                )
+                contentPadding = PaddingValues(bottom = 80.dp),
+                horizontalAlignment = Alignment.Start
             ) {
+                // HEADER IS NOW INSIDE LAZYCOLUMN - IT SCROLLS AWAY
+                item {
+                    NonStickyHeaderProfessionals(
+                        colorScheme = colorScheme,
+                        user = user,
+                        isGuestMode = isGuestMode,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                // Search and Pills Section (scrolls with content)
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = horizontalPadding, vertical = 12.dp)
+                    ) {
+                        ProfessionalsSearchBarWithAudio(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it },
+                            onAudioClick = { isRecording = !isRecording },
+                            isRecording = isRecording,
+                            accentColor = primaryColor,
+                            colorScheme = colorScheme,
+                            activeFilterCount = activeFilterCount,
+                            onFilterClick = { showFilterModal = true }
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        ProfessionalsFilterPillsRow(
+                            selectedPill = selectedPill,
+                            onPillSelected = { pill ->
+                                selectedPill = pill
+                            },
+                            accentColor = primaryColor,
+                            colorScheme = colorScheme
+                        )
+                    }
+                }
+
                 // Search results info
                 if (debouncedQuery.value.isNotEmpty()) {
                     item {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .padding(horizontal = horizontalPadding, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -291,13 +300,13 @@ fun ProfessionalsScreen(
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
                                     strokeWidth = 2.dp,
-                                    color = colorScheme.primary
+                                    color = primaryColor
                                 )
                             } else {
                                 Text(
                                     text = "${filteredProfessionals.size} professionals found",
                                     fontSize = 13.sp,
-                                    color = colorScheme.primary,
+                                    color = primaryColor,
                                     fontWeight = FontWeight.Medium
                                 )
                             }
@@ -305,7 +314,7 @@ fun ProfessionalsScreen(
                     }
                 }
 
-                // Empty state when no professionals match search/filters
+                // Empty state
                 if (filteredProfessionals.isEmpty() && !isSearching) {
                     item {
                         Box(
@@ -320,7 +329,6 @@ fun ProfessionalsScreen(
                                 if (searchQuery.isNotEmpty() || selectedPill != "All" ||
                                     filterState.minRating > 0 || filterState.isVerifiedOnly || filterState.isSmartMatchOnly ||
                                     priceRange.min != null || priceRange.max != null) {
-                                    // No results for current filters
                                     Icon(
                                         Icons.Outlined.SearchOff,
                                         contentDescription = null,
@@ -352,18 +360,17 @@ fun ProfessionalsScreen(
                                             focusManager.clearFocus()
                                         },
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = colorScheme.primary
+                                            containerColor = primaryColor
                                         ),
                                         shape = RoundedCornerShape(16.dp)
                                     ) {
                                         Text("Clear Filters")
                                     }
                                 } else {
-                                    // No professionals at all
                                     Icon(
                                         painter = painterResource(id = R.drawable.ic_work),
                                         contentDescription = null,
-                                        tint = colorScheme.primary.copy(0.5f),
+                                        tint = primaryColor.copy(0.5f),
                                         modifier = Modifier.size(48.dp)
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
@@ -386,120 +393,132 @@ fun ProfessionalsScreen(
                     }
                 }
 
-                // Professional Cards Grid
+                // Professional Cards Grid with proper spacing
                 if (filteredProfessionals.isNotEmpty()) {
-                    // Split the professionals into chunks for grid display
-                    val chunkedProfessionals = filteredProfessionals.chunked(gridColumns)
+                    items((filteredProfessionals.size + professionalGridColumns - 1) / professionalGridColumns) { rowIndex ->
+                        val startIndex = rowIndex * professionalGridColumns
 
-                    items(chunkedProfessionals) { rowProfessionals ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            rowProfessionals.forEach { professional ->
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxWidth()
-                                ) {
-                                    ModernProfessionalCard(
-                                        name = professional.name,
-                                        specialty = professional.category,
-                                        rating = professional.rating.toFloat(),
-                                        jobs = professional.completedJobs,
-                                        isVerified = professional.isVerified,
-                                        professionalType = if (professional.businessName != null)
-                                            ProfessionalType.ORGANIZATION else ProfessionalType.INDIVIDUAL,
-                                        description = professional.description,
-                                        coverImageRes = professional.coverImageRes,
-                                        profileImageRes = professional.profileImageRes,
-                                        onCardClick = { onProfessionalClick(professional) },
-                                        onViewClick = { onProfessionalClick(professional) },
-                                        onHireClick = { /* Handle hire */ },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .animateItem()
-                                    )
+                        if (professionalGridColumns == 1) {
+                            // Single column - vertical layout with 16dp spacing between cards
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = horizontalPadding),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                for (i in 0 until professionalGridColumns) {
+                                    val index = startIndex + i
+                                    if (index < filteredProfessionals.size) {
+                                        val professional = filteredProfessionals[index]
+                                        ModernProfessionalCardV2(
+                                            imageUrl = professional.profileImageUrl,
+                                            name = professional.name,
+                                            profession = professional.category,
+                                            location = professional.location,
+                                            postedTime = "Active today",
+                                            professionalType = if (professional.businessName != null)
+                                                ProfessionalType.ORGANIZATION else ProfessionalType.INDIVIDUAL,
+                                            rating = professional.rating.toFloat(),
+                                            jobsCompleted = professional.completedJobs,
+                                            onViewDetailsClick = { onProfessionalClick(professional) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
                                 }
                             }
-
-                            // Add empty boxes to fill remaining space if row has fewer items than columns
-                            repeat(gridColumns - rowProfessionals.size) {
-                                Spacer(modifier = Modifier.weight(1f))
+                        } else {
+                            // Multiple columns - use Row with 16dp spacing
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = horizontalPadding),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    for (i in 0 until professionalGridColumns) {
+                                        val index = startIndex + i
+                                        if (index < filteredProfessionals.size) {
+                                            val professional = filteredProfessionals[index]
+                                            Box(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxWidth()
+                                            ) {
+                                                ModernProfessionalCardV2(
+                                                    imageUrl = professional.profileImageUrl,
+                                                    name = professional.name,
+                                                    profession = professional.category,
+                                                    location = professional.location,
+                                                    postedTime = "Active today",
+                                                    professionalType = if (professional.businessName != null)
+                                                        ProfessionalType.ORGANIZATION else ProfessionalType.INDIVIDUAL,
+                                                    rating = professional.rating.toFloat(),
+                                                    jobsCompleted = professional.completedJobs,
+                                                    onViewDetailsClick = { onProfessionalClick(professional) }
+                                                )
+                                            }
+                                        } else {
+                                            Spacer(modifier = Modifier.weight(1f))
+                                        }
+                                    }
+                                }
                             }
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
-
-                item { Spacer(Modifier.height(80.dp)) }
             }
 
-            // 🏆 FIXED HEADER - Like DiscoverScreen
-            ProfessionalsHeroHeader(
-                primaryColor = colorScheme.primary,
-                tertiaryColor = colorScheme.tertiary,
-                height = animatedHeight,
-                collapseFraction = collapseFraction,
-                colorScheme = colorScheme,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .zIndex(3f)
-            )
-
-            // 📌 FIXED SEARCH + PILLS SECTION - Exactly like DiscoverScreen
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter)
-                    .padding(top = animatedHeight)
-                    .shadow(
-                        elevation = if (isPastThreshold.value) 8.dp else 0.dp,
-                        shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
-                        ambientColor = Color.Black.copy(0.08f)
-                    )
-                    .zIndex(2f),
-                shape = RoundedCornerShape(
-                    topStart = 0.dp,
-                    topEnd = 0.dp,
-                    bottomStart = 20.dp,
-                    bottomEnd = 20.dp
-                ),
-                color = colorScheme.surface,
-                tonalElevation = if (isPastThreshold.value) 4.dp else 0.dp
-            ) {
-                Column(
+            // STICKY SEARCH + PILLS SECTION (appears when scrolled past the original search)
+            if (isSearchBarPinned) {
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .align(Alignment.TopCenter)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
+                            ambientColor = Color.Black.copy(0.08f)
+                        )
+                        .zIndex(10f),
+                    shape = RoundedCornerShape(
+                        topStart = 0.dp,
+                        topEnd = 0.dp,
+                        bottomStart = 20.dp,
+                        bottomEnd = 20.dp
+                    ),
+                    color = colorScheme.surface,
+                    tonalElevation = 4.dp
                 ) {
-                    // Search Bar with Audio Icon - Like DiscoverScreen
-                    ProfessionalsSearchBarWithAudio(
-                        query = searchQuery,
-                        onQueryChange = { searchQuery = it },
-                        onAudioClick = {
-                            isRecording = !isRecording
-                        },
-                        isRecording = isRecording,
-                        accentColor = colorScheme.primary,
-                        colorScheme = colorScheme,
-                        activeFilterCount = activeFilterCount,
-                        onFilterClick = { showFilterModal = true }
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = horizontalPadding, vertical = 12.dp)
+                    ) {
+                        ProfessionalsSearchBarWithAudio(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it },
+                            onAudioClick = { isRecording = !isRecording },
+                            isRecording = isRecording,
+                            accentColor = primaryColor,
+                            colorScheme = colorScheme,
+                            activeFilterCount = activeFilterCount,
+                            onFilterClick = { showFilterModal = true }
+                        )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    // Filter Pills - Like DiscoverScreen
-                    ProfessionalsFilterPillsRow(
-                        selectedPill = selectedPill,
-                        onPillSelected = { pill ->
-                            selectedPill = pill
-                        },
-                        accentColor = colorScheme.primary,
-                        colorScheme = colorScheme
-                    )
+                        ProfessionalsFilterPillsRow(
+                            selectedPill = selectedPill,
+                            onPillSelected = { pill ->
+                                selectedPill = pill
+                            },
+                            accentColor = primaryColor,
+                            colorScheme = colorScheme
+                        )
+                    }
                 }
             }
         }
@@ -520,14 +539,120 @@ fun ProfessionalsScreen(
                 activeFilterCount = 0
                 showFilterModal = false
             },
-            accentColor = colorScheme.primary,
+            accentColor = primaryColor,
             colorScheme = colorScheme
         )
     }
 }
 
+// NON-STICKY HEADER - Same as DiscoverScreen (scrolls away)
+@Composable
+fun NonStickyHeaderProfessionals(
+    colorScheme: ColorScheme,
+    user: User? = null,
+    isGuestMode: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val profileUrl = user?.profileImageUrl?.takeIf { it.isNotBlank() }
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding(),
+        color = colorScheme.surface,
+        shadowElevation = 0.dp
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Logo
+                AsyncImage(
+                    model = R.drawable.logofinale,
+                    contentDescription = "Logo",
+                    modifier = Modifier
+                        .height(34.dp)
+                        .width(120.dp),
+                    error = painterResource(R.drawable.ic_launcher_foreground)
+                )
+
+                // Right icons + profile
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HeaderIconProfessionals(Icons.Outlined.MailOutline, colorScheme)
+                    HeaderIconProfessionals(Icons.Outlined.NotificationsNone, colorScheme)
+
+                    // Profile
+                    Box(
+                        modifier = Modifier.size(42.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(profileUrl)
+                                .size(128)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Profile",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(CircleShape)
+                                .border(
+                                    1.dp,
+                                    colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                    CircleShape
+                                ),
+                            placeholder = painterResource(R.drawable.job_placeholder3),
+                            error = painterResource(R.drawable.job_placeholder3),
+                            fallback = painterResource(R.drawable.job_placeholder3)
+                        )
+                    }
+                }
+            }
+
+            // Subtle divider
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(colorScheme.outlineVariant.copy(alpha = 0.15f))
+            )
+        }
+    }
+}
+
+@Composable
+fun HeaderIconProfessionals(
+    icon: ImageVector,
+    colorScheme: ColorScheme
+) {
+    Box(
+        modifier = Modifier
+            .size(38.dp)
+            .clip(CircleShape)
+            .background(colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .clickable { },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
 /* ─────────────────────────────────────────────
-   SEARCH BAR WITH AUDIO ICON - Like DiscoverScreen
+   SEARCH BAR WITH AUDIO ICON
    ───────────────────────────────────────────── */
 
 @Composable
@@ -574,7 +699,7 @@ fun ProfessionalsSearchBarWithAudio(
                     Box {
                         if (query.isEmpty()) {
                             Text(
-                                "Search...",
+                                "Search professionals...",
                                 color = colorScheme.onSurfaceVariant.copy(0.5f),
                                 fontSize = 14.sp
                             )
@@ -642,7 +767,7 @@ fun ProfessionalsSearchBarWithAudio(
                     Spacer(modifier = Modifier.width(4.dp))
                 }
 
-                // Filter button with badge - Like DiscoverScreen
+                // Filter button with badge
                 BadgedBox(
                     badge = {
                         if (activeFilterCount > 0) {
@@ -658,7 +783,7 @@ fun ProfessionalsSearchBarWithAudio(
                                     color = colorScheme.onPrimary,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.align(Alignment.Center)
+                                    modifier = Modifier.align(Alignment.Center as Alignment.Vertical)
                                 )
                             }
                         }
@@ -696,7 +821,7 @@ fun ProfessionalsSearchBarWithAudio(
 }
 
 /* ─────────────────────────────────────────────
-   FILTER PILLS ROW - Like DiscoverScreen
+   FILTER PILLS ROW
    ───────────────────────────────────────────── */
 
 @Composable
@@ -722,7 +847,7 @@ fun ProfessionalsFilterPillsRow(
 
         items(filters.size) { index ->
             val (filter, icon) = filters[index]
-            val isSelected = selectedPill == filter || (filter == "All" && selectedPill == "All")
+            val isSelected = selectedPill == filter
 
             Surface(
                 shape = RoundedCornerShape(30.dp),
@@ -843,7 +968,6 @@ fun ProfessionalsFilterBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Min Price
                 OutlinedTextField(
                     value = localMinPrice,
                     onValueChange = { localMinPrice = it.filter { char -> char.isDigit() } },
@@ -852,13 +976,12 @@ fun ProfessionalsFilterBottomSheet(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = colorScheme.primary,
+                        focusedBorderColor = accentColor,
                         unfocusedBorderColor = colorScheme.outlineVariant
                     ),
                     singleLine = true
                 )
 
-                // Max Price
                 OutlinedTextField(
                     value = localMaxPrice,
                     onValueChange = { localMaxPrice = it.filter { char -> char.isDigit() } },
@@ -867,7 +990,7 @@ fun ProfessionalsFilterBottomSheet(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = colorScheme.primary,
+                        focusedBorderColor = accentColor,
                         unfocusedBorderColor = colorScheme.outlineVariant
                     ),
                     singleLine = true
@@ -1106,284 +1229,17 @@ fun ProfessionalsFilterBottomSheet(
     }
 }
 
-/* ─────────────────────────────────────────────
-   PROFESSIONALS HERO HEADER
-   ───────────────────────────────────────────── */
-
 @Composable
-fun ProfessionalsHeroHeader(
-    primaryColor: Color,
-    tertiaryColor: Color,
-    height: Dp,
-    collapseFraction: Float,
-    colorScheme: ColorScheme,
-    modifier: Modifier = Modifier
+fun BadgedBox(
+    badge: @Composable () -> Unit,
+    content: @Composable () -> Unit
 ) {
-    val collapsed = collapseFraction > 0.85f
-
-    val maxFontSize = 34.sp
-    val minFontSize = 24.sp
-
-    val backgroundColor by animateColorAsState(
-        targetValue = if (collapsed) colorScheme.primary.copy(alpha = 0.95f) else Color.Transparent,
-        animationSpec = tween(durationMillis = 300)
-    )
-
-    val titleFontSize = ((maxFontSize.value - collapseFraction * (maxFontSize.value - minFontSize.value))).sp
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height),
-        shadowElevation = if (collapsed) 8.dp else 0.dp
-    ) {
+    Box {
+        content()
         Box(
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = Modifier.align(Alignment.TopEnd)
         ) {
-            AnimatedVisibility(
-                visible = !collapsed,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(R.drawable.happypeople)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    onLoading = {},
-                    onSuccess = {},
-                    onError = {}
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(backgroundColor)
-            )
-
-            AnimatedVisibility(
-                visible = !collapsed,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    colorScheme.primary.copy(0.95f),
-                                    colorScheme.primary.copy(0.75f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                )
-            }
-
-            AnimatedVisibility(
-                visible = !collapsed,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(colorScheme.tertiary.copy(0.15f), Color.Transparent),
-                                endX = 400f
-                            )
-                        )
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-            ) {
-                AnimatedVisibility(
-                    visible = !collapsed,
-                    enter = fadeIn() + slideInVertically(),
-                    exit = fadeOut() + slideOutVertically()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp, start = 20.dp, end = 20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box {
-                                HeaderAvatarProfessionals(colorScheme)
-                                Box(
-                                    modifier = Modifier
-                                        .size(12.dp)
-                                        .background(colorScheme.tertiaryContainer, CircleShape)
-                                        .border(2.dp, colorScheme.primary, CircleShape)
-                                        .align(Alignment.BottomEnd)
-                                )
-                            }
-
-                            Spacer(Modifier.width(12.dp))
-
-                            Column {
-                                Text(
-                                    "Hi, Guest",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    "Find trusted professionals",
-                                    color = Color.White.copy(0.85f),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            HeaderActionIconProfessionals(
-                                icon = Icons.Default.Mail,
-                                iconTint = Color.White,
-                                backgroundTint = Color.White.copy(alpha = 0.2f),
-                                onClick = {}
-                            )
-                            HeaderActionIconProfessionals(
-                                icon = Icons.Default.Notifications,
-                                iconTint = Color.White,
-                                backgroundTint = Color.White.copy(alpha = 0.2f),
-                                onClick = {}
-                            )
-                        }
-                    }
-                }
-
-                if (!collapsed) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-
-            if (collapsed) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.CenterStart)
-                        .padding(start = 20.dp, end = 20.dp)
-                        .offset(y = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Professionals",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-1.5).sp,
-                            fontSize = titleFontSize
-                        )
-                    )
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        HeaderActionIconProfessionals(
-                            icon = Icons.Default.Mail,
-                            iconTint = Color.White,
-                            backgroundTint = Color.White.copy(alpha = 0.2f),
-                            onClick = {}
-                        )
-                        HeaderActionIconProfessionals(
-                            icon = Icons.Default.Notifications,
-                            iconTint = Color.White,
-                            backgroundTint = Color.White.copy(alpha = 0.2f),
-                            onClick = {}
-                        )
-                    }
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 20.dp, bottom = 32.dp)
-                        .statusBarsPadding()
-                ) {
-                    Text(
-                        text = "Professionals",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-1.5).sp,
-                            fontSize = titleFontSize
-                        )
-                    )
-
-                    Text(
-                        text = "Professional partners you can trust",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(0.9f)
-                        ),
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun HeaderAvatarProfessionals(colorScheme: ColorScheme) {
-    Box(
-        modifier = Modifier
-            .size(45.dp)
-            .background(Color.White.copy(0.2f), CircleShape)
-            .border(1.5.dp, Color.White.copy(0.5f), CircleShape)
-            .clip(CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Default.PersonOutline,
-            contentDescription = "User Avatar",
-            tint = Color.White,
-            modifier = Modifier.size(24.dp)
-        )
-    }
-}
-
-@Composable
-fun HeaderActionIconProfessionals(
-    icon: ImageVector,
-    iconTint: Color = Color.White,
-    backgroundTint: Color = Color.White.copy(alpha = 0.2f),
-    onClick: () -> Unit
-) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.size(48.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(backgroundTint, CircleShape)
-                .clip(CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(24.dp)
-            )
+            badge()
         }
     }
 }

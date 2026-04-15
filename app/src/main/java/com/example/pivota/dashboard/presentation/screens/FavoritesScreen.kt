@@ -1322,7 +1322,7 @@ fun FavoritesSearchBar(
                                     color = colorScheme.onPrimary,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.align(Alignment.Center)
+                                    modifier = Modifier.align(Alignment.Center as Alignment.Vertical)
                                 )
                             }
                         }

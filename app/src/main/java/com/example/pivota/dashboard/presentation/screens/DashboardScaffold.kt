@@ -311,14 +311,6 @@ fun DashboardScaffold(
                                 onNavigateToAllSupport = {
                                     // Navigate to support listing screen when created
                                 },
-                                onBookHousingClick = { housingListing ->
-                                    selectedListingForBooking = housingListing
-                                    navController.navigate(BookViewing)
-                                },
-                                onViewHousingClick = { housingListing ->
-                                    selectedListingForViewing = housingListing
-                                    navController.navigate(HouseDetails)
-                                },
                                 user = user,  // Pass user to DiscoverScreen
                                 isGuestMode = isGuestMode  // Pass guest mode
                             )
