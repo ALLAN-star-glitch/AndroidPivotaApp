@@ -45,17 +45,16 @@ import androidx.compose.ui.unit.sp
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import coil3.compose.AsyncImage
-import coil3.request.CachePolicy
+
 import coil3.request.ImageRequest
-import coil3.request.allowHardware
+
 import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.auth.domain.model.User
+import com.example.pivota.dashboard.presentation.composables.ReusableHeader
 import com.example.pivota.ui.theme.*
 import kotlinx.coroutines.delay
-import com.example.pivota.dashboard.presentation.screens.NonStickyHeader
-import com.example.pivota.dashboard.presentation.screens.ProfileMenuBottomSheet
-import kotlin.math.roundToInt
+
 
 // Data classes
 data class KPI(
@@ -214,6 +213,15 @@ fun DashboardScreen(
             windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
 
     val listState = rememberLazyListState()
+    val scrollOffset by remember {
+        derivedStateOf {
+            if (listState.firstVisibleItemIndex == 0) {
+                listState.firstVisibleItemScrollOffset.toFloat()
+            } else {
+                Float.MAX_VALUE  // Fully scrolled
+            }
+        }
+    }
 
     // 📏 Header sizes
     val maxHeight = if (isWide) 280.dp else 220.dp
@@ -362,43 +370,67 @@ fun DashboardScreen(
     )
 
 
-
     Scaffold(
         containerColor = colorScheme.background,
         topBar = {
-            DashboardHeroHeader(
-                primaryColor = colorScheme.primary,
-                accentColor = tertiaryLight,
-                height = animatedHeight,
-                collapseFraction = collapseFraction,
-                onSurfaceColor = colorScheme.onSurface,
-                isWide = isWide,
+
+            ReusableHeader(
+                colorScheme = colorScheme,
+
+                user = user,
                 isGuestMode = isGuestMode,
-                userName = displayName,
-                fullName = fullName,
-                isLoggedIn = user != null,
-                userRole = userRole,
-                accountType = accountType,
-                user = user,  // Add this line
+                isSticky = true,  // Sticky for dashboard
+                scrollOffset = scrollOffset,
                 modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()  // Push below status bar
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                pageTitle = "Dashboard",
+                pageSubtitle = "Track your business performance",
             )
         },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { padding ->
+    ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
+                .padding(paddingValues)
         ) {
             LazyColumn(
-                state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = maxHeight + 12.dp
-                ),
+                state = listState,
+                contentPadding = PaddingValues(bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // 🏦 UNIFIED FINANCIAL HUB (Always visible)
+                // 📊 PERFORMANCE OVERVIEW (KPI Cards) - WITH PROPER PADDING
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = if (isWide) 24.dp else 16.dp)
+                    ) {
+                        if (isWide) {
+                            EnhancedKpiCardsSection(
+                                kpis = kpiData,
+                                primaryColor = colorScheme.primary,
+                                textPrimary = colorScheme.onSurface,
+                                textSecondary = colorScheme.onSurfaceVariant,
+                                surfaceColor = colorScheme.surfaceContainerLow,
+                                borderColor = colorScheme.outlineVariant,
+                                isWide = true
+                            )
+                        } else {
+                            KpiCardsSection(
+                                kpis = kpiData,
+                                primaryColor = colorScheme.primary,
+                                textPrimary = colorScheme.onSurface,
+                                textSecondary = colorScheme.onSurfaceVariant,
+                                isWide = false
+                            )
+                        }
+                    }
+                }
+
+                // 🏦 UNIFIED FINANCIAL HUB - MOVED DOWN
                 item {
                     UnifiedFinancialHub(
                         walletInfo = walletInfo,
@@ -450,16 +482,6 @@ fun DashboardScreen(
                                 modifier = Modifier.weight(1.5f),
                                 verticalArrangement = Arrangement.spacedBy(20.dp)
                             ) {
-                                EnhancedKpiCardsSection(
-                                    kpis = kpiData,
-                                    primaryColor = colorScheme.primary,
-                                    textPrimary = colorScheme.onSurface,
-                                    textSecondary = colorScheme.onSurfaceVariant,
-                                    surfaceColor = colorScheme.surfaceContainerLow,
-                                    borderColor = colorScheme.outlineVariant,
-                                    isWide = true
-                                )
-
                                 ProfessionalAnalyticsSection(
                                     primaryColor = colorScheme.primary,
                                     accentColor = tertiaryLight,
@@ -525,25 +547,17 @@ fun DashboardScreen(
                                 .padding(horizontal = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            KpiCardsSection(
-                                kpis = kpiData,
-                                primaryColor = colorScheme.primary,
-                                textPrimary = colorScheme.onSurface,
-                                textSecondary = colorScheme.onSurfaceVariant,
-                                isWide = false
-                            )
-
-                            BusinessMetricsGrid(
-                                metrics = businessMetrics,
-                                isWide = false
-                            )
-
                             ProfessionalAnalyticsSection(
                                 primaryColor = colorScheme.primary,
                                 accentColor = tertiaryLight,
                                 textPrimary = colorScheme.onSurface,
                                 textSecondary = colorScheme.onSurfaceVariant,
                                 borderColor = colorScheme.outlineVariant,
+                                isWide = false
+                            )
+
+                            BusinessMetricsGrid(
+                                metrics = businessMetrics,
                                 isWide = false
                             )
 
@@ -2195,7 +2209,14 @@ fun EnhancedKpiCardsSection(
     isWide: Boolean
 ) {
     Column {
-        SectionHeader("Performance Overview", "Last 30 days", textPrimary, textSecondary, isWide)
+        SectionHeader(
+            title = "Performance Overview",
+            subtitle = "Last 30 days",
+            textPrimary = textPrimary,
+            textSecondary = textSecondary,
+            isWide = isWide,
+            modifier = Modifier.padding(horizontal = 0.dp)  // Remove horizontal padding
+        )
         Spacer(modifier = Modifier.height(16.dp))
 
         Column(
@@ -2237,7 +2258,6 @@ fun EnhancedKpiCardsSection(
         }
     }
 }
-
 @Composable
 fun EnhancedKpiCard(
     kpi: KPI,
@@ -3555,10 +3575,13 @@ fun SectionHeader(
     subtitle: String,
     textPrimary: Color,
     textSecondary: Color,
-    isWide: Boolean
+    isWide: Boolean,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 0.dp),  // Default to 0, can be overridden
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -3581,406 +3604,4 @@ fun SectionHeader(
     }
 }
 
-/* ────────────── COLLAPSIBLE HEADER ────────────── */
-@Composable
-fun DashboardHeroHeader(
-    primaryColor: Color,
-    accentColor: Color,
-    height: Dp,
-    collapseFraction: Float,
-    onSurfaceColor: Color,
-    isWide: Boolean,
-    isGuestMode: Boolean = false,
-    userName: String = "Guest",
-    fullName: String = "Guest",
-    isLoggedIn: Boolean = false,
-    userRole: String? = null,
-    accountType: String? = null,
-    user: User? = null,
-    modifier: Modifier = Modifier
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val context = LocalContext.current
-    val profileUrl = user?.profileImageUrl?.takeIf { it.isNotBlank() }
-    var showMenuBottomSheet by remember { mutableStateOf(false) }
 
-    val collapsed = collapseFraction > 0.85f
-
-    val maxFontSize = 34.sp
-    val minFontSize = 24.sp
-
-    val backgroundColor by animateColorAsState(
-        targetValue = if (collapsed) colorScheme.primary.copy(alpha = 0.95f) else Color.Transparent,
-        animationSpec = tween(durationMillis = 300)
-    )
-
-    val titleFontSize = ((maxFontSize.value - collapseFraction * (maxFontSize.value - minFontSize.value))).sp
-
-    // Get user info
-    val firstName = remember(user, isGuestMode) {
-        when {
-            user == null || isGuestMode -> "Guest"
-            user.firstName.isNotBlank() -> user.firstName
-            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
-            else -> "Guest"
-        }
-    }
-
-    val userRoleDisplay = remember(user, isGuestMode) {
-        when {
-            isGuestMode -> "Guest User"
-            user?.role?.equals("admin", ignoreCase = true) == true -> "Administrator"
-            user?.role?.equals("professional", ignoreCase = true) == true -> "Professional"
-            else -> "General User"
-        }
-    }
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height),
-        shadowElevation = if (collapsed) 8.dp else 0.dp
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            // Background image
-            AnimatedVisibility(
-                visible = !collapsed,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(R.drawable.nairobi_city)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    placeholder = painterResource(R.drawable.nairobi_city),
-                    error = painterResource(R.drawable.nairobi_city)
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(backgroundColor)
-            )
-
-            // Gradient overlay
-            AnimatedVisibility(
-                visible = !collapsed,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    colorScheme.primary.copy(0.95f),
-                                    colorScheme.primary.copy(0.75f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                )
-            }
-
-            // Collapsed header
-            if (collapsed) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.CenterStart)
-                        .padding(start = 20.dp, end = 20.dp)
-                        .offset(y = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Dashboard",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-1.5).sp,
-                            fontSize = titleFontSize
-                        )
-                    )
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        HeaderActionIconDashboard(
-                            icon = Icons.Default.Mail,
-                            iconTint = Color.White,
-                            backgroundTint = Color.White.copy(alpha = 0.2f)
-                        ) {}
-                        HeaderActionIconDashboard(
-                            icon = Icons.Default.Notifications,
-                            iconTint = Color.White,
-                            backgroundTint = Color.White.copy(alpha = 0.2f)
-                        ) {}
-                    }
-                }
-            } else {
-                // Expanded header - matching DiscoverScreen style
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
-                    // Profile header - same as DiscoverScreen
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(
-                                elevation = 8.dp,
-                                shape = RoundedCornerShape(24.dp),
-                                ambientColor = Color.Black.copy(alpha = 0.08f),
-                                spotColor = Color.Black.copy(alpha = 0.06f)
-                            ),
-                        shape = RoundedCornerShape(24.dp),
-                        color = Color.White.copy(alpha = 0.95f),
-                        tonalElevation = 0.dp
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Left side - Profile Avatar and User Info
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Profile Avatar (Clickable)
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(CircleShape)
-                                        .clickable { showMenuBottomSheet = true },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (isGuestMode || profileUrl.isNullOrBlank()) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(
-                                                    color = colorScheme.primary.copy(alpha = 0.1f),
-                                                    shape = CircleShape
-                                                ),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                Icons.Outlined.AccountCircle,
-                                                contentDescription = "Profile",
-                                                tint = colorScheme.primary,
-                                                modifier = Modifier.size(28.dp)
-                                            )
-                                        }
-                                    } else {
-                                        AsyncImage(
-                                            model = ImageRequest.Builder(context)
-                                                .data(profileUrl)
-                                                .size(128)
-                                                .allowHardware(false)
-                                                .crossfade(true)
-                                                .build(),
-                                            contentDescription = "Profile",
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .clip(CircleShape)
-                                                .border(
-                                                    2.dp,
-                                                    colorScheme.tertiary.copy(alpha = 0.5f),
-                                                    CircleShape
-                                                ),
-                                            placeholder = painterResource(R.drawable.job_placeholder3),
-                                            error = painterResource(R.drawable.job_placeholder3)
-                                        )
-                                    }
-                                }
-
-                                // User Info Column
-                                Column(
-                                    modifier = Modifier.clickable { showMenuBottomSheet = true }
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Text(
-                                            text = "Hi, $firstName",
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = colorScheme.onSurface,
-                                            letterSpacing = 0.2.sp
-                                        )
-                                        Icon(
-                                            Icons.Outlined.KeyboardArrowDown,
-                                            contentDescription = "Menu",
-                                            tint = colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                    Text(
-                                        text = userRoleDisplay,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Normal,
-                                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                        letterSpacing = 0.1.sp
-                                    )
-                                }
-                            }
-
-                            // Right side - Action icons
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                HeaderActionIconDashboard(
-                                    icon = Icons.Outlined.MailOutline,
-                                    iconTint = colorScheme.onSurfaceVariant,
-                                    backgroundTint = colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                ) {}
-
-                                Box {
-                                    HeaderActionIconDashboard(
-                                        icon = Icons.Outlined.NotificationsNone,
-                                        iconTint = colorScheme.onSurfaceVariant,
-                                        backgroundTint = colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                    ) {}
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .offset(x = 4.dp, y = 4.dp)
-                                            .size(10.dp)
-                                            .background(
-                                                color = colorScheme.tertiary,
-                                                shape = CircleShape
-                                            )
-                                            .border(
-                                                width = 1.5.dp,
-                                                color = Color.White,
-                                                shape = CircleShape
-                                            )
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    // Dashboard title
-                    Column(
-                        modifier = Modifier.padding(bottom = 24.dp)
-                    ) {
-                        Text(
-                            text = "Dashboard",
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = (-1.5).sp,
-                                fontSize = titleFontSize
-                            )
-                        )
-                        Text(
-                            text = if (isGuestMode) {
-                                "Manage your business, track performance"
-                            } else {
-                                "Track your business performance, ${if (firstName != "Guest") firstName else ""}"
-                            },
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = Color.White.copy(0.9f)
-                            ),
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    // Profile Menu Bottom Sheet
-    if (showMenuBottomSheet) {
-        ProfileMenuBottomSheet(
-            onDismiss = { showMenuBottomSheet = false },
-            colorScheme = colorScheme,
-            onMyAccountClick = {
-                showMenuBottomSheet = false
-                // Navigate to My Account
-            },
-            onMyListingsClick = {
-                showMenuBottomSheet = false
-                // Navigate to My Listings
-            },
-            onMyFavoritesClick = {
-                showMenuBottomSheet = false
-                // Navigate to My Favorites
-            },
-            onPostClick = {
-                showMenuBottomSheet = false
-                // Navigate to Post
-            },
-            onLogoutClick = {
-                showMenuBottomSheet = false
-                // Handle logout
-            }
-        )
-    }
-}
-
-@Composable
-fun HeaderActionIconDashboard(
-    icon: ImageVector,
-    iconTint: Color = Color.White,
-    backgroundTint: Color = Color.White.copy(alpha = 0.2f),
-    size: Dp = 38.dp,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(backgroundTint)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = iconTint,
-            modifier = Modifier.size(20.dp)
-        )
-    }
-}
-
-@Composable
-fun HeaderAvatarDashboard(colorScheme: ColorScheme) {
-    Box(
-        modifier = Modifier
-            .size(45.dp)
-            .background(Color.White.copy(0.2f), CircleShape)
-            .border(1.5.dp, Color.White.copy(0.5f), CircleShape)
-            .clip(CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Default.PersonOutline,
-            contentDescription = "User Avatar",
-            tint = Color.White,
-            modifier = Modifier.size(24.dp)
-        )
-    }
-}

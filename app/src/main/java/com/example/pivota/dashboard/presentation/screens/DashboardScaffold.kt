@@ -7,7 +7,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.example.pivota.auth.domain.model.User
@@ -210,30 +212,54 @@ fun DashboardScaffold(
         topLevelRoutes
     }
 
-    // Use Scaffold for proper layout with bottom bar
+    // Use standard Material3 NavigationBar
     Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            // Bottom Navigation Bar - normal position (not floating)
-            ElegantBottomNavBar(
-                items = visibleRoutes,
-                selectedRoute = currentDestination?.route,
-                onItemClick = { route ->
-                    navController.navigate(route.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
+            NavigationBar(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            )
+                    .navigationBarsPadding()
+            ) {
+                visibleRoutes.forEach { route ->
+                    val isSelected = currentDestination?.hierarchy?.any { it.route == route.route::class.qualifiedName } == true
+
+                    NavigationBarItem(
+                        icon = {
+                            Icon(
+                                route.icon,
+                                contentDescription = route.contentDescription,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        },
+                        label = {
+                            Text(
+                                route.label,
+                                fontSize = 12.sp
+                            )
+                        },
+                        selected = isSelected,
+                        onClick = {
+                            if (currentDestination?.route != route.route) {
+                                navController.navigate(route.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                            selectedTextColor = MaterialTheme.colorScheme.tertiary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
+            }
         },
         floatingActionButton = {
-            // Floating Action Button
             if (!isGuestMode) {
                 PulsingPostFab(
                     onClick = { showSheet = true }
@@ -250,7 +276,7 @@ fun DashboardScaffold(
             // Main content
             NavHost(
                 navController = navController,
-                startDestination =  Connect,
+                startDestination = Connect,
                 modifier = Modifier.fillMaxSize()
             ) {
                 composable<Dashboard> {
@@ -395,7 +421,10 @@ fun DashboardScaffold(
                 }
 
                 composable<Profile> {
-                    ProfileScreen(isGuestMode = isGuestMode)
+                    ProfileScreen(
+                        isGuestMode = isGuestMode,
+                        user = user
+                    )
                 }
 
                 // HouseListings route

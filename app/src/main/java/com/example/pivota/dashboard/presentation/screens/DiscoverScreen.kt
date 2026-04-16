@@ -79,9 +79,9 @@ fun DiscoverScreen(
         else -> 1
     }
 
-    val primaryColor = colorScheme.primary      // African Sapphire - 60%
-    val secondaryColor = colorScheme.secondary  // Warm Terracotta - 30%
-    val tertiaryColor = colorScheme.tertiary    // Baobab Gold - 10%
+    val primaryColor = colorScheme.primary
+    val secondaryColor = colorScheme.secondary
+    val tertiaryColor = colorScheme.tertiary
     val softBackground = colorScheme.background
 
     val listState = rememberLazyListState()
@@ -118,7 +118,6 @@ fun DiscoverScreen(
                 onNavigateToAllProviders()
                 selectedFilters = selectedFilters - "Professionals"
             }
-
         }
     }
 
@@ -131,27 +130,30 @@ fun DiscoverScreen(
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
-            // SCROLL CONTENT
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 100.dp),
                 horizontalAlignment = Alignment.Start
             ) {
-                // Non-sticky Header
+                // Reusable Header (replaces NonStickyHeader)
                 item {
-                    NonStickyHeader(
+                    ReusableHeader(
                         colorScheme = colorScheme,
+                        pageTitle = "PivotaConnect",
+                        pageSubtitle = "Connect to opportunities near you",
                         user = user,
                         isGuestMode = isGuestMode,
-                        modifier = Modifier.fillMaxWidth()
+                        isSticky = false,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
 
-                // Marketing Banner - Poster Style with Image
                 // Marketing Carousel Banner
                 item {
-                    // Resolve display name
                     val displayName = remember(user, isGuestMode) {
                         when {
                             user == null || isGuestMode -> "Guest"
@@ -168,7 +170,6 @@ fun DiscoverScreen(
                         onCtaClick = { bannerType ->
                             when (bannerType) {
                                 BannerType.WELCOME_BACK -> {
-                                    // Handle upgrade/signup
                                     if (isGuestMode) {
                                         // Navigate to signup
                                     } else {
@@ -411,13 +412,12 @@ fun DiscoverScreen(
                 }
             }
 
-            // STICKY SEARCH + PILLS SECTION - FIXED SPACING
+            // STICKY SEARCH + PILLS SECTION
             if (isSearchBarPinned) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.TopCenter)
-                        // No statusBarsPadding() here - surface touches top edge
                         .shadow(
                             elevation = 8.dp,
                             shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
@@ -430,13 +430,13 @@ fun DiscoverScreen(
                         bottomStart = 20.dp,
                         bottomEnd = 20.dp
                     ),
-                    color = colorScheme.surface,  // Original color
+                    color = colorScheme.surface,
                     tonalElevation = 4.dp
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .statusBarsPadding()  // Add status bar padding to content only
+                            .statusBarsPadding()
                             .padding(horizontal = horizontalPadding, vertical = 12.dp)
                     ) {
                         SearchBarWithAudio(
@@ -470,6 +470,7 @@ fun DiscoverScreen(
         }
     }
 }
+
 
 // Data classes for items (same as before)
 data class JobItem(
