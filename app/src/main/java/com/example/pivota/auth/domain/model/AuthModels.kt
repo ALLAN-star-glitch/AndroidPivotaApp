@@ -16,6 +16,7 @@ data class User(
     val refreshToken: String? = null,
     val isAuthenticated: Boolean = false,
     val primaryPurpose: String? = null,
+    val profileImageUrl: String? = null,
     // JWT additional fields
     val userUuid: String? = null,
     val accountId: String? = null,

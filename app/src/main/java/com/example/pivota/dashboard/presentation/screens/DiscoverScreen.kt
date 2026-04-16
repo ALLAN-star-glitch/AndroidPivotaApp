@@ -1,9 +1,6 @@
 package com.example.pivota.dashboard.presentation.screens
 
-import HorizontalSmartMatchBadge
 import android.annotation.SuppressLint
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,35 +19,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.auth.domain.model.User
-import com.example.pivota.dashboard.domain.EmployerType
-import com.example.pivota.dashboard.domain.ListingStatus
-import com.example.pivota.dashboard.presentation.composables.ModernHousingCard
-import com.example.pivota.dashboard.presentation.composables.ModernJobCard
-import com.example.pivota.dashboard.presentation.composables.ModernProfessionalCard
-import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
-
-
-// ========== END OF SMARTMATCH BADGE COMPOSABLES ==========
+import com.example.pivota.dashboard.presentation.composables.*
 
 @SuppressLint("FrequentlyChangingValue")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,87 +50,73 @@ fun DiscoverScreen(
     onNavigateToAllProviders: () -> Unit = {},
     onNavigateToAllServices: () -> Unit = {},
     onNavigateToAllSupport: () -> Unit = {},
-    onNavigateToSmartMatch: () -> Unit = {}, // Navigation for SmartMatch
-    onBookHousingClick: (HousingListingUiModel) -> Unit = {},
-    onViewHousingClick: (HousingListingUiModel) -> Unit = {},
     user: User? = null,
     isGuestMode: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
-    // 🎯 Get window size class for responsive design
     val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isExpanded = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
     val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
     val isTablet = isExpanded || isMedium
 
-    // 🎨 Brand Palette - Using theme colors
+    // Adaptive grid columns based on screen size
+    val jobGridColumns = when {
+        isExpanded -> 2
+        isMedium -> 2
+        else -> 1
+    }
+
+    val housingGridColumns = when {
+        isExpanded -> 2
+        isMedium -> 2
+        else -> 1
+    }
+
+    val professionalGridColumns = when {
+        isExpanded -> 2
+        isMedium -> 2
+        else -> 1
+    }
+
     val primaryColor = colorScheme.primary
     val secondaryColor = colorScheme.secondary
-    val tertiaryColor = colorScheme.tertiaryContainer
+    val tertiaryColor = colorScheme.tertiary
     val softBackground = colorScheme.background
 
     val listState = rememberLazyListState()
 
-    // State for search
     var searchQuery by remember { mutableStateOf("") }
     var isRecording by remember { mutableStateOf(false) }
-
-    // State for selected filters
     var selectedFilters by remember { mutableStateOf(setOf<String>()) }
 
-    // Responsive card width based on window size class
-    val cardWidth = when {
-        isExpanded -> 360.dp
-        isMedium -> 320.dp
-        else -> 280.dp
-    }
-
-    // Responsive horizontal padding
     val horizontalPadding = when {
-        isExpanded -> 32.dp
-        isMedium -> 24.dp
+        isExpanded -> 24.dp
+        isMedium -> 20.dp
         else -> 16.dp
     }
 
-    // 📏 Header sizes - slightly larger on tablets
-    val maxHeight = if (isTablet) 260.dp else 220.dp
-    val minHeight = if (isTablet) 100.dp else 90.dp
-
-    val density = LocalDensity.current
-    val collapseRangePx = with(density) {
-        (maxHeight - minHeight).toPx()
-    }
-
-    // 🔥 Correct collapse logic
-    val scrollY = when (listState.firstVisibleItemIndex) {
-        0 -> listState.firstVisibleItemScrollOffset.toFloat()
-        else -> collapseRangePx
-    }
-
-    val collapseFraction =
-        (scrollY / collapseRangePx).coerceIn(0f, 1f)
-
-    val animatedHeight =
-        lerp(maxHeight, minHeight, collapseFraction)
-
-    // Track if we're past the threshold to show shadow
-    val isPastThreshold = remember {
+    // Track if search bar should be pinned
+    val isSearchBarPinned by remember {
         derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 100
+            listState.firstVisibleItemIndex > 3 ||
+                    (listState.firstVisibleItemIndex == 3 && listState.firstVisibleItemScrollOffset > 0)
         }
     }
 
-    // Watch for filter selection to trigger navigation
     LaunchedEffect(selectedFilters) {
         when {
-            selectedFilters.contains("Houses") -> {
+            selectedFilters.contains("Properties") -> {
                 onNavigateToHouseListings()
-                selectedFilters = selectedFilters - "Houses"
+                selectedFilters = selectedFilters - "Properties"
             }
             selectedFilters.contains("Jobs") -> {
                 onNavigateToJobListings()
                 selectedFilters = selectedFilters - "Jobs"
+            }
+            selectedFilters.contains("Professionals") -> {
+                onNavigateToAllProviders()
+                selectedFilters = selectedFilters - "Professionals"
             }
         }
     }
@@ -157,456 +130,97 @@ fun DiscoverScreen(
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
-            // 📜 SCROLL CONTENT
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = maxHeight + 130.dp
-                ),
-                horizontalAlignment = Alignment.CenterHorizontally
+                contentPadding = PaddingValues(bottom = 100.dp),
+                horizontalAlignment = Alignment.Start
             ) {
-                // 🤖 SmartMatch Highlight Section - Using the version with isTablet
+                // Reusable Header (replaces NonStickyHeader)
                 item {
-                    HorizontalSmartMatchBadge(
-                        matchCount = 156,
-                        isTablet = isTablet,
-                        onClick = onNavigateToSmartMatch,
+                    ReusableHeader(
+                        colorScheme = colorScheme,
+                        pageTitle = "PivotaConnect",
+                        pageSubtitle = "Connect to opportunities near you",
+                        user = user,
+                        isGuestMode = isGuestMode,
+                        isSticky = false,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = horizontalPadding, vertical = 8.dp)
+                            .statusBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
 
-                // 📋 1. Jobs Near You
+                // Marketing Carousel Banner
                 item {
-                    ModernSectionHeader(
-                        title = "Jobs Near You",
-                        actionText = "View all jobs →",
-                        onActionClick = onNavigateToAllJobs,
-                        horizontalPadding = horizontalPadding
-                    )
-                }
-                item {
-                    ModernHorizontalList(
-                        items = listOf(
-                            {
-                                ModernJobCard(
-                                    title = "Construction Foreman",
-                                    company = "BuildWell Ltd",
-                                    location = "Upper Hill",
-                                    salary = "KSh 3,500/day",
-                                    type = "Contract",
-                                    description = "Experienced foreman needed for high-rise construction project.",
-                                    isVerified = true,
-                                    employerType = EmployerType.ORGANIZATION,
-                                    profileImageRes = R.drawable.job_placeholder3,
-                                    onViewClick = { /* Navigate to job details */ },
-                                    onApplyClick = { /* Handle apply */ },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            },
-                            {
-                                ModernJobCard(
-                                    title = "Junior Accountant",
-                                    company = "FinCorp",
-                                    location = "Westlands",
-                                    salary = "KSh 55,000/month",
-                                    type = "Full-time",
-                                    description = "CPA qualified accountant with 2+ years experience.",
-                                    isVerified = true,
-                                    employerType = EmployerType.ORGANIZATION,
-                                    profileImageRes = R.drawable.job_placeholder2,
-                                    onViewClick = { /* Navigate to job details */ },
-                                    onApplyClick = { /* Handle apply */ },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            },
-                            {
-                                ModernJobCard(
-                                    title = "Store Keeper",
-                                    company = "Retail Solutions",
-                                    location = "Mombasa Rd",
-                                    salary = "KSh 25,000/month",
-                                    type = "Full-time",
-                                    description = "Inventory management and stock coordination.",
-                                    isVerified = false,
-                                    employerType = EmployerType.ORGANIZATION,
-                                    profileImageRes = R.drawable.job_placeholder4,
-                                    onViewClick = { /* Navigate to job details */ },
-                                    onApplyClick = { /* Handle apply */ },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            },
-                            {
-                                ModernJobCard(
-                                    title = "Solar Installer",
-                                    company = "Green Energy",
-                                    location = "Karen",
-                                    salary = "KSh 40,000/month",
-                                    type = "Contract",
-                                    description = "Solar panel installation and maintenance.",
-                                    isVerified = true,
-                                    employerType = EmployerType.ORGANIZATION,
-                                    profileImageRes = R.drawable.job_placeholder5,
-                                    onViewClick = { /* Navigate to job details */ },
-                                    onApplyClick = { /* Handle apply */ },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+                    val displayName = remember(user, isGuestMode) {
+                        when {
+                            user == null || isGuestMode -> "Guest"
+                            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
+                            user.firstName.isNotBlank() -> user.firstName
+                            else -> "Guest"
+                        }
+                    }
+
+                    MarketingCarouselBanner(
+                        horizontalPadding = horizontalPadding,
+                        displayName = displayName,
+                        isGuestMode = isGuestMode,
+                        onCtaClick = { bannerType ->
+                            when (bannerType) {
+                                BannerType.WELCOME_BACK -> {
+                                    if (isGuestMode) {
+                                        // Navigate to signup
+                                    } else {
+                                        // Navigate to upgrade
+                                    }
+                                }
+                                BannerType.JOBS -> onNavigateToAllJobs()
+                                BannerType.HOUSING -> onNavigateToAllHousing()
+                                BannerType.PROFESSIONALS -> onNavigateToAllProviders()
+                                BannerType.SOCIAL_SUPPORT -> {}
                             }
-                        ),
-                        cardWidth = cardWidth,
-                        horizontalPadding = horizontalPadding
+                        }
                     )
                 }
 
-                // 📋 2. Housing Opportunities
+                // Spacer before search bar
                 item {
-                    ModernSectionHeader(
-                        title = "Housing Opportunities",
-                        actionText = "Browse all →",
-                        onActionClick = onNavigateToAllHousing,
-                        horizontalPadding = horizontalPadding
-                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
+
+                // Search Bar + Pills
                 item {
-                    ModernHorizontalList(
-                        items = listOf(
-                            {
-                                ModernHousingCard(
-                                    price = "KSh 22,000",
-                                    title = "Modern Bedsitter",
-                                    location = "Ruiru",
-                                    type = "Apartment",
-                                    rating = 4.5,
-                                    isVerified = true,
-                                    description = "Self-contained bedsitter with parking",
-                                    isForSale = false,
-                                    imageRes = R.drawable.property_placeholder1,
-                                    bedrooms = 1,
-                                    bathrooms = 1,
-                                    squareMeters = 70,
-                                    onViewClick = {
-                                        val listing = HousingListingUiModel(
-                                            id = "1",
-                                            title = "Modern Bedsitter",
-                                            price = "KSh 22,000",
-                                            location = "Ruiru",
-                                            propertyType = "Apartment",
-                                            description = "Self-contained bedsitter with parking",
-                                            isVerified = true,
-                                            isForSale = false,
-                                            rating = 4.5,
-                                            bedrooms = 1,
-                                            bathrooms = 1,
-                                            squareMeters = 70,
-                                            imageRes = R.drawable.property_placeholder1,
-                                            status = ListingStatus.AVAILABLE,
-                                            views = 0,
-                                            messages = 0,
-                                            requests = 0
-                                        )
-                                        onViewHousingClick(listing)
-                                    },
-                                    onBookClick = {
-                                        val listing = HousingListingUiModel(
-                                            id = "1",
-                                            title = "Modern Bedsitter",
-                                            price = "KSh 22,000",
-                                            location = "Ruiru",
-                                            propertyType = "Apartment",
-                                            description = "Self-contained bedsitter with parking",
-                                            isVerified = true,
-                                            isForSale = false,
-                                            rating = 4.5,
-                                            bedrooms = 1,
-                                            bathrooms = 1,
-                                            squareMeters = 70,
-                                            imageRes = R.drawable.property_placeholder1,
-                                            status = ListingStatus.AVAILABLE,
-                                            views = 0,
-                                            messages = 0,
-                                            requests = 0
-                                        )
-                                        onBookHousingClick(listing)
-                                    },
-                                    onClick = { /* Handle click */ },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            },
-                            {
-                                ModernHousingCard(
-                                    price = "KSh 45,000",
-                                    title = "2 Bedroom Apartment",
-                                    location = "Syokimau",
-                                    type = "Apartment",
-                                    rating = 4.8,
-                                    isVerified = true,
-                                    description = "Spacious 2BR with balcony",
-                                    isForSale = false,
-                                    imageRes = R.drawable.property_placeholder2,
-                                    bedrooms = 2,
-                                    bathrooms = 2,
-                                    squareMeters = 85,
-                                    onViewClick = {
-                                        val listing = HousingListingUiModel(
-                                            id = "2",
-                                            title = "2 Bedroom Apartment",
-                                            price = "KSh 45,000",
-                                            location = "Syokimau",
-                                            propertyType = "Apartment",
-                                            description = "Spacious 2BR with balcony",
-                                            isVerified = true,
-                                            isForSale = false,
-                                            rating = 4.8,
-                                            bedrooms = 2,
-                                            bathrooms = 2,
-                                            squareMeters = 85,
-                                            imageRes = R.drawable.property_placeholder2,
-                                            status = ListingStatus.AVAILABLE,
-                                            views = 0,
-                                            messages = 0,
-                                            requests = 0
-                                        )
-                                        onViewHousingClick(listing)
-                                    },
-                                    onBookClick = {
-                                        val listing = HousingListingUiModel(
-                                            id = "2",
-                                            title = "2 Bedroom Apartment",
-                                            price = "KSh 45,000",
-                                            location = "Syokimau",
-                                            propertyType = "Apartment",
-                                            description = "Spacious 2BR with balcony",
-                                            isVerified = true,
-                                            isForSale = false,
-                                            rating = 4.8,
-                                            bedrooms = 2,
-                                            bathrooms = 2,
-                                            squareMeters = 85,
-                                            imageRes = R.drawable.property_placeholder2,
-                                            status = ListingStatus.AVAILABLE,
-                                            views = 0,
-                                            messages = 0,
-                                            requests = 0
-                                        )
-                                        onBookHousingClick(listing)
-                                    },
-                                    onClick = {},
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            },
-                            {
-                                ModernHousingCard(
-                                    price = "KSh 4.5M",
-                                    title = "Luxury Villa",
-                                    location = "Karen",
-                                    type = "House",
-                                    rating = 4.9,
-                                    isVerified = true,
-                                    description = "4BR villa with garden and pool",
-                                    isForSale = true,
-                                    imageRes = R.drawable.property_placeholder3,
-                                    bedrooms = 4,
-                                    bathrooms = 4,
-                                    squareMeters = 350,
-                                    onViewClick = {
-                                        val listing = HousingListingUiModel(
-                                            id = "3",
-                                            title = "Luxury Villa",
-                                            price = "KSh 4.5M",
-                                            location = "Karen",
-                                            propertyType = "House",
-                                            description = "4BR villa with garden and pool",
-                                            isVerified = true,
-                                            isForSale = true,
-                                            rating = 4.9,
-                                            bedrooms = 4,
-                                            bathrooms = 4,
-                                            squareMeters = 350,
-                                            imageRes = R.drawable.property_placeholder3,
-                                            status = ListingStatus.AVAILABLE,
-                                            views = 0,
-                                            messages = 0,
-                                            requests = 0
-                                        )
-                                        onViewHousingClick(listing)
-                                    },
-                                    onBookClick = {
-                                        val listing = HousingListingUiModel(
-                                            id = "3",
-                                            title = "Luxury Villa",
-                                            price = "KSh 4.5M",
-                                            location = "Karen",
-                                            propertyType = "House",
-                                            description = "4BR villa with garden and pool",
-                                            isVerified = true,
-                                            isForSale = true,
-                                            rating = 4.9,
-                                            bedrooms = 4,
-                                            bathrooms = 4,
-                                            squareMeters = 350,
-                                            imageRes = R.drawable.property_placeholder3,
-                                            status = ListingStatus.AVAILABLE,
-                                            views = 0,
-                                            messages = 0,
-                                            requests = 0
-                                        )
-                                        onBookHousingClick(listing)
-                                    },
-                                    onClick = {},
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            },
-                            {
-                                ModernHousingCard(
-                                    price = "KSh 35,000",
-                                    title = "Studio Apartment",
-                                    location = "Kilimani",
-                                    type = "Studio",
-                                    rating = 4.3,
-                                    isVerified = true,
-                                    description = "Modern studio near Yaya Centre",
-                                    isForSale = false,
-                                    imageRes = R.drawable.property_placeholder4,
-                                    bedrooms = 1,
-                                    bathrooms = 1,
-                                    squareMeters = 45,
-                                    onViewClick = {
-                                        val listing = HousingListingUiModel(
-                                            id = "4",
-                                            title = "Studio Apartment",
-                                            price = "KSh 35,000",
-                                            location = "Kilimani",
-                                            propertyType = "Studio",
-                                            description = "Modern studio near Yaya Centre",
-                                            isVerified = true,
-                                            isForSale = false,
-                                            rating = 4.3,
-                                            bedrooms = 1,
-                                            bathrooms = 1,
-                                            squareMeters = 45,
-                                            imageRes = R.drawable.property_placeholder4,
-                                            status = ListingStatus.AVAILABLE,
-                                            views = 0,
-                                            messages = 0,
-                                            requests = 0
-                                        )
-                                        onViewHousingClick(listing)
-                                    },
-                                    onBookClick = {
-                                        val listing = HousingListingUiModel(
-                                            id = "4",
-                                            title = "Studio Apartment",
-                                            price = "KSh 35,000",
-                                            location = "Kilimani",
-                                            propertyType = "Studio",
-                                            description = "Modern studio near Yaya Centre",
-                                            isVerified = true,
-                                            isForSale = false,
-                                            rating = 4.3,
-                                            bedrooms = 1,
-                                            bathrooms = 1,
-                                            squareMeters = 45,
-                                            imageRes = R.drawable.property_placeholder4,
-                                            status = ListingStatus.AVAILABLE,
-                                            views = 0,
-                                            messages = 0,
-                                            requests = 0
-                                        )
-                                        onBookHousingClick(listing)
-                                    },
-                                    onClick = {},
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+                    SearchAndPillsSection(
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
+                        isRecording = isRecording,
+                        onAudioClick = { isRecording = !isRecording },
+                        selectedFilters = selectedFilters,
+                        onFilterSelected = { filter ->
+                            selectedFilters = if (selectedFilters.contains(filter)) {
+                                selectedFilters - filter
+                            } else {
+                                selectedFilters + filter
                             }
-                        ),
-                        cardWidth = cardWidth,
+                        },
+                        primaryColor = primaryColor,
+                        secondaryColor = secondaryColor,
+                        colorScheme = colorScheme,
+                        isTablet = isTablet,
                         horizontalPadding = horizontalPadding
                     )
                 }
 
-                // 🛠️ 3. Trusted Service Providers
-                item {
-                    ModernSectionHeader(
-                        title = "Trusted Professionals",
-                        actionText = "See all →",
-                        onActionClick = onNavigateToAllProviders,
-                        horizontalPadding = horizontalPadding
-                    )
-                }
-                item {
-                    ModernHorizontalList(
-                        items = listOf(
-                            {
-                                ModernProfessionalCard(
-                                    name = "QuickMovers Kenya",
-                                    specialty = "Moving & Logistics",
-                                    rating = 4.9f,
-                                    jobs = 342,
-                                    isVerified = true,
-                                    description = "Professional moving services across Nairobi",
-                                    onCardClick = { /* Navigate to provider details */ },
-                                    onViewClick = { /* Handle view */ },
-                                    onHireClick = { /* Handle hire */ },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            },
-                            {
-                                ModernProfessionalCard(
-                                    name = "Fundi Digital",
-                                    specialty = "Electrical & Plumbing",
-                                    rating = 4.7f,
-                                    jobs = 256,
-                                    isVerified = true,
-                                    description = "24/7 emergency electrical services",
-                                    onCardClick = { /* Navigate to provider details */ },
-                                    onViewClick = { /* Handle view */ },
-                                    onHireClick = { /* Handle hire */ },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            },
-                            {
-                                ModernProfessionalCard(
-                                    name = "CleanPro Services",
-                                    specialty = "Cleaning & Maintenance",
-                                    rating = 4.8f,
-                                    jobs = 189,
-                                    isVerified = true,
-                                    description = "Professional cleaning for homes and offices",
-                                    onCardClick = { /* Navigate to provider details */ },
-                                    onViewClick = { /* Handle view */ },
-                                    onHireClick = { /* Handle hire */ },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            },
-                            {
-                                ModernProfessionalCard(
-                                    name = "SolarTech",
-                                    specialty = "Solar Installation",
-                                    rating = 4.6f,
-                                    jobs = 112,
-                                    isVerified = false,
-                                    description = "Solar panel installation and maintenance",
-                                    onCardClick = { /* Navigate to provider details */ },
-                                    onViewClick = { /* Handle view */ },
-                                    onHireClick = { /* Handle hire */ },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        ),
-                        cardWidth = cardWidth,
-                        horizontalPadding = horizontalPadding
-                    )
-                }
-
-                // ⚡ 4. Quick Services Grid
+                // COMMON SERVICES SECTION
                 item {
                     ModernSectionHeader(
                         title = "Common Services",
-                        actionText = "Browse categories →",
+                        actionText = "Browse all →",
                         onActionClick = onNavigateToAllServices,
-                        horizontalPadding = horizontalPadding
+                        horizontalPadding = horizontalPadding,
+                        colorScheme = colorScheme
                     )
                 }
                 item {
@@ -617,193 +231,830 @@ fun DiscoverScreen(
                     )
                 }
 
-                // 🤝 5. Social Support
+                // Jobs Section
+                item {
+                    ModernSectionHeader(
+                        title = "Jobs Near You",
+                        actionText = "View all →",
+                        onActionClick = onNavigateToAllJobs,
+                        horizontalPadding = horizontalPadding,
+                        colorScheme = colorScheme
+                    )
+                }
+
+                // Jobs Grid
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = horizontalPadding),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        val rows = jobItems.chunked(jobGridColumns)
+                        rows.forEach { rowItems ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                rowItems.forEach { item ->
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxWidth()
+                                    ) {
+                                        ModernJobCardV2(
+                                            imageUrl = item.imageUrl,
+                                            jobTitle = item.jobTitle,
+                                            companyName = item.companyName,
+                                            location = item.location,
+                                            postedTime = item.postedTime,
+                                            employmentType = item.employmentType,
+                                            jobType = item.jobType,
+                                            onViewDetailsClick = {}
+                                        )
+                                    }
+                                }
+                                repeat(jobGridColumns - rowItems.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Housing Section
+                item {
+                    ModernSectionHeader(
+                        title = "Housing Opportunities",
+                        actionText = "Browse all →",
+                        onActionClick = onNavigateToAllHousing,
+                        horizontalPadding = horizontalPadding,
+                        colorScheme = colorScheme
+                    )
+                }
+
+                // Housing Grid
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = horizontalPadding),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        val rows = housingItems.chunked(housingGridColumns)
+                        rows.forEach { rowItems ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                rowItems.forEach { item ->
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxWidth()
+                                    ) {
+                                        ModernHousingCardV2(
+                                            imageUrl = item.imageUrl,
+                                            title = item.title,
+                                            price = item.price,
+                                            location = item.location,
+                                            postedTime = item.postedTime,
+                                            propertyType = item.propertyType,
+                                            listingType = item.listingType,
+                                            bedrooms = item.bedrooms,
+                                            bathrooms = item.bathrooms,
+                                            squareMeters = item.squareMeters,
+                                            isVerified = item.isVerified,
+                                            onViewDetailsClick = {}
+                                        )
+                                    }
+                                }
+                                repeat(housingGridColumns - rowItems.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Professionals Section
+                item {
+                    ModernSectionHeader(
+                        title = "Trusted Professionals",
+                        actionText = "See all →",
+                        onActionClick = onNavigateToAllProviders,
+                        horizontalPadding = horizontalPadding,
+                        colorScheme = colorScheme
+                    )
+                }
+
+                // Professionals Grid
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = horizontalPadding),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        val rows = professionalItems.chunked(professionalGridColumns)
+                        rows.forEach { rowItems ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                rowItems.forEach { item ->
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxWidth()
+                                    ) {
+                                        ModernProfessionalCardV2(
+                                            imageUrl = item.imageUrl,
+                                            name = item.name,
+                                            profession = item.profession,
+                                            location = item.location,
+                                            postedTime = item.postedTime,
+                                            professionalType = item.professionalType,
+                                            rating = item.rating,
+                                            jobsCompleted = item.jobsCompleted,
+                                            onViewDetailsClick = {}
+                                        )
+                                    }
+                                }
+                                repeat(professionalGridColumns - rowItems.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Social Support Section
                 item {
                     ModernSectionHeader(
                         title = "Social Support & Services",
                         actionText = "Get help →",
                         onActionClick = onNavigateToAllSupport,
-                        horizontalPadding = horizontalPadding
-                    )
-                }
-                items(3) { index ->
-                    val supports = listOf(
-                        Triple("Red Cross Kenya", "Emergency Relief & Disaster Response", "Nationwide"),
-                        Triple("Legal Aid Kenya", "Free Legal Advice & Representation", "Regional Offices"),
-                        Triple("Food for All", "Community Food Programs", "Nairobi & Kiambu")
-                    )
-                    ModernSupportCard(
-                        name = supports[index].first,
-                        service = supports[index].second,
-                        location = supports[index].third,
-                        isUrgent = index == 0,
-                        colorScheme = colorScheme,
-                        horizontalPadding = horizontalPadding
-                    )
-                }
-
-                item { Spacer(modifier = Modifier.height(100.dp)) }
-            }
-
-            // 🏆 FIXED HEADER
-            DiscoverHeroHeader(
-                teal = primaryColor,
-                gold = tertiaryColor,
-                height = animatedHeight,
-                collapseFraction = collapseFraction,
-                colorScheme = colorScheme,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .zIndex(3f),
-                user = user,  // Pass the user
-                isGuestMode = isGuestMode  // Pass guest mode
-            )
-
-            // 📌 FIXED SEARCH + PILLS SECTION
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter)
-                    .padding(top = animatedHeight)
-                    .shadow(
-                        elevation = if (isPastThreshold.value) 8.dp else 0.dp,
-                        shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
-                        ambientColor = Color.Black.copy(0.08f)
-                    )
-                    .zIndex(2f),
-                shape = RoundedCornerShape(
-                    topStart = 0.dp,
-                    topEnd = 0.dp,
-                    bottomStart = 20.dp,
-                    bottomEnd = 20.dp
-                ),
-                color = colorScheme.surface,
-                tonalElevation = if (isPastThreshold.value) 4.dp else 0.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = horizontalPadding, vertical = 12.dp)
-                ) {
-                    // Search Bar with Audio Icon
-                    SearchBarWithAudio(
-                        query = searchQuery,
-                        onQueryChange = { searchQuery = it },
-                        onAudioClick = {
-                            isRecording = !isRecording
-                        },
-                        isRecording = isRecording,
-                        accentColor = primaryColor,
+                        horizontalPadding = horizontalPadding,
                         colorScheme = colorScheme
                     )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Filter Pills with SmartMatch badge at the beginning
-                    FilterPillsRow(
-                        selectedFilters = selectedFilters,
-                        onFilterSelected = { filter ->
-                            selectedFilters = if (selectedFilters.contains(filter)) {
-                                selectedFilters - filter
-                            } else {
-                                selectedFilters + filter
-                            }
-                        },
-                        accentColor = primaryColor,
+                }
+                items(supportItems.size) { index ->
+                    val item = supportItems[index]
+                    ModernSupportCard(
+                        name = item.name,
+                        service = item.service,
+                        location = item.location,
+                        isUrgent = item.isUrgent,
                         colorScheme = colorScheme,
-                        isTablet = isTablet, // Pass isTablet instead of windowSizeClass
-                        onSmartMatchClick = onNavigateToSmartMatch
+                        horizontalPadding = horizontalPadding
                     )
+                }
+            }
+
+            // STICKY SEARCH + PILLS SECTION
+            if (isSearchBarPinned) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
+                            ambientColor = Color.Black.copy(0.08f)
+                        )
+                        .zIndex(10f),
+                    shape = RoundedCornerShape(
+                        topStart = 0.dp,
+                        topEnd = 0.dp,
+                        bottomStart = 20.dp,
+                        bottomEnd = 20.dp
+                    ),
+                    color = colorScheme.surface,
+                    tonalElevation = 4.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = horizontalPadding, vertical = 12.dp)
+                    ) {
+                        SearchBarWithAudio(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it },
+                            onAudioClick = { isRecording = !isRecording },
+                            isRecording = isRecording,
+                            primaryColor = primaryColor,
+                            colorScheme = colorScheme,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        FilterPillsRow(
+                            selectedFilters = selectedFilters,
+                            onFilterSelected = { filter ->
+                                selectedFilters = if (selectedFilters.contains(filter)) {
+                                    selectedFilters - filter
+                                } else {
+                                    selectedFilters + filter
+                                }
+                            },
+                            primaryColor = primaryColor,
+                            colorScheme = colorScheme,
+                            isTablet = isTablet
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-/* ─────────────────────────────────────────────
-   FILTER PILLS ROW (SmartMatch badge removed)
-   ───────────────────────────────────────────── */
 
+// Data classes for items (same as before)
+data class JobItem(
+    val imageUrl: Any?,
+    val jobTitle: String,
+    val companyName: String,
+    val location: String,
+    val postedTime: String,
+    val employmentType: String,
+    val jobType: String
+)
+
+data class HousingItem(
+    val imageUrl: Any?,
+    val title: String,
+    val price: String,
+    val location: String,
+    val postedTime: String,
+    val propertyType: String,
+    val listingType: String,
+    val bedrooms: Int,
+    val bathrooms: Int,
+    val squareMeters: Int,
+    val isVerified: Boolean
+)
+
+data class ProfessionalItem(
+    val imageUrl: Any?,
+    val name: String,
+    val profession: String,
+    val location: String,
+    val postedTime: String,
+    val professionalType: ProfessionalType,
+    val rating: Float,
+    val jobsCompleted: Int
+)
+
+data class SupportItem(
+    val name: String,
+    val service: String,
+    val location: String,
+    val isUrgent: Boolean
+)
+
+// Sample data
+private val jobItems = listOf(
+    JobItem(R.drawable.job_placeholder3, "Construction Foreman", "BuildWell Ltd", "Upper Hill, Nairobi", "2h ago", "Formal", "Contract"),
+    JobItem(R.drawable.job_placeholder2, "Junior Accountant", "FinCorp", "Westlands, Nairobi", "1d ago", "Formal", "Full-time"),
+    JobItem(null, "Welder & Fabricator", "Joseph's Welding", "Industrial Area, Nairobi", "3h ago", "Informal", "Gig"),
+    JobItem(R.drawable.job_placeholder4, "Store Keeper", "Retail Solutions", "Mombasa Rd, Nairobi", "5h ago", "Formal", "Full-time"),
+    JobItem(R.drawable.job_placeholder5, "Solar Installer", "Green Energy", "Karen, Nairobi", "1d ago", "Formal", "Contract"),
+    JobItem(R.drawable.job_placeholder3, "Delivery Rider", "Bolt Food", "CBD, Nairobi", "2h ago", "Informal", "Gig")
+)
+
+private val housingItems = listOf(
+    HousingItem(R.drawable.property_placeholder1, "Modern 2BR Apartment", "KES 45,000", "Westlands, Nairobi", "2h ago", "Apartment", "For Rent", 2, 2, 85, true),
+    HousingItem(R.drawable.property_placeholder2, "Spacious Family Home", "KES 12,500,000", "Karen, Nairobi", "1d ago", "House", "For Sale", 4, 3, 220, true),
+    HousingItem(null, "Cozy Bedsitter", "KES 8,500", "Umoja, Nairobi", "3d ago", "Bedsitter", "For Rent", 1, 1, 25, false),
+    HousingItem(R.drawable.property_placeholder4, "Studio Apartment", "KES 35,000", "Kilimani, Nairobi", "5h ago", "Studio", "For Rent", 1, 1, 45, true),
+    HousingItem(R.drawable.property_placeholder3, "Luxury Villa", "KES 4.5M", "Karen, Nairobi", "2d ago", "Villa", "For Sale", 4, 4, 350, true),
+    HousingItem(R.drawable.property_placeholder1, "2BR Apartment", "KES 28,000", "Ruiru, Nairobi", "1d ago", "Apartment", "For Rent", 2, 2, 75, false)
+)
+
+private val professionalItems = listOf(
+    ProfessionalItem(null, "QuickMovers Kenya", "Moving & Logistics", "Nairobi", "2h ago", ProfessionalType.ORGANIZATION, 4.9f, 342),
+    ProfessionalItem(null, "John Mwangi", "Electrician", "Eastlands, Nairobi", "5h ago", ProfessionalType.INDIVIDUAL, 4.8f, 127),
+    ProfessionalItem(null, "CleanPro Services", "Cleaning & Maintenance", "Nairobi", "1d ago", ProfessionalType.ORGANIZATION, 4.7f, 189),
+    ProfessionalItem(null, "Fundi Digital", "Electrical & Plumbing", "Nairobi", "3h ago", ProfessionalType.ORGANIZATION, 4.6f, 256),
+    ProfessionalItem(null, "Sarah Wanjiku", "House Cleaner", "Westlands, Nairobi", "2h ago", ProfessionalType.INDIVIDUAL, 4.9f, 89),
+    ProfessionalItem(null, "SolarTech", "Solar Installation", "Nairobi", "1d ago", ProfessionalType.ORGANIZATION, 4.5f, 112)
+)
+
+private val supportItems = listOf(
+    SupportItem("Red Cross Kenya", "Emergency Relief & Disaster Response", "Nationwide", true),
+    SupportItem("Legal Aid Kenya", "Free Legal Advice & Representation", "Regional Offices", false),
+    SupportItem("Food for All", "Community Food Programs", "Nairobi & Kiambu", false)
+)
+
+// NON-STICKY HEADER - With appropriate top spacing
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NonStickyHeader(
+    colorScheme: ColorScheme,
+    user: User? = null,
+    isGuestMode: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val profileUrl = user?.profileImageUrl?.takeIf { it.isNotBlank() }
+    var showMenuBottomSheet by remember { mutableStateOf(false) }
+
+    // Get user info
+    val firstName = remember(user, isGuestMode) {
+        when {
+            user == null || isGuestMode -> "Guest"
+            user.firstName.isNotBlank() -> user.firstName
+            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
+            else -> "Guest"
+        }
+    }
+
+    // Get user role
+    val userRole = remember(user, isGuestMode) {
+        when {
+            isGuestMode -> "Guest User"
+            user?.role?.equals("admin", ignoreCase = true) == true -> "Administrator"
+            user?.role?.equals("professional", ignoreCase = true) == true -> "Professional"
+            else -> "General User"
+        }
+    }
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding()  // Add status bar padding back for non-sticky header
+            .padding(horizontal = 16.dp)
+            .padding(top = 8.dp, bottom = 8.dp)  // Small top padding
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(24.dp),
+                ambientColor = Color.Black.copy(alpha = 0.08f),
+                spotColor = Color.Black.copy(alpha = 0.06f)
+            ),
+        shape = RoundedCornerShape(24.dp),
+        color = colorScheme.surface.copy(alpha = 0.98f),
+        tonalElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left side - Profile Avatar and User Info
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Profile Avatar (Clickable)
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .clickable { showMenuBottomSheet = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isGuestMode || profileUrl.isNullOrBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    color = colorScheme.primary.copy(alpha = 0.1f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Outlined.AccountCircle,
+                                contentDescription = "Profile",
+                                tint = colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    } else {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(profileUrl)
+                                .size(128)
+                                .allowHardware(false)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Profile",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .border(
+                                    2.dp,
+                                    colorScheme.tertiary.copy(alpha = 0.5f),
+                                    CircleShape
+                                ),
+                            placeholder = painterResource(R.drawable.job_placeholder3),
+                            error = painterResource(R.drawable.job_placeholder3)
+                        )
+                    }
+                }
+
+                // User Info Column
+                Column(
+                    modifier = Modifier.clickable { showMenuBottomSheet = true }
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Hi, $firstName",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.onSurface,
+                            letterSpacing = 0.2.sp
+                        )
+                        // Dropdown Icon - Now next to the name
+                        Icon(
+                            Icons.Outlined.KeyboardArrowDown,
+                            contentDescription = "Menu",
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Text(
+                        text = userRole,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        letterSpacing = 0.1.sp
+                    )
+                }
+            }
+
+            // Right side - Action icons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Message Icon
+                HeaderIcon(Icons.Outlined.MailOutline, colorScheme)
+
+                // Notifications Icon with badge
+                Box {
+                    HeaderIcon(Icons.Outlined.NotificationsNone, colorScheme)
+                    // Notification badge
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 4.dp, y = 4.dp)
+                            .size(10.dp)
+                            .background(
+                                color = colorScheme.tertiary,
+                                shape = CircleShape
+                            )
+                            .border(
+                                width = 1.5.dp,
+                                color = colorScheme.error,
+                                shape = CircleShape
+                            )
+                    )
+                }
+            }
+        }
+    }
+
+    // Profile Menu Bottom Sheet
+    if (showMenuBottomSheet) {
+        ProfileMenuBottomSheet(
+            onDismiss = { showMenuBottomSheet = false },
+            colorScheme = colorScheme,
+            onMyAccountClick = {
+                showMenuBottomSheet = false
+                // Navigate to My Account
+            },
+            onMyListingsClick = {
+                showMenuBottomSheet = false
+                // Navigate to My Listings
+            },
+            onMyFavoritesClick = {
+                showMenuBottomSheet = false
+                // Navigate to My Favorites
+            },
+            onPostClick = {
+                showMenuBottomSheet = false
+                // Navigate to Post
+            },
+            onLogoutClick = {
+                showMenuBottomSheet = false
+                // Handle logout
+            }
+        )
+    }
+}
+
+
+// Profile Menu Bottom Sheet
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileMenuBottomSheet(
+    onDismiss: () -> Unit,
+    colorScheme: ColorScheme,
+    onMyAccountClick: () -> Unit,
+    onMyListingsClick: () -> Unit,
+    onMyFavoritesClick: () -> Unit,
+    onPostClick: () -> Unit,
+    onLogoutClick: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = false
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 12.dp)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .background(
+                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(2.dp)
+                    )
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Menu Items
+            ProfileMenuItem(
+                icon = Icons.Outlined.Person,
+                title = "My Account",
+                subtitle = "Manage your profile and settings",
+                onClick = onMyAccountClick,
+                colorScheme = colorScheme
+            )
+
+            Divider(
+                color = colorScheme.outlineVariant.copy(alpha = 0.3f),
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+
+            ProfileMenuItem(
+                icon = Icons.Outlined.List,
+                title = "My Listings",
+                subtitle = "View and manage your listings",
+                onClick = onMyListingsClick,
+                colorScheme = colorScheme
+            )
+
+            Divider(
+                color = colorScheme.outlineVariant.copy(alpha = 0.3f),
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+
+            ProfileMenuItem(
+                icon = Icons.Outlined.FavoriteBorder,
+                title = "My Favorites",
+                subtitle = "Saved opportunities",
+                onClick = onMyFavoritesClick,
+                colorScheme = colorScheme
+            )
+
+            Divider(
+                color = colorScheme.outlineVariant.copy(alpha = 0.3f),
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+
+            ProfileMenuItem(
+                icon = Icons.Outlined.AddCircle,
+                title = "Post",
+                subtitle = "Create a new listing",
+                onClick = onPostClick,
+                colorScheme = colorScheme
+            )
+
+            Divider(
+                color = colorScheme.outlineVariant.copy(alpha = 0.3f),
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+
+            ProfileMenuItem(
+                icon = Icons.Outlined.Logout,
+                title = "Logout",
+                subtitle = "Sign out from your account",
+                onClick = onLogoutClick,
+                colorScheme = colorScheme,
+                isDestructive = true
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun ProfileMenuItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    colorScheme: ColorScheme,
+    isDestructive: Boolean = false
+) {
+    val textColor = if (isDestructive) colorScheme.error else colorScheme.onSurface
+    val iconColor = if (isDestructive) colorScheme.error else colorScheme.primary
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Icon Container
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(
+                    color = if (isDestructive) colorScheme.error.copy(alpha = 0.1f)
+                    else colorScheme.primary.copy(alpha = 0.08f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = title,
+                tint = iconColor,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        // Text Content
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = textColor
+            )
+            Text(
+                text = subtitle,
+                fontSize = 13.sp,
+                color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+
+        // Chevron Icon
+        Icon(
+            Icons.Outlined.ChevronRight,
+            contentDescription = null,
+            tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+fun HeaderIcon(
+    icon: ImageVector,
+    colorScheme: ColorScheme
+) {
+    Box(
+        modifier = Modifier
+            .size(38.dp)
+            .clip(CircleShape)
+            .background(colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .clickable { },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+// SEARCH AND PILLS SECTION
+@Composable
+fun SearchAndPillsSection(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    isRecording: Boolean,
+    onAudioClick: () -> Unit,
+    selectedFilters: Set<String>,
+    onFilterSelected: (String) -> Unit,
+    primaryColor: Color,
+    secondaryColor: Color,
+    colorScheme: ColorScheme,
+    isTablet: Boolean,
+    horizontalPadding: Dp
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = horizontalPadding, vertical = 8.dp)
+    ) {
+        SearchBarWithAudio(
+            query = searchQuery,
+            onQueryChange = onSearchQueryChange,
+            onAudioClick = onAudioClick,
+            isRecording = isRecording,
+            primaryColor = primaryColor,
+            colorScheme = colorScheme,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        FilterPillsRow(
+            selectedFilters = selectedFilters,
+            onFilterSelected = onFilterSelected,
+            primaryColor = primaryColor,
+            colorScheme = colorScheme,
+            isTablet = isTablet
+        )
+    }
+}
+
+// NAVIGATION ROW - Simple navigation items without filtering/active states
 @Composable
 fun FilterPillsRow(
     selectedFilters: Set<String>,
     onFilterSelected: (String) -> Unit,
-    accentColor: Color,
+    primaryColor: Color,
     colorScheme: ColorScheme,
-    isTablet: Boolean,
-    onSmartMatchClick: () -> Unit // Keep parameter but don't use it
+    isTablet: Boolean
 ) {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        // SmartMatch badge REMOVED from here
-
-        val filters = listOf(
-            "All" to null,
+        val navItems = listOf(
             "Jobs" to Icons.Outlined.Work,
-            "Houses" to Icons.Outlined.Home,
+            "Properties" to Icons.Outlined.Home,
             "Professionals" to Icons.Outlined.Build,
             "Support" to Icons.Outlined.VolunteerActivism,
             "Verified" to Icons.Outlined.Verified
         )
 
-        items(filters.size) { index ->
-            val (filter, icon) = filters[index]
-            val isSelected = selectedFilters.contains(filter) || (filter == "All" && selectedFilters.isEmpty())
+        items(navItems.size) { index ->
+            val (label, icon) = navItems[index]
 
-            Surface(
-                shape = RoundedCornerShape(30.dp),
-                color = if (isSelected) accentColor else colorScheme.surface,
-                border = if (!isSelected) BorderStroke(1.dp, colorScheme.outlineVariant) else null,
+            Row(
                 modifier = Modifier
-                    .clickable { onFilterSelected(filter) }
-                    .shadow(
-                        elevation = if (isSelected) 2.dp else 0.dp,
-                        shape = RoundedCornerShape(30.dp),
-                        ambientColor = Color.Black.copy(0.05f)
-                    )
+                    .clickable { onFilterSelected(label) }
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (icon != null) {
-                        Icon(
-                            icon,
-                            contentDescription = null,
-                            tint = if (isSelected) colorScheme.onPrimary else colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                    }
-                    Text(
-                        text = filter,
-                        color = if (isSelected) colorScheme.onPrimary else colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                    )
-                }
+                Icon(
+                    icon,
+                    contentDescription = label,
+                    tint = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = label,
+                    color = colorScheme.onSurfaceVariant,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }
 }
 
-/* ─────────────────────────────────────────────
-   SEARCH BAR WITH AUDIO ICON (SmartMatch badge removed)
-   ───────────────────────────────────────────── */
-
+// SEARCH BAR WITH AUDIO - Fixed with proper width
 @Composable
 fun SearchBarWithAudio(
     query: String,
     onQueryChange: (String) -> Unit,
     onAudioClick: () -> Unit,
     isRecording: Boolean,
-    accentColor: Color,
-    colorScheme: ColorScheme
+    primaryColor: Color,
+    colorScheme: ColorScheme,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 2.dp,
@@ -862,7 +1113,6 @@ fun SearchBarWithAudio(
                     )
                 }
             } else {
-                // Audio Icon only - SmartMatch badge removed
                 IconButton(
                     onClick = onAudioClick,
                     modifier = Modifier
@@ -870,7 +1120,7 @@ fun SearchBarWithAudio(
                         .then(
                             if (isRecording) {
                                 Modifier.background(
-                                    color = accentColor.copy(0.1f),
+                                    color = primaryColor.copy(0.1f),
                                     shape = CircleShape
                                 )
                             } else {
@@ -884,7 +1134,7 @@ fun SearchBarWithAudio(
                         else
                             Icons.Outlined.Mic,
                         contentDescription = if (isRecording) "Stop recording" else "Start voice search",
-                        tint = if (isRecording) accentColor else colorScheme.onSurfaceVariant.copy(0.6f),
+                        tint = if (isRecording) primaryColor else colorScheme.onSurfaceVariant.copy(0.6f),
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -905,18 +1155,15 @@ fun SearchBarWithAudio(
     }
 }
 
-
-/* ────────────── UPDATED COMPONENTS WITH HORIZONTAL PADDING ────────────── */
-
+// SECTION HEADER - Using brand colors
 @Composable
 fun ModernSectionHeader(
     title: String,
     actionText: String,
     onActionClick: () -> Unit = {},
-    horizontalPadding: Dp = 16.dp
+    horizontalPadding: Dp = 16.dp,
+    colorScheme: ColorScheme
 ) {
-    val colorScheme = MaterialTheme.colorScheme
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -929,13 +1176,13 @@ fun ModernSectionHeader(
             style = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight.SemiBold,
                 color = colorScheme.onSurface,
-                fontSize = 16.sp,
+                fontSize = 18.sp,
                 letterSpacing = 0.5.sp
             )
         )
         Text(
             text = actionText,
-            color = colorScheme.primary,
+            color = colorScheme.tertiary,  // Baobab Gold for action text
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.clickable { onActionClick() }
@@ -943,30 +1190,7 @@ fun ModernSectionHeader(
     }
 }
 
-@Composable
-fun ModernHorizontalList(
-    items: List<@Composable () -> Unit>,
-    cardWidth: Dp,
-    horizontalPadding: Dp = 16.dp
-) {
-    LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = horizontalPadding),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(items.size) { index ->
-            Box(
-                modifier = Modifier
-                    .width(cardWidth)
-                    .animateItem()
-            ) {
-                items[index]()
-            }
-        }
-    }
-}
-
+// SUPPORT CARD
 @Composable
 fun ModernSupportCard(
     name: String,
@@ -997,12 +1221,11 @@ fun ModernSupportCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .background(
-                        if (isUrgent) tertiaryColor.copy(0.1f) else primaryColor.copy(0.08f),
+                        if (isUrgent) colorScheme.error.copy(0.1f) else primaryColor.copy(0.08f),
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -1010,14 +1233,13 @@ fun ModernSupportCard(
                 Icon(
                     imageVector = if (isUrgent) Icons.Outlined.Emergency else Icons.Outlined.VolunteerActivism,
                     contentDescription = null,
-                    tint = if (isUrgent) tertiaryColor else primaryColor,
+                    tint = if (isUrgent) colorScheme.error else primaryColor,
                     modifier = Modifier.size(24.dp)
                 )
             }
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Content
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -1025,14 +1247,12 @@ fun ModernSupportCard(
                     text = name,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp,
-                    color = colorScheme.onSurface,
-                    style = MaterialTheme.typography.titleSmall
+                    color = colorScheme.onSurface
                 )
                 Text(
                     text = service,
                     fontSize = 13.sp,
                     color = colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 2.dp)
                 )
                 Row(
@@ -1049,23 +1269,22 @@ fun ModernSupportCard(
                         text = location,
                         fontSize = 11.sp,
                         color = colorScheme.onSurfaceVariant.copy(0.7f),
-                        style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(start = 2.dp)
                     )
                 }
             }
 
-            // Action
-            Icon(
-                Icons.Outlined.ChevronRight,
-                contentDescription = "View",
-                tint = colorScheme.onSurfaceVariant.copy(0.5f),
-                modifier = Modifier.size(20.dp)
+            Text(
+                text = "View →",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = tertiaryColor
             )
         }
     }
 }
 
+// SERVICE GRID
 @Composable
 fun ModernServiceGrid(
     colorScheme: ColorScheme,
@@ -1083,7 +1302,6 @@ fun ModernServiceGrid(
         "Painters" to Icons.Outlined.FormatPaint
     )
 
-    // Adjust grid columns based on tablet
     val columnsPerRow = if (isTablet) 6 else 4
 
     Column(
@@ -1117,305 +1335,23 @@ fun ModernServiceGrid(
                             Icon(
                                 icon,
                                 contentDescription = null,
-                                tint = colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(22.dp)
+                                tint = colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = name,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = colorScheme.onSurface,
-                                style = MaterialTheme.typography.labelSmall
+                                color = colorScheme.onSurface
                             )
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun DiscoverHeroHeader(
-    teal: Color,
-    gold: Color,
-    height: Dp,
-    collapseFraction: Float,
-    colorScheme: ColorScheme,
-    modifier: Modifier = Modifier,
-    user: User? = null,  // Add this parameter
-    isGuestMode: Boolean = false  // Add this parameter
-) {
-    val collapsed = collapseFraction > 0.85f
-
-    val maxFontSize = 34.sp
-    val minFontSize = 24.sp
-
-    // Extract user name for display
-    val displayName = remember(user) {
-        when {
-            user == null || isGuestMode -> "Guest"
-            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
-            user.firstName.isNotBlank() -> user.firstName
-            else -> user.email.split("@").firstOrNull() ?: "Guest"
-        }
-    }
-
-    val welcomeMessage = remember(user, isGuestMode) {
-        when {
-            isGuestMode -> "Welcome to Pivota"
-            user?.userName?.isNotBlank() == true -> "Welcome back, ${user.userName.split(" ")
-                .firstOrNull() ?: "User"}!"
-            user?.firstName?.isNotBlank() == true -> "Welcome back, ${user.firstName}!"
-            else -> "Welcome to Pivota"
-        }
-    }
-
-    val backgroundColor by animateColorAsState(
-        targetValue = if (collapsed) colorScheme.primary.copy(alpha = 0.95f) else Color.Transparent,
-        animationSpec = tween(durationMillis = 300)
-    )
-
-    val discoverFontSize = ((maxFontSize.value - collapseFraction * (maxFontSize.value - minFontSize.value))).sp
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height),
-        shadowElevation = if (collapsed) 8.dp else 0.dp
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            AnimatedVisibility(
-                visible = !collapsed,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(R.drawable.nairobi_city)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    placeholder = painterResource(R.drawable.nairobi_city),
-                    error = painterResource(R.drawable.nairobi_city)
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(backgroundColor)
-            )
-
-            AnimatedVisibility(
-                visible = !collapsed,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    colorScheme.primary.copy(0.95f),
-                                    colorScheme.primary.copy(0.75f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-            ) {
-                AnimatedVisibility(
-                    visible = !collapsed,
-                    enter = fadeIn() + slideInVertically(),
-                    exit = fadeOut() + slideOutVertically()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp, start = 20.dp, end = 20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box {
-                                HeaderAvatar(colorScheme)
-                                Box(
-                                    modifier = Modifier
-                                        .size(12.dp)
-                                        .background(colorScheme.tertiaryContainer, CircleShape)
-                                        .border(2.dp, colorScheme.primary, CircleShape)
-                                        .align(Alignment.BottomEnd)
-                                )
-                            }
-
-                            Spacer(Modifier.width(12.dp))
-
-                            Column {
-                                Text(
-                                    text = if (isGuestMode) "Hi, Guest" else "Hi, $displayName",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    text = welcomeMessage,
-                                    color = Color.White.copy(0.85f),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontSize = 12.sp
-                                )
-                            }
-                        }
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            HeaderActionIcon(
-                                icon = Icons.Default.Mail,
-                                iconTint = Color.White,
-                                backgroundTint = Color.White.copy(alpha = 0.2f)
-                            ) {}
-                            HeaderActionIcon(
-                                icon = Icons.Default.Notifications,
-                                iconTint = Color.White,
-                                backgroundTint = Color.White.copy(alpha = 0.2f)
-                            ) {}
-                        }
-                    }
-                }
-
-                if (!collapsed) {
+                repeat(columnsPerRow - rowItems.size) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
             }
-
-            if (collapsed) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.CenterStart)
-                        .padding(start = 20.dp, end = 20.dp)
-                        .offset(y = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Discover",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-1.5).sp,
-                            fontSize = discoverFontSize
-                        )
-                    )
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        HeaderActionIcon(
-                            icon = Icons.Default.Mail,
-                            iconTint = Color.White,
-                            backgroundTint = Color.White.copy(alpha = 0.2f)
-                        ) {}
-                        HeaderActionIcon(
-                            icon = Icons.Default.Notifications,
-                            iconTint = Color.White,
-                            backgroundTint = Color.White.copy(alpha = 0.2f)
-                        ) {}
-                    }
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 20.dp, bottom = 32.dp)
-                        .statusBarsPadding()
-                ) {
-                    Text(
-                        text = "Discover",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-1.5).sp,
-                            fontSize = discoverFontSize
-                        )
-                    )
-
-                    Text(
-                        text = if (isGuestMode) {
-                            "Life opportunities, tailored for you"
-                        } else {
-                            "Find opportunities ${if (displayName != "Guest") "for $displayName" else "for you"}"
-                        },
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(0.9f)
-                        ),
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
         }
-    }
-}
-
-@Composable
-fun HeaderActionIcon(
-    icon: ImageVector,
-    iconTint: Color = Color.White,
-    backgroundTint: Color = Color.White.copy(alpha = 0.2f),
-    onClick: () -> Unit
-) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.size(48.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(backgroundTint, CircleShape)
-                .clip(CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun HeaderAvatar(colorScheme: ColorScheme) {
-    Box(
-        modifier = Modifier
-            .size(45.dp)
-            .background(Color.White.copy(0.2f), CircleShape)
-            .border(1.5.dp, Color.White.copy(0.5f), CircleShape)
-            .clip(CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Default.PersonOutline,
-            contentDescription = "User Avatar",
-            tint = Color.White,
-            modifier = Modifier.size(24.dp)
-        )
     }
 }

@@ -52,7 +52,7 @@ fun AdaptiveAuthLayout(
                 windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
 
         /* ───────── STATIC IMAGE SELECTION ───────── */
-        val staticAuthImage = if (isLoginScreen) R.drawable.nairobi_city else R.drawable.organization
+        val staticAuthImage = R.drawable.welcome_pivota
         val authHeader = if (isLoginScreen) "Welcome Back" else "Join Pivota"
 
         if (isWide) {

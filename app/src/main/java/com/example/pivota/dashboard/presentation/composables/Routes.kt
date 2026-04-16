@@ -5,8 +5,7 @@ import kotlinx.serialization.Serializable
 // Top-level dashboard routes
 @Serializable object Dashboard
 @Serializable object Professionals
-@Serializable object Discover
-@Serializable object Favorites
+@Serializable object Connect
 @Serializable object Profile
 
 // Specific Posting Flow routes (Type-Safe)
