@@ -142,7 +142,7 @@ fun SplashContent() {
         // ===== LOGO + TEXT =====
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Image(
-                painter = painterResource(id = R.drawable.logofinale),
+                painter = painterResource(id = R.drawable.logofinaletransp),
                 contentDescription = "PivotaConnect Logo",
                 modifier = Modifier
                     .size(140.dp)

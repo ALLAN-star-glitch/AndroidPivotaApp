@@ -1,6 +1,5 @@
 package com.example.pivota
 
-
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,7 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import com.example.pivota.core.navigation.NavHostSetup
-import com.example.pivota.ui.theme.PivotaConnectTheme
+
+import com.example.pivota.dashboard.presentation.composables.ThemeAware
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -22,7 +22,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge() // enables drawing behind system bars
 
         setContent {
-            PivotaConnectTheme {
+            // ThemeAware wraps the entire app to provide theme management
+            ThemeAware {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     contentWindowInsets = WindowInsets(0, 0, 0, 0) // removes top padding
@@ -35,11 +36,5 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-
-        }
     }
-
-
-
-
-
+}

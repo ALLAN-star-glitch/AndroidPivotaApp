@@ -24,11 +24,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.auth.domain.model.User
+import com.example.pivota.core.presentations.viewmodel.ThemeViewModel
 import com.example.pivota.dashboard.presentation.screens.ProfileMenuBottomSheet
 
 @SuppressLint("Range")
@@ -48,6 +50,10 @@ fun ReusableHeader(
     val profileUrl = user?.profileImageUrl?.takeIf { it.isNotBlank() }
     var showMenuBottomSheet by remember { mutableStateOf(false) }
 
+    // Get ThemeViewModel directly in the header
+    val themeViewModel: ThemeViewModel = hiltViewModel()
+    val isDarkTheme by themeViewModel.isDarkTheme
+
     // Simple logic: hide title and subtitle when scrolled more than 20px
     val isScrolled = scrollOffset > 20f
 
@@ -57,6 +63,7 @@ fun ReusableHeader(
             user == null || isGuestMode -> "Guest"
             user.firstName.isNotBlank() -> user.firstName
             user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
+            user.email.isNotBlank() -> user.email.split("@").firstOrNull() ?: "Guest"
             else -> "Guest"
         }
     }
@@ -185,11 +192,13 @@ fun ReusableHeader(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Message Icon
                     HeaderActionIcon(
                         icon = Icons.Outlined.MailOutline,
                         colorScheme = colorScheme
                     )
 
+                    // Notifications Icon with badge
                     Box {
                         HeaderActionIcon(
                             icon = Icons.Outlined.NotificationsNone,
@@ -211,6 +220,15 @@ fun ReusableHeader(
                                 )
                         )
                     }
+
+                    // Theme Switcher Icon - changes icon based on current theme
+                    HeaderActionIcon(
+                        icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                        colorScheme = colorScheme,
+                        onClick = {
+                            themeViewModel.toggleTheme()
+                        }
+                    )
                 }
             }
         }

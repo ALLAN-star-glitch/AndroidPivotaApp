@@ -324,9 +324,9 @@ fun ProfileScreen(
     val isWide = windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
 
     // 🎨 Brand Palette
-    val primaryTeal = primaryLight
-    val goldenAccent = tertiaryLight
-    val softBackground = backgroundLight
+    val primaryTeal = colorScheme.primary
+    val goldenAccent = colorScheme.tertiary
+    val softBackground = colorScheme.background
     val purpleAccent = PurpleAccent
 
     // Track scroll offset for header
