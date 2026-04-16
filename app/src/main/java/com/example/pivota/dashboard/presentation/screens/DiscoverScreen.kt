@@ -159,6 +159,7 @@ fun DiscoverScreen(
                             user == null || isGuestMode -> "Guest"
                             user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
                             user.firstName.isNotBlank() -> user.firstName
+                            user.email.isNotBlank() -> user.email.split("@").firstOrNull() ?: "Guest"
                             else -> "Guest"
                         }
                     }

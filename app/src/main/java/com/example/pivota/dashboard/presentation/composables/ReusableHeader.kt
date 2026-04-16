@@ -57,6 +57,7 @@ fun ReusableHeader(
             user == null || isGuestMode -> "Guest"
             user.firstName.isNotBlank() -> user.firstName
             user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
+            user.email.isNotBlank() -> user.email.split("@").firstOrNull() ?: "Guest"
             else -> "Guest"
         }
     }
