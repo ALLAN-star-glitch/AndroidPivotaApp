@@ -1,4 +1,4 @@
-// ThemeViewModel.kt
+
 package com.example.pivota.core.presentations.viewmodel
 
 import androidx.compose.runtime.State

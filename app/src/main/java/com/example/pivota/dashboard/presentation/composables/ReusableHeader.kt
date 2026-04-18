@@ -45,6 +45,8 @@ fun ReusableHeader(
     isSticky: Boolean = false,
     pageSubtitle: String? = null,
     scrollOffset: Float = 0f,
+    messageCount: Int = 0,
+    notificationCount: Int = 0,
 ) {
     val context = LocalContext.current
     val profileUrl = user?.profileImageUrl?.takeIf { it.isNotBlank() }
@@ -187,38 +189,76 @@ fun ReusableHeader(
                     }
                 }
 
-                // Right side - Action icons
+                // Right side - Action icons (Theme Switcher first, then Message, then Notifications)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Message Icon
+                    // 1. Theme Switcher Icon - FIRST
                     HeaderActionIcon(
-                        icon = Icons.Outlined.MailOutline,
-                        colorScheme = colorScheme
+                        icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                        colorScheme = colorScheme,
+                        onClick = {
+                            themeViewModel.toggleTheme()
+                        }
                     )
 
-                    // Notifications Icon with badge
+                    // 2. Message Icon with count badge - SECOND
+                    Box {
+                        HeaderActionIcon(
+                            icon = Icons.Outlined.MailOutline,
+                            colorScheme = colorScheme
+                        )
+                        if (messageCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 4.dp, y = 4.dp)
+                                    .background(
+                                        color = Color.Red,
+                                        shape = CircleShape
+                                    )
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (messageCount > 99) "99+" else messageCount.toString(),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+
+                    // 3. Notifications Icon with count badge - THIRD
                     Box {
                         HeaderActionIcon(
                             icon = Icons.Outlined.NotificationsNone,
                             colorScheme = colorScheme
                         )
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .offset(x = 4.dp, y = 4.dp)
-                                .size(10.dp)
-                                .background(
-                                    color = colorScheme.tertiary,
-                                    shape = CircleShape
+                        if (notificationCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 4.dp, y = 4.dp)
+                                    .background(
+                                        color = Color.Red,
+                                        shape = CircleShape
+                                    )
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (notificationCount > 99) "99+" else notificationCount.toString(),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
                                 )
-                                .border(
-                                    width = 1.5.dp,
-                                    color = colorScheme.surface,
-                                    shape = CircleShape
-                                )
-                        )
+                            }
+                        }
                     }
 
                     // Theme Switcher Icon - changes icon based on current theme

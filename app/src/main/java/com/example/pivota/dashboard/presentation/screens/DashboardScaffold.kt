@@ -407,10 +407,6 @@ fun DashboardScaffold(
                             LaunchedEffect(Unit) {
                                 navController.popBackStack()
                             }
-                        )
-                    } else {
-                        LaunchedEffect(Unit) {
-                            navController.popBackStack()
                         }
                     }
 
@@ -472,10 +468,6 @@ fun DashboardScaffold(
                             LaunchedEffect(Unit) {
                                 navController.popBackStack()
                             }
-                        )
-                    } else {
-                        LaunchedEffect(Unit) {
-                            navController.popBackStack()
                         }
                     }
 
@@ -505,10 +497,6 @@ fun DashboardScaffold(
                             LaunchedEffect(Unit) {
                                 navController.popBackStack()
                             }
-                        )
-                    } ?: run {
-                        LaunchedEffect(Unit) {
-                            navController.popBackStack()
                         }
                     }
 
@@ -771,10 +759,6 @@ fun DashboardScaffold(
                             LaunchedEffect(Unit) {
                                 navController.popBackStack()
                             }
-                        )
-                    } else {
-                        LaunchedEffect(Unit) {
-                            navController.popBackStack()
                         }
                     }
 
@@ -867,8 +851,6 @@ fun DashboardScaffold(
                             }
                         }
                     }
-                )
-            }
 
                     // Post Job
                     composable<PostJob> {
