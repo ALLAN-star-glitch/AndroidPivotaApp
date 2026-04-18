@@ -260,6 +260,15 @@ fun ReusableHeader(
                             }
                         }
                     }
+
+                    // Theme Switcher Icon - changes icon based on current theme
+                    HeaderActionIcon(
+                        icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                        colorScheme = colorScheme,
+                        onClick = {
+                            themeViewModel.toggleTheme()
+                        }
+                    )
                 }
             }
         }
