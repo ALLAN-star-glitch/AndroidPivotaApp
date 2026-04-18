@@ -66,6 +66,11 @@ class PivotaDataStore @Inject constructor(
         private val SELECTED_THEME = stringPreferencesKey("selected_theme")
 
         private val json = Json { ignoreUnknownKeys = true }
+
+
+
+        private val DARK_THEME = booleanPreferencesKey("dark_theme")
+
     }
 
     // ======================================================
@@ -482,6 +487,28 @@ class PivotaDataStore @Inject constructor(
             it.remove(OB_PROPERTY_OWNER_DATA)
         }
     }
+
+    // ======================================================
+    // THEME PREFERENCES
+    // ======================================================
+
+    val isDarkThemeFlow: Flow<Boolean> = dataStore.data.map {
+        it[DARK_THEME] ?: false
+    }
+
+    suspend fun setDarkTheme(isDark: Boolean) {
+        dataStore.edit { it[DARK_THEME] = isDark }
+    }
+
+    suspend fun getDarkTheme(): Boolean {
+        return dataStore.data.map { it[DARK_THEME] ?: false }.first()
+    }
+
+    suspend fun toggleTheme() {
+        val current = getDarkTheme()
+        setDarkTheme(!current)
+    }
+
 }
 
 // ======================================================
@@ -600,6 +627,7 @@ data class EmployerData(
 @Serializable
 data class PropertyOwnerData(
     // Listing Type (what are they listing)
+
     val listingType: String? = null,  // "RENT", "SALE", "BOTH"
     val isListingForRent: Boolean = false,
     val isListingForSale: Boolean = false,
@@ -613,4 +641,5 @@ data class PropertyOwnerData(
     val isProfessional: Boolean = false,
     val preferredPropertyTypes: List<String> = emptyList()
 )
+
 
