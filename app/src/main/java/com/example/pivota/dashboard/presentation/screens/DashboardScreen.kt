@@ -45,14 +45,16 @@ import androidx.compose.ui.unit.sp
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import coil3.compose.AsyncImage
-import coil3.request.CachePolicy
+
 import coil3.request.ImageRequest
+
 import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.auth.domain.model.User
+import com.example.pivota.dashboard.presentation.composables.ReusableHeader
 import com.example.pivota.ui.theme.*
 import kotlinx.coroutines.delay
-import kotlin.math.roundToInt
+
 
 // Data classes
 data class KPI(
@@ -211,6 +213,15 @@ fun DashboardScreen(
             windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
 
     val listState = rememberLazyListState()
+    val scrollOffset by remember {
+        derivedStateOf {
+            if (listState.firstVisibleItemIndex == 0) {
+                listState.firstVisibleItemScrollOffset.toFloat()
+            } else {
+                Float.MAX_VALUE  // Fully scrolled
+            }
+        }
+    }
 
     // 📏 Header sizes
     val maxHeight = if (isWide) 280.dp else 220.dp
@@ -359,41 +370,67 @@ fun DashboardScreen(
     )
 
 
-
     Scaffold(
         containerColor = colorScheme.background,
         topBar = {
-            DashboardHeroHeader(
-                primaryColor = colorScheme.primary,
-                accentColor = tertiaryLight,
-                height = animatedHeight,
-                collapseFraction = collapseFraction,
-                onSurfaceColor = colorScheme.onSurface,
-                isWide = isWide,
+
+            ReusableHeader(
+                colorScheme = colorScheme,
+
+                user = user,
                 isGuestMode = isGuestMode,
-                userName = displayName,  // Use first name for greeting
-                fullName = fullName,     // Use full name for welcome message
-                isLoggedIn = user != null,
-                userRole = userRole,
-                accountType = accountType
+                isSticky = true,  // Sticky for dashboard
+                scrollOffset = scrollOffset,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()  // Push below status bar
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                pageTitle = "Dashboard",
+                pageSubtitle = "Track your business performance",
             )
         },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { padding ->
+    ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
+                .padding(paddingValues)
         ) {
             LazyColumn(
-                state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = maxHeight + 12.dp
-                ),
+                state = listState,
+                contentPadding = PaddingValues(bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // 🏦 UNIFIED FINANCIAL HUB (Always visible)
+                // 📊 PERFORMANCE OVERVIEW (KPI Cards) - WITH PROPER PADDING
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = if (isWide) 24.dp else 16.dp)
+                    ) {
+                        if (isWide) {
+                            EnhancedKpiCardsSection(
+                                kpis = kpiData,
+                                primaryColor = colorScheme.primary,
+                                textPrimary = colorScheme.onSurface,
+                                textSecondary = colorScheme.onSurfaceVariant,
+                                surfaceColor = colorScheme.surfaceContainerLow,
+                                borderColor = colorScheme.outlineVariant,
+                                isWide = true
+                            )
+                        } else {
+                            KpiCardsSection(
+                                kpis = kpiData,
+                                primaryColor = colorScheme.primary,
+                                textPrimary = colorScheme.onSurface,
+                                textSecondary = colorScheme.onSurfaceVariant,
+                                isWide = false
+                            )
+                        }
+                    }
+                }
+
+                // 🏦 UNIFIED FINANCIAL HUB - MOVED DOWN
                 item {
                     UnifiedFinancialHub(
                         walletInfo = walletInfo,
@@ -445,16 +482,6 @@ fun DashboardScreen(
                                 modifier = Modifier.weight(1.5f),
                                 verticalArrangement = Arrangement.spacedBy(20.dp)
                             ) {
-                                EnhancedKpiCardsSection(
-                                    kpis = kpiData,
-                                    primaryColor = colorScheme.primary,
-                                    textPrimary = colorScheme.onSurface,
-                                    textSecondary = colorScheme.onSurfaceVariant,
-                                    surfaceColor = colorScheme.surfaceContainerLow,
-                                    borderColor = colorScheme.outlineVariant,
-                                    isWide = true
-                                )
-
                                 ProfessionalAnalyticsSection(
                                     primaryColor = colorScheme.primary,
                                     accentColor = tertiaryLight,
@@ -520,25 +547,17 @@ fun DashboardScreen(
                                 .padding(horizontal = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            KpiCardsSection(
-                                kpis = kpiData,
-                                primaryColor = colorScheme.primary,
-                                textPrimary = colorScheme.onSurface,
-                                textSecondary = colorScheme.onSurfaceVariant,
-                                isWide = false
-                            )
-
-                            BusinessMetricsGrid(
-                                metrics = businessMetrics,
-                                isWide = false
-                            )
-
                             ProfessionalAnalyticsSection(
                                 primaryColor = colorScheme.primary,
                                 accentColor = tertiaryLight,
                                 textPrimary = colorScheme.onSurface,
                                 textSecondary = colorScheme.onSurfaceVariant,
                                 borderColor = colorScheme.outlineVariant,
+                                isWide = false
+                            )
+
+                            BusinessMetricsGrid(
+                                metrics = businessMetrics,
                                 isWide = false
                             )
 
@@ -2190,7 +2209,14 @@ fun EnhancedKpiCardsSection(
     isWide: Boolean
 ) {
     Column {
-        SectionHeader("Performance Overview", "Last 30 days", textPrimary, textSecondary, isWide)
+        SectionHeader(
+            title = "Performance Overview",
+            subtitle = "Last 30 days",
+            textPrimary = textPrimary,
+            textSecondary = textSecondary,
+            isWide = isWide,
+            modifier = Modifier.padding(horizontal = 0.dp)  // Remove horizontal padding
+        )
         Spacer(modifier = Modifier.height(16.dp))
 
         Column(
@@ -2232,7 +2258,6 @@ fun EnhancedKpiCardsSection(
         }
     }
 }
-
 @Composable
 fun EnhancedKpiCard(
     kpi: KPI,
@@ -3550,10 +3575,13 @@ fun SectionHeader(
     subtitle: String,
     textPrimary: Color,
     textSecondary: Color,
-    isWide: Boolean
+    isWide: Boolean,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 0.dp),  // Default to 0, can be overridden
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -3576,283 +3604,4 @@ fun SectionHeader(
     }
 }
 
-/* ────────────── COLLAPSIBLE HEADER ────────────── */
-@Composable
-fun DashboardHeroHeader(
-    primaryColor: Color,
-    accentColor: Color,
-    height: Dp,
-    collapseFraction: Float,
-    onSurfaceColor: Color,
-    isWide: Boolean,
-    isGuestMode: Boolean = false,
-    userName: String = "Guest",
-    fullName: String = "Guest",
-    isLoggedIn: Boolean = false,
-    userRole: String? = null,
-    accountType: String? = null,
-    modifier: Modifier = Modifier
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val collapsed = collapseFraction > 0.85f
 
-    val maxFontSize = 34.sp
-    val minFontSize = 24.sp
-
-    val backgroundColor by animateColorAsState(
-        targetValue = if (collapsed) colorScheme.primary.copy(alpha = 0.95f) else Color.Transparent,
-        animationSpec = tween(durationMillis = 300)
-    )
-
-    val titleFontSize = ((maxFontSize.value - collapseFraction * (maxFontSize.value - minFontSize.value))).sp
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height),
-        shadowElevation = if (collapsed) 8.dp else 0.dp
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            // Background image - same as DiscoverScreen
-            AnimatedVisibility(
-                visible = !collapsed,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(R.drawable.nairobi_city)  // Same background image
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    placeholder = painterResource(R.drawable.nairobi_city),
-                    error = painterResource(R.drawable.nairobi_city)
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(backgroundColor)
-            )
-
-            // Gradient overlay - same as DiscoverScreen
-            AnimatedVisibility(
-                visible = !collapsed,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    colorScheme.primary.copy(0.95f),
-                                    colorScheme.primary.copy(0.75f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-            ) {
-                // Top bar with avatar and actions - same as DiscoverScreen
-                AnimatedVisibility(
-                    visible = !collapsed,
-                    enter = fadeIn() + slideInVertically(),
-                    exit = fadeOut() + slideOutVertically()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp, start = 20.dp, end = 20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box {
-                                HeaderAvatarDashboard(colorScheme)
-                                Box(
-                                    modifier = Modifier
-                                        .size(12.dp)
-                                        .background(colorScheme.tertiaryContainer, CircleShape)
-                                        .border(2.dp, colorScheme.primary, CircleShape)
-                                        .align(Alignment.BottomEnd)
-                                )
-                            }
-
-                            Spacer(Modifier.width(12.dp))
-
-                            Column {
-                                Text(
-                                    text = if (isGuestMode) "Hi, Guest" else "Hi, $userName",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    text = if (isGuestMode) {
-                                        "Welcome to Pivota"
-                                    } else {
-                                        "Welcome back, ${userName.split(" ").firstOrNull() ?: "User"}!"
-                                    },
-                                    color = Color.White.copy(0.85f),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontSize = 12.sp
-                                )
-                            }
-                        }
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            HeaderActionIconDashboard(
-                                icon = Icons.Default.Mail,
-                                iconTint = Color.White,
-                                backgroundTint = Color.White.copy(alpha = 0.2f)
-                            ) {}
-                            HeaderActionIconDashboard(
-                                icon = Icons.Default.Notifications,
-                                iconTint = Color.White,
-                                backgroundTint = Color.White.copy(alpha = 0.2f)
-                            ) {}
-                        }
-                    }
-                }
-
-                if (!collapsed) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-
-            // Collapsed header - same as DiscoverScreen but with "Dashboard" title
-            if (collapsed) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.CenterStart)
-                        .padding(start = 20.dp, end = 20.dp)
-                        .offset(y = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Dashboard",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-1.5).sp,
-                            fontSize = titleFontSize
-                        )
-                    )
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        HeaderActionIconDashboard(
-                            icon = Icons.Default.Mail,
-                            iconTint = Color.White,
-                            backgroundTint = Color.White.copy(alpha = 0.2f)
-                        ) {}
-                        HeaderActionIconDashboard(
-                            icon = Icons.Default.Notifications,
-                            iconTint = Color.White,
-                            backgroundTint = Color.White.copy(alpha = 0.2f)
-                        ) {}
-                    }
-                }
-            } else {
-                // Expanded header - same style as DiscoverScreen
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 20.dp, bottom = 32.dp)
-                        .statusBarsPadding()
-                ) {
-                    Text(
-                        text = "Dashboard",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-1.5).sp,
-                            fontSize = titleFontSize
-                        )
-                    )
-
-                    Text(
-                        text = if (isGuestMode) {
-                            "Manage your business, track performance"
-                        } else {
-                            "Track your business performance, ${if (userName != "Guest") userName else ""}"
-                        },
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(0.9f)
-                        ),
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun HeaderActionIconDashboard(
-    icon: ImageVector,
-    iconTint: Color = Color.White,
-    backgroundTint: Color = Color.White.copy(alpha = 0.2f),
-    size: Dp = 48.dp,
-    onClick: () -> Unit
-) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.size(size)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(backgroundTint, CircleShape)
-                .clip(CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun HeaderAvatarDashboard(colorScheme: ColorScheme) {
-    Box(
-        modifier = Modifier
-            .size(45.dp)
-            .background(Color.White.copy(0.2f), CircleShape)
-            .border(1.5.dp, Color.White.copy(0.5f), CircleShape)
-            .clip(CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Default.PersonOutline,
-            contentDescription = "User Avatar",
-            tint = Color.White,
-            modifier = Modifier.size(24.dp)
-        )
-    }
-}

@@ -1,5 +1,7 @@
 package com.example.pivota.core.network
 
+import io.ktor.client.call.NoTransformationFoundException
+import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 
@@ -22,9 +24,27 @@ suspend inline fun <reified T> safeApiCall(
     } catch (e: TimeoutCancellationException) {
         println("❌ API call timed out: ${e.message}")
         ApiResult.Error(NetworkError.Timeout, e.message)
+    } catch (e: ResponseException) {
+        // ✅ NOW USING handleHttpResponse for HTTP status codes
+        println("❌ HTTP Response Error: ${e.response.status.value} - ${e.response.status.description}")
+
+        val networkError = NetworkExceptionHandler.handleHttpResponse(e.response)
+            ?: NetworkExceptionHandler.handleException(e)
+
+        println("❌ Mapped to error: ${networkError.message}")
+        ApiResult.Error(networkError, e.message)
+    } catch (e: NoTransformationFoundException) {
+        // Response parsing failed (JSON doesn't match DTO)
+        println("❌ Response parsing failed: ${e.message}")
+        ApiResult.Error(NetworkError.ParsingError, e.message)
     } catch (e: Exception) {
+        // ✅ NOW USING isNetworkAvailable for debugging
         val networkError = NetworkExceptionHandler.handleException(e)
+        val isNetworkAvail = NetworkExceptionHandler.isNetworkAvailable(e)
+
+        println("❌ Network available: $isNetworkAvail")
         println("❌ API call failed: ${networkError.message} - ${e.message}")
+
         ApiResult.Error(networkError, e.message)
     }
 }

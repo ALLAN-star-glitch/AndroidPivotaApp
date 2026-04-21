@@ -31,7 +31,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -51,6 +50,8 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
+import com.example.pivota.auth.domain.model.User
+import com.example.pivota.dashboard.presentation.composables.ReusableHeader
 import com.example.pivota.ui.theme.*
 
 // ==================== ENUMS ====================
@@ -299,7 +300,6 @@ data class Review(
     val date: String
 )
 
-// ==================== MAIN PROFILE SCREEN ====================
 @SuppressLint("FrequentlyChangingValue")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -313,7 +313,8 @@ fun ProfileScreen(
     onNavigateToPaymentMethods: () -> Unit = {},
     onNavigateToBillingHistory: () -> Unit = {},
     onSignOut: () -> Unit = {},
-    isGuestMode: Boolean = false  // Add this parameter
+    user: User? = null,
+    isGuestMode: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -323,10 +324,25 @@ fun ProfileScreen(
     val isWide = windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
 
     // 🎨 Brand Palette
-    val primaryTeal = primaryLight
-    val goldenAccent = tertiaryLight
-    val softBackground = backgroundLight
+    val primaryTeal = colorScheme.primary
+    val goldenAccent = colorScheme.tertiary
+    val softBackground = colorScheme.background
     val purpleAccent = PurpleAccent
+
+    // Track scroll offset for header
+    val listState = rememberLazyListState()
+    val scrollOffset by remember {
+        derivedStateOf {
+            if (listState.firstVisibleItemIndex == 0) {
+                listState.firstVisibleItemScrollOffset.toFloat()
+            } else {
+                Float.MAX_VALUE
+            }
+        }
+    }
+
+    // Check if title/subtitle should be hidden (scrolled)
+    val isScrolled = scrollOffset > 20f
 
     // Mock Data - Modify for guest mode
     val accountData = remember {
@@ -376,7 +392,7 @@ fun ProfileScreen(
         if (isGuestMode) emptyList() else mockReviews()
     }
 
-    // Dynamically build tabs based on available profiles - with "Profile" suffix
+    // Dynamically build tabs based on available profiles
     val tabs = buildList {
         add(ProfileType.ACCOUNT to "Account")
         if (!isGuestMode) {
@@ -392,68 +408,43 @@ fun ProfileScreen(
     }
 
     var selectedTabIndex by remember { mutableStateOf(0) }
-    val listState = rememberLazyListState()
-
-    // 📏 Header sizes - exactly like Dashboard
-    val maxHeight = if (isWide) 280.dp else 220.dp
-    val minHeight = if (isWide) 120.dp else 90.dp
-
-    val density = LocalDensity.current
-    val collapseRangePx = with(density) {
-        (maxHeight - minHeight).toPx()
-    }
-
-    val scrollY = when (listState.firstVisibleItemIndex) {
-        0 -> listState.firstVisibleItemScrollOffset.toFloat()
-        else -> collapseRangePx
-    }
-
-    val collapseFraction =
-        (scrollY / collapseRangePx).coerceIn(0f, 1f)
-
-    val animatedHeight =
-        lerp(maxHeight, minHeight, collapseFraction)
-
-    // Profile titles based on user type - update for guest mode
-    val titlesDisplay = if (isGuestMode) {
-        "Guest User"
-    } else {
-        val titleOptions = buildList {
-            if (professionalProfileData != null) add("Professional")
-            if (agentProfileData != null) add("Agent")
-            if (employerProfileData != null) add("Employer")
-            if (jobSeekerProfileData?.isActivelySeeking == true) add("Job Seeker")
-            if (propertyOwnerProfileData != null) add("Property Owner")
-            if (propertySeekerProfileData != null) add("Property Seeker")
-            if (serviceProviderProfileData != null) add("Service Provider")
-            if (beneficiaryProfileData != null) add("Beneficiary")
-            if (isEmpty()) add("Member")
-        }
-        titleOptions.joinToString(" • ")
-    }
 
     Scaffold(
         containerColor = softBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { padding ->
+    ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
+                .padding(paddingValues)
         ) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = 0.dp
-                )
+                contentPadding = PaddingValues(top = 0.dp)
             ) {
-                // STICKY TAB ROW - positioned just below header with dynamic offset
-                stickyHeader(key = "tabRow") {
-                    Column {
-                        // This spacer pushes the tabs below the header
-                        Spacer(modifier = Modifier.height(animatedHeight))
+                // Non-sticky Header (scrolls away)
+                item {
+                    ReusableHeader(
+                        colorScheme = colorScheme,
+                        pageTitle = "Profile",
+                        pageSubtitle = if (isGuestMode) "Sign in to access your account" else "Manage your identity",
+                        user = user,
+                        isGuestMode = isGuestMode,
+                        isSticky = false,
+                        scrollOffset = scrollOffset,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
 
+                // STICKY TABS - touches top edge when sticky
+                stickyHeader(key = "tabRow") {
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -461,36 +452,50 @@ fun ProfileScreen(
                             color = softBackground,
                             tonalElevation = 2.dp
                         ) {
-                            ScrollableTabRow(
-                                selectedTabIndex = selectedTabIndex,
-                                containerColor = Color.Transparent,
-                                edgePadding = 16.dp,
-                                divider = {},
-                                indicator = { tabPositions ->
-                                    TabRowDefaults.SecondaryIndicator(
-                                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                                        color = primaryTeal,
-                                        height = 3.dp
+                            // Apply status bar padding to the content inside when scrolled
+                            // This pushes the tab content down, but the background touches the edge
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(
+                                        if (isScrolled) {
+                                            Modifier.statusBarsPadding()
+                                        } else {
+                                            Modifier
+                                        }
                                     )
-                                }
                             ) {
-                                tabs.forEachIndexed { index, (_, title) ->
-                                    Tab(
-                                        selected = selectedTabIndex == index,
-                                        onClick = { selectedTabIndex = index },
-                                        text = {
-                                            Text(
-                                                text = title,
-                                                fontWeight = if (selectedTabIndex == index)
-                                                    FontWeight.Bold else FontWeight.Normal,
-                                                fontSize = 14.sp,
-                                                color = if (selectedTabIndex == index)
-                                                    primaryTeal else colorScheme.onSurfaceVariant
-                                            )
-                                        },
-                                        selectedContentColor = primaryTeal,
-                                        unselectedContentColor = colorScheme.onSurfaceVariant
-                                    )
+                                ScrollableTabRow(
+                                    selectedTabIndex = selectedTabIndex,
+                                    containerColor = Color.Transparent,
+                                    edgePadding = 16.dp,
+                                    divider = {},
+                                    indicator = { tabPositions ->
+                                        TabRowDefaults.SecondaryIndicator(
+                                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                                            color = primaryTeal,
+                                            height = 3.dp
+                                        )
+                                    }
+                                ) {
+                                    tabs.forEachIndexed { index, (_, title) ->
+                                        Tab(
+                                            selected = selectedTabIndex == index,
+                                            onClick = { selectedTabIndex = index },
+                                            text = {
+                                                Text(
+                                                    text = title,
+                                                    fontWeight = if (selectedTabIndex == index)
+                                                        FontWeight.Bold else FontWeight.Normal,
+                                                    fontSize = 14.sp,
+                                                    color = if (selectedTabIndex == index)
+                                                        primaryTeal else colorScheme.onSurfaceVariant
+                                                )
+                                            },
+                                            selectedContentColor = primaryTeal,
+                                            unselectedContentColor = colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -531,7 +536,6 @@ fun ProfileScreen(
                                     isGuestMode = isGuestMode
                                 )
 
-                                // Other tabs remain the same, but they won't be shown in guest mode
                                 ProfileType.PROFESSIONAL -> ProfessionalTabContent(
                                     professionalProfileData = professionalProfileData!!,
                                     primaryColor = primaryTeal,
@@ -580,33 +584,9 @@ fun ProfileScreen(
                     }
                 }
             }
-
-            // 🏆 COLLAPSING HEADER - absolutely positioned on top
-            ProfileHeroHeader(
-                primaryColor = primaryTeal,
-                accentColor = goldenAccent,
-                height = animatedHeight,
-                collapseFraction = collapseFraction,
-                userName = if (isGuestMode) "Guest User" else (accountData.name ?: "User"),
-                userEmail = if (isGuestMode) "" else (userData?.email ?: organizationProfileData?.officialEmail ?: ""),
-                isVerified = if (isGuestMode) false else accountData.isVerified,
-                titlesDisplay = titlesDisplay,
-                profileImage = if (!isGuestMode) {
-                    when (accountData.type) {
-                        AccountType.INDIVIDUAL -> userData?.profileImage ?: individualProfileData?.profileImage
-                        AccountType.ORGANIZATION -> organizationProfileData?.logo
-                    }
-                } else null,
-                onEditProfileClick = { /* Handle edit profile */ },
-                colorScheme = colorScheme,
-                isWide = isWide,
-                isGuestMode = isGuestMode,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
         }
     }
 }
-
 // Add guest mode mock data
 fun mockGuestAccountData(): AccountData {
     return AccountData(
@@ -622,6 +602,8 @@ fun mockGuestAccountData(): AccountData {
         updatedAt = ""
     )
 }
+
+
 
 // ==================== PROFILE HEADER - exactly like Dashboard ====================
 

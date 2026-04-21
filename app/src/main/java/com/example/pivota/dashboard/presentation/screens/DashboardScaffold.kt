@@ -4,16 +4,16 @@ import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.compose.material3.adaptive.navigationsuite.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
-import androidx.window.core.layout.WindowSizeClass
+import androidx.window.core.layout.WindowWidthSizeClass
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.dashboard.presentation.composables.*
 import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
@@ -159,11 +159,11 @@ private fun convertToAdminJobListing(dashboardJob: DashboardJobListingUiModel): 
 @Composable
 fun DashboardScaffold(
     isGuestMode: Boolean = false,
-    successMessage: String? = null,  // Parameter for login success message
-    user: User? = null,  // Parameter for user data
-    accessToken: String? = null,  // Parameter for access token
-    refreshToken: String? = null,  // Parameter for refresh token
-    onMessageConsumed: (() -> Unit)? = null  // Callback when message is consumed
+    successMessage: String? = null,
+    user: User? = null,
+    accessToken: String? = null,
+    refreshToken: String? = null,
+    onMessageConsumed: (() -> Unit)? = null
 ) {
     val navController = rememberNavController()
     val sheetState = rememberModalBottomSheetState()
@@ -180,7 +180,6 @@ fun DashboardScaffold(
             welcomeMessage = successMessage
             snackbarType = SnackbarType.SUCCESS
             showWelcomeSnackbar = true
-            // Auto-hide after 5 seconds (handled by PivotaSnackbar)
             onMessageConsumed?.invoke()
         }
     }
@@ -202,426 +201,362 @@ fun DashboardScaffold(
     // State for user-facing job details navigation
     var selectedJobForViewing by remember { mutableStateOf<DetailsJobListingUiModel?>(null) }
 
-    // NEW: State for admin job details navigation
+    // State for admin job details navigation
     var selectedAdminJobForViewing by remember { mutableStateOf<AdminJobListingUiModel?>(null) }
-
-    val navigationItemColors = NavigationSuiteDefaults.itemColors(
-        navigationBarItemColors = NavigationBarItemDefaults.colors(
-            indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-            selectedIconColor = Color(0xFFE9C16C),
-            selectedTextColor = Color(0xFFE9C16C),
-            unselectedIconColor = Color(0xFFF2DCA0),
-            unselectedTextColor = Color(0xFFF2DCA0),
-        ),
-        navigationRailItemColors = NavigationRailItemDefaults.colors(
-            indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-            selectedIconColor = Color(0xFFE9C16C),
-            selectedTextColor = Color(0xFFE9C16C),
-            unselectedIconColor = Color(0xFFF2DCA0),
-            unselectedTextColor = Color(0xFFF2DCA0),
-        )
-    )
-
-    val adaptiveInfo = currentWindowAdaptiveInfo()
-    val layoutType = with(adaptiveInfo) {
-        if (windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)) {
-            NavigationSuiteType.NavigationRail
-        } else {
-            NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(this)
-        }
-    }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        NavigationSuiteScaffold(
-            layoutType = layoutType,
-            navigationSuiteItems = {
-                topLevelRoutes.forEach { route ->
-                    item(
-                        icon = { Icon(route.icon, contentDescription = route.contentDescription) },
-                        label = { Text(route.label) },
-                        selected = currentDestination?.hierarchy?.any { it.route == route.route::class.qualifiedName } == true,
-                        onClick = {
-                            if (currentDestination?.route != route.route) {
-                                navController.navigate(route.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+    // Get window size class for responsive layout
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isTablet = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED ||
+            windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+
+    // Filter routes based on guest mode
+    val visibleRoutes = if (isGuestMode) {
+        topLevelRoutes.filter { !it.requiresAuth }
+    } else {
+        topLevelRoutes
+    }
+
+    // For tablets, use NavigationRail instead of NavigationBar
+    if (isTablet) {
+        // Tablet layout with NavigationRail
+        Row(modifier = Modifier.fillMaxSize()) {
+            // Navigation Rail on the left
+            NavigationRail(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .navigationBarsPadding(),
+                containerColor = MaterialTheme.colorScheme.surface,
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    visibleRoutes.forEach { route ->
+                        val isSelected = currentDestination?.hierarchy?.any { it.route == route.route::class.qualifiedName } == true
+
+                        NavigationRailItem(
+                            icon = {
+                                Icon(
+                                    route.icon,
+                                    contentDescription = route.contentDescription,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    route.label,
+                                    fontSize = 11.sp
+                                )
+                            },
+                            selected = isSelected,
+                            onClick = {
+                                if (currentDestination?.route != route.route) {
+                                    navController.navigate(route.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
-                            }
-                        },
-                        colors = navigationItemColors
-                    )
-                }
-            },
-            navigationSuiteColors = NavigationSuiteDefaults.colors(
-                navigationBarContainerColor = MaterialTheme.colorScheme.primary,
-                navigationRailContainerColor = MaterialTheme.colorScheme.primary
-            )
-        ) {
-            Scaffold(
-                contentWindowInsets = WindowInsets(0, 0, 0, 0),
-                floatingActionButton = {
-                    // Only show FAB if not in guest mode, or if guest mode allows posting
-                    if (!isGuestMode) {
-                        PulsingPostFab(onClick = { showSheet = true }, modifier = Modifier.padding(bottom = 40.dp))
+                            },
+                            colors = NavigationRailItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                                selectedTextColor = MaterialTheme.colorScheme.tertiary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
                     }
                 }
-            ) { innerPadding ->
-                Box(modifier = Modifier
+            }
+
+            // Main content
+            Box(
+                modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = innerPadding.calculateBottomPadding())) {
-                    NavHost(
-                        navController = navController,
-                        startDestination = Discover
-                    ) {
-                        composable<Dashboard> {
-                            DashboardScreen(
-                                onNavigateToListings = {
-                                    navController.navigate(MyListings)
-                                },
-                                isGuestMode = isGuestMode,
-                                user = user,  // Pass user to dashboard
-                                accessToken = accessToken  // Pass token if needed
-                            )
-                        }
-                        composable<Professionals> { ProfessionalsScreen() }
-                        composable<Discover> {
-                            DiscoverScreen(
-                                onNavigateToHouseListings = {
-                                    navController.navigate(HouseListings)
-                                },
-                                onNavigateToJobListings = {
-                                    navController.navigate(JobListings)
-                                },
-                                onNavigateToAllJobs = {
-                                    navController.navigate(JobListings)
-                                },
-                                onNavigateToAllHousing = {
-                                    navController.navigate(HouseListings)
-                                },
-                                onNavigateToAllProviders = {
-                                    // Navigate to professionals listing screen when created
-                                },
-                                onNavigateToAllServices = {
-                                    // Navigate to services listing screen when created
-                                },
-                                onNavigateToAllSupport = {
-                                    // Navigate to support listing screen when created
-                                },
-                                onBookHousingClick = { housingListing ->
-                                    selectedListingForBooking = housingListing
-                                    navController.navigate(BookViewing)
-                                },
-                                onViewHousingClick = { housingListing ->
-                                    selectedListingForViewing = housingListing
-                                    navController.navigate(HouseDetails)
-                                },
-                                user = user,  // Pass user to DiscoverScreen
-                                isGuestMode = isGuestMode  // Pass guest mode
-                            )
-                        }
+                    .padding(start = 8.dp)
+            ) {
+                NavHost(
+                    navController = navController,
+                    startDestination = Connect,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Dashboard
+                    composable<Dashboard> {
+                        DashboardScreen(
+                            onNavigateToListings = {
+                                navController.navigate(MyListings)
+                            },
+                            isGuestMode = isGuestMode,
+                            user = user,
+                            accessToken = accessToken
+                        )
+                    }
 
-                        // User-facing House Details Route (for regular users)
-                        composable<HouseDetails> {
-                            val listing = selectedListingForViewing
+                    // Professionals
+                    composable<Professionals> {
+                        ProfessionalsScreen()
+                    }
 
-                            if (listing != null) {
-                                HouseDetailsScreen(
-                                    housingListing = listing,
-                                    onNavigateBack = {
-                                        navController.popBackStack()
-                                        selectedListingForViewing = null
-                                    },
-                                    onBookClick = { housingListing ->
-                                        selectedListingForBooking = housingListing
-                                        navController.navigate(BookViewing)
-                                    }
-                                )
-                            } else {
-                                LaunchedEffect(Unit) {
+                    // Connect (Discover)
+                    composable<Connect> {
+                        DiscoverScreen(
+                            onNavigateToHouseListings = {
+                                navController.navigate(HouseListings)
+                            },
+                            onNavigateToJobListings = {
+                                navController.navigate(JobListings)
+                            },
+                            onNavigateToAllJobs = {
+                                navController.navigate(JobListings)
+                            },
+                            onNavigateToAllHousing = {
+                                navController.navigate(HouseListings)
+                            },
+                            onNavigateToAllProviders = {
+                                navController.navigate(Professionals)
+                            },
+                            onNavigateToAllServices = {},
+                            onNavigateToAllSupport = {},
+                            user = user,
+                            isGuestMode = isGuestMode
+                        )
+                    }
+
+                    // Profile
+                    composable<Profile> {
+                        ProfileScreen(
+                            isGuestMode = isGuestMode,
+                            user = user
+                        )
+                    }
+
+                    // House Details
+                    composable<HouseDetails> {
+                        val listing = selectedListingForViewing
+                        if (listing != null) {
+                            HouseDetailsScreen(
+                                housingListing = listing,
+                                onNavigateBack = {
                                     navController.popBackStack()
-                                }
-                            }
-                        }
-
-                        // Admin-facing House Details Route (for admin users)
-                        composable<AdminHouseDetails> {
-                            val listing = selectedListingForAdminView
-
-                            if (listing != null) {
-                                AdminHouseDetailsScreen(
-                                    housingListing = listing,
-                                    onNavigateBack = {
-                                        navController.popBackStack()
-                                        selectedListingForAdminView = null
-                                    },
-                                    onEditListing = { id ->
-                                        // Handle edit action
-                                        println("Edit listing: $id")
-                                    },
-                                    onDuplicateListing = { id ->
-                                        println("Duplicate listing: $id")
-                                    },
-                                    onArchiveListing = { id ->
-                                        println("Archive listing: $id")
-                                    },
-                                    onDeleteListing = { id ->
-                                        // Handle delete action
-                                        println("Delete listing: $id")
-                                        navController.popBackStack()
-                                        selectedListingForAdminView = null
-                                    },
-                                    onPauseListing = { id ->
-                                        println("Pause listing: $id")
-                                    },
-                                    onResumeListing = { id ->
-                                        println("Resume listing: $id")
-                                    },
-                                    onMarkAvailable = { id ->
-                                        println("Mark available: $id")
-                                    },
-                                    onMarkRented = { id ->
-                                        println("Mark rented: $id")
-                                    },
-                                    onMarkSold = { id ->
-                                        println("Mark sold: $id")
-                                    },
-                                    onViewInquiries = { id ->
-                                        println("View inquiries: $id")
-                                    },
-                                    onShareListing = { id ->
-                                        println("Share listing: $id")
-                                    },
-                                    onViewLogs = { id ->
-                                        println("View logs: $id")
-                                    },
-                                    onCopyListingLink = { id ->
-                                        println("Copy link: $id")
-                                    }
-                                )
-                            } else {
-                                LaunchedEffect(Unit) {
-                                    navController.popBackStack()
-                                }
-                            }
-                        }
-
-                        // Book Viewing Route
-                        composable<BookViewing> {
-                            selectedListingForBooking?.let { listing ->
-                                BookViewingScreen(
-                                    housingListing = listing,
-                                    onNavigateBack = {
-                                        navController.popBackStack()
-                                        selectedListingForBooking = null
-                                    }
-                                )
-                            } ?: run {
-                                LaunchedEffect(Unit) {
-                                    navController.popBackStack()
-                                }
-                            }
-                        }
-
-                        composable<Favorites> { FavoritesScreen () }
-                        composable<Profile> { ProfileScreen(isGuestMode = isGuestMode) }
-
-                        // HouseListings route
-                        composable<HouseListings> {
-                            val viewModel: com.example.pivota.dashboard.presentation.viewmodels.HouseListingsViewModel = hiltViewModel()
-
-                            HouseListingsScreen(
-                                viewModel = viewModel,
-                                onListingClick = { housingListing ->
-                                    selectedListingForViewing = housingListing
-                                    navController.navigate(HouseDetails)
+                                    selectedListingForViewing = null
                                 },
                                 onBookClick = { housingListing ->
                                     selectedListingForBooking = housingListing
                                     navController.navigate(BookViewing)
-                                },
-                                onPostListingClick = {
-                                    if (!isGuestMode) showSheet = true
-                                },
-                                onNavigateBack = {
-                                    navController.popBackStack()
                                 }
                             )
-                        }
-
-                        // JobListings route - user-facing job listings
-                        composable<JobListings> {
-                            JobListingsScreen(
-                                onListingClick = { dashboardJob ->
-                                    // Quick convert and navigate to user-facing job details
-                                    val detailsJob = quickConvertToDetailsJob(dashboardJob)
-                                    selectedJobForViewing = detailsJob
-                                    navController.navigate(JobDetails)
-                                },
-                                onPostListingClick = {
-                                    if (!isGuestMode) showSheet = true
-                                },
-                                onNavigateBack = {
-                                    navController.popBackStack()
-                                }
-                            )
-                        }
-
-                        // User-facing Job Details Route
-                        composable<JobDetails> {
-                            val jobListing = selectedJobForViewing
-
-                            if (jobListing != null) {
-                                JobDetailsScreen(
-                                    jobListing = jobListing,
-                                    onNavigateBack = {
-                                        navController.popBackStack()
-                                        selectedJobForViewing = null
-                                    },
-                                    onApplyClick = { job ->
-                                        println("Apply for job: ${job.title}")
-                                        // Navigate to application form later
-                                    },
-                                    onMessageEmployerClick = { job ->
-                                        println("Message employer for: ${job.title}")
-                                        // Navigate to chat later
-                                    },
-                                    onSaveToggle = { jobId, isSaved ->
-                                        println("Job $jobId saved: $isSaved")
-                                    },
-                                    onBookmarkClick = { job ->
-                                        println("Bookmark clicked for: ${job.title}")
-                                    }
-                                )
-                            } else {
-                                LaunchedEffect(Unit) {
-                                    navController.popBackStack()
-                                }
+                        } else {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
                             }
-                        }
-
-                        // NEW: Admin Job Details Route
-                        composable<AdminJobDetails> {
-                            val jobListing = selectedAdminJobForViewing
-
-                            if (jobListing != null) {
-                                AdminJobDetailsScreen(
-                                    jobListing = jobListing,
-                                    onNavigateBack = {
-                                        navController.popBackStack()
-                                        selectedAdminJobForViewing = null
-                                    },
-                                    onEditJob = { jobId ->
-                                        println("Edit job: $jobId")
-                                        // Navigate to edit screen or open edit modal
-                                    },
-                                    onDuplicateJob = { jobId ->
-                                        println("Duplicate job: $jobId")
-                                        // Handle duplicate
-                                    },
-                                    onArchiveJob = { jobId ->
-                                        println("Archive job: $jobId")
-                                        // Handle archive
-                                    },
-                                    onDeleteJob = { jobId ->
-                                        println("Delete job: $jobId")
-                                        // Handle delete
-                                    },
-                                    onPauseJob = { jobId ->
-                                        println("Pause job: $jobId")
-                                        // Handle pause
-                                    },
-                                    onResumeJob = { jobId ->
-                                        println("Resume job: $jobId")
-                                        // Handle resume
-                                    },
-                                    onCloseJob = { jobId ->
-                                        println("Close job: $jobId")
-                                        // Handle close
-                                    },
-                                    onViewApplicants = { jobId ->
-                                        println("View applicants for: $jobId")
-                                        // Navigate to applicants list
-                                    },
-                                    onShareJob = { jobId ->
-                                        println("Share job: $jobId")
-                                        // Handle share
-                                    },
-                                    onViewLogs = { jobId ->
-                                        println("View logs for: $jobId")
-                                        // Navigate to logs screen
-                                    },
-                                    onCopyJobLink = { jobId ->
-                                        println("Copy link for: $jobId")
-                                        // Handle copy link
-                                    }
-                                )
-                            } else {
-                                LaunchedEffect(Unit) {
-                                    navController.popBackStack()
-                                }
-                            }
-                        }
-
-                        // Type-Safe Posting Flows
-                        composable<PostJob> {
-                            JobPostScreen.Content(onBack = { navController.popBackStack() })
-                        }
-                        composable<PostService> {
-                            PostServiceScreen(onBack = { navController.popBackStack() })
-                        }
-                        composable<PostHousing> {
-                            HousingPostScreen.Content(onBack = { navController.popBackStack() })
-                        }
-
-                        // UPDATED: My Listings route with job support
-                        composable<MyListings> {
-                            MyListingsScreen(
-                                onListingClick = { listingUiModel ->
-                                    // Handle generic listing clicks
-                                    println("Generic listing clicked: ${listingUiModel.title}")
-                                },
-                                // NEW: Job click handler for admin view
-                                onJobClick = { adminJobListing ->
-                                    selectedAdminJobForViewing = adminJobListing
-                                    navController.navigate(AdminJobDetails)
-                                },
-                                onHousingViewClick = { housingListing ->
-                                    selectedListingForAdminView = housingListing
-                                    navController.navigate(AdminHouseDetails)
-                                },
-                                onPostListingClick = {
-                                    if (!isGuestMode) showSheet = true
-                                },
-                                viewModel = MyListingsViewModel(),
-                                onNavigateBack = {
-                                    navController.popBackStack()
-                                }
-                            )
                         }
                     }
 
-                    // Extracted Bottom Sheet - only show if not in guest mode
-                    if (showSheet && !isGuestMode) {
-                        PostOptionsBottomSheet(
-                            sheetState = sheetState,
-                            onDismiss = { showSheet = false },
-                            onOptionSelected = { category ->
-                                showSheet = false
-                                when (category) {
-                                    "jobs" -> navController.navigate(PostJob)
-                                    "housing" -> navController.navigate(PostHousing)
-                                    "support" -> navController.navigate(PostSupport)
-                                    "service" -> navController.navigate(PostService)
+                    // Admin House Details
+                    composable<AdminHouseDetails> {
+                        val listing = selectedListingForAdminView
+                        if (listing != null) {
+                            AdminHouseDetailsScreen(
+                                housingListing = listing,
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                    selectedListingForAdminView = null
+                                },
+                                onEditListing = { id -> println("Edit listing: $id") },
+                                onDuplicateListing = { id -> println("Duplicate listing: $id") },
+                                onArchiveListing = { id -> println("Archive listing: $id") },
+                                onDeleteListing = { id ->
+                                    println("Delete listing: $id")
+                                    navController.popBackStack()
+                                    selectedListingForAdminView = null
+                                },
+                                onPauseListing = { id -> println("Pause listing: $id") },
+                                onResumeListing = { id -> println("Resume listing: $id") },
+                                onMarkAvailable = { id -> println("Mark available: $id") },
+                                onMarkRented = { id -> println("Mark rented: $id") },
+                                onMarkSold = { id -> println("Mark sold: $id") },
+                                onViewInquiries = { id -> println("View inquiries: $id") },
+                                onShareListing = { id -> println("Share listing: $id") },
+                                onViewLogs = { id -> println("View logs: $id") },
+                                onCopyListingLink = { id -> println("Copy link: $id") }
+                            )
+                        } else {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+
+                    // Book Viewing
+                    composable<BookViewing> {
+                        selectedListingForBooking?.let { listing ->
+                            BookViewingScreen(
+                                housingListing = listing,
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                    selectedListingForBooking = null
                                 }
+                            )
+                        } ?: run {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+
+                    // House Listings
+                    composable<HouseListings> {
+                        val viewModel: com.example.pivota.dashboard.presentation.viewmodels.HouseListingsViewModel = hiltViewModel()
+                        HouseListingsScreen(
+                            viewModel = viewModel,
+                            onListingClick = { housingListing ->
+                                selectedListingForViewing = housingListing
+                                navController.navigate(HouseDetails)
+                            },
+                            onBookClick = { housingListing ->
+                                selectedListingForBooking = housingListing
+                                navController.navigate(BookViewing)
+                            },
+                            onPostListingClick = {
+                                if (!isGuestMode) showSheet = true
+                            },
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    // Job Listings
+                    composable<JobListings> {
+                        JobListingsScreen(
+                            onListingClick = { dashboardJob ->
+                                val detailsJob = quickConvertToDetailsJob(dashboardJob)
+                                selectedJobForViewing = detailsJob
+                                navController.navigate(JobDetails)
+                            },
+                            onPostListingClick = {
+                                if (!isGuestMode) showSheet = true
+                            },
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    // Job Details
+                    composable<JobDetails> {
+                        val jobListing = selectedJobForViewing
+                        if (jobListing != null) {
+                            JobDetailsScreen(
+                                jobListing = jobListing,
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                    selectedJobForViewing = null
+                                },
+                                onApplyClick = { job -> println("Apply for job: ${job.title}") },
+                                onMessageEmployerClick = { job -> println("Message employer for: ${job.title}") },
+                                onSaveToggle = { jobId, isSaved -> println("Job $jobId saved: $isSaved") },
+                                onBookmarkClick = { job -> println("Bookmark clicked for: ${job.title}") }
+                            )
+                        } else {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+
+                    // Admin Job Details
+                    composable<AdminJobDetails> {
+                        val jobListing = selectedAdminJobForViewing
+                        if (jobListing != null) {
+                            AdminJobDetailsScreen(
+                                jobListing = jobListing,
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                    selectedAdminJobForViewing = null
+                                },
+                                onEditJob = { jobId -> println("Edit job: $jobId") },
+                                onDuplicateJob = { jobId -> println("Duplicate job: $jobId") },
+                                onArchiveJob = { jobId -> println("Archive job: $jobId") },
+                                onDeleteJob = { jobId -> println("Delete job: $jobId") },
+                                onPauseJob = { jobId -> println("Pause job: $jobId") },
+                                onResumeJob = { jobId -> println("Resume job: $jobId") },
+                                onCloseJob = { jobId -> println("Close job: $jobId") },
+                                onViewApplicants = { jobId -> println("View applicants for: $jobId") },
+                                onShareJob = { jobId -> println("Share job: $jobId") },
+                                onViewLogs = { jobId -> println("View logs for: $jobId") },
+                                onCopyJobLink = { jobId -> println("Copy link for: $jobId") }
+                            )
+                        } else {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+
+                    // Post Job
+                    composable<PostJob> {
+                        JobPostScreen.Content(onBack = { navController.popBackStack() })
+                    }
+
+                    // Post Service
+                    composable<PostService> {
+                        PostServiceScreen(onBack = { navController.popBackStack() })
+                    }
+
+                    // Post Housing
+                    composable<PostHousing> {
+                        HousingPostScreen.Content(onBack = { navController.popBackStack() })
+                    }
+
+                    // My Listings
+                    composable<MyListings> {
+                        MyListingsScreen(
+                            onListingClick = { listingUiModel ->
+                                println("Generic listing clicked: ${listingUiModel.title}")
+                            },
+                            onJobClick = { adminJobListing ->
+                                selectedAdminJobForViewing = adminJobListing
+                                navController.navigate(AdminJobDetails)
+                            },
+                            onHousingViewClick = { housingListing ->
+                                selectedListingForAdminView = housingListing
+                                navController.navigate(AdminHouseDetails)
+                            },
+                            onPostListingClick = {
+                                if (!isGuestMode) showSheet = true
+                            },
+                            viewModel = MyListingsViewModel(),
+                            onNavigateBack = {
+                                navController.popBackStack()
                             }
                         )
                     }
                 }
             }
+        }
+
+        // Bottom Sheet
+        if (showSheet && !isGuestMode) {
+            PostOptionsBottomSheet(
+                sheetState = sheetState,
+                onDismiss = { showSheet = false },
+                onOptionSelected = { category ->
+                    showSheet = false
+                    when (category) {
+                        "jobs" -> navController.navigate(PostJob)
+                        "housing" -> navController.navigate(PostHousing)
+                        "support" -> navController.navigate(PostSupport)
+                        "service" -> navController.navigate(PostService)
+                    }
+                }
+            )
         }
 
         // Show PivotaSnackbar for welcome message
@@ -635,6 +570,358 @@ fun DashboardScaffold(
                     welcomeMessage = ""
                 }
             )
+        }
+    } else {
+        // Mobile layout with bottom NavigationBar
+        Scaffold(
+            bottomBar = {
+                NavigationBar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                ) {
+                    visibleRoutes.forEach { route ->
+                        val isSelected = currentDestination?.hierarchy?.any { it.route == route.route::class.qualifiedName } == true
+
+                        NavigationBarItem(
+                            icon = {
+                                Icon(
+                                    route.icon,
+                                    contentDescription = route.contentDescription,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    route.label,
+                                    fontSize = 12.sp
+                                )
+                            },
+                            selected = isSelected,
+                            onClick = {
+                                if (currentDestination?.route != route.route) {
+                                    navController.navigate(route.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                                selectedTextColor = MaterialTheme.colorScheme.tertiary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+                }
+            },
+            floatingActionButton = {
+                if (!isGuestMode) {
+                    PulsingPostFab(
+                        onClick = { showSheet = true }
+                    )
+                }
+            },
+            floatingActionButtonPosition = FabPosition.End
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = innerPadding.calculateBottomPadding())
+            ) {
+                NavHost(
+                    navController = navController,
+                    startDestination = Connect,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Dashboard
+                    composable<Dashboard> {
+                        DashboardScreen(
+                            onNavigateToListings = {
+                                navController.navigate(MyListings)
+                            },
+                            isGuestMode = isGuestMode,
+                            user = user,
+                            accessToken = accessToken
+                        )
+                    }
+
+                    // Professionals
+                    composable<Professionals> {
+                        ProfessionalsScreen()
+                    }
+
+                    // Connect (Discover)
+                    composable<Connect> {
+                        DiscoverScreen(
+                            onNavigateToHouseListings = {
+                                navController.navigate(HouseListings)
+                            },
+                            onNavigateToJobListings = {
+                                navController.navigate(JobListings)
+                            },
+                            onNavigateToAllJobs = {
+                                navController.navigate(JobListings)
+                            },
+                            onNavigateToAllHousing = {
+                                navController.navigate(HouseListings)
+                            },
+                            onNavigateToAllProviders = {
+                                navController.navigate(Professionals)
+                            },
+                            onNavigateToAllServices = {},
+                            onNavigateToAllSupport = {},
+                            user = user,
+                            isGuestMode = isGuestMode
+                        )
+                    }
+
+                    // Profile
+                    composable<Profile> {
+                        ProfileScreen(
+                            isGuestMode = isGuestMode,
+                            user = user
+                        )
+                    }
+
+                    // House Details
+                    composable<HouseDetails> {
+                        val listing = selectedListingForViewing
+                        if (listing != null) {
+                            HouseDetailsScreen(
+                                housingListing = listing,
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                    selectedListingForViewing = null
+                                },
+                                onBookClick = { housingListing ->
+                                    selectedListingForBooking = housingListing
+                                    navController.navigate(BookViewing)
+                                }
+                            )
+                        } else {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+
+                    // Admin House Details
+                    composable<AdminHouseDetails> {
+                        val listing = selectedListingForAdminView
+                        if (listing != null) {
+                            AdminHouseDetailsScreen(
+                                housingListing = listing,
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                    selectedListingForAdminView = null
+                                },
+                                onEditListing = { id -> println("Edit listing: $id") },
+                                onDuplicateListing = { id -> println("Duplicate listing: $id") },
+                                onArchiveListing = { id -> println("Archive listing: $id") },
+                                onDeleteListing = { id ->
+                                    println("Delete listing: $id")
+                                    navController.popBackStack()
+                                    selectedListingForAdminView = null
+                                },
+                                onPauseListing = { id -> println("Pause listing: $id") },
+                                onResumeListing = { id -> println("Resume listing: $id") },
+                                onMarkAvailable = { id -> println("Mark available: $id") },
+                                onMarkRented = { id -> println("Mark rented: $id") },
+                                onMarkSold = { id -> println("Mark sold: $id") },
+                                onViewInquiries = { id -> println("View inquiries: $id") },
+                                onShareListing = { id -> println("Share listing: $id") },
+                                onViewLogs = { id -> println("View logs: $id") },
+                                onCopyListingLink = { id -> println("Copy link: $id") }
+                            )
+                        } else {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+
+                    // Book Viewing
+                    composable<BookViewing> {
+                        selectedListingForBooking?.let { listing ->
+                            BookViewingScreen(
+                                housingListing = listing,
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                    selectedListingForBooking = null
+                                }
+                            )
+                        } ?: run {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+
+                    // House Listings
+                    composable<HouseListings> {
+                        val viewModel: com.example.pivota.dashboard.presentation.viewmodels.HouseListingsViewModel = hiltViewModel()
+                        HouseListingsScreen(
+                            viewModel = viewModel,
+                            onListingClick = { housingListing ->
+                                selectedListingForViewing = housingListing
+                                navController.navigate(HouseDetails)
+                            },
+                            onBookClick = { housingListing ->
+                                selectedListingForBooking = housingListing
+                                navController.navigate(BookViewing)
+                            },
+                            onPostListingClick = {
+                                if (!isGuestMode) showSheet = true
+                            },
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    // Job Listings
+                    composable<JobListings> {
+                        JobListingsScreen(
+                            onListingClick = { dashboardJob ->
+                                val detailsJob = quickConvertToDetailsJob(dashboardJob)
+                                selectedJobForViewing = detailsJob
+                                navController.navigate(JobDetails)
+                            },
+                            onPostListingClick = {
+                                if (!isGuestMode) showSheet = true
+                            },
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    // Job Details
+                    composable<JobDetails> {
+                        val jobListing = selectedJobForViewing
+                        if (jobListing != null) {
+                            JobDetailsScreen(
+                                jobListing = jobListing,
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                    selectedJobForViewing = null
+                                },
+                                onApplyClick = { job -> println("Apply for job: ${job.title}") },
+                                onMessageEmployerClick = { job -> println("Message employer for: ${job.title}") },
+                                onSaveToggle = { jobId, isSaved -> println("Job $jobId saved: $isSaved") },
+                                onBookmarkClick = { job -> println("Bookmark clicked for: ${job.title}") }
+                            )
+                        } else {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+
+                    // Admin Job Details
+                    composable<AdminJobDetails> {
+                        val jobListing = selectedAdminJobForViewing
+                        if (jobListing != null) {
+                            AdminJobDetailsScreen(
+                                jobListing = jobListing,
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                    selectedAdminJobForViewing = null
+                                },
+                                onEditJob = { jobId -> println("Edit job: $jobId") },
+                                onDuplicateJob = { jobId -> println("Duplicate job: $jobId") },
+                                onArchiveJob = { jobId -> println("Archive job: $jobId") },
+                                onDeleteJob = { jobId -> println("Delete job: $jobId") },
+                                onPauseJob = { jobId -> println("Pause job: $jobId") },
+                                onResumeJob = { jobId -> println("Resume job: $jobId") },
+                                onCloseJob = { jobId -> println("Close job: $jobId") },
+                                onViewApplicants = { jobId -> println("View applicants for: $jobId") },
+                                onShareJob = { jobId -> println("Share job: $jobId") },
+                                onViewLogs = { jobId -> println("View logs for: $jobId") },
+                                onCopyJobLink = { jobId -> println("Copy link for: $jobId") }
+                            )
+                        } else {
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+
+                    // Post Job
+                    composable<PostJob> {
+                        JobPostScreen.Content(onBack = { navController.popBackStack() })
+                    }
+
+                    // Post Service
+                    composable<PostService> {
+                        PostServiceScreen(onBack = { navController.popBackStack() })
+                    }
+
+                    // Post Housing
+                    composable<PostHousing> {
+                        HousingPostScreen.Content(onBack = { navController.popBackStack() })
+                    }
+
+                    // My Listings
+                    composable<MyListings> {
+                        MyListingsScreen(
+                            onListingClick = { listingUiModel ->
+                                println("Generic listing clicked: ${listingUiModel.title}")
+                            },
+                            onJobClick = { adminJobListing ->
+                                selectedAdminJobForViewing = adminJobListing
+                                navController.navigate(AdminJobDetails)
+                            },
+                            onHousingViewClick = { housingListing ->
+                                selectedListingForAdminView = housingListing
+                                navController.navigate(AdminHouseDetails)
+                            },
+                            onPostListingClick = {
+                                if (!isGuestMode) showSheet = true
+                            },
+                            viewModel = MyListingsViewModel(),
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+                }
+
+                // Bottom Sheet
+                if (showSheet && !isGuestMode) {
+                    PostOptionsBottomSheet(
+                        sheetState = sheetState,
+                        onDismiss = { showSheet = false },
+                        onOptionSelected = { category ->
+                            showSheet = false
+                            when (category) {
+                                "jobs" -> navController.navigate(PostJob)
+                                "housing" -> navController.navigate(PostHousing)
+                                "support" -> navController.navigate(PostSupport)
+                                "service" -> navController.navigate(PostService)
+                            }
+                        }
+                    )
+                }
+
+                // Show PivotaSnackbar for welcome message
+                if (showWelcomeSnackbar && welcomeMessage.isNotBlank()) {
+                    PivotaSnackbar(
+                        message = welcomeMessage,
+                        type = snackbarType,
+                        duration = 5000L,
+                        onDismiss = {
+                            showWelcomeSnackbar = false
+                            welcomeMessage = ""
+                        }
+                    )
+                }
+            }
         }
     }
 }
