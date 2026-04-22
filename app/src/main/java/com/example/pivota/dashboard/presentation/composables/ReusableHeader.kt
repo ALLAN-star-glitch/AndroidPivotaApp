@@ -59,22 +59,33 @@ fun ReusableHeader(
     // Simple logic: hide title and subtitle when scrolled more than 20px
     val isScrolled = scrollOffset > 20f
 
-    // Get user info
+    // Get user info with reduced length
     val firstName = remember(user, isGuestMode) {
         when {
             user == null || isGuestMode -> "Guest"
-            user.firstName.isNotBlank() -> user.firstName
-            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
-            user.email.isNotBlank() -> user.email.split("@").firstOrNull() ?: "Guest"
+            user.firstName.isNotBlank() -> {
+                val name = user.firstName.trim()
+                // Limit to 10 characters, cut off without dots
+                if (name.length > 10) name.take(10) else name
+            }
+            user.userName.isNotBlank() -> {
+                val name = user.userName.split(" ").firstOrNull() ?: "Guest"
+                if (name.length > 10) name.take(10) else name
+            }
+            user.email.isNotBlank() -> {
+                val name = user.email.split("@").firstOrNull() ?: "Guest"
+                if (name.length > 10) name.take(10) else name
+            }
             else -> "Guest"
         }
     }
 
+    // Shortened role names
     val userRole = remember(user, isGuestMode) {
         when {
-            isGuestMode -> "Guest User"
-            user?.role?.equals("admin", ignoreCase = true) == true -> "Administrator"
-            user?.role?.equals("professional", ignoreCase = true) == true -> "Professional"
+            isGuestMode -> "Guest"
+            user?.role?.equals("admin", ignoreCase = true) == true -> "Admin"
+            user?.role?.equals("professional", ignoreCase = true) == true -> "Pro"
             else -> "General User"
         }
     }
@@ -168,24 +179,16 @@ fun ReusableHeader(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Calculate if the name is longer than "Guest" (5 characters)
-                            val displayName = "Hi, $firstName"
-                            val isNameLong = firstName.length > 5 // "Guest" is 5 characters
-
                             Text(
-                                text = displayName,
+                                text = "Hi, $firstName",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = colorScheme.onSurface,
                                 letterSpacing = 0.2.sp,
                                 maxLines = 1,
-                                overflow = if (isNameLong) {
-                                    androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                } else {
-                                    androidx.compose.ui.text.style.TextOverflow.Clip
-                                },
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Clip,
                                 modifier = Modifier.weight(1f, fill = false),
-                                softWrap = false // Prevent wrapping
+                                softWrap = false
                             )
                             Icon(
                                 Icons.Outlined.KeyboardArrowDown,
@@ -201,12 +204,12 @@ fun ReusableHeader(
                             color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             letterSpacing = 0.1.sp,
                             maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Clip
                         )
                     }
                 }
 
-                // Right side - Action icons
+                // Right side - Action icons (Theme Switcher + Notifications)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -220,36 +223,7 @@ fun ReusableHeader(
                         }
                     )
 
-                    // 2. Message Icon with count badge
-                    Box {
-                        HeaderActionIcon(
-                            icon = Icons.Outlined.MailOutline,
-                            colorScheme = colorScheme
-                        )
-                        if (messageCount > 0) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = 4.dp, y = 4.dp)
-                                    .background(
-                                        color = Color.Red,
-                                        shape = CircleShape
-                                    )
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
-                                    .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = if (messageCount > 99) "99+" else messageCount.toString(),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                    }
-
-                    // 3. Notifications Icon with count badge
+                    // 2. Notifications Icon with count badge
                     Box {
                         HeaderActionIcon(
                             icon = Icons.Outlined.NotificationsNone,
@@ -277,15 +251,6 @@ fun ReusableHeader(
                             }
                         }
                     }
-
-                    // Theme Switcher Icon - changes icon based on current theme
-                    HeaderActionIcon(
-                        icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
-                        colorScheme = colorScheme,
-                        onClick = {
-                            themeViewModel.toggleTheme()
-                        }
-                    )
                 }
             }
         }

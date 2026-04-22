@@ -35,6 +35,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -50,25 +51,14 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
         modifier = modifier
     ) {
 
+
         /* ───────── SPLASH SCREEN ───────── */
         composable<Splash> {
-            // Get reference to the application instance
-            val application = androidx.compose.ui.platform.LocalContext.current.applicationContext as PivotaApp
-
             SplashScreen(
                 viewModel = hiltViewModel(),
                 onNavigate = { destinationRoute ->
-                    coroutineScope.launch {
-                        // The token refresh already happened in App class
-                        val targetDestination = when {
-                            application.isTokenValid -> Dashboard
-                            onboardingDataStore.isGuestModeEnabled() -> GuestDashboard
-                            else -> Welcome
-                        }
-
-                        navController.navigate(targetDestination) {
-                            popUpTo(Splash) { inclusive = true }
-                        }
+                    navController.navigate(destinationRoute) {
+                        popUpTo(Splash) { inclusive = true }
                     }
                 }
             )

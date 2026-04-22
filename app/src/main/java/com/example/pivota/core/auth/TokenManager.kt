@@ -197,9 +197,11 @@ class TokenManager @Inject constructor(
 
     // Check if user has a valid session
     suspend fun hasValidSession(): Boolean {
-        val token = dataStore.getAccessToken()
+        val accessToken = dataStore.getAccessToken()
         val refreshToken = dataStore.getRefreshToken()
-        return token != null && refreshToken != null
+        val hasTokens = accessToken != null && refreshToken != null
+        println("🔍 [TokenManager] hasValidSession: tokens present = $hasTokens")
+        return hasTokens
     }
 
     // Clear session on logout
