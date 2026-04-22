@@ -231,7 +231,7 @@ fun ReusableHeader(
                     // 2. Notifications Icon with count badge
                     Box {
                         HeaderActionIcon(
-                            icon = Icons.Outlined.NotificationsNone,
+                            icon = Icons.Outlined.MailOutline,
                             colorScheme = colorScheme
                         )
                         if (notificationCount > 0) {
