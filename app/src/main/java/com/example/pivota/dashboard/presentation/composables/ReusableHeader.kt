@@ -2,6 +2,8 @@ package com.example.pivota.dashboard.presentation.composables
 
 import android.annotation.SuppressLint
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -52,6 +55,13 @@ fun ReusableHeader(
     val profileUrl = user?.profileImageUrl?.takeIf { it.isNotBlank() }
     var showMenuBottomSheet by remember { mutableStateOf(false) }
 
+    // Animated rotation for dropdown icon
+    val rotateAngle by animateFloatAsState(
+        targetValue = if (showMenuBottomSheet) 180f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "dropdown_rotation"
+    )
+
     // Get ThemeViewModel directly in the header
     val themeViewModel: ThemeViewModel = hiltViewModel()
     val isDarkTheme by themeViewModel.isDarkTheme
@@ -59,23 +69,13 @@ fun ReusableHeader(
     // Simple logic: hide title and subtitle when scrolled more than 20px
     val isScrolled = scrollOffset > 20f
 
-    // Get user info with reduced length
+    // Get user info - FULL NAME (no truncation)
     val firstName = remember(user, isGuestMode) {
         when {
             user == null || isGuestMode -> "Guest"
-            user.firstName.isNotBlank() -> {
-                val name = user.firstName.trim()
-                // Limit to 10 characters, cut off without dots
-                if (name.length > 10) name.take(10) else name
-            }
-            user.userName.isNotBlank() -> {
-                val name = user.userName.split(" ").firstOrNull() ?: "Guest"
-                if (name.length > 10) name.take(10) else name
-            }
-            user.email.isNotBlank() -> {
-                val name = user.email.split("@").firstOrNull() ?: "Guest"
-                if (name.length > 10) name.take(10) else name
-            }
+            user.firstName.isNotBlank() -> user.firstName.trim()
+            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
+            user.email.isNotBlank() -> user.email.split("@").firstOrNull() ?: "Guest"
             else -> "Guest"
         }
     }
@@ -168,7 +168,7 @@ fun ReusableHeader(
                         }
                     }
 
-                    // User Info - with text truncation
+                    // User Info - with proper spacing for long names
                     Column(
                         modifier = Modifier
                             .clickable { showMenuBottomSheet = true }
@@ -186,15 +186,20 @@ fun ReusableHeader(
                                 color = colorScheme.onSurface,
                                 letterSpacing = 0.2.sp,
                                 maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Clip,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f, fill = false),
                                 softWrap = false
                             )
+                            // Rotating dropdown icon
                             Icon(
                                 Icons.Outlined.KeyboardArrowDown,
                                 contentDescription = "Menu",
                                 tint = colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .graphicsLayer {
+                                        rotationZ = rotateAngle
+                                    }
                             )
                         }
                         Text(
@@ -204,14 +209,14 @@ fun ReusableHeader(
                             color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             letterSpacing = 0.1.sp,
                             maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Clip
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }
 
-                // Right side - Action icons (Theme Switcher + Notifications)
+                // Right side - Action icons (Theme Switcher + Notifications) with increased spacing
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp), // Increased from 8.dp to 12.dp
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // 1. Theme Switcher Icon
@@ -323,14 +328,17 @@ fun HeaderActionIcon(
         modifier = Modifier
             .size(38.dp)
             .clip(CircleShape)
-            .background(colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .background(
+                color = colorScheme.surfaceVariant.copy(alpha = 0.7f), // Increased alpha for better visibility
+                shape = CircleShape
+            )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             icon,
             contentDescription = null,
-            tint = colorScheme.onSurfaceVariant,
+            tint = colorScheme.primary, // Changed to primary for better visibility
             modifier = Modifier.size(20.dp)
         )
     }

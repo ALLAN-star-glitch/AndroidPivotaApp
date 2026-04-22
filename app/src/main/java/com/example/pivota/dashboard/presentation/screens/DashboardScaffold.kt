@@ -1093,12 +1093,14 @@ fun MainScreenScaffold(
                 )
             }
         },
-        floatingActionButtonPosition = FabPosition.End
+        floatingActionButtonPosition = FabPosition.End,
+                contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = innerPadding.calculateBottomPadding())
+                .padding(top = innerPadding.calculateTopPadding(),
+                    bottom = 0.dp )
         ) {
             // Main content
             content()
