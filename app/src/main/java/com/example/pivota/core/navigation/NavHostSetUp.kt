@@ -1,8 +1,16 @@
 package com.example.pivota.core.navigation
 
-import WelcomeScreen
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
@@ -12,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.pivota.auth.presentation.screens.AdaptiveResetPasswordScreen
 import com.example.pivota.auth.presentation.screens.LoginScreen
 import com.example.pivota.auth.presentation.screens.SplashScreen
+import com.example.pivota.auth.presentation.viewModel.LoginViewModel
 import com.example.pivota.auth.presentation.viewModel.SharedAuthViewModel
 import com.example.pivota.dashboard.presentation.bookservice.ReviewAndPayScreen
 import com.example.pivota.dashboard.presentation.bookservice.ScheduleServiceScreen
@@ -20,15 +29,19 @@ import com.example.pivota.dashboard.presentation.bookservice.ServiceDetailsScree
 import com.example.pivota.core.preferences.PivotaDataStore
 import com.example.pivota.dashboard.presentation.screens.DashboardScaffold
 import com.example.pivota.welcome.presentation.screens.OnboardingPager
+import com.example.pivota.welcome.presentation.screens.WelcomeScreen
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.launch
 
 @Composable
 fun NavHostSetup(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     val sharedAuthViewModel: SharedAuthViewModel = hiltViewModel()
+    val onboardingDataStore = rememberOnboardingDataStore()
+    val coroutineScope = rememberCoroutineScope()
 
     NavHost(
         navController = navController,
@@ -41,8 +54,19 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
             SplashScreen(
                 viewModel = hiltViewModel(),
                 onNavigate = { destinationRoute ->
-                    navController.navigate(destinationRoute) {
-                        popUpTo(Splash) { inclusive = true }
+                    coroutineScope.launch {
+                        val hasValidTokens = onboardingDataStore.getAccessToken() != null
+                        val isGuestMode = onboardingDataStore.isGuestModeEnabled()
+
+                        val targetDestination = when {
+                            hasValidTokens -> Dashboard
+                            isGuestMode -> GuestDashboard
+                            else -> Welcome
+                        }
+
+                        navController.navigate(targetDestination) {
+                            popUpTo(Splash) { inclusive = true }
+                        }
                     }
                 }
             )
@@ -55,36 +79,52 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                     navController.navigate(OnboardingFlow)
                 },
                 onNavigateToContinueWithGoogle = {
-                    navController.navigate(GuestDashboard)
+                    coroutineScope.launch {
+                        onboardingDataStore.setOnboardingComplete(true)
+                        // Save guest mode flag
+                        onboardingDataStore.saveGuestModeEnabled(true)
+                    }
+                    navController.navigate(GuestDashboard) {
+                        popUpTo(Welcome) { inclusive = true }
+                    }
                 },
                 onNavigateToLogin = {
                     navController.navigate(AuthFlow)
                 }
             )
         }
-
         /* ───────── ONBOARDING FLOW ───────── */
         composable<OnboardingFlow> {
-            val onboardingDataStore = rememberOnboardingDataStore()
-
             OnboardingPager(
                 datastore = onboardingDataStore,
                 onOnboardingComplete = {
-                    // Just exploring or skip - go to dashboard without tokens
-                    navController.navigate(Dashboard) {
-                        popUpTo(Welcome) { inclusive = true }
+                    // User skipped onboarding - mark complete AND save guest mode
+                    coroutineScope.launch {
+                        onboardingDataStore.setOnboardingComplete(true)
+                        // ✅ IMPORTANT: Save guest mode flag
+                        onboardingDataStore.saveGuestModeEnabled(true)
+                    }
+                    // Navigate to GuestDashboard, not Dashboard
+                    navController.navigate(GuestDashboard) {
+                        popUpTo(OnboardingFlow) { inclusive = true }
                     }
                 },
                 onSignupSuccess = { message, accessToken, refreshToken, user ->
-                    // Same pattern as login
+                    coroutineScope.launch {
+                        onboardingDataStore.setOnboardingComplete(true)
+                        onboardingDataStore.saveTokens(accessToken, refreshToken)
+                        onboardingDataStore.saveUserEmail(user?.email ?: "")
+                        onboardingDataStore.clearOnboardingCache()
+                        // ✅ Clear guest mode if it was set
+                        onboardingDataStore.saveGuestModeEnabled(false)
+                    }
                     sharedAuthViewModel.setSignupSuccessMessage(message)
-                    sharedAuthViewModel.setUserTokens(accessToken, refreshToken)
                     if (user != null) {
                         sharedAuthViewModel.setUser(user)
                     }
 
                     navController.navigate(Dashboard) {
-                        popUpTo(Welcome) { inclusive = true }
+                        popUpTo(OnboardingFlow) { inclusive = true }
                     }
                 },
                 onLoginClick = {
@@ -93,31 +133,20 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
             )
         }
 
-        /* ───────── GUEST DASHBOARD ───────── */
-        composable<GuestDashboard> {
-            DashboardScaffold(
-                isGuestMode = true
-            )
-        }
-
         /* ───────── AUTH FLOW (NESTED) ───────── */
         navigation<AuthFlow>(startDestination = Login) {
 
             /* ───────── LOGIN SCREEN ───────── */
             composable<Login> {
-                // Only get reset password message for login screen
                 val resetSuccessMessage = sharedAuthViewModel.peekResetSuccessMessage()
-
-                println("🔍 [NavHostSetup] Login screen received resetSuccessMessage: $resetSuccessMessage")
 
                 LoginScreen(
                     onLoginSuccess = { user, message, accessToken, refreshToken ->
-                        // Set login success message and tokens for dashboard
                         sharedAuthViewModel.setLoginSuccessMessage(message)
-                        sharedAuthViewModel.setUserTokens(accessToken, refreshToken)
                         sharedAuthViewModel.setUser(user)
-                        // Clear reset message since it's been shown
+                        sharedAuthViewModel.setUserTokens(accessToken, refreshToken)
                         sharedAuthViewModel.clearResetSuccessMessage()
+
                         navController.navigate(Dashboard) {
                             popUpTo(AuthFlow) { inclusive = true }
                         }
@@ -144,7 +173,6 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                         navController.popBackStack()
                     },
                     onPasswordReset = { successMessage ->
-                        println("🔍 [NavHostSetup] ResetPasswordScreen onPasswordReset called with message: $successMessage")
                         sharedAuthViewModel.setResetSuccessMessage(successMessage)
                         navController.popBackStack(Login, inclusive = false)
                     }
@@ -152,20 +180,41 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
             }
         }
 
+        /* ───────── GUEST DASHBOARD ───────── */
+        composable<GuestDashboard> {
+            DashboardScaffold(
+                isGuestMode = true
+            )
+        }
         /* ───────── AUTHENTICATED DASHBOARD ───────── */
         composable<Dashboard> {
-            // Get login success message and user data from shared view model
+            val loginViewModel: LoginViewModel = hiltViewModel()
+
             val loginSuccessMessage = sharedAuthViewModel.peekLoginSuccessMessage()
-            val signupSuccessMessage = sharedAuthViewModel.peekSignupSuccessMessage()  // Get signup message
-            val user = sharedAuthViewModel.peekUser()
-            val accessToken = sharedAuthViewModel.peekAccessToken()
-            val refreshToken = sharedAuthViewModel.peekRefreshToken()
+            val signupSuccessMessage = sharedAuthViewModel.peekSignupSuccessMessage()
+            var user by remember { mutableStateOf(sharedAuthViewModel.peekUser()) }
+            var accessToken by remember { mutableStateOf(sharedAuthViewModel.peekAccessToken()) }
+            var refreshToken by remember { mutableStateOf(sharedAuthViewModel.peekRefreshToken()) }
 
-            println("🔍 [NavHostSetup] Dashboard received loginSuccessMessage: $loginSuccessMessage")
-            println("🔍 [NavHostSetup] Dashboard received signupSuccessMessage: $signupSuccessMessage")  // Log signup message
-            println("🔍 [NavHostSetup] Dashboard received user: ${user?.email}")
+            // If user is null (app was killed), restore from database
+            LaunchedEffect(Unit) {
+                if (user == null) {
+                    println("🔍 [NavHostSetup] No user in memory, restoring from database...")
+                    val restoredUser = loginViewModel.getStoredUser()
+                    val restoredAccessToken = loginViewModel.getAccessToken()
+                    val restoredRefreshToken = loginViewModel.getRefreshToken()
 
-            //  Use signup message first, then login message
+                    if (restoredUser != null && restoredAccessToken != null && restoredRefreshToken != null) {
+                        user = restoredUser
+                        accessToken = restoredAccessToken
+                        refreshToken = restoredRefreshToken
+                        sharedAuthViewModel.setUser(restoredUser)
+                        sharedAuthViewModel.setUserTokens(restoredAccessToken, restoredRefreshToken)
+                        println("✅ [NavHostSetup] Session restored for: ${restoredUser.email}")
+                    }
+                }
+            }
+
             val successMessage = signupSuccessMessage ?: loginSuccessMessage
 
             DashboardScaffold(
@@ -175,7 +224,6 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                 accessToken = accessToken,
                 refreshToken = refreshToken,
                 onMessageConsumed = {
-                    // Clear both messages after they're shown
                     sharedAuthViewModel.clearSignupSuccessMessage()
                     sharedAuthViewModel.clearLoginSuccessMessage()
                 }
@@ -206,7 +254,6 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                 ReviewAndPayScreen(
                     onBack = { navController.popBackStack() },
                     onConfirm = {
-                        // Handle booking confirmation
                         navController.navigate(Dashboard) {
                             popUpTo(BookServiceFlow) { inclusive = true }
                         }

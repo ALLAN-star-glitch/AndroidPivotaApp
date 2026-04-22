@@ -157,20 +157,35 @@ fun ReusableHeader(
                         }
                     }
 
-                    // User Info - always show full info
+                    // User Info - with text truncation
                     Column(
-                        modifier = Modifier.clickable { showMenuBottomSheet = true }
+                        modifier = Modifier
+                            .clickable { showMenuBottomSheet = true }
+                            .weight(1f)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
+                            // Calculate if the name is longer than "Guest" (5 characters)
+                            val displayName = "Hi, $firstName"
+                            val isNameLong = firstName.length > 5 // "Guest" is 5 characters
+
                             Text(
-                                text = "Hi, $firstName",
+                                text = displayName,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = colorScheme.onSurface,
-                                letterSpacing = 0.2.sp
+                                letterSpacing = 0.2.sp,
+                                maxLines = 1,
+                                overflow = if (isNameLong) {
+                                    androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                } else {
+                                    androidx.compose.ui.text.style.TextOverflow.Clip
+                                },
+                                modifier = Modifier.weight(1f, fill = false),
+                                softWrap = false // Prevent wrapping
                             )
                             Icon(
                                 Icons.Outlined.KeyboardArrowDown,
@@ -184,17 +199,19 @@ fun ReusableHeader(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Normal,
                             color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            letterSpacing = 0.1.sp
+                            letterSpacing = 0.1.sp,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }
 
-                // Right side - Action icons (Theme Switcher first, then Message, then Notifications)
+                // Right side - Action icons
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 1. Theme Switcher Icon - FIRST
+                    // 1. Theme Switcher Icon
                     HeaderActionIcon(
                         icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
                         colorScheme = colorScheme,
@@ -203,7 +220,7 @@ fun ReusableHeader(
                         }
                     )
 
-                    // 2. Message Icon with count badge - SECOND
+                    // 2. Message Icon with count badge
                     Box {
                         HeaderActionIcon(
                             icon = Icons.Outlined.MailOutline,
@@ -232,7 +249,7 @@ fun ReusableHeader(
                         }
                     }
 
-                    // 3. Notifications Icon with count badge - THIRD
+                    // 3. Notifications Icon with count badge
                     Box {
                         HeaderActionIcon(
                             icon = Icons.Outlined.NotificationsNone,

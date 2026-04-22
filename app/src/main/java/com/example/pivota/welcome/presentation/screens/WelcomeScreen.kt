@@ -1,3 +1,5 @@
+package com.example.pivota.welcome.presentation.screens
+
 import androidx.compose.runtime.Composable
 import com.example.pivota.welcome.presentation.composables.adaptive_layout.AdaptiveWelcomeLayout
 

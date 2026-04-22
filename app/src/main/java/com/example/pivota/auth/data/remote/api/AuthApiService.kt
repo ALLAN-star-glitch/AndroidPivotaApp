@@ -235,7 +235,7 @@ class AuthApiService @Inject constructor(
      */
     suspend fun refreshToken(refreshToken: String): RefreshTokenResponseDto {
         return try {
-            client.post("v1/auth-module/refresh") {
+            client.post("v1/auth-module/refreshToken") {
                 contentType(ContentType.Application.Json)
                 setBody(mapOf("refreshToken" to refreshToken))
             }.body()
