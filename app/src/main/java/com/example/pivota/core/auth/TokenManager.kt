@@ -210,4 +210,9 @@ class TokenManager @Inject constructor(
         consecutiveFailures = 0
         println("🔐 Session cleared manually")
     }
+
+    // In TokenManager.kt
+    suspend fun getTokenAge(): Long {
+        return dataStore.getTokenAge()
+    }
 }

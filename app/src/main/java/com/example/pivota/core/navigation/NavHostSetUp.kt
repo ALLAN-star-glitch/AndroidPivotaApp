@@ -17,6 +17,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import com.example.pivota.PivotaApp
 import com.example.pivota.auth.presentation.screens.AdaptiveResetPasswordScreen
 import com.example.pivota.auth.presentation.screens.LoginScreen
 import com.example.pivota.auth.presentation.screens.SplashScreen
@@ -51,16 +52,17 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
 
         /* ───────── SPLASH SCREEN ───────── */
         composable<Splash> {
+            // Get reference to the application instance
+            val application = androidx.compose.ui.platform.LocalContext.current.applicationContext as PivotaApp
+
             SplashScreen(
                 viewModel = hiltViewModel(),
                 onNavigate = { destinationRoute ->
                     coroutineScope.launch {
-                        val hasValidTokens = onboardingDataStore.getAccessToken() != null
-                        val isGuestMode = onboardingDataStore.isGuestModeEnabled()
-
+                        // The token refresh already happened in App class
                         val targetDestination = when {
-                            hasValidTokens -> Dashboard
-                            isGuestMode -> GuestDashboard
+                            application.isTokenValid -> Dashboard
+                            onboardingDataStore.isGuestModeEnabled() -> GuestDashboard
                             else -> Welcome
                         }
 
