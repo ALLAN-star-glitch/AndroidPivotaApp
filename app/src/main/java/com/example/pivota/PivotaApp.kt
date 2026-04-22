@@ -1,4 +1,3 @@
-// PivotaApp.kt
 package com.example.pivota
 
 import android.app.Application
@@ -14,27 +13,27 @@ class PivotaApp : Application() {
     @Inject
     lateinit var themeManager: ThemeManager
 
+    override fun attachBaseContext(base: android.content.Context) {
+        KtorClientFactory.init(base)
+        super.attachBaseContext(base)
+        println("✅ [PivotaApp] KtorClientFactory initialized in attachBaseContext")
+    }
+
     override fun onCreate() {
+        KtorClientFactory.init(this)
         super.onCreate()
 
         println("========================================")
         println("🚀 PivotaApp Initializing...")
         println("========================================")
 
-        // Initialize tablet detection
         TabletDetector.init(this)
-
-        // Get the detected value and log it
         val isTablet = TabletDetector.isTabletDevice(this)
         println("📱 TabletDetector.init result: isTablet = $isTablet")
 
-        // Log current theme preference
         val isDarkTheme = themeManager.getCurrentThemeSync()
         println("🎨 Current theme preference: ${if (isDarkTheme) "Dark" else "Light"}")
 
         println("========================================")
-
-        // Initialize Ktor client factory with context
-        KtorClientFactory.init(this)
     }
 }

@@ -7,9 +7,10 @@ import com.example.pivota.auth.domain.model.LoginResponse
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.domain.useCase.AuthUseCases
 import com.example.pivota.auth.presentation.state.LoginUiState
+import com.example.pivota.core.auth.TokenManager
 import com.example.pivota.core.database.dao.UserDao
+import com.example.pivota.core.database.entity.UserEntity
 import com.example.pivota.core.network.ApiResult
-import com.example.pivota.core.network.NetworkError
 import com.example.pivota.core.network.getUserFriendlyMessage
 import com.example.pivota.core.preferences.PivotaDataStore
 import com.example.pivota.core.presentations.composables.SnackbarType
@@ -26,7 +27,8 @@ import javax.inject.Inject
 class LoginViewModel @Inject constructor(
     private val authUseCases: AuthUseCases,
     private val datastore: PivotaDataStore,
-    private val userDao: UserDao
+    private val userDao: UserDao,
+    private val tokenManager: TokenManager
 ) : ViewModel() {
 
     private val _email = MutableStateFlow("")
@@ -108,6 +110,49 @@ class LoginViewModel @Inject constructor(
         _shouldCloseDialog.value = false
     }
 
+    // ==================== HELPER METHODS FOR DATA PERSISTENCE ====================
+
+    // In LoginViewModel.kt
+    private suspend fun saveUserSession(user: User, accessToken: String, refreshToken: String) {
+        try {
+            // Use saveTokensWithTimestamp instead of saveTokens
+            datastore.saveTokensWithTimestamp(accessToken, refreshToken)
+            datastore.saveUserEmail(user.email)
+            datastore.markOnboardingComplete(true)
+
+            // Save to Room Database
+            val existingUser = userDao.getUserByEmail(user.email)
+            if (existingUser == null) {
+                val userEntity = UserEntity(
+                    uuid = user.uuid,
+                    email = user.email,
+                    firstName = user.firstName,
+                    lastName = user.lastName,
+                    userName = user.userName,
+                    phone = user.personalPhone,
+                    profileImage = user.profileImage,
+                    isAuthenticated = true,
+                    isOnboardingComplete = true,
+                    hasSeenWelcomeScreen = true,
+                    primaryPurpose = user.primaryPurpose,
+                    role = user.role,
+                    accountType = user.accountType,
+                    accountId = user.accountId,
+                    accountName = user.accountName,
+                    organizationUuid = user.organizationUuid,
+                    planSlug = user.planSlug,
+                    tokenId = user.tokenId,
+                    updatedAt = System.currentTimeMillis()
+                )
+                userDao.insertUser(userEntity)
+            }
+
+            println("✅ User session saved with timestamp")
+        } catch (e: Exception) {
+            println("❌ Error saving user session: ${e.message}")
+        }
+    }
+
     // ==================== GOOGLE SIGN-IN ====================
 
     fun signInWithGoogle(idToken: String) {
@@ -126,32 +171,8 @@ class LoginViewModel @Inject constructor(
                             println("🔍 [LoginViewModel] User authenticated: ${loginResponse.user.email}")
                             val user = loginResponse.user
 
-                            datastore.saveTokens(loginResponse.accessToken, loginResponse.refreshToken)
-                            datastore.saveUserEmail(user.email)
-                            datastore.markOnboardingComplete(true)
-
-                            val userEntity = com.example.pivota.core.database.entity.UserEntity(
-                                uuid = user.uuid,
-                                email = user.email,
-                                firstName = user.firstName,
-                                lastName = user.lastName,
-                                userName = user.userName,
-                                phone = user.personalPhone,
-                                profileImage = user.profileImage,
-                                isAuthenticated = true,
-                                isOnboardingComplete = true,
-                                hasSeenWelcomeScreen = true,
-                                primaryPurpose = user.primaryPurpose,
-                                role = user.role,
-                                accountType = user.accountType,
-                                accountId = user.accountId,
-                                accountName = user.accountName,
-                                organizationUuid = user.organizationUuid,
-                                planSlug = user.planSlug,
-                                tokenId = user.tokenId,
-                                updatedAt = System.currentTimeMillis()
-                            )
-                            userDao.insertUser(userEntity)
+                            // Save to DataStore and Room
+                            saveUserSession(user, loginResponse.accessToken, loginResponse.refreshToken)
 
                             _googleSignInState.value = GoogleSignInState.Success(
                                 user = user,
@@ -210,8 +231,13 @@ class LoginViewModel @Inject constructor(
                         }
                         is LoginResponse.Authenticated -> {
                             println("🔍 [LoginViewModel] Login successful for: ${loginResponse.user.email}")
+                            val user = loginResponse.user
+
+                            // Save to DataStore and Room
+                            saveUserSession(user, loginResponse.accessToken, loginResponse.refreshToken)
+
                             _uiState.value = LoginUiState.Success(
-                                user = loginResponse.user,
+                                user = user,
                                 message = loginResponse.message ?: "Login successful",
                                 accessToken = loginResponse.accessToken,
                                 refreshToken = loginResponse.refreshToken
@@ -251,8 +277,13 @@ class LoginViewModel @Inject constructor(
                     when (loginResponse) {
                         is LoginResponse.Authenticated -> {
                             println("🔍 [LoginViewModel] MFA verification successful for: ${loginResponse.user.email}")
+                            val user = loginResponse.user
+
+                            // Save to DataStore and Room
+                            saveUserSession(user, loginResponse.accessToken, loginResponse.refreshToken)
+
                             _uiState.value = LoginUiState.Success(
-                                user = loginResponse.user,
+                                user = user,
                                 message = loginResponse.message ?: "Login successful",
                                 accessToken = loginResponse.accessToken,
                                 refreshToken = loginResponse.refreshToken
@@ -334,7 +365,6 @@ class LoginViewModel @Inject constructor(
 
             when (result) {
                 is ApiResult.Success -> {
-                    // requestPasswordReset returns ApiResult<Unit>, so success means it worked
                     datastore.saveResetPasswordEmail(email)
                     showSnackbar("Verification code sent to your email!", SnackbarType.SUCCESS)
                     _uiState.value = LoginUiState.PasswordResetOtpSent
@@ -381,7 +411,6 @@ class LoginViewModel @Inject constructor(
 
             when (result) {
                 is ApiResult.Success -> {
-                    // resetPassword returns ApiResult<Unit>, so success means it worked
                     datastore.clearResetPasswordEmail()
                     _uiState.value = LoginUiState.PasswordResetSuccess("Password reset successful")
                 }
@@ -412,7 +441,6 @@ class LoginViewModel @Inject constructor(
 
             when (result) {
                 is ApiResult.Success -> {
-                    // requestPasswordReset returns ApiResult<Unit>, so success means it worked
                     _resendCount.update { it + 1 }
                     clearOtp()
                     showSnackbar("New verification code sent!", SnackbarType.SUCCESS)
@@ -492,8 +520,21 @@ class LoginViewModel @Inject constructor(
         return getStoredUser()
     }
 
+
+    suspend fun getAccessToken(): String? {
+        return datastore.getAccessToken()
+    }
+
+    suspend fun getRefreshToken(): String? {
+        return datastore.getRefreshToken()
+    }
+
     fun logout() {
         viewModelScope.launch {
+            // Stop auto refresh
+            tokenManager.stopAutoRefresh()
+
+            // Call logout API
             val refreshToken = datastore.getRefreshToken()
             if (refreshToken != null) {
                 val result = authUseCases.logout(refreshToken)
@@ -504,12 +545,13 @@ class LoginViewModel @Inject constructor(
                     is ApiResult.Error -> {
                         println("❌ Logout failed: ${result.getUserFriendlyMessage()}")
                     }
-                    ApiResult.Loading -> {
-                        // Do nothing
-                    }
+                    ApiResult.Loading -> {}
                 }
             }
+
+            // Clear all data
             datastore.clearSession()
+            datastore.clearGuestMode()
             resetState()
         }
     }
@@ -537,7 +579,6 @@ class LoginViewModel @Inject constructor(
             delay(4000)
             clearSnackbar()
         }
-
     }
 
     fun resetState() {
