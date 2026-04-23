@@ -1,4 +1,4 @@
-package com.example.pivota.dashboard.domain
+package com.example.pivota.dashboard.domain.model
 
 data class ListingCategory(
     val id: String,

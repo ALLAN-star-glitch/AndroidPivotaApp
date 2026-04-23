@@ -44,14 +44,21 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.pivota.R
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.dashboard.presentation.composables.ReusableHeader
+import com.example.pivota.dashboard.presentation.state.ProfileUiState
+import com.example.pivota.dashboard.presentation.viewmodels.ProfileViewModel
 import com.example.pivota.ui.theme.*
 
 // ==================== ENUMS ====================
@@ -316,20 +323,293 @@ fun ProfileScreen(
     user: User? = null,
     isGuestMode: Boolean = false
 ) {
+    val profileViewModel: ProfileViewModel = hiltViewModel()
+    val profileState by profileViewModel.profileState.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
 
-    // 📱 Orientation & Window Size Logic
-    val configuration = LocalConfiguration.current
-    val windowSizeClass = androidx.compose.material3.adaptive.currentWindowAdaptiveInfo().windowSizeClass
-    val isWide = windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
+    // Refresh profile when user changes (only for authenticated users)
+    LaunchedEffect(user, isGuestMode) {
+        if (!isGuestMode && user != null) {
+            profileViewModel.refreshProfile()
+        }
+    }
 
-    // 🎨 Brand Palette
+    // Guest mode - use mock data
+    if (isGuestMode) {
+        GuestProfileScreenContent(
+            onNavigateToEditProfile = onNavigateToEditProfile,
+            onNavigateToSettings = onNavigateToSettings,
+            onNavigateToHelpCenter = onNavigateToHelpCenter,
+            onNavigateToTeamManagement = onNavigateToTeamManagement,
+            onNavigateToVerification = onNavigateToVerification,
+            onNavigateToSubscription = onNavigateToSubscription,
+            onNavigateToPaymentMethods = onNavigateToPaymentMethods,
+            onNavigateToBillingHistory = onNavigateToBillingHistory,
+            onSignOut = onSignOut,
+            colorScheme = colorScheme
+        )
+        return
+    }
+
+    // Handle loading and error states for authenticated users
+    when (profileState) {
+        is ProfileUiState.Loading -> {
+            // Show loading skeleton
+            ProfileLoadingSkeleton(colorScheme = colorScheme)
+        }
+
+        is ProfileUiState.Error -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.ErrorOutline,
+                        contentDescription = null,
+                        tint = colorScheme.error,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Error loading profile",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colorScheme.error
+                    )
+                    Text(
+                        text = (profileState as ProfileUiState.Error).message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { profileViewModel.refreshProfile() },
+                        colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary)
+                    ) {
+                        Text("Retry")
+                    }
+                }
+            }
+        }
+
+        is ProfileUiState.Success -> {
+            val profile = (profileState as ProfileUiState.Success).profile
+
+            // Convert domain data to UI data classes
+            val accountData = AccountData(
+                id = profile.account.uuid,
+                uuid = profile.account.uuid,
+                accountCode = profile.account.accountCode,
+                name = profile.account.name,
+                type = if (profile.account.type == "INDIVIDUAL") AccountType.INDIVIDUAL else AccountType.ORGANIZATION,
+                status = profile.account.status,
+                isVerified = profile.account.isVerified,
+                verifiedFeatures = profile.account.verifiedFeatures,
+                createdAt = profile.account.createdAt,
+                updatedAt = profile.account.updatedAt
+            )
+
+            val userData = profile.user?.let {
+                UserData(
+                    uuid = it.uuid,
+                    userCode = it.userCode ?: "",
+                    email = it.email,
+                    phone = it.personalPhone,
+                    firstName = it.firstName,
+                    lastName = it.lastName,
+                    roleName = it.role ?: "",
+                    profileImage = it.profileImage,
+                    status = "ACTIVE"
+                )
+            }
+
+            val individualProfileData = profile.individualProfile?.let {
+                IndividualProfileData(
+                    firstName = user?.firstName,
+                    lastName = user?.lastName,
+                    bio = it.bio,
+                    gender = it.gender,
+                    dateOfBirth = it.dateOfBirth,
+                    nationalId = it.nationalId,
+                    profileImage = it.profileImage
+                )
+            }
+
+            val jobSeekerProfileData = profile.jobSeekerProfile?.let {
+                JobSeekerProfileData(
+                    headline = it.headline,
+                    isActivelySeeking = it.isActivelySeeking,
+                    skills = it.skills,
+                    industries = it.industries,
+                    jobTypes = it.jobTypes,
+                    seniorityLevel = it.seniorityLevel,
+                    noticePeriod = it.noticePeriod,
+                    expectedSalary = it.expectedSalary?.toFloat(),
+                    workAuthorization = it.workAuthorization,
+                    cvUrl = it.cvUrl,
+                    cvLastUpdated = it.cvLastUpdated,
+                    linkedInUrl = it.linkedInUrl,
+                    portfolioUrl = it.portfolioUrl,
+                    githubUrl = it.githubUrl
+                )
+            }
+
+            val professionalProfileData = profile.skilledProfessionalProfile?.let {
+                ProfessionalProfileData(
+                    uuid = it.uuid ?: "",
+                    title = it.title,
+                    specialties = it.specialties,
+                    serviceAreas = it.serviceAreas,
+                    yearsExperience = it.yearsExperience,
+                    licenseNumber = it.licenseNumber,
+                    insuranceInfo = it.insuranceInfo,
+                    hourlyRate = it.hourlyRate?.toFloat(),
+                    paymentTerms = it.paymentTerms,
+                    isVerified = it.isVerified,
+                    averageRating = it.averageRating,
+                    totalReviews = it.totalReviews,
+                    completedJobs = it.completedJobs,
+                    portfolioImages = it.portfolioImages
+                )
+            }
+
+            val agentProfileData = profile.intermediaryAgentProfile?.let {
+                AgentProfileData(
+                    uuid = it.agentUuid ?: "",
+                    agentType = it.agentType,
+                    specializations = it.specializations,
+                    licenseNumber = it.licenseNumber,
+                    licenseBody = it.licenseBody,
+                    yearsExperience = it.yearsExperience,
+                    agencyName = it.agencyName,
+                    serviceAreas = it.serviceAreas,
+                    commissionRate = it.commissionRate?.toFloat(),
+                    feeStructure = it.feeStructure,
+                    minimumFee = it.minimumFee?.toFloat(),
+                    isVerified = it.isVerified,
+                    averageRating = it.averageRating,
+                    totalReviews = it.totalReviews,
+                    completedDeals = it.completedDeals,
+                    about = it.about,
+                    profileImage = it.profileImage,
+                    contactEmail = it.contactEmail,
+                    contactPhone = it.contactPhone,
+                    website = it.website
+                )
+            }
+
+            val employerProfileData = profile.employerProfile?.let {
+                EmployerProfileData(
+                    companyName = it.companyName,
+                    industry = it.industry,
+                    companySize = it.companySize,
+                    foundedYear = it.foundedYear,
+                    description = it.description,
+                    logo = it.logo,
+                    preferredSkills = it.preferredSkills,
+                    remotePolicy = it.remotePolicy,
+                    isVerifiedEmployer = it.isVerifiedEmployer
+                )
+            }
+
+            val propertyOwnerProfileData = profile.propertyOwnerProfile?.let {
+                PropertyOwnerProfileData(
+                    isProfessional = it.isProfessional,
+                    licenseNumber = it.licenseNumber,
+                    companyName = it.companyName,
+                    yearsInBusiness = it.yearsInBusiness,
+                    preferredPropertyTypes = it.preferredPropertyTypes,
+                    serviceAreas = it.serviceAreas,
+                    isVerifiedOwner = it.isVerifiedOwner
+                )
+            }
+
+            val propertySeekerProfileData = profile.housingSeekerProfile?.let {
+                PropertySeekerProfileData(
+                    minBedrooms = it.minBedrooms ?: 1,
+                    maxBedrooms = it.maxBedrooms ?: 5,
+                    minBudget = it.minBudget?.toFloat(),
+                    maxBudget = it.maxBudget?.toFloat(),
+                    preferredTypes = it.preferredTypes,
+                    preferredCities = it.preferredCities,
+                    preferredNeighborhoods = it.preferredNeighborhoods,
+                    moveInDate = it.moveInDate,
+                    leaseDuration = it.leaseDuration,
+                    householdSize = it.householdSize ?: 1,
+                    hasPets = it.hasPets,
+                    petDetails = it.petDetails
+                )
+            }
+
+            val verifications = profile.verifications.map { verification ->
+                VerificationItemData(
+                    type = verification.type.name,
+                    status = when (verification.status) {
+                        com.example.pivota.auth.domain.model.VerificationStatus.PENDING -> VerificationStatus.PENDING
+                        com.example.pivota.auth.domain.model.VerificationStatus.APPROVED -> VerificationStatus.APPROVED
+                        com.example.pivota.auth.domain.model.VerificationStatus.REJECTED -> VerificationStatus.REJECTED
+                        com.example.pivota.auth.domain.model.VerificationStatus.EXPIRED -> VerificationStatus.EXPIRED
+                    },
+                    documentUrl = verification.documentUrl,
+                    rejectionReason = verification.rejectionReason,
+                    verifiedAt = verification.verifiedAt,
+                    expiresAt = verification.expiresAt
+                )
+            }
+
+            // Now render the profile with real data
+            AuthenticatedProfileContent(
+                accountData = accountData,
+                userData = userData,
+                individualProfileData = individualProfileData,
+                organizationProfileData = null,
+                professionalProfileData = professionalProfileData,
+                agentProfileData = agentProfileData,
+                employerProfileData = employerProfileData,
+                jobSeekerProfileData = jobSeekerProfileData,
+                propertyOwnerProfileData = propertyOwnerProfileData,
+                propertySeekerProfileData = propertySeekerProfileData,
+                serviceProviderProfileData = null,
+                beneficiaryProfileData = null,
+                verifications = verifications,
+                onNavigateToEditProfile = onNavigateToEditProfile,
+                onNavigateToSettings = onNavigateToSettings,
+                onNavigateToHelpCenter = onNavigateToHelpCenter,
+                onNavigateToTeamManagement = onNavigateToTeamManagement,
+                onNavigateToVerification = onNavigateToVerification,
+                onNavigateToSubscription = onNavigateToSubscription,
+                onNavigateToPaymentMethods = onNavigateToPaymentMethods,
+                onNavigateToBillingHistory = onNavigateToBillingHistory,
+                onSignOut = onSignOut,
+                colorScheme = colorScheme
+            )
+        }
+    }
+}
+
+// ==================== GUEST PROFILE CONTENT ====================
+
+@Composable
+fun GuestProfileScreenContent(
+    onNavigateToEditProfile: (ProfileType) -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToHelpCenter: () -> Unit,
+    onNavigateToTeamManagement: () -> Unit,
+    onNavigateToVerification: () -> Unit,
+    onNavigateToSubscription: () -> Unit,
+    onNavigateToPaymentMethods: () -> Unit,
+    onNavigateToBillingHistory: () -> Unit,
+    onSignOut: () -> Unit,
+    colorScheme: ColorScheme
+) {
+    val accountData = mockGuestAccountData()
     val primaryTeal = colorScheme.primary
     val goldenAccent = colorScheme.tertiary
     val softBackground = colorScheme.background
     val purpleAccent = PurpleAccent
 
-    // Track scroll offset for header
     val listState = rememberLazyListState()
     val scrollOffset by remember {
         derivedStateOf {
@@ -340,74 +620,7 @@ fun ProfileScreen(
             }
         }
     }
-
-    // Check if title/subtitle should be hidden (scrolled)
     val isScrolled = scrollOffset > 20f
-
-    // Mock Data - Modify for guest mode
-    val accountData = remember {
-        if (isGuestMode) {
-            mockGuestAccountData()
-        } else {
-            mockAccountData()
-        }
-    }
-    val userData = remember {
-        if (isGuestMode) null else mockUserData()
-    }
-    val individualProfileData = remember {
-        if (isGuestMode) null else mockIndividualProfileData()
-    }
-    val organizationProfileData = remember {
-        if (isGuestMode) null else mockOrganizationProfileData()
-    }
-    val professionalProfileData = remember {
-        if (isGuestMode) null else mockProfessionalProfileData()
-    }
-    val agentProfileData = remember {
-        if (isGuestMode) null else mockAgentProfileData()
-    }
-    val employerProfileData = remember {
-        if (isGuestMode) null else mockEmployerProfileData()
-    }
-    val jobSeekerProfileData = remember {
-        if (isGuestMode) null else mockJobSeekerProfileData()
-    }
-    val propertyOwnerProfileData = remember {
-        if (isGuestMode) null else mockPropertyOwnerProfileData()
-    }
-    val propertySeekerProfileData = remember {
-        if (isGuestMode) null else mockPropertySeekerProfileData()
-    }
-    val serviceProviderProfileData = remember {
-        if (isGuestMode) null else mockServiceProviderProfileData()
-    }
-    val beneficiaryProfileData = remember {
-        if (isGuestMode) null else mockBeneficiaryProfileData()
-    }
-    val verifications = remember {
-        if (isGuestMode) emptyList() else mockVerifications()
-    }
-    val reviews = remember {
-        if (isGuestMode) emptyList() else mockReviews()
-    }
-
-    // Dynamically build tabs based on available profiles
-    val tabs = buildList {
-        add(ProfileType.ACCOUNT to "Account")
-        if (!isGuestMode) {
-            if (professionalProfileData != null) add(ProfileType.PROFESSIONAL to "Professional Profile")
-            if (agentProfileData != null) add(ProfileType.AGENT to "Agent Profile")
-            if (employerProfileData != null) add(ProfileType.EMPLOYER to "Employer Profile")
-            if (jobSeekerProfileData != null) add(ProfileType.JOB_SEEKER to "Job Seeker Profile")
-            if (propertyOwnerProfileData != null) add(ProfileType.PROPERTY_OWNER to "Property Owner Profile")
-            if (propertySeekerProfileData != null) add(ProfileType.PROPERTY_SEEKER to "Property Seeker Profile")
-            if (serviceProviderProfileData != null) add(ProfileType.SERVICE_PROVIDER to "Service Provider Profile")
-            if (beneficiaryProfileData != null) add(ProfileType.BENEFICIARY to "Beneficiary Profile")
-        }
-    }
-
-    var selectedTabIndex by remember { mutableStateOf(0) }
 
     Scaffold(
         containerColor = softBackground,
@@ -423,14 +636,13 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(top = 0.dp)
             ) {
-                // Non-sticky Header (scrolls away)
                 item {
                     ReusableHeader(
                         colorScheme = colorScheme,
                         pageTitle = "Profile",
-                        pageSubtitle = if (isGuestMode) "Sign in to access your account" else "Manage your identity",
-                        user = user,
-                        isGuestMode = isGuestMode,
+                        pageSubtitle = "Sign in to access your account",
+                        user = null,
+                        isGuestMode = true,
                         isSticky = false,
                         scrollOffset = scrollOffset,
                         modifier = Modifier
@@ -440,11 +652,393 @@ fun ProfileScreen(
                     )
                 }
 
-                // STICKY TABS - touches top edge when sticky
-                stickyHeader(key = "tabRow") {
+                item {
                     Column(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp)
                     ) {
+                        AccountTabContent(
+                            accountData = accountData,
+                            userData = null,
+                            individualProfileData = null,
+                            organizationProfileData = null,
+                            verifications = emptyList(),
+                            primaryColor = primaryTeal,
+                            goldenAccent = goldenAccent,
+                            purpleAccent = purpleAccent,
+                            warningColor = WarningAmber,
+                            successColor = SuccessGreen,
+                            colorScheme = colorScheme,
+                            onNavigateToSettings = onNavigateToSettings,
+                            onNavigateToTeamManagement = onNavigateToTeamManagement,
+                            onNavigateToVerification = onNavigateToVerification,
+                            onNavigateToSubscription = onNavigateToSubscription,
+                            onNavigateToPaymentMethods = onNavigateToPaymentMethods,
+                            onNavigateToBillingHistory = onNavigateToBillingHistory,
+                            onNavigateToHelpCenter = onNavigateToHelpCenter,
+                            onSignOut = onSignOut,
+                            onEditPersonalInfo = { onNavigateToEditProfile(ProfileType.ACCOUNT) },
+                            onEditVerification = { onNavigateToEditProfile(ProfileType.ACCOUNT) },
+                            isGuestMode = true
+                        )
+                        Spacer(modifier = Modifier.height(40.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==================== LOADING SKELETON ====================
+
+@Composable
+fun ProfileLoadingSkeleton(colorScheme: ColorScheme) {
+    val softBackground = colorScheme.background
+    val skeletonColor = colorScheme.surfaceVariant.copy(alpha = 0.5f)
+
+    Scaffold(
+        containerColor = softBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(skeletonColor)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(200.dp)
+                            .height(24.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(skeletonColor)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(150.dp)
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(skeletonColor)
+                    )
+                }
+            }
+
+            item {
+                ProfileSectionSkeleton(skeletonColor, colorScheme)
+            }
+
+            item {
+                VerificationSkeleton(skeletonColor, colorScheme)
+            }
+
+            item {
+                SettingsSkeleton(skeletonColor, colorScheme)
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfileSectionSkeleton(skeletonColor: Color, colorScheme: ColorScheme) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(120.dp)
+                .height(20.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(skeletonColor)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Card(
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                repeat(4) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(skeletonColor)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Box(
+                                modifier = Modifier
+                                    .width(100.dp)
+                                    .height(16.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(skeletonColor)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(150.dp)
+                                    .height(14.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(skeletonColor)
+                            )
+                        }
+                    }
+                    if (it < 3) {
+                        HorizontalDivider(
+                            color = colorScheme.outlineVariant,
+                            modifier = Modifier.padding(start = 56.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun VerificationSkeleton(skeletonColor: Color, colorScheme: ColorScheme) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(150.dp)
+                .height(20.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(skeletonColor)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Card(
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                repeat(3) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(skeletonColor)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(60.dp)
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(skeletonColor)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsSkeleton(skeletonColor: Color, colorScheme: ColorScheme) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(140.dp)
+                .height(20.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(skeletonColor)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Card(
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                repeat(4) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(skeletonColor)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(120.dp)
+                                .height(16.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(skeletonColor)
+                        )
+                    }
+                    if (it < 3) {
+                        HorizontalDivider(
+                            color = colorScheme.outlineVariant,
+                            modifier = Modifier.padding(start = 56.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==================== AUTHENTICATED PROFILE CONTENT ====================
+
+// Add this function before AuthenticatedProfileContent
+private fun userDataToUser(userData: UserData?): User? {
+    return userData?.let {
+        User(
+            uuid = it.uuid,
+            email = it.email,
+            firstName = it.firstName ?: "",
+            lastName = it.lastName ?: "",
+            userName = "${it.firstName ?: ""} ${it.lastName ?: ""}".trim(),
+            personalPhone = it.phone,
+            profileImage = it.profileImage,
+            isAuthenticated = true,
+            userUuid = it.uuid,
+            role = it.roleName,
+            // other fields can be set as needed
+        )
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AuthenticatedProfileContent(
+    accountData: AccountData,
+    userData: UserData?,
+    individualProfileData: IndividualProfileData?,
+    organizationProfileData: OrganizationProfileData?,
+    professionalProfileData: ProfessionalProfileData?,
+    agentProfileData: AgentProfileData?,
+    employerProfileData: EmployerProfileData?,
+    jobSeekerProfileData: JobSeekerProfileData?,
+    propertyOwnerProfileData: PropertyOwnerProfileData?,
+    propertySeekerProfileData: PropertySeekerProfileData?,
+    serviceProviderProfileData: ServiceProviderProfileData?,
+    beneficiaryProfileData: BeneficiaryProfileData?,
+    verifications: List<VerificationItemData>,
+    onNavigateToEditProfile: (ProfileType) -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToHelpCenter: () -> Unit,
+    onNavigateToTeamManagement: () -> Unit,
+    onNavigateToVerification: () -> Unit,
+    onNavigateToSubscription: () -> Unit,
+    onNavigateToPaymentMethods: () -> Unit,
+    onNavigateToBillingHistory: () -> Unit,
+    onSignOut: () -> Unit,
+    colorScheme: ColorScheme
+) {
+    val configuration = LocalConfiguration.current
+    val windowSizeClass = androidx.compose.material3.adaptive.currentWindowAdaptiveInfo().windowSizeClass
+    val isWide = windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
+
+    val primaryTeal = colorScheme.primary
+    val goldenAccent = colorScheme.tertiary
+    val softBackground = colorScheme.background
+    val purpleAccent = PurpleAccent
+
+    val listState = rememberLazyListState()
+    val scrollOffset by remember {
+        derivedStateOf {
+            if (listState.firstVisibleItemIndex == 0) {
+                listState.firstVisibleItemScrollOffset.toFloat()
+            } else {
+                Float.MAX_VALUE
+            }
+        }
+    }
+    val isScrolled = scrollOffset > 20f
+
+    val allTabs = listOf(
+        Triple(ProfileType.ACCOUNT, "Account", Icons.Default.Person),
+        Triple(ProfileType.JOB_SEEKER, "Looking for Job?", Icons.Default.Search),
+        Triple(ProfileType.PROFESSIONAL, "Offer Your Services?", Icons.Default.Work),
+        Triple(ProfileType.AGENT, "Work as Agent?", Icons.Default.Handshake),
+        Triple(ProfileType.EMPLOYER, "Hiring?", Icons.Default.Business),
+        Triple(ProfileType.PROPERTY_OWNER, "List Properties?", Icons.Default.Home),
+        Triple(ProfileType.PROPERTY_SEEKER, "Looking for House?", Icons.Default.LocationOn),
+        Triple(ProfileType.SERVICE_PROVIDER, "Support Services?", Icons.Default.VolunteerActivism),
+        Triple(ProfileType.BENEFICIARY, "Need Support?", Icons.Default.Favorite)
+    )
+
+    val tabs = allTabs  // Always show all tabs
+
+    var selectedTabIndex by remember { mutableStateOf(0) }
+
+    val user = userDataToUser(userData)
+
+
+    Scaffold(
+        containerColor = softBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(top = 0.dp)
+            ) {
+                item {
+                    ReusableHeader(
+                        colorScheme = colorScheme,
+                        pageTitle = "Profile",
+                        pageSubtitle = "Manage your identity",
+                        user = user,
+                        isGuestMode = false,
+                        isSticky = false,
+                        scrollOffset = scrollOffset,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+
+                stickyHeader(key = "tabRow") {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -452,134 +1046,281 @@ fun ProfileScreen(
                             color = softBackground,
                             tonalElevation = 2.dp
                         ) {
-                            // Apply status bar padding to the content inside when scrolled
-                            // This pushes the tab content down, but the background touches the edge
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .then(
-                                        if (isScrolled) {
-                                            Modifier.statusBarsPadding()
-                                        } else {
-                                            Modifier
-                                        }
+                                        if (isScrolled) Modifier.statusBarsPadding() else Modifier
                                     )
                             ) {
                                 ScrollableTabRow(
-                                    selectedTabIndex = selectedTabIndex,
-                                    containerColor = Color.Transparent,
-                                    edgePadding = 16.dp,
-                                    divider = {},
-                                    indicator = { tabPositions ->
-                                        TabRowDefaults.SecondaryIndicator(
-                                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                                            color = primaryTeal,
-                                            height = 3.dp
-                                        )
-                                    }
-                                ) {
-                                    tabs.forEachIndexed { index, (_, title) ->
-                                        Tab(
-                                            selected = selectedTabIndex == index,
-                                            onClick = { selectedTabIndex = index },
-                                            text = {
-                                                Text(
-                                                    text = title,
-                                                    fontWeight = if (selectedTabIndex == index)
-                                                        FontWeight.Bold else FontWeight.Normal,
-                                                    fontSize = 14.sp,
-                                                    color = if (selectedTabIndex == index)
-                                                        primaryTeal else colorScheme.onSurfaceVariant
-                                                )
-                                            },
-                                            selectedContentColor = primaryTeal,
-                                            unselectedContentColor = colorScheme.onSurfaceVariant
-                                        )
-                                    }
+                                selectedTabIndex = selectedTabIndex,
+                                containerColor = Color.Transparent,
+                                edgePadding = 16.dp,
+                                divider = {},
+                                indicator = { tabPositions ->
+                                    TabRowDefaults.SecondaryIndicator(
+                                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                                        color = primaryTeal,
+                                        height = 3.dp
+                                    )
                                 }
+                            ) {
+                                allTabs.forEachIndexed { index, (_, title, icon) ->
+                                    val selected = selectedTabIndex == index
+                                    Tab(
+                                        selected = selected,
+                                        onClick = { selectedTabIndex = index },
+                                        text = {
+                                            Text(
+                                                text = title,
+                                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                                fontSize = 12.sp,  // Slightly smaller to accommodate icon
+                                                color = if (selected) primaryTeal else colorScheme.onSurfaceVariant
+                                            )
+                                        },
+                                        icon = {
+                                            Icon(
+                                                imageVector = icon,
+                                                contentDescription = title,
+                                                modifier = Modifier.size(20.dp),
+                                                tint = if (selected) primaryTeal else colorScheme.onSurfaceVariant
+                                            )
+                                        },
+                                        selectedContentColor = primaryTeal,
+                                        unselectedContentColor = colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                             }
                         }
                     }
                 }
 
-                // TAB CONTENT
                 item {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 16.dp)
                     ) {
-                        if (tabs.isNotEmpty()) {
-                            when (tabs[selectedTabIndex].first) {
-                                ProfileType.ACCOUNT -> AccountTabContent(
-                                    accountData = accountData,
-                                    userData = userData,
-                                    individualProfileData = individualProfileData,
-                                    organizationProfileData = organizationProfileData,
-                                    verifications = verifications,
-                                    primaryColor = primaryTeal,
-                                    goldenAccent = goldenAccent,
-                                    purpleAccent = purpleAccent,
-                                    warningColor = WarningAmber,
-                                    successColor = SuccessGreen,
-                                    colorScheme = colorScheme,
-                                    onNavigateToSettings = onNavigateToSettings,
-                                    onNavigateToTeamManagement = onNavigateToTeamManagement,
-                                    onNavigateToVerification = onNavigateToVerification,
-                                    onNavigateToSubscription = onNavigateToSubscription,
-                                    onNavigateToPaymentMethods = onNavigateToPaymentMethods,
-                                    onNavigateToBillingHistory = onNavigateToBillingHistory,
-                                    onNavigateToHelpCenter = onNavigateToHelpCenter,
-                                    onSignOut = onSignOut,
-                                    onEditPersonalInfo = { onNavigateToEditProfile(ProfileType.ACCOUNT) },
-                                    onEditVerification = { onNavigateToEditProfile(ProfileType.ACCOUNT) },
-                                    isGuestMode = isGuestMode
-                                )
+                        // Replace the when statement in the item block with this:
 
-                                ProfileType.PROFESSIONAL -> ProfessionalTabContent(
-                                    professionalProfileData = professionalProfileData!!,
-                                    primaryColor = primaryTeal,
-                                    goldenAccent = goldenAccent,
-                                    colorScheme = colorScheme,
-                                    onEditOverview = { onNavigateToEditProfile(ProfileType.PROFESSIONAL) },
-                                    onEditSpecialties = { onNavigateToEditProfile(ProfileType.PROFESSIONAL) },
-                                    onEditServiceAreas = { onNavigateToEditProfile(ProfileType.PROFESSIONAL) },
-                                    onEditBusinessDetails = { onNavigateToEditProfile(ProfileType.PROFESSIONAL) },
-                                    onEditPortfolio = { onNavigateToEditProfile(ProfileType.PROFESSIONAL) }
-                                )
-                                // ... other tabs remain the same
-                                else -> {}
+                        when (tabs[selectedTabIndex].first) {
+                            ProfileType.ACCOUNT -> AccountTabContent(
+                                accountData = accountData,
+                                userData = userData,
+                                individualProfileData = individualProfileData,
+                                organizationProfileData = organizationProfileData,
+                                verifications = verifications,
+                                primaryColor = primaryTeal,
+                                goldenAccent = goldenAccent,
+                                purpleAccent = purpleAccent,
+                                warningColor = WarningAmber,
+                                successColor = SuccessGreen,
+                                colorScheme = colorScheme,
+                                onNavigateToSettings = onNavigateToSettings,
+                                onNavigateToTeamManagement = onNavigateToTeamManagement,
+                                onNavigateToVerification = onNavigateToVerification,
+                                onNavigateToSubscription = onNavigateToSubscription,
+                                onNavigateToPaymentMethods = onNavigateToPaymentMethods,
+                                onNavigateToBillingHistory = onNavigateToBillingHistory,
+                                onNavigateToHelpCenter = onNavigateToHelpCenter,
+                                onSignOut = onSignOut,
+                                onEditPersonalInfo = { onNavigateToEditProfile(ProfileType.ACCOUNT) },
+                                onEditVerification = { onNavigateToEditProfile(ProfileType.ACCOUNT) },
+                                isGuestMode = false
+                            )
+
+                            ProfileType.JOB_SEEKER -> {
+                                if (jobSeekerProfileData != null) {
+                                    JobSeekerTabContent(
+                                        jobSeekerProfileData = jobSeekerProfileData,
+                                        primaryColor = primaryTeal,
+                                        goldenAccent = goldenAccent,
+                                        colorScheme = colorScheme,
+                                        onEditBranding = { onNavigateToEditProfile(ProfileType.JOB_SEEKER) },
+                                        onEditSkills = { onNavigateToEditProfile(ProfileType.JOB_SEEKER) },
+                                        onEditIndustries = { onNavigateToEditProfile(ProfileType.JOB_SEEKER) },
+                                        onEditPreferences = { onNavigateToEditProfile(ProfileType.JOB_SEEKER) },
+                                        onEditWorkAuth = { onNavigateToEditProfile(ProfileType.JOB_SEEKER) },
+                                        onEditCV = { onNavigateToEditProfile(ProfileType.JOB_SEEKER) }
+                                    )
+                                } else {
+                                    EmptyProfileState(
+                                        title = "Looking for Job?",
+                                        description = "Create a job seeker profile to find your dream job. Companies are looking for talent like you!",
+                                        lottieAsset = "lottie/job_search.json",
+                                        primaryColor = primaryTeal,
+                                        onCreateClick = { onNavigateToEditProfile(ProfileType.JOB_SEEKER) }
+                                    )
+                                }
                             }
-                        } else {
-                            // Empty state for guest mode
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    Icons.Default.PersonOutline,
-                                    contentDescription = null,
-                                    tint = colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(64.dp)
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "Sign in to view your profile",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Create an account or log in to access your personal information, listings, and more.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center
-                                )
+
+                            ProfileType.PROFESSIONAL -> {
+                                if (professionalProfileData != null) {
+                                    ProfessionalTabContent(
+                                        professionalProfileData = professionalProfileData,
+                                        primaryColor = primaryTeal,
+                                        goldenAccent = goldenAccent,
+                                        colorScheme = colorScheme,
+                                        onEditOverview = { onNavigateToEditProfile(ProfileType.PROFESSIONAL) },
+                                        onEditSpecialties = { onNavigateToEditProfile(ProfileType.PROFESSIONAL) },
+                                        onEditServiceAreas = { onNavigateToEditProfile(ProfileType.PROFESSIONAL) },
+                                        onEditBusinessDetails = { onNavigateToEditProfile(ProfileType.PROFESSIONAL) },
+                                        onEditPortfolio = { onNavigateToEditProfile(ProfileType.PROFESSIONAL) }
+                                    )
+                                } else {
+                                    EmptyProfileState(
+                                        title = "Offer Your Services?",
+                                        description = "Showcase your skills and start offering your professional services to clients.",
+                                        lottieAsset = "lottie/professional.json",
+                                        primaryColor = primaryTeal,
+                                        onCreateClick = { onNavigateToEditProfile(ProfileType.PROFESSIONAL) }
+                                    )
+                                }
                             }
+
+                            ProfileType.AGENT -> {
+                                if (agentProfileData != null) {
+                                    AgentTabContent(
+                                        agentProfileData = agentProfileData,
+                                        primaryColor = primaryTeal,
+                                        goldenAccent = goldenAccent,
+                                        colorScheme = colorScheme,
+                                        onEditOverview = { onNavigateToEditProfile(ProfileType.AGENT) },
+                                        onEditSpecializations = { onNavigateToEditProfile(ProfileType.AGENT) },
+                                        onEditLicense = { onNavigateToEditProfile(ProfileType.AGENT) },
+                                        onEditServiceAreas = { onNavigateToEditProfile(ProfileType.AGENT) },
+                                        onEditCommission = { onNavigateToEditProfile(ProfileType.AGENT) },
+                                        onEditContact = { onNavigateToEditProfile(ProfileType.AGENT) }
+                                    )
+                                } else {
+                                    EmptyProfileState(
+                                        title = "Work as Agent?",
+                                        description = "Create an agent profile to help people find properties, jobs, or other services.",
+                                        lottieAsset = "lottie/agent.json",
+                                        primaryColor = primaryTeal,
+                                        onCreateClick = { onNavigateToEditProfile(ProfileType.AGENT) }
+                                    )
+                                }
+                            }
+
+                            ProfileType.EMPLOYER -> {
+                                if (employerProfileData != null) {
+                                    EmployerTabContent(
+                                        employerProfileData = employerProfileData,
+                                        primaryColor = primaryTeal,
+                                        goldenAccent = goldenAccent,
+                                        colorScheme = colorScheme,
+                                        onEditOverview = { onNavigateToEditProfile(ProfileType.EMPLOYER) },
+                                        onEditDescription = { onNavigateToEditProfile(ProfileType.EMPLOYER) },
+                                        onEditPreferences = { onNavigateToEditProfile(ProfileType.EMPLOYER) }
+                                    )
+                                } else {
+                                    EmptyProfileState(
+                                        title = "Hiring?",
+                                        description = "Post jobs and find the best talent for your company.",
+                                        lottieAsset = "lottie/employer.json",
+                                        primaryColor = primaryTeal,
+                                        onCreateClick = { onNavigateToEditProfile(ProfileType.EMPLOYER) }
+                                    )
+                                }
+                            }
+
+                            ProfileType.PROPERTY_OWNER -> {
+                                if (propertyOwnerProfileData != null) {
+                                    PropertyOwnerTabContent(
+                                        propertyOwnerProfileData = propertyOwnerProfileData,
+                                        primaryColor = primaryTeal,
+                                        goldenAccent = goldenAccent,
+                                        colorScheme = colorScheme,
+                                        onEditOverview = { onNavigateToEditProfile(ProfileType.PROPERTY_OWNER) },
+                                        onEditProfessionalDetails = { onNavigateToEditProfile(ProfileType.PROPERTY_OWNER) },
+                                        onEditPreferences = { onNavigateToEditProfile(ProfileType.PROPERTY_OWNER) }
+                                    )
+                                } else {
+                                    EmptyProfileState(
+                                        title = "List Properties?",
+                                        description = "List your properties for rent or sale and connect with potential tenants or buyers.",
+                                        lottieAsset = "lottie/property_owner.json",
+                                        primaryColor = primaryTeal,
+                                        onCreateClick = { onNavigateToEditProfile(ProfileType.PROPERTY_OWNER) }
+                                    )
+                                }
+                            }
+
+                            ProfileType.PROPERTY_SEEKER -> {
+                                if (propertySeekerProfileData != null) {
+                                    PropertySeekerTabContent(
+                                        propertySeekerProfileData = propertySeekerProfileData,
+                                        primaryColor = primaryTeal,
+                                        goldenAccent = goldenAccent,
+                                        colorScheme = colorScheme,
+                                        onEditHousing = { onNavigateToEditProfile(ProfileType.PROPERTY_SEEKER) },
+                                        onEditLocation = { onNavigateToEditProfile(ProfileType.PROPERTY_SEEKER) },
+                                        onEditMoveIn = { onNavigateToEditProfile(ProfileType.PROPERTY_SEEKER) },
+                                        onEditHousehold = { onNavigateToEditProfile(ProfileType.PROPERTY_SEEKER) }
+                                    )
+                                } else {
+                                    EmptyProfileState(
+                                        title = "Looking for House?",
+                                        description = "Tell us what you're looking for and find your perfect home.",
+                                        lottieAsset = "lottie/housing_seeker.json",
+                                        primaryColor = primaryTeal,
+                                        onCreateClick = { onNavigateToEditProfile(ProfileType.PROPERTY_SEEKER) }
+                                    )
+                                }
+                            }
+
+                            ProfileType.SERVICE_PROVIDER -> {
+                                if (serviceProviderProfileData != null) {
+                                    ServiceProviderTabContent(
+                                        serviceProviderProfileData = serviceProviderProfileData,
+                                        primaryColor = primaryTeal,
+                                        goldenAccent = goldenAccent,
+                                        colorScheme = colorScheme,
+                                        onEditOverview = { onNavigateToEditProfile(ProfileType.SERVICE_PROVIDER) },
+                                        onEditServices = { onNavigateToEditProfile(ProfileType.SERVICE_PROVIDER) },
+                                        onEditBeneficiaries = { onNavigateToEditProfile(ProfileType.SERVICE_PROVIDER) },
+                                        onEditAreas = { onNavigateToEditProfile(ProfileType.SERVICE_PROVIDER) },
+                                        onEditContact = { onNavigateToEditProfile(ProfileType.SERVICE_PROVIDER) }
+                                    )
+                                } else {
+                                    EmptyProfileState(
+                                        title = "Support Services?",
+                                        description = "Offer support services to those in need.",
+                                        lottieAsset = "lottie/service_provider.json",
+                                        primaryColor = primaryTeal,
+                                        onCreateClick = { onNavigateToEditProfile(ProfileType.SERVICE_PROVIDER) }
+                                    )
+                                }
+                            }
+
+                            ProfileType.BENEFICIARY -> {
+                                if (beneficiaryProfileData != null) {
+                                    BeneficiaryTabContent(
+                                        beneficiaryProfileData = beneficiaryProfileData,
+                                        primaryColor = primaryTeal,
+                                        goldenAccent = goldenAccent,
+                                        colorScheme = colorScheme,
+                                        onEditNeeds = { onNavigateToEditProfile(ProfileType.BENEFICIARY) },
+                                        onEditHousehold = { onNavigateToEditProfile(ProfileType.BENEFICIARY) },
+                                        onEditLocation = { onNavigateToEditProfile(ProfileType.BENEFICIARY) },
+                                        onEditPrivacy = { onNavigateToEditProfile(ProfileType.BENEFICIARY) }
+                                    )
+                                } else {
+                                    EmptyProfileState(
+                                        title = "Need Support?",
+                                        description = "Create a profile to receive support and assistance.",
+                                        lottieAsset = "lottie/beneficiary.json",
+                                        primaryColor = primaryTeal,
+                                        onCreateClick = { onNavigateToEditProfile(ProfileType.BENEFICIARY) }
+                                    )
+                                }
+                            }
+
+                            else -> {}
                         }
-
                         Spacer(modifier = Modifier.height(40.dp))
                     }
                 }
@@ -601,342 +1342,6 @@ fun mockGuestAccountData(): AccountData {
         createdAt = "",
         updatedAt = ""
     )
-}
-
-
-
-// ==================== PROFILE HEADER - exactly like Dashboard ====================
-
-@Composable
-fun ProfileHeroHeader(
-    primaryColor: Color,
-    accentColor: Color,
-    height: Dp,
-    collapseFraction: Float,
-    userName: String,
-    userEmail: String,
-    isVerified: Boolean,
-    titlesDisplay: String,
-    profileImage: String?,
-    onEditProfileClick: () -> Unit,
-    colorScheme: ColorScheme,
-    isWide: Boolean,
-    isGuestMode: Boolean = false,  // Add this parameter
-    modifier: Modifier = Modifier
-) {
-    val collapsed = collapseFraction > 0.85f
-
-    val maxFontSize = if (isWide) 40.sp else 32.sp
-    val minFontSize = if (isWide) 28.sp else 22.sp
-
-    val backgroundColor by animateColorAsState(
-        targetValue = if (collapsed) primaryColor.copy(alpha = 0.95f) else Color.Transparent,
-        animationSpec = tween(durationMillis = 300)
-    )
-
-    val titleFontSize = ((maxFontSize.value - collapseFraction * (maxFontSize.value - minFontSize.value))).sp
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height),
-        shadowElevation = if (collapsed) 4.dp else 0.dp
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            // Background image (visible when expanded) - hide for guest mode
-            if (!isGuestMode) {
-                AnimatedVisibility(
-                    visible = !collapsed,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(R.drawable.dashbaordd)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
-
-            // Background color animation
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(backgroundColor)
-            )
-
-            // Gradient overlay (visible when expanded) - hide for guest mode
-            if (!isGuestMode) {
-                AnimatedVisibility(
-                    visible = !collapsed,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        primaryColor.copy(0.9f),
-                                        primaryColor.copy(0.6f),
-                                        Color.Transparent
-                                    )
-                                )
-                            )
-                    )
-                }
-            }
-
-            // Top row with avatar and icons (visible when expanded)
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-            ) {
-                AnimatedVisibility(
-                    visible = !collapsed,
-                    enter = fadeIn() + slideInVertically(),
-                    exit = fadeOut() + slideOutVertically()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp, start = 16.dp, end = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box {
-                                HeaderAvatarProfile(profileImage, colorScheme, isGuestMode)
-                                if (!isGuestMode) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(10.dp)
-                                            .background(colorScheme.tertiary, CircleShape)
-                                            .border(1.5.dp, primaryColor, CircleShape)
-                                            .align(Alignment.BottomEnd)
-                                    )
-                                }
-                            }
-
-                            Spacer(Modifier.width(8.dp))
-
-                            Column {
-                                Text(
-                                    userName,
-                                    color = if (isGuestMode) primaryColor else Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    if (isGuestMode) "Sign in for full access" else titlesDisplay,
-                                    color = if (isGuestMode) primaryColor.copy(0.7f) else Color.White.copy(0.85f),
-                                    fontSize = 11.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            HeaderActionIconProfile(
-                                icon = Icons.Rounded.Edit,
-                                iconTint = if (isGuestMode) primaryColor else Color.White,
-                                backgroundTint = if (isGuestMode) primaryColor.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f),
-                                size = if (isWide) 44.dp else 36.dp,
-                                onClick = onEditProfileClick
-                            )
-                        }
-                    }
-                }
-
-                if (!collapsed) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-
-            if (collapsed) {
-                // Collapsed header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.CenterStart)
-                        .padding(start = 16.dp, end = 16.dp)
-                        .offset(y = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .background(
-                                    if (isVerified && !isGuestMode) accentColor else colorScheme.surface.copy(0.3f),
-                                    CircleShape
-                                )
-                                .padding(2.dp)
-                                .clip(CircleShape)
-                                .background(colorScheme.surface),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (profileImage != null && !isGuestMode) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(profileImage)
-                                        .crossfade(true)
-                                        .build(),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize(),
-                                    error = painterResource(id = R.drawable.ic_launcher_background)
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Default.Person,
-                                    null,
-                                    tint = if (isGuestMode) primaryColor else colorScheme.onSurface,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
-                            Text(
-                                text = userName,
-                                color = if (isGuestMode) primaryColor else colorScheme.onPrimary,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1
-                            )
-                            Text(
-                                text = if (isGuestMode) "Guest" else titlesDisplay,
-                                color = if (isGuestMode) primaryColor.copy(0.7f) else colorScheme.onPrimary.copy(0.8f),
-                                fontSize = 11.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "Profile",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            color = if (isGuestMode) primaryColor else Color.White,
-                            fontWeight = FontWeight.Black,
-                            fontSize = titleFontSize
-                        )
-                    )
-                }
-            } else {
-                // Expanded header - centered content
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 16.dp, bottom = 24.dp)
-                        .statusBarsPadding()
-                ) {
-                    Text(
-                        text = "Profile",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            color = if (isGuestMode) primaryColor else Color.White,
-                            fontWeight = FontWeight.Black,
-                            fontSize = titleFontSize
-                        )
-                    )
-
-                    Text(
-                        text = if (isGuestMode) "Sign in to access your account" else "Manage your identity",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = if (isGuestMode) primaryColor.copy(0.8f) else Color.White.copy(0.9f),
-                            fontSize = 14.sp
-                        ),
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun HeaderAvatarProfile(
-    profileImage: String?,
-    colorScheme: ColorScheme,
-    isGuestMode: Boolean = false
-) {
-    Box(
-        modifier = Modifier
-            .size(36.dp)
-            .background(colorScheme.onSurface.copy(0.2f), CircleShape)
-            .border(1.5.dp, colorScheme.onSurface.copy(0.5f), CircleShape)
-            .clip(CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        if (profileImage != null && !isGuestMode) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(profileImage)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = "Profile Avatar",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-                error = painterResource(id = R.drawable.ic_launcher_background)
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Default.PersonOutline,
-                contentDescription = "User Avatar",
-                tint = colorScheme.onSurface,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun HeaderActionIconProfile(
-    icon: ImageVector,
-    iconTint: Color = MaterialTheme.colorScheme.onSurface,
-    backgroundTint: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-    size: Dp = 40.dp,
-    onClick: () -> Unit
-) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.size(size)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(size * 0.8f)
-                .background(backgroundTint, CircleShape)
-                .clip(CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(size * 0.4f)
-            )
-        }
-    }
 }
 
 // ==================== TAB 1: ACCOUNT ====================
@@ -4029,4 +4434,80 @@ fun mockReviews(): List<Review> {
         Review("2", "John Mburu", "", 4.5f, "Good quality work. Would recommend.", "1 week ago"),
         Review("3", "Mary Wanjiku", "", 5.0f, "Fixed our electrical issues quickly. Fair pricing.", "2 weeks ago")
     )
+}
+
+// ==================== EMPTY PROFILE STATE ====================
+
+@Composable
+fun EmptyProfileState(
+    title: String,
+    description: String,
+    lottieAsset: String,
+    primaryColor: Color,
+    onCreateClick: () -> Unit
+) {
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.Asset(lottieAsset)
+    )
+
+    // Track if composition failed to load
+    var loadFailed by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        if (composition != null && !loadFailed) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier.size(200.dp)
+            )
+        } else {
+            // Fallback to icon when Lottie file is missing
+            Icon(
+                imageVector = Icons.Default.Animation,
+                contentDescription = null,
+                modifier = Modifier.size(120.dp),
+                tint = primaryColor.copy(alpha = 0.5f)
+            )
+            LaunchedEffect(Unit) {
+                if (composition == null) {
+                    loadFailed = true
+                    println("⚠️ Lottie file not found: $lottieAsset")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onCreateClick,
+            colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Create Profile", color = Color.White)
+        }
+    }
 }

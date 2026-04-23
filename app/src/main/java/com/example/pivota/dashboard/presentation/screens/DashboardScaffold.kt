@@ -194,8 +194,31 @@ fun DashboardScaffold(
         if (!isGuestMode && accessToken != null) {
             dashboardViewModel.startTokenRefresh()
             println("🔄 Token auto-refresh started")
+
+            // Optionally, check token validity on start
+            val isValid = dashboardViewModel.isTokenValid()
+            if (!isValid) {
+                println("⚠️ Token may be invalid, attempting refresh...")
+                dashboardViewModel.refreshTokenNow()
+            }
         }
     }
+
+    LaunchedEffect(Unit) {
+        dashboardViewModel.logoutEvent.collect {
+            println("🚨 Logout event received, navigating to login...")
+            // Navigate to login screen
+            // You might want to emit an event to your navigation controller
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        dashboardViewModel.networkErrorEvent.collect { errorMessage ->
+            println("⚠️ Network error: $errorMessage")
+            // Show a snackbar or banner
+        }
+    }
+
 
     // Log user info if available
     LaunchedEffect(user, accessToken) {

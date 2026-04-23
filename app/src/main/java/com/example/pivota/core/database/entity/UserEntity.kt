@@ -33,6 +33,19 @@ data class UserEntity(
     val organizationUuid: String? = null,
     val planSlug: String? = null,
     val tokenId: String? = null,
+    // Profile-specific data (stored as JSON strings)
+    val jobSeekerPreferences: String? = null,           // JSON representation of JobSeekerPreferences
+    val skilledProfessionalProfile: String? = null,     // JSON representation of SkilledProfessionalProfile
+    val intermediaryAgentProfile: String? = null,       // JSON representation of IntermediaryAgentProfile
+    val housingSeekerPreferences: String? = null,       // JSON representation of HousingSeekerPreferences
+    val supportBeneficiaryNeeds: String? = null,        // JSON representation of SupportBeneficiaryNeeds
+    val employerRequirements: String? = null,           // JSON representation of EmployerRequirements
+    val propertyOwnerPortfolio: String? = null,         // JSON representation of PropertyOwnerPortfolio
+    // Organization-specific data
+    val organizationProfile: String? = null,            // JSON representation of OrganizationProfile
+    val individualProfile: String? = null,              // JSON representation of IndividualProfile
+    val verifications: String? = null,                  // JSON representation of List<VerificationItem>
+    val profileCompletion: String? = null,              // JSON representation of ProfileCompletion
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 ) {

@@ -3,8 +3,8 @@ package com.example.pivota.dashboard.presentation.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pivota.R
-import com.example.pivota.dashboard.domain.EmployerType
-import com.example.pivota.dashboard.domain.ListingStatus
+import com.example.pivota.dashboard.domain.model.EmployerType
+import com.example.pivota.dashboard.domain.model.ListingStatus
 import com.example.pivota.dashboard.presentation.state.JobListingUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

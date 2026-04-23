@@ -1,4 +1,4 @@
-package com.example.pivota.dashboard.domain
+package com.example.pivota.dashboard.domain.model
 
 enum class ListingStatus {
     ACTIVE,

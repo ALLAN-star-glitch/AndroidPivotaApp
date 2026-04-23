@@ -14,4 +14,5 @@ data class AuthUseCases(
     val googleSignIn: GoogleSignInUseCase,
     val hasSeenWelcome: HasSeenWelcomeUseCase,
     val setWelcomeSeen: SetWelcomeSeenUseCase
+
 )

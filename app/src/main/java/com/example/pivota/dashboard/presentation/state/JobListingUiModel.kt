@@ -1,7 +1,7 @@
 package com.example.pivota.dashboard.presentation.state
 
-import com.example.pivota.dashboard.domain.EmployerType
-import com.example.pivota.dashboard.domain.ListingStatus
+import com.example.pivota.dashboard.domain.model.EmployerType
+import com.example.pivota.dashboard.domain.model.ListingStatus
 
 data class JobListingUiModel(
     val id: String,

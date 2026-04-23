@@ -137,4 +137,6 @@ dependencies {
 
     // Source: https://mvnrepository.com/artifact/com.auth0/java-jwt
     implementation("com.auth0:java-jwt:4.5.1")
+
+    implementation("com.airbnb.android:lottie-compose:6.4.0")
 }
