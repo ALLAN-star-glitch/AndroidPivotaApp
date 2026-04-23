@@ -71,14 +71,9 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                     navController.navigate(OnboardingFlow)
                 },
                 onNavigateToContinueWithGoogle = {
-                    coroutineScope.launch {
-                        onboardingDataStore.setOnboardingComplete(true)
-                        // Save guest mode flag
-                        onboardingDataStore.saveGuestModeEnabled(true)
-                    }
-                    navController.navigate(GuestDashboard) {
-                        popUpTo(Welcome) { inclusive = true }
-                    }
+                    // Google Login - this is a REAL login, not guest mode
+                    // Navigate to Google login flow
+                    navController.navigate(AuthFlow)  // Or a dedicated Google login screen
                 },
                 onNavigateToLogin = {
                     navController.navigate(AuthFlow)

@@ -225,12 +225,7 @@ fun DashboardScaffold(
     val isTablet = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED ||
             windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
 
-    // Filter routes based on guest mode
-    val visibleRoutes = if (isGuestMode) {
-        topLevelRoutes.filter { !it.requiresAuth }
-    } else {
-        topLevelRoutes
-    }
+    val visibleRoutes = topLevelRoutes
 
     // For tablets, use NavigationRail instead of NavigationBar
     if (isTablet) {
@@ -1023,6 +1018,7 @@ private fun TabletNavHost(
 
 // Main Screen Scaffold with Bottom Navigation
 @OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun MainScreenScaffold(
     navController: NavHostController,
@@ -1043,7 +1039,6 @@ fun MainScreenScaffold(
             NavigationBar(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding()
             ) {
                 visibleRoutes.forEach { route ->
                     val isSelected = currentDestination?.hierarchy?.any {
@@ -1094,24 +1089,25 @@ fun MainScreenScaffold(
             }
         },
         floatingActionButtonPosition = FabPosition.End,
-                contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { innerPadding ->
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) {  _ -> // Suppress the warning with @Suppress annotation on the function
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding(),
-                    bottom = 0.dp )
         ) {
             // Main content
             content()
 
-            // ✅ Snackbar INSIDE the Box - positioned at bottom
+            // Snackbar positioned at bottom with small padding
             if (showWelcomeSnackbar && welcomeMessage.isNotBlank()) {
                 PivotaSnackbar(
                     message = welcomeMessage,
                     type = snackbarType,
-                    duration = 3000L,  // Reduced to 3 seconds
-                    onDismiss = onSnackbarDismiss
+                    duration = 3000L,
+                    onDismiss = onSnackbarDismiss,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp)
                 )
             }
         }

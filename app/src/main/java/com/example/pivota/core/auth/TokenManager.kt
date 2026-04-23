@@ -35,6 +35,10 @@ class TokenManager @Inject constructor(
     private val _logoutEvent = MutableSharedFlow<Unit>()
     val logoutEvent: SharedFlow<Unit> = _logoutEvent.asSharedFlow()
 
+    // Emit network error events (for UI to show banner if needed)
+    private val _networkErrorEvent = MutableSharedFlow<String>()
+    val networkErrorEvent: SharedFlow<String> = _networkErrorEvent.asSharedFlow()
+
     companion object {
         private const val REFRESH_INTERVAL_MS = 12 * 60 * 1000L // 12 minutes
         private const val RETRY_COOLDOWN_MS = 60 * 1000L // 1 minute cooldown between retries
@@ -54,7 +58,7 @@ class TokenManager @Inject constructor(
                 refreshTokenIfNeeded()
             }
         }
-        println("🔄 Token auto-refresh started")
+        println("🔄 [TokenManager] Token auto-refresh started")
     }
 
     // Stop automatic refresh (call on logout)
@@ -62,8 +66,11 @@ class TokenManager @Inject constructor(
         refreshJob?.cancel()
         refreshJob = null
         consecutiveFailures = 0
-        println("🔄 Token auto-refresh stopped")
+        println("🔄 [TokenManager] Token auto-refresh stopped")
     }
+
+    // Check if auto-refresh is running
+    fun isAutoRefreshActive(): Boolean = refreshJob?.isActive == true
 
     // Check and refresh if needed
     suspend fun refreshTokenIfNeeded(): Boolean {
@@ -74,7 +81,7 @@ class TokenManager @Inject constructor(
             // Check cooldown to prevent rapid retries
             val timeSinceLastAttempt = System.currentTimeMillis() - lastRefreshAttempt
             if (timeSinceLastAttempt < RETRY_COOLDOWN_MS && consecutiveFailures > 0) {
-                println("⚠️ Skipping refresh - too soon after failure (${timeSinceLastAttempt}ms)")
+                println("⚠️ [TokenManager] Skipping refresh - too soon after failure (${timeSinceLastAttempt}ms)")
                 return false
             }
 
@@ -100,7 +107,7 @@ class TokenManager @Inject constructor(
                     // Save new tokens with timestamp
                     dataStore.saveTokensWithTimestamp(newAccessToken, newRefreshToken)
 
-                    println("✅ Token refreshed successfully")
+                    println("✅ [TokenManager] Token refreshed successfully")
                     true
                 }
 
@@ -122,34 +129,46 @@ class TokenManager @Inject constructor(
 
         // Check if it's an authentication error (refresh token invalid/expired)
         if (isAuthenticationError(result)) {
-            println("❌ Refresh token invalid/expired - forcing immediate logout")
+            println("❌ [TokenManager] Refresh token invalid/expired - forcing immediate logout")
             forceLogout()
             return
         }
 
         // Check if it's a network error
         if (isNetworkError(result)) {
-            println("⚠️ Network error during refresh - will retry later")
+            println("⚠️ [TokenManager] Network/connection issue during refresh - will retry later")
+            println("   Message: $errorMessage")
             // Don't count network errors towards failure limit
+            // Emit network error for UI (optional - can show banner)
+            _networkErrorEvent.emit(errorMessage)
             return
         }
 
         // Server or other errors - count towards failure limit
         consecutiveFailures++
-        println("❌ Token refresh failed ($consecutiveFailures/$MAX_CONSECUTIVE_FAILURES): $errorMessage")
+        println("❌ [TokenManager] Token refresh failed ($consecutiveFailures/$MAX_CONSECUTIVE_FAILURES): $errorMessage")
 
         if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-            println("🚨 Max consecutive failures reached - forcing logout")
+            println("🚨 [TokenManager] Max consecutive failures reached - forcing logout")
             forceLogout()
         }
     }
 
     private suspend fun handleRefreshException(e: Exception) {
+        val errorMessage = e.message ?: "Unknown error"
+
+        // Check if it's a network-related exception
+        if (isNetworkException(e)) {
+            println("⚠️ [TokenManager] Network exception during refresh: $errorMessage")
+            _networkErrorEvent.emit("Connection issue. Will retry automatically.")
+            return
+        }
+
         consecutiveFailures++
-        println("❌ Token refresh exception ($consecutiveFailures/$MAX_CONSECUTIVE_FAILURES): ${e.message}")
+        println("❌ [TokenManager] Token refresh exception ($consecutiveFailures/$MAX_CONSECUTIVE_FAILURES): $errorMessage")
 
         if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-            println("🚨 Max consecutive failures reached - forcing logout")
+            println("🚨 [TokenManager] Max consecutive failures reached - forcing logout")
             forceLogout()
         }
     }
@@ -169,7 +188,18 @@ class TokenManager @Inject constructor(
                 message.contains("connection") ||
                 message.contains("timeout") ||
                 message.contains("unable to connect") ||
-                message.contains("no internet")
+                message.contains("no internet") ||
+                message.contains("failed to connect") ||
+                message.contains("connection refused")
+    }
+
+    private fun isNetworkException(e: Exception): Boolean {
+        val message = e.message?.lowercase() ?: ""
+        return message.contains("connect") ||
+                message.contains("timeout") ||
+                message.contains("network") ||
+                message.contains("socket") ||
+                message.contains("host")
     }
 
     private suspend fun forceLogout() {
@@ -186,7 +216,7 @@ class TokenManager @Inject constructor(
         // Emit logout event to trigger navigation to login screen
         _logoutEvent.emit(Unit)
 
-        println("🚨 User forcefully logged out due to token refresh failures")
+        println("🚨 [TokenManager] User forcefully logged out due to token refresh failures")
     }
 
     // Get valid token (auto-refresh if needed)
@@ -204,17 +234,34 @@ class TokenManager @Inject constructor(
         return hasTokens
     }
 
+    // Check if user has a valid session (non-suspend version for quick checks)
+    fun hasValidSessionSync(): Boolean {
+        // Note: This is a simplified version - use with caution
+        // For accurate results, use the suspend version
+        return true // Placeholder - implement if needed
+    }
+
     // Clear session on logout
     suspend fun clearSession() {
         stopAutoRefresh()
         dataStore.clearSession()
         dataStore.clearGuestMode()
         consecutiveFailures = 0
-        println("🔐 Session cleared manually")
+        println("🔐 [TokenManager] Session cleared manually")
     }
 
-    // In TokenManager.kt
+    // Get token age
     suspend fun getTokenAge(): Long {
         return dataStore.getTokenAge()
+    }
+
+    // Get current access token (without refresh check)
+    suspend fun getCurrentToken(): String? {
+        return dataStore.getAccessToken()
+    }
+
+    // Get current refresh token
+    suspend fun getCurrentRefreshToken(): String? {
+        return dataStore.getRefreshToken()
     }
 }

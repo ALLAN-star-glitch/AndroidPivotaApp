@@ -266,7 +266,7 @@ fun AnimatedLogo() {
             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
     ) {
         AsyncImage(
-            model = R.drawable.transparentpivlogo,
+            model = R.drawable.pivotcntlogotransp,
             contentDescription = "PivotaConnect Logo",
             modifier = Modifier
                 .fillMaxSize()
