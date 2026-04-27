@@ -1,12 +1,3 @@
-/**
- * Dependency Injection module for network operations.
- * * Provides a singleton [HttpClient] configured via [KtorClientFactory].
- * This client serves as the primary engine for:
- * - **API Communication**: Handling registration, OTP verification, and login.
- * - **Backend Integration**: Supporting both Individual and Organization
- * workflows with standardized engine configurations (logging, serialization, etc.).
- */
-
 package com.example.pivota.core.di
 
 import com.example.pivota.core.network.KtorClientFactory
@@ -24,6 +15,18 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideKtorClient(): HttpClient {
+        // Wait for initialization with retry
+        var attempts = 0
+        while (!KtorClientFactory.isInitialized() && attempts < 30) {
+            try {
+                Thread.sleep(100)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                break
+            }
+            attempts++
+        }
+
         return KtorClientFactory.build()
     }
 }

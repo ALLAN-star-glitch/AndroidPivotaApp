@@ -296,10 +296,18 @@ class AuthRepositoryImpl @Inject constructor(
 
     /**
      * Extract user information from JWT token
-     * JWT format: header.payload.signature
-     * Payload is Base64Url encoded JSON
+     * Updated for new JWT payload structure:
+     * - sub (userUuid)
+     * - jti (tokenId)
+     * - iat (issued at)
+     * - exp (expiration)
+     * - email
+     * - accountId
+     * - role
+     * - accountType
+     * - organizationUuid
      */
-    private fun extractUserFromToken(
+    private suspend fun extractUserFromToken(
         email: String,
         accessToken: String,
         refreshToken: String?
@@ -324,53 +332,62 @@ class AuthRepositoryImpl @Inject constructor(
             val jsonElement = Json.parseToJsonElement(payloadJson)
             val jsonObject = jsonElement.jsonObject
 
-            // Extract fields from JWT payload (matching backend JwtPayload interface)
-            val userUuid = jsonObject["userUuid"]?.jsonPrimitive?.contentOrNull ?: ""
-            val userName = jsonObject["userName"]?.jsonPrimitive?.contentOrNull ?: ""
+            // ✅ UPDATED: Extract fields from new JWT payload structure
+            val userUuid = jsonObject["sub"]?.jsonPrimitive?.contentOrNull ?: ""           // NEW: sub instead of userUuid
+            val tokenId = jsonObject["jti"]?.jsonPrimitive?.contentOrNull ?: ""            // NEW: jti instead of tokenId
+            val emailFromToken = jsonObject["email"]?.jsonPrimitive?.contentOrNull ?: email
             val accountId = jsonObject["accountId"]?.jsonPrimitive?.contentOrNull ?: ""
-            val accountName = jsonObject["accountName"]?.jsonPrimitive?.contentOrNull ?: ""
+            val role = jsonObject["role"]?.jsonPrimitive?.contentOrNull ?: "GeneralUser"
             val accountType = jsonObject["accountType"]?.jsonPrimitive?.contentOrNull
-            val tokenId = jsonObject["tokenId"]?.jsonPrimitive?.contentOrNull ?: ""
-            val role = jsonObject["role"]?.jsonPrimitive?.contentOrNull
             val organizationUuid = jsonObject["organizationUuid"]?.jsonPrimitive?.contentOrNull
-            val planSlug = jsonObject["planSlug"]?.jsonPrimitive?.contentOrNull
 
-            // Extract first name and last name from userName if available
-            val firstName = jsonObject["firstName"]?.jsonPrimitive?.contentOrNull
-                ?: userName.split(" ").firstOrNull()
-                ?: ""
-            val lastName = jsonObject["lastName"]?.jsonPrimitive?.contentOrNull
-                ?: userName.split(" ").drop(1).joinToString(" ")
+            // ❌ REMOVED/Deprecated fields (no longer in JWT)
+            // These need to be fetched from Profile Service or stored separately
+            // - userName (not in JWT)
+            // - accountName (not in JWT)
+            // - firstName (not in JWT)
+            // - lastName (not in JWT)
+            // - planSlug (not in JWT)
 
-            println("🔍 [JWT Decoded]")
-            println("   - userUuid: $userUuid")
-            println("   - userName: $userName")
+            println("🔍 [JWT Decoded - New Structure]")
+            println("   - sub (userUuid): $userUuid")
+            println("   - jti (tokenId): $tokenId")
+            println("   - email: $emailFromToken")
             println("   - accountId: $accountId")
-            println("   - accountName: $accountName")
-            println("   - accountType: $accountType")
-            println("   - tokenId: $tokenId")
             println("   - role: $role")
+            println("   - accountType: $accountType")
             println("   - organizationUuid: $organizationUuid")
-            println("   - planSlug: $planSlug")
+
+            // Since firstName, lastName, userName are no longer in JWT,
+            // we need to get them from:
+            // 1. Previously stored user in local DB
+            // 2. Or fetch from Profile Service
+            // 3. Or use email prefix as fallback
+
+            val existingUser = userDao.getUserByEmail(emailFromToken)
+            val firstName = existingUser?.firstName ?: emailFromToken.substringBefore("@")
+            val lastName = existingUser?.lastName ?: ""
+            val userName = existingUser?.userName ?: firstName
 
             User(
                 uuid = userUuid,
-                email = email,
+                email = emailFromToken,
                 firstName = firstName,
                 lastName = lastName,
                 userName = userName,
                 accessToken = accessToken,
                 refreshToken = refreshToken,
                 isAuthenticated = true,
-                // JWT payload fields
+                // JWT payload fields (new structure)
                 userUuid = userUuid,
                 accountId = accountId,
-                accountName = accountName,
                 accountType = accountType,
                 tokenId = tokenId,
                 role = role,
                 organizationUuid = organizationUuid,
-                planSlug = planSlug
+                // Deprecated fields (not in JWT anymore)
+                accountName = existingUser?.accountName ?: "",
+                planSlug = existingUser?.planSlug
             )
         } catch (e: Exception) {
             println("🔍 [JWT Decode Error] ${e.message}")

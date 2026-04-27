@@ -3,6 +3,7 @@ package com.example.pivota.core.preferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
@@ -71,6 +72,10 @@ class PivotaDataStore @Inject constructor(
 
         private val DARK_THEME = booleanPreferencesKey("dark_theme")
 
+        private val GUEST_MODE_ENABLED = booleanPreferencesKey("guest_mode_enabled")
+
+        private val TOKEN_SAVED_AT = longPreferencesKey("token_saved_at")
+
     }
 
     // ======================================================
@@ -117,6 +122,28 @@ class PivotaDataStore @Inject constructor(
             it.remove(AUTH_TOKEN)
             it.remove(REFRESH_TOKEN)
             it.remove(USER_EMAIL)
+        }
+    }
+    suspend fun saveTokenTimestamp(timestamp: Long) {
+        dataStore.edit { it[TOKEN_SAVED_AT] = timestamp }
+    }
+
+    suspend fun getTokenAge(): Long {
+        val savedAt = dataStore.data.map { it[TOKEN_SAVED_AT] }.first() ?: 0L
+        return if (savedAt > 0) System.currentTimeMillis() - savedAt else 0L
+    }
+
+    suspend fun shouldRefreshToken(): Boolean {
+        val tokenAge = getTokenAge()
+        // Refresh if token is older than 12 minutes (before 15-minute expiry)
+        return tokenAge > 12 * 60 * 1000L
+    }
+
+    suspend fun saveTokensWithTimestamp(accessToken: String, refreshToken: String) {
+        dataStore.edit {
+            it[AUTH_TOKEN] = accessToken
+            it[REFRESH_TOKEN] = refreshToken
+            it[TOKEN_SAVED_AT] = System.currentTimeMillis()
         }
     }
 
@@ -507,6 +534,21 @@ class PivotaDataStore @Inject constructor(
     suspend fun toggleTheme() {
         val current = getDarkTheme()
         setDarkTheme(!current)
+    }
+
+
+
+
+    suspend fun saveGuestModeEnabled(enabled: Boolean) {
+        dataStore.edit { it[GUEST_MODE_ENABLED] = enabled }
+    }
+
+    suspend fun isGuestModeEnabled(): Boolean {
+        return dataStore.data.map { it[GUEST_MODE_ENABLED] ?: false }.first()
+    }
+
+    suspend fun clearGuestMode() {
+        dataStore.edit { it.remove(GUEST_MODE_ENABLED) }
     }
 
 }
