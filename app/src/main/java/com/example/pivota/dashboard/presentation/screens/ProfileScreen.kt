@@ -4450,8 +4450,18 @@ fun EmptyProfileState(
         LottieCompositionSpec.Asset(lottieAsset)
     )
 
-    // Track if composition failed to load
-    var loadFailed by remember { mutableStateOf(false) }
+    // Track if composition is ready
+    val isCompositionReady = composition != null
+
+    // Track if file is missing (after composition is determined)
+    var isFileMissing by remember { mutableStateOf(false) }
+
+    LaunchedEffect(composition) {
+        if (composition == null) {
+            isFileMissing = true
+            println("⚠️ Lottie file not found: $lottieAsset")
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -4460,54 +4470,86 @@ fun EmptyProfileState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        if (composition != null && !loadFailed) {
+        // Only show content when composition is ready
+        if (isCompositionReady) {
             LottieAnimation(
                 composition = composition,
                 iterations = LottieConstants.IterateForever,
                 modifier = Modifier.size(200.dp)
             )
-        } else {
-            // Fallback to icon when Lottie file is missing
-            Icon(
-                imageVector = Icons.Default.Animation,
-                contentDescription = null,
-                modifier = Modifier.size(120.dp),
-                tint = primaryColor.copy(alpha = 0.5f)
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
             )
-            LaunchedEffect(Unit) {
-                if (composition == null) {
-                    loadFailed = true
-                    println("⚠️ Lottie file not found: $lottieAsset")
-                }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = onCreateClick,
+                colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Create Profile", color = Color.White)
+            }
+        } else if (isFileMissing) {
+            // Only show fallback if file is confirmed missing (not while loading)
+            Box(
+                modifier = Modifier
+                    .size(200.dp)
+                    .clip(CircleShape)
+                    .background(primaryColor.copy(alpha = 0.05f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Animation,
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp),
+                    tint = primaryColor.copy(alpha = 0.5f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = onCreateClick,
+                colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Create Profile", color = Color.White)
             }
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = description,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = onCreateClick,
-            colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("Create Profile", color = Color.White)
-        }
+        // else: Show NOTHING (empty Column) while loading
     }
 }

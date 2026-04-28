@@ -21,6 +21,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.cancellation.CancellationException
 
 @Singleton
 class TokenManager @Inject constructor(
@@ -218,20 +219,27 @@ class TokenManager @Inject constructor(
     }
 
     private suspend fun handleRefreshException(e: Exception) {
-        val errorMessage = e.message ?: "Unknown error"
+        when (e) {
+            is CancellationException -> {
+                println("ℹ️ [TokenManager] Token refresh cancelled (normal during navigation)")
+                return
+            }
+            else -> {
+                // Check for network error
+                if (isNetworkException(e)) {
+                    println("⚠️ [TokenManager] Network/connection issue: ${e.message}")
+                    _networkErrorEvent.emit("Connection issue. Using cached data.")
+                    return
+                }
 
-        if (isNetworkException(e)) {
-            println("⚠️ [TokenManager] Network exception during refresh: $errorMessage")
-            _networkErrorEvent.emit("Connection issue. Will retry automatically.")
-            return
-        }
+                consecutiveFailures++
+                println("❌ [TokenManager] Token refresh exception ($consecutiveFailures/$MAX_CONSECUTIVE_FAILURES): ${e.message}")
 
-        consecutiveFailures++
-        println("❌ [TokenManager] Token refresh exception ($consecutiveFailures/$MAX_CONSECUTIVE_FAILURES): $errorMessage")
-
-        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-            println("🚨 [TokenManager] Max consecutive failures reached - forcing logout")
-            forceLogout()
+                if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+                    println("🚨 [TokenManager] Max consecutive failures reached - forcing logout")
+                    forceLogout()
+                }
+            }
         }
     }
 

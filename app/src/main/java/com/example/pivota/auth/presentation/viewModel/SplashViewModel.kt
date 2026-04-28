@@ -45,11 +45,16 @@ class SplashViewModel @Inject constructor(
                     _startDestination.value = GuestDashboard
                 }
                 hasValidSession -> {
-                    // Always go to Dashboard, even if backend is down
-                    // Try to refresh token in background without blocking
-                    tryRefreshTokenInBackground()
+                    // ✅ WAIT for token refresh to complete before navigating
+                    val refreshSuccess = refreshTokenAndWait()
 
-                    // ✅ Navigate to Dashboard immediately - don't wait for refresh
+                    if (refreshSuccess) {
+                        println("✅ [SplashViewModel] Token refreshed successfully")
+                        tokenManager.startAutoRefresh()
+                    } else {
+                        println("⚠️ [SplashViewModel] Token refresh failed - backend may be down")
+                    }
+
                     _startDestination.value = Dashboard
                 }
                 else -> {
@@ -62,25 +67,17 @@ class SplashViewModel @Inject constructor(
         }
     }
 
-    private fun tryRefreshTokenInBackground() {
-        viewModelScope.launch {
-            val tokenAge = dataStore.getTokenAge()
-            val shouldRefresh = tokenAge > 12 * 60 * 1000L
+    // ✅ New method - waits for refresh to complete
+    private suspend fun refreshTokenAndWait(): Boolean {
+        val tokenAge = dataStore.getTokenAge()
+        val shouldRefresh = tokenAge > 12 * 60 * 1000L
 
-            if (shouldRefresh) {
-                println("🔄 [Background] Attempting token refresh...")
-                val refreshSuccess = tokenManager.refreshToken()
-                if (refreshSuccess) {
-                    tokenManager.startAutoRefresh()
-                    println("✅ [Background] Token refreshed successfully")
-                } else {
-                    // ✅ Don't show error - just log it
-                    println("⚠️ [Background] Token refresh failed - backend may be down, using cached session")
-                }
-            } else {
-                println("✅ [Background] Token is still valid (${tokenAge / 1000}s old)")
-                tokenManager.startAutoRefresh()
-            }
+        if (!shouldRefresh) {
+            println("✅ [SplashViewModel] Token is still valid (${tokenAge / 1000}s old)")
+            return true
         }
+
+        println("🔄 [SplashViewModel] Token is ${tokenAge / 1000}s old, refreshing before navigation...")
+        return tokenManager.refreshToken()
     }
 }
