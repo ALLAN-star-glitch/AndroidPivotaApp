@@ -37,4 +37,15 @@ interface UserDao {
 
     @Query("DELETE FROM users")
     suspend fun deleteAll()
+
+    // NEW: Get authenticated user with complete profile
+    @Query("SELECT * FROM users WHERE isAuthenticated = 1 AND completeProfileJson IS NOT NULL LIMIT 1")
+    suspend fun getAuthenticatedUserWithProfile(): UserEntity?
+
+    // NEW: Update complete profile cache
+    @Query("UPDATE users SET completeProfileJson = :profileJson, completeProfileLastUpdated = :timestamp WHERE uuid = :userId")
+    suspend fun updateCompleteProfile(userId: String, profileJson: String, timestamp: Long)
+
+    @Query("UPDATE users SET completeProfileJson = :profileJson, completeProfileLastUpdated = :timestamp WHERE uuid = :userId")
+    suspend fun updateProfileCache(userId: String, profileJson: String, timestamp: Long)
 }

@@ -1,5 +1,8 @@
 package com.example.pivota.dashboard.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class IndividualProfile(
     val bio: String?,
     val gender: String?,

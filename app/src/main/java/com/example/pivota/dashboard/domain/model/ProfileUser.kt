@@ -1,5 +1,9 @@
 package com.example.pivota.dashboard.domain.model
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
+
+@Serializable
 data class ProfileUser(
     val id: String,
     val userCode: String,
@@ -16,8 +20,19 @@ data class ProfileUser(
     val shortName: String get() = if (firstName.isNotBlank()) firstName else email.substringBefore("@")
 }
 
+@Serializable
 enum class UserStatus {
-    ACTIVE, INACTIVE, SUSPENDED, PENDING;
+    @SerialName("ACTIVE")
+    ACTIVE,
+
+    @SerialName("INACTIVE")
+    INACTIVE,
+
+    @SerialName("SUSPENDED")
+    SUSPENDED,
+
+    @SerialName("PENDING")
+    PENDING;
 
     companion object {
         fun fromString(value: String): UserStatus = when (value.uppercase()) {

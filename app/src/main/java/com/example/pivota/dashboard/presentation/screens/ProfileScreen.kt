@@ -62,6 +62,8 @@ import com.example.pivota.dashboard.domain.model.PropertyOwnerProfile
 import com.example.pivota.dashboard.domain.model.UserStatus
 import com.example.pivota.dashboard.presentation.composables.ReusableHeader
 import com.example.pivota.dashboard.presentation.state.ProfileUiState
+import com.example.pivota.dashboard.presentation.viewmodels.DashboardSharedViewModel
+import com.example.pivota.dashboard.presentation.viewmodels.ProfileLoadState
 import com.example.pivota.dashboard.presentation.viewmodels.ProfileViewModel
 import com.example.pivota.ui.theme.*
 
@@ -80,10 +82,11 @@ fun ProfileScreen(
     onNavigateToPaymentMethods: () -> Unit = {},
     onNavigateToBillingHistory: () -> Unit = {},
     onSignOut: () -> Unit = {},
-    isGuestMode: Boolean = false
+    isGuestMode: Boolean = false,
+    sharedViewModel: DashboardSharedViewModel = hiltViewModel()
 ) {
-    val profileViewModel: ProfileViewModel = hiltViewModel()
-    val profileState by profileViewModel.profileState.collectAsState()
+
+    val profileState by sharedViewModel.profileState.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
 
     if (isGuestMode) {
@@ -97,16 +100,17 @@ fun ProfileScreen(
             onNavigateToPaymentMethods = onNavigateToPaymentMethods,
             onNavigateToBillingHistory = onNavigateToBillingHistory,
             onSignOut = onSignOut,
-            colorScheme = colorScheme
+            colorScheme = colorScheme,
+            sharedViewModel = sharedViewModel
         )
         return
     }
 
     when (profileState) {
-        is ProfileUiState.Loading -> {
+        is ProfileLoadState.Loading -> {
             ProfileLoadingSkeleton(colorScheme = colorScheme)
         }
-        is ProfileUiState.Error -> {
+        is ProfileLoadState.Error -> {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -125,7 +129,7 @@ fun ProfileScreen(
                         color = colorScheme.error
                     )
                     Text(
-                        text = (profileState as ProfileUiState.Error).message,
+                        text = (profileState as ProfileLoadState.Error).message,
                         style = MaterialTheme.typography.bodyMedium,
                         color = colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(16.dp),
@@ -133,7 +137,7 @@ fun ProfileScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = { profileViewModel.refreshProfile() },
+                        onClick = { sharedViewModel.refreshProfile() },
                         colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary)
                     ) {
                         Text("Retry")
@@ -141,8 +145,8 @@ fun ProfileScreen(
                 }
             }
         }
-        is ProfileUiState.Success -> {
-            val profile = (profileState as ProfileUiState.Success).profile
+        is ProfileLoadState.Success -> {
+            val profile = (profileState as ProfileLoadState.Success).profile
             AuthenticatedProfileContent(
                 profile = profile,
                 onNavigateToEditProfile = onNavigateToEditProfile,
@@ -154,8 +158,18 @@ fun ProfileScreen(
                 onNavigateToPaymentMethods = onNavigateToPaymentMethods,
                 onNavigateToBillingHistory = onNavigateToBillingHistory,
                 onSignOut = onSignOut,
-                colorScheme = colorScheme
+                colorScheme = colorScheme,
+                sharedViewModel = sharedViewModel
             )
+        }
+
+        else -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Something went wrong")
+            }
         }
     }
 }
@@ -173,7 +187,8 @@ fun GuestProfileScreenContent(
     onNavigateToPaymentMethods: () -> Unit,
     onNavigateToBillingHistory: () -> Unit,
     onSignOut: () -> Unit,
-    colorScheme: ColorScheme
+    colorScheme: ColorScheme,
+    sharedViewModel: DashboardSharedViewModel = hiltViewModel()
 ) {
     val guestProfile = mockGuestProfile()
     val primaryTeal = colorScheme.primary
@@ -212,9 +227,9 @@ fun GuestProfileScreenContent(
                         colorScheme = colorScheme,
                         pageTitle = "Profile",
                         pageSubtitle = "Sign in to access your account",
-                        enhancedUser = guestProfile,
                         isGuestMode = true,
                         isSticky = false,
+                        sharedViewModel = sharedViewModel,
                         scrollOffset = scrollOffset,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -499,7 +514,8 @@ fun AuthenticatedProfileContent(
     onNavigateToPaymentMethods: () -> Unit,
     onNavigateToBillingHistory: () -> Unit,
     onSignOut: () -> Unit,
-    colorScheme: ColorScheme
+    colorScheme: ColorScheme,
+    sharedViewModel: DashboardSharedViewModel = hiltViewModel()
 ) {
     val configuration = LocalConfiguration.current
     val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
@@ -554,9 +570,9 @@ fun AuthenticatedProfileContent(
                         colorScheme = colorScheme,
                         pageTitle = "Profile",
                         pageSubtitle = "Manage your identity",
-                        enhancedUser = profile,
                         isGuestMode = false,
                         isSticky = false,
+                        sharedViewModel = sharedViewModel,
                         scrollOffset = scrollOffset,
                         modifier = Modifier
                             .fillMaxWidth()

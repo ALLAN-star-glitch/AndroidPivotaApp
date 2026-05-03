@@ -53,10 +53,10 @@ fun DiscoverScreen(
     onNavigateToAllProviders: () -> Unit = {},
     onNavigateToAllServices: () -> Unit = {},
     onNavigateToAllSupport: () -> Unit = {},
-    isGuestMode: Boolean = false
+    isGuestMode: Boolean = false,
+    sharedViewModel: DashboardSharedViewModel = hiltViewModel()
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val sharedViewModel: DashboardSharedViewModel = hiltViewModel()
     val headerState by sharedViewModel.headerState.collectAsState()
     val headerUser = (headerState as? HeaderState.Success)?.headerUser
 
@@ -147,9 +147,9 @@ fun DiscoverScreen(
                         colorScheme = colorScheme,
                         pageTitle = "PivotaConnect",
                         pageSubtitle = "Connect to opportunities near you",
-                        enhancedUser = sharedViewModel.getCurrentProfile(),
                         isGuestMode = isGuestMode,
                         isSticky = false,
+                        sharedViewModel = sharedViewModel,
                         modifier = Modifier
                             .fillMaxWidth()
                             .statusBarsPadding()

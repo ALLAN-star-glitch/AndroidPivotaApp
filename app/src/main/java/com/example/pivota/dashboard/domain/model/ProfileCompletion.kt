@@ -1,5 +1,9 @@
 package com.example.pivota.dashboard.domain.model
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
+
+@Serializable
 data class ProfileCompletion(
     val accountCompleted: Boolean,
     val profileCompleted: Int,
@@ -18,6 +22,17 @@ data class ProfileCompletion(
     }
 }
 
+@Serializable
 enum class CompletionLevel {
-    INCOMPLETE, BASIC, PARTIAL, COMPLETE
+    @SerialName("INCOMPLETE")
+    INCOMPLETE,
+
+    @SerialName("BASIC")
+    BASIC,
+
+    @SerialName("PARTIAL")
+    PARTIAL,
+
+    @SerialName("COMPLETE")
+    COMPLETE
 }

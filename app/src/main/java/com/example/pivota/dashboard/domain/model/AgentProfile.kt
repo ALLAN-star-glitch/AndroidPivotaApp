@@ -1,5 +1,9 @@
 package com.example.pivota.dashboard.domain.model
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class AgentProfile(
     val id: String,
     val agentType: AgentType,
@@ -32,8 +36,22 @@ data class AgentProfile(
     val starRating: Float get() = averageRating
 }
 
+@Serializable
 enum class AgentType {
-    HOUSING_AGENT, RECRUITMENT_AGENT, BUSINESS_BROKER, INSURANCE_AGENT, TRAVEL_AGENT;
+    @SerialName("HOUSING_AGENT")
+    HOUSING_AGENT,
+
+    @SerialName("RECRUITMENT_AGENT")
+    RECRUITMENT_AGENT,
+
+    @SerialName("BUSINESS_BROKER")
+    BUSINESS_BROKER,
+
+    @SerialName("INSURANCE_AGENT")
+    INSURANCE_AGENT,
+
+    @SerialName("TRAVEL_AGENT")
+    TRAVEL_AGENT;
 
     val displayName: String get() = when (this) {
         HOUSING_AGENT -> "Housing"
@@ -55,8 +73,25 @@ enum class AgentType {
     }
 }
 
+@Serializable
 enum class ClientType {
-    LANDLORDS, TENANTS, EMPLOYERS, JOB_SEEKERS, BUYERS, SELLERS;
+    @SerialName("LANDLORDS")
+    LANDLORDS,
+
+    @SerialName("TENANTS")
+    TENANTS,
+
+    @SerialName("EMPLOYERS")
+    EMPLOYERS,
+
+    @SerialName("JOB_SEEKERS")
+    JOB_SEEKERS,
+
+    @SerialName("BUYERS")
+    BUYERS,
+
+    @SerialName("SELLERS")
+    SELLERS;
 
     companion object {
         fun fromString(value: String): ClientType = when (value.uppercase()) {

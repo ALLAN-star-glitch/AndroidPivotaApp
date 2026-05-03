@@ -33,8 +33,9 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.core.presentations.viewmodel.ThemeViewModel
-import com.example.pivota.dashboard.domain.model.CompleteProfile
+import com.example.pivota.dashboard.presentation.viewmodels.DashboardSharedViewModel
 import com.example.pivota.dashboard.presentation.screens.ProfileMenuBottomSheet
+import com.example.pivota.dashboard.presentation.viewmodels.HeaderState
 
 @SuppressLint("Range")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,17 +44,40 @@ fun ReusableHeader(
     modifier: Modifier = Modifier,
     colorScheme: ColorScheme,
     pageTitle: String,
-    enhancedUser: CompleteProfile? = null,
     isGuestMode: Boolean = false,
     isSticky: Boolean = false,
     pageSubtitle: String? = null,
     scrollOffset: Float = 0f,
+    sharedViewModel: DashboardSharedViewModel,
     messageCount: Int = 0,
     notificationCount: Int = 0,
 ) {
     val context = LocalContext.current
-    val profileUrl = enhancedUser?.profileImageUrl?.takeIf { it.isNotBlank() }
     var showMenuBottomSheet by remember { mutableStateOf(false) }
+
+
+    // Force recomposition by adding a key that changes when headerState updates
+    val headerState by sharedViewModel.headerState.collectAsState()
+
+    // Add a derived state that forces recomposition
+    val headerUser = remember(headerState) {
+        (headerState as? HeaderState.Success)?.headerUser
+    }
+    val isLoading = headerState is HeaderState.Loading
+
+    // Add a LaunchedEffect that triggers recomposition when headerState changes
+    LaunchedEffect(headerState) {
+        println("🔍 [ReusableHeader] headerState type: ${headerState::class.simpleName}")
+        when (headerState) {
+            is HeaderState.Success -> {
+                val user = (headerState as HeaderState.Success).headerUser
+                println("🔍 [ReusableHeader] SUCCESS - name: ${user.name}, shortName: ${user.shortName}")
+            }
+            is HeaderState.Loading -> println("🔍 [ReusableHeader] LOADING")
+            is HeaderState.Error -> println("🔍 [ReusableHeader] ERROR: ${(headerState as HeaderState.Error).message}")
+            is HeaderState.AuthError -> println("🔍 [ReusableHeader] AUTH_ERROR: ${(headerState as HeaderState.AuthError).message}")
+        }
+    }
 
     // Animated rotation for dropdown icon
     val rotateAngle by animateFloatAsState(
@@ -62,38 +86,39 @@ fun ReusableHeader(
         label = "dropdown_rotation"
     )
 
-    // Get ThemeViewModel directly in the header
     val themeViewModel: ThemeViewModel = hiltViewModel()
     val isDarkTheme by themeViewModel.isDarkTheme
-
-    // Simple logic: hide title and subtitle when scrolled more than 20px
     val isScrolled = scrollOffset > 20f
 
-    // Get user info from CompleteProfile
-    val firstName = remember(enhancedUser, isGuestMode) {
-        when {
-            isGuestMode -> "Guest"
-            enhancedUser != null -> enhancedUser.user.shortName
-            else -> "Guest"
-        }
+    // Use headerUser for all data
+    val firstName = when {
+        isGuestMode -> "Guest"
+        headerUser != null -> headerUser.shortName
+        else -> "User"
     }
 
-    // Get user role directly from backend (enhancedUser.user.role)
-    val userRole = remember(enhancedUser, isGuestMode) {
-        when {
-            isGuestMode -> "Guest"
-            enhancedUser != null -> enhancedUser.user.role
-            else -> "Guest"
-        }
+    val userRole = when {
+        isGuestMode -> "Guest"
+        headerUser != null -> headerUser.role
+        else -> "Member"
     }
 
-    // Get verification badge for the header
-    val isVerified = enhancedUser?.isFullyVerified == true
+    val profileImageUrl = when {
+        isGuestMode -> null
+        headerUser != null -> headerUser.avatarUrl
+        else -> null
+    }
+
+    val isVerified = !isGuestMode && (headerUser?.isVerified == true)
+
+    // Log current values
+    LaunchedEffect(headerUser, isLoading) {
+        println("🔍 [ReusableHeader] Current values - firstName: $firstName, userRole: $userRole, isLoading: $isLoading, headerUser: ${headerUser != null}")
+    }
 
     Column(
         modifier = modifier
     ) {
-        // Profile Header Card (always visible)
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -114,7 +139,6 @@ fun ReusableHeader(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left side - Profile Avatar and User Info
                 Row(
                     modifier = Modifier.weight(1f),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -128,47 +152,67 @@ fun ReusableHeader(
                             .clickable { showMenuBottomSheet = true },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (isGuestMode || profileUrl.isNullOrBlank()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        color = colorScheme.primary.copy(alpha = 0.1f),
-                                        shape = CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Outlined.AccountCircle,
+                        when {
+                            isGuestMode -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            color = colorScheme.primary.copy(alpha = 0.1f),
+                                            shape = CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.AccountCircle,
+                                        contentDescription = "Profile",
+                                        tint = colorScheme.primary,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+                            isLoading && headerUser == null -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            color = colorScheme.surfaceVariant,
+                                            shape = CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.AccountCircle,
+                                        contentDescription = "Profile",
+                                        tint = colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+                            else -> {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(profileImageUrl)
+                                        .size(128)
+                                        .crossfade(true)
+                                        .build(),
                                     contentDescription = "Profile",
-                                    tint = colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .border(
+                                            if (isVerified) 2.dp else 0.dp,
+                                            if (isVerified) colorScheme.tertiary else Color.Transparent,
+                                            CircleShape
+                                        ),
+                                    placeholder = painterResource(R.drawable.job_placeholder3),
+                                    error = painterResource(R.drawable.job_placeholder3)
                                 )
                             }
-                        } else {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(profileUrl)
-                                    .size(128)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Profile",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                                    .border(
-                                        if (isVerified) 2.dp else 0.dp,
-                                        if (isVerified) colorScheme.tertiary else Color.Transparent,
-                                        CircleShape
-                                    ),
-                                placeholder = painterResource(R.drawable.job_placeholder3),
-                                error = painterResource(R.drawable.job_placeholder3)
-                            )
                         }
                     }
 
-                    // User Info - with proper spacing for long names
                     Column(
                         modifier = Modifier
                             .clickable { showMenuBottomSheet = true }
@@ -190,7 +234,7 @@ fun ReusableHeader(
                                 modifier = Modifier.weight(1f, fill = false),
                                 softWrap = false
                             )
-                            // Verification badge (small checkmark)
+
                             if (isVerified && !isGuestMode) {
                                 Icon(
                                     Icons.Outlined.Verified,
@@ -199,7 +243,7 @@ fun ReusableHeader(
                                     modifier = Modifier.size(14.dp)
                                 )
                             }
-                            // Rotating dropdown icon
+
                             Icon(
                                 Icons.Outlined.KeyboardArrowDown,
                                 contentDescription = "Menu",
@@ -211,6 +255,7 @@ fun ReusableHeader(
                                     }
                             )
                         }
+
                         Text(
                             text = userRole,
                             fontSize = 11.sp,
@@ -223,21 +268,16 @@ fun ReusableHeader(
                     }
                 }
 
-                // Right side - Action icons (Theme Switcher + Notifications)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 1. Theme Switcher Icon
                     HeaderActionIcon(
                         icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
                         colorScheme = colorScheme,
-                        onClick = {
-                            themeViewModel.toggleTheme()
-                        }
+                        onClick = { themeViewModel.toggleTheme() }
                     )
 
-                    // 2. Notifications Icon with count badge
                     Box {
                         HeaderActionIcon(
                             icon = Icons.Outlined.MailOutline,
@@ -248,10 +288,7 @@ fun ReusableHeader(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
                                     .offset(x = 4.dp, y = 4.dp)
-                                    .background(
-                                        color = Color.Red,
-                                        shape = CircleShape
-                                    )
+                                    .background(Color.Red, CircleShape)
                                     .padding(horizontal = 4.dp, vertical = 2.dp)
                                     .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp),
                                 contentAlignment = Alignment.Center
@@ -269,15 +306,12 @@ fun ReusableHeader(
             }
         }
 
-        // Page Title and Subtitle (hide when scrolling)
         AnimatedVisibility(
             visible = !isScrolled,
             enter = fadeIn() + slideInVertically(),
             exit = fadeOut() + slideOutVertically()
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 8.dp)
-            ) {
+            Column(modifier = Modifier.padding(horizontal = 8.dp)) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = pageTitle,
@@ -303,26 +337,15 @@ fun ReusableHeader(
         }
     }
 
-    // Profile Menu Bottom Sheet
     if (showMenuBottomSheet) {
         ProfileMenuBottomSheet(
             onDismiss = { showMenuBottomSheet = false },
             colorScheme = colorScheme,
-            onMyAccountClick = {
-                showMenuBottomSheet = false
-            },
-            onMyListingsClick = {
-                showMenuBottomSheet = false
-            },
-            onMyFavoritesClick = {
-                showMenuBottomSheet = false
-            },
-            onPostClick = {
-                showMenuBottomSheet = false
-            },
-            onLogoutClick = {
-                showMenuBottomSheet = false
-            }
+            onMyAccountClick = { showMenuBottomSheet = false },
+            onMyListingsClick = { showMenuBottomSheet = false },
+            onMyFavoritesClick = { showMenuBottomSheet = false },
+            onPostClick = { showMenuBottomSheet = false },
+            onLogoutClick = { showMenuBottomSheet = false }
         )
     }
 }

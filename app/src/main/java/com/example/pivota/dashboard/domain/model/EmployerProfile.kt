@@ -1,5 +1,8 @@
 package com.example.pivota.dashboard.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class EmployerProfile(
     val id: String,
     val companyName: String?,

@@ -1,5 +1,9 @@
 package com.example.pivota.dashboard.domain.model
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class OrganizationProfile(
     val id: String,
     val name: String,
@@ -19,7 +23,7 @@ data class OrganizationProfile(
     val hasPendingInvitations: Boolean get() = pendingInvitations.isNotEmpty()
     val memberCount: Int get() = members.size
 }
-
+@Serializable
 data class TeamMember(
     val userId: String,
     val name: String,
@@ -27,7 +31,7 @@ data class TeamMember(
     val avatarUrl: String?,
     val role: String
 )
-
+@Serializable
 data class PendingInvitation(
     val id: String,
     val email: String,
@@ -35,8 +39,19 @@ data class PendingInvitation(
     val expiresAt: String
 )
 
+@Serializable
 enum class InvitationStatus {
-    PENDING, ACCEPTED, EXPIRED, CANCELLED;
+    @SerialName("PENDING")
+    PENDING,
+
+    @SerialName("ACCEPTED")
+    ACCEPTED,
+
+    @SerialName("EXPIRED")
+    EXPIRED,
+
+    @SerialName("CANCELLED")
+    CANCELLED;
 
     companion object {
         fun fromString(value: String): InvitationStatus = when (value.uppercase()) {

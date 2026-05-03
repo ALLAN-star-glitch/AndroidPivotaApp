@@ -1,5 +1,9 @@
 package com.example.pivota.dashboard.domain.model
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class HousingSeekerProfile(
     val id: String,
     val searchType: SearchType,
@@ -40,8 +44,16 @@ data class HousingSeekerProfile(
     private fun formatMoney(amount: Double): String = String.format("%,.0f", amount)
 }
 
+@Serializable
 enum class SearchType {
-    RENT, BUY, BOTH;
+    @SerialName("RENT")
+    RENT,
+
+    @SerialName("BUY")
+    BUY,
+
+    @SerialName("BOTH")
+    BOTH;
 
     companion object {
         fun fromString(value: String): SearchType = when (value.uppercase()) {
@@ -53,8 +65,28 @@ enum class SearchType {
     }
 }
 
+@Serializable
 enum class PropertyType {
-    APARTMENT, HOUSE, BEDSITTER, STUDIO, TOWNHOUSE, COMMERCIAL, LAND;
+    @SerialName("APARTMENT")
+    APARTMENT,
+
+    @SerialName("HOUSE")
+    HOUSE,
+
+    @SerialName("BEDSITTER")
+    BEDSITTER,
+
+    @SerialName("STUDIO")
+    STUDIO,
+
+    @SerialName("TOWNHOUSE")
+    TOWNHOUSE,
+
+    @SerialName("COMMERCIAL")
+    COMMERCIAL,
+
+    @SerialName("LAND")
+    LAND;
 
     companion object {
         fun fromString(value: String): PropertyType = when (value.uppercase()) {

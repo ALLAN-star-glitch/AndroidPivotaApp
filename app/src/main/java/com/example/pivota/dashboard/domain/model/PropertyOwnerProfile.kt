@@ -1,5 +1,9 @@
 package com.example.pivota.dashboard.domain.model
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
+
+@Serializable
 data class PropertyOwnerProfile(
     val id: String,
     val listingType: ListingType,
@@ -27,8 +31,16 @@ data class PropertyOwnerProfile(
     }
 }
 
+@Serializable
 enum class ListingType {
-    RENT, SALE, BOTH;
+    @SerialName("RENT")
+    RENT,
+
+    @SerialName("SALE")
+    SALE,
+
+    @SerialName("BOTH")
+    BOTH;
 
     companion object {
         fun fromString(value: String): ListingType = when (value.uppercase()) {
@@ -40,8 +52,16 @@ enum class ListingType {
     }
 }
 
+@Serializable
 enum class PropertyPurpose {
-    PRIMARY, INVESTMENT, BOTH;
+    @SerialName("PRIMARY")
+    PRIMARY,
+
+    @SerialName("INVESTMENT")
+    INVESTMENT,
+
+    @SerialName("BOTH")
+    BOTH;
 
     companion object {
         fun fromString(value: String): PropertyPurpose = when (value.uppercase()) {

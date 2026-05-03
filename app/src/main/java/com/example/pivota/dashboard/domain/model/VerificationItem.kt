@@ -1,5 +1,9 @@
 package com.example.pivota.dashboard.domain.model
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
+
+@Serializable
 data class VerificationItem(
     val type: VerificationType,
     val status: VerificationStatus,
@@ -21,8 +25,22 @@ data class VerificationItem(
     }
 }
 
+@Serializable
 enum class VerificationType {
-    IDENTITY, BUSINESS, PROFESSIONAL_LICENSE, AGENT_LICENSE, NGO_REGISTRATION;
+    @SerialName("IDENTITY")
+    IDENTITY,
+
+    @SerialName("BUSINESS")
+    BUSINESS,
+
+    @SerialName("PROFESSIONAL_LICENSE")
+    PROFESSIONAL_LICENSE,
+
+    @SerialName("AGENT_LICENSE")
+    AGENT_LICENSE,
+
+    @SerialName("NGO_REGISTRATION")
+    NGO_REGISTRATION;
 
     val displayName: String get() = when (this) {
         IDENTITY -> "ID Verification"
@@ -44,8 +62,19 @@ enum class VerificationType {
     }
 }
 
+@Serializable
 enum class VerificationStatus {
-    PENDING, APPROVED, REJECTED, EXPIRED;
+    @SerialName("PENDING")
+    PENDING,
+
+    @SerialName("APPROVED")
+    APPROVED,
+
+    @SerialName("REJECTED")
+    REJECTED,
+
+    @SerialName("EXPIRED")
+    EXPIRED;
 
     companion object {
         fun fromString(value: String): VerificationStatus = when (value.uppercase()) {
@@ -58,6 +87,17 @@ enum class VerificationStatus {
     }
 }
 
+@Serializable
 enum class VerificationStatusColor {
-    SUCCESS, WARNING, ERROR, NEUTRAL
+    @SerialName("SUCCESS")
+    SUCCESS,
+
+    @SerialName("WARNING")
+    WARNING,
+
+    @SerialName("ERROR")
+    ERROR,
+
+    @SerialName("NEUTRAL")
+    NEUTRAL
 }

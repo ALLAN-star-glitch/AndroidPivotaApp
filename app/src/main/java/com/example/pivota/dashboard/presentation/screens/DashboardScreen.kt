@@ -164,10 +164,10 @@ fun DashboardScreen(
     onNavigateToEscrow: () -> Unit = {},
     userType: UserType = UserType.BOTH,
     isGuestMode: Boolean = false,
-    accessToken: String? = null
+    accessToken: String? = null,
+    sharedViewModel: DashboardSharedViewModel = hiltViewModel()
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val sharedViewModel: DashboardSharedViewModel = hiltViewModel()
     val headerState by sharedViewModel.headerState.collectAsState()
     val headerUser = (headerState as? HeaderState.Success)?.headerUser
     val currentProfile = sharedViewModel.getCurrentProfile()
@@ -389,9 +389,9 @@ fun DashboardScreen(
 
             ReusableHeader(
                 colorScheme = colorScheme,
-                enhancedUser = currentProfile,
                 isGuestMode = isGuestMode,
                 isSticky = true,
+                sharedViewModel = sharedViewModel,
                 scrollOffset = scrollOffset,
                 modifier = Modifier
                     .fillMaxWidth()

@@ -47,7 +47,10 @@ data class UserEntity(
     val verifications: String? = null,                  // JSON representation of List<VerificationItem>
     val profileCompletion: String? = null,              // JSON representation of ProfileCompletion
     val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+
+    val completeProfileJson: String? = null,  // CompleteProfile serialized to JSON
+    val completeProfileLastUpdated: Long = 0,  // Timestamp of last update
 ) {
     /**
      * Get the display name for the user (first name or userName)

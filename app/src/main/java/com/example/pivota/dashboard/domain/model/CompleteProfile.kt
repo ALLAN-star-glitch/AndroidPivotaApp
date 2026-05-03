@@ -1,5 +1,10 @@
 package com.example.pivota.dashboard.domain.model
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+
+@Serializable
 data class CompleteProfile(
     val user: ProfileUser,
     val account: ProfileAccount,
@@ -49,15 +54,36 @@ data class CompleteProfile(
     }
 }
 
+
+@Serializable
 enum class ProfileType {
+    @SerialName("PROFESSIONAL")
     PROFESSIONAL,
+
+    @SerialName("AGENT")
     AGENT,
+
+    @SerialName("JOB_SEEKER")
     JOB_SEEKER,
+
+    @SerialName("PROPERTY_OWNER")
     PROPERTY_OWNER,
+
+    @SerialName("HOUSING_SEEKER")
     HOUSING_SEEKER,
+
+    @SerialName("BENEFICIARY")
     BENEFICIARY,
+
+    @SerialName("EMPLOYER")
     EMPLOYER,
+
+    @SerialName("ORGANIZATION")
     ORGANIZATION,
+
+    @SerialName("INDIVIDUAL")
     INDIVIDUAL,
+
+    @SerialName("ACCOUNT")
     ACCOUNT
 }
