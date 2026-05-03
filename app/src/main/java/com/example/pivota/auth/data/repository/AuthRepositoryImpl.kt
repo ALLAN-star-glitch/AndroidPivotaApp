@@ -3,6 +3,7 @@ package com.example.pivota.auth.data.repository
 import android.util.Base64
 import com.example.pivota.auth.data.mapper.AuthDataMapper
 import com.example.pivota.auth.data.remote.api.AuthApiService
+import com.example.pivota.auth.data.remote.api.AuthAuthenticatedApiService
 import com.example.pivota.auth.data.remote.dto.*
 import com.example.pivota.auth.domain.model.CompleteProfileResult
 import com.example.pivota.auth.domain.model.User
@@ -21,7 +22,8 @@ import com.example.pivota.auth.domain.model.LoginResponse
 import com.example.pivota.core.network.NetworkError
 
 class AuthRepositoryImpl @Inject constructor(
-    private val apiService: AuthApiService,
+    private val apiService: AuthApiService, // For unauthenticated calls
+    private val authenticatedApiService: AuthAuthenticatedApiService, // For authenticated calls
     private val preferences: PivotaDataStore,
     private val userDao: UserDao,
     private val mapper: AuthDataMapper
@@ -277,7 +279,7 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun logout(refreshToken: String): ApiResult<BaseResponseDto<Nothing>> {
         return safeApiCall {
-            apiService.logout(refreshToken)
+            authenticatedApiService.logout()  // Use authenticated service (no parameters)
         }.let { apiResult ->
             when (apiResult) {
                 is ApiResult.Success -> {
@@ -286,10 +288,17 @@ class AuthRepositoryImpl @Inject constructor(
                         // Clear local user data
                         preferences.clearUserData()
                         userDao.deleteAll()
+                        println("✅ Logout successful, local data cleared")
                     }
                     apiResult
                 }
-                is ApiResult.Error -> apiResult
+                is ApiResult.Error -> {
+                    println("❌ Logout failed: ${apiResult.networkError.userFriendlyMessage}")
+                    // Still clear local data even if API fails
+                    preferences.clearUserData()
+                    userDao.deleteAll()
+                    apiResult
+                }
                 ApiResult.Loading -> apiResult
             }
         }

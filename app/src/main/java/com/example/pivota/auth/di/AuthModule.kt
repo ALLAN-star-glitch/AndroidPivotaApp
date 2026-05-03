@@ -1,11 +1,13 @@
 package com.example.pivota.auth.di
 
 import com.example.pivota.auth.data.remote.api.AuthApiService
+import com.example.pivota.auth.data.remote.api.AuthAuthenticatedApiService
 import com.example.pivota.auth.data.repository.AuthRepositoryImpl
 import com.example.pivota.auth.domain.repository.AuthRepository
 import com.example.pivota.auth.domain.useCase.*
 import com.example.pivota.core.auth.TokenManager
 import com.example.pivota.core.auth.TokenProvider
+import com.example.pivota.core.di.AuthHttpClient
 import com.example.pivota.core.di.UnauthHttpClient
 import dagger.Binds
 import dagger.Module
@@ -15,7 +17,6 @@ import dagger.hilt.components.SingletonComponent
 import io.ktor.client.HttpClient
 import javax.inject.Singleton
 
-// auth/di/AuthModule.kt
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class AuthModule {
@@ -26,7 +27,7 @@ abstract class AuthModule {
 
     @Binds
     @Singleton
-    abstract fun bindTokenProvider(impl: TokenManager): TokenProvider  // Add this
+    abstract fun bindTokenProvider(impl: TokenManager): TokenProvider
 
     companion object {
         @Provides
@@ -39,7 +40,18 @@ abstract class AuthModule {
 
         @Provides
         @Singleton
-        fun provideAuthUseCases(repository: AuthRepository): AuthUseCases {
+        fun provideAuthAuthenticatedApiService(
+            @AuthHttpClient client: HttpClient
+        ): AuthAuthenticatedApiService {
+            return AuthAuthenticatedApiService(client)
+        }
+
+        @Provides
+        @Singleton
+        fun provideAuthUseCases(
+            repository: AuthRepository
+            // ✅ Remove authAuthenticatedApiService from here
+        ): AuthUseCases {
             return AuthUseCases(
                 requestOtp = RequestOtpUseCase(repository),
                 registerUser = RegisterUserUseCase(repository),

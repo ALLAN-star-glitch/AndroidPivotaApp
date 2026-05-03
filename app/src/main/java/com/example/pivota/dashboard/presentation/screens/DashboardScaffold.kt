@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -55,8 +56,10 @@ import java.util.Date
 import java.util.concurrent.TimeUnit
 import androidx.compose.material3.SheetState
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
+import com.example.pivota.core.presentations.composables.PivotaFullScreenLoading
 
 // Quick conversion functions (keep as is)
 private fun quickConvertToDetailsJob(dashboardJob: DashboardJobListingUiModel): DetailsJobListingUiModel {
@@ -192,22 +195,20 @@ fun DashboardScaffold(
 
     // Helper functions to get state synchronously
     val isLoading = sharedViewModel.isLoading()
+    val isLoggingOut by sharedViewModel.isLoggingOut.collectAsState()
     val profileError = sharedViewModel.getErrorMessage()
     val profile = sharedViewModel.getCurrentProfile()
-
     val headerState by sharedViewModel.headerState.collectAsState()
 
     var showWelcomeSnackbar by remember { mutableStateOf(false) }
     var welcomeMessage by remember { mutableStateOf("") }
     var snackbarType by remember { mutableStateOf(SnackbarType.SUCCESS) }
 
-
     LaunchedEffect(Unit) {
         if (!isGuestMode) {
             sharedViewModel.debugRoomCache()
         }
     }
-
 
     LaunchedEffect(successMessage) {
         if (!successMessage.isNullOrBlank()) {
@@ -218,14 +219,12 @@ fun DashboardScaffold(
         }
     }
 
-    //  Only start token refresh and auto-logout monitoring, NOT profile loading
-    // Profile loading is now handled by ViewModel's init block
+    // Only start token refresh and auto-logout monitoring, NOT profile loading
     LaunchedEffect(Unit) {
         if (!isGuestMode && accessToken != null) {
             dashboardViewModel.startTokenRefresh()
             println("🔄 Token auto-refresh started")
 
-            // ✅ Check token validity and refresh if needed
             val isValid = dashboardViewModel.isTokenValid()
             if (!isValid) {
                 println("⚠️ Token may be invalid, attempting refresh...")
@@ -289,21 +288,17 @@ fun DashboardScaffold(
     }
 
     // ============================================================
-// HANDLE AUTH ERRORS FIRST (Critical - must logout)
-// ============================================================
+    // HANDLE AUTH ERRORS FIRST (Critical - must logout)
+    // ============================================================
     val isAuthError = sharedViewModel.isAuthError()
     val offlineMessage by sharedViewModel.offlineMessage.collectAsState()
     val isOffline by sharedViewModel.isOffline.collectAsState()
 
     if (isAuthError) {
-        // Auth error - session expired
-        // The TokenManager will automatically emit logoutEvent
-        // which is already being collected below
         LaunchedEffect(Unit) {
             sharedViewModel.reset()
         }
 
-        // Show user-friendly message while waiting for logout
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -337,21 +332,17 @@ fun DashboardScaffold(
         return
     }
 
-// ============================================================
-// ALWAYS SHOW DASHBOARD CONTENT (with skeleton only on first-ever load)
-// ============================================================
-// Only show skeleton if:
-// 1. Still loading AND
-// 2. No profile data available yet (first launch) AND
-// 3. Not offline (offline means we have cache)
+    // ============================================================
+    // ALWAYS SHOW DASHBOARD CONTENT (with skeleton only on first-ever load)
+    // ============================================================
     val hasProfileData = sharedViewModel.hasProfileData()
-    val shouldShowSkeleton = isLoading && !hasProfileData && !isOffline
+
+    // ✅ Fixed: Use isLoggingOut to prevent skeleton during logout
+    val shouldShowSkeleton = isLoading && !hasProfileData && !isOffline && !isLoggingOut
 
     if (shouldShowSkeleton) {
         DashboardLoadingSkeleton()
     } else {
-        // Always show dashboard content - either from cache or fresh
-        // Show offline/warning banner if needed
         Box {
             if (isTablet) {
                 TabletDashboardContent(
@@ -431,9 +422,18 @@ fun DashboardScaffold(
                     Icon(Icons.Default.Refresh, contentDescription = "Retry")
                 }
             }
+
+            // Show logging out indicator
+            if (isLoggingOut) {
+                PivotaFullScreenLoading(
+                    message = "Logging out..."
+                )
+            }
         }
     }
 }
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

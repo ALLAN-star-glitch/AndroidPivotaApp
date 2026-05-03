@@ -2,6 +2,7 @@ package com.example.pivota.dashboard.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.pivota.core.auth.TokenManager
 import com.example.pivota.core.database.dao.UserDao
 import com.example.pivota.core.database.entity.UserEntity
 import com.example.pivota.core.network.ApiResult
@@ -25,7 +26,8 @@ import javax.inject.Inject
 @HiltViewModel
 class DashboardSharedViewModel @Inject constructor(
     private val getProfileUseCase: GetProfileUseCase,
-    private val userDao: UserDao
+    private val userDao: UserDao,
+    private val tokenManager: TokenManager
 ) : ViewModel() {
 
     // ======================================================
@@ -34,6 +36,14 @@ class DashboardSharedViewModel @Inject constructor(
 
     private val _dashboardState = MutableStateFlow<DashboardState>(DashboardState.Loading)
     val dashboardState: StateFlow<DashboardState> = _dashboardState.asStateFlow()
+
+    private val _showLogoutDialog = MutableStateFlow(false)
+    val showLogoutDialog: StateFlow<Boolean> = _showLogoutDialog.asStateFlow()
+
+    private val _logoutEvent = MutableStateFlow(false)
+    val logoutEvent: StateFlow<Boolean> = _logoutEvent.asStateFlow()
+    private val _isLoggingOut = MutableStateFlow(false)
+    val isLoggingOut: StateFlow<Boolean> = _isLoggingOut.asStateFlow()
 
     // ======================================================
     // PROFILE STATE
@@ -137,6 +147,57 @@ class DashboardSharedViewModel @Inject constructor(
             setDefaultProfileState()
         }
     }
+
+    // Reset logout event after handling
+    fun resetLogoutEvent() {
+        _logoutEvent.value = false
+    }
+
+    // Logout with confirmation
+    fun onLogoutClicked() {
+        _showLogoutDialog.value = true
+    }
+
+
+    fun onLogoutConfirmed() {
+        _showLogoutDialog.value = false
+        _isLoggingOut.value = true  // ✅ Set logging out state
+        viewModelScope.launch {
+            try {
+                // Clear Room database
+                userDao.deleteAll()
+
+                // Reset all states (but keep logout state separate)
+                _dashboardState.value = DashboardState.Loading
+                _profileState.value = ProfileLoadState.Loading
+                _headerState.value = HeaderState.Loading
+                _selectedTab.value = 0
+                lastFetchTime = 0L
+                isFetching = false
+                hasEverLoadedProfile = false
+                _isOffline.value = false
+                _offlineMessage.value = null
+
+                // Call token manager logout
+                tokenManager.logout()
+
+                // Trigger logout event
+                _logoutEvent.value = true
+
+            } catch (e: Exception) {
+                println("❌ Logout error: ${e.message}")
+                _offlineMessage.value = "Logout failed. Please try again."
+                _isOffline.value = true
+            } finally {
+                _isLoggingOut.value = false
+            }
+        }
+    }
+
+    fun onLogoutCancelled() {
+        _showLogoutDialog.value = false
+    }
+
 
     /**
      * Refresh profile in background - doesn't block UI
@@ -517,6 +578,46 @@ class DashboardSharedViewModel @Inject constructor(
         hasEverLoadedProfile = false
         _isOffline.value = false
         _offlineMessage.value = null
+    }
+
+    /**
+     * Perform logout - call API and clear all data
+     */
+    fun logout(onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                println("🚨 [DashboardSharedViewModel] User requested logout")
+
+                // Clear Room database user data first
+                userDao.deleteAll()
+
+                // Reset ViewModel states
+                reset()
+
+                // Call TokenManager to handle API logout and local cleanup
+                tokenManager.logout {
+                    onComplete()
+                }
+
+            } catch (e: Exception) {
+                println("❌ [DashboardSharedViewModel] Error during logout: ${e.message}")
+                // Still try to clear local session
+                tokenManager.clearLocalSession()
+                onComplete()
+            }
+        }
+    }
+
+    /**
+     * Quick logout with cleanup only (no API call)
+     */
+    fun logoutLocalOnly(onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            userDao.deleteAll()
+            reset()
+            tokenManager.clearLocalSession()
+            onComplete()
+        }
     }
 }
 

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +30,7 @@ import com.example.pivota.dashboard.presentation.bookservice.SelectServiceScreen
 import com.example.pivota.dashboard.presentation.bookservice.ServiceDetailsScreen
 import com.example.pivota.core.preferences.PivotaDataStore
 import com.example.pivota.dashboard.presentation.screens.DashboardScaffold
+import com.example.pivota.dashboard.presentation.viewmodels.DashboardSharedViewModel
 import com.example.pivota.welcome.presentation.screens.OnboardingPager
 import com.example.pivota.welcome.presentation.screens.WelcomeScreen
 import dagger.hilt.EntryPoint
@@ -177,12 +179,34 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
         /* ───────── AUTHENTICATED DASHBOARD ───────── */
         composable<Dashboard> {
             val loginViewModel: LoginViewModel = hiltViewModel()
+            val sharedDashboardViewModel: DashboardSharedViewModel = hiltViewModel()
 
             val loginSuccessMessage = sharedAuthViewModel.peekLoginSuccessMessage()
             val signupSuccessMessage = sharedAuthViewModel.peekSignupSuccessMessage()
             var user by remember { mutableStateOf(sharedAuthViewModel.peekUser()) }
             var accessToken by remember { mutableStateOf(sharedAuthViewModel.peekAccessToken()) }
             var refreshToken by remember { mutableStateOf(sharedAuthViewModel.peekRefreshToken()) }
+
+            // Collect logout event from DashboardSharedViewModel
+            val logoutEvent by sharedDashboardViewModel.logoutEvent.collectAsState()
+
+            LaunchedEffect(logoutEvent) {
+                if (logoutEvent) {
+                    println("🚨 [NavHostSetup] Logout event detected, navigating to Welcome screen...")
+
+                    // Reset the event
+                    sharedDashboardViewModel.resetLogoutEvent()
+
+                    // ✅ Clear all auth data using existing method
+                    sharedAuthViewModel.clearAllAuthData()
+
+                    // Navigate to Login screen (not login)
+                    navController.navigate(AuthFlow) {
+                        popUpTo(0) { inclusive = true }  // Clear entire back stack
+                        launchSingleTop = true
+                    }
+                }
+            }
 
             // If user is null (app was killed), restore from database
             LaunchedEffect(Unit) {
@@ -208,7 +232,6 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
             DashboardScaffold(
                 isGuestMode = false,
                 successMessage = successMessage,
-                // Note: user parameter removed - DashboardSharedViewModel will fetch profile using accessToken
                 accessToken = accessToken,
                 refreshToken = refreshToken,
                 onMessageConsumed = {

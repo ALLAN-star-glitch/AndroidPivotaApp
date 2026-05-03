@@ -311,19 +311,4 @@ class AuthApiService @Inject constructor(
             throw e
         }
     }
-
-    /**
-     * Logout user
-     */
-    suspend fun logout(refreshToken: String): BaseResponseDto<Nothing> {
-        return try {
-            client.post("v1/auth-module/logout") {
-                contentType(ContentType.Application.Json)
-                setBody(mapOf("refreshToken" to refreshToken))
-            }.body()
-        } catch (e: Exception) {
-            println("❌ Logout Failed: ${e.message}")
-            throw e
-        }
-    }
 }

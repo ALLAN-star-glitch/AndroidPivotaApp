@@ -1,5 +1,6 @@
 package com.example.pivota.dashboard.presentation.composables
 
+import ProfileMenuBottomSheet
 import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
@@ -34,8 +35,8 @@ import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.core.presentations.viewmodel.ThemeViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.DashboardSharedViewModel
-import com.example.pivota.dashboard.presentation.screens.ProfileMenuBottomSheet
 import com.example.pivota.dashboard.presentation.viewmodels.HeaderState
+
 
 @SuppressLint("Range")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,9 +52,11 @@ fun ReusableHeader(
     sharedViewModel: DashboardSharedViewModel,
     messageCount: Int = 0,
     notificationCount: Int = 0,
+    onLogoutComplete: () -> Unit = {}  // ✅ Add this parameter
 ) {
     val context = LocalContext.current
     var showMenuBottomSheet by remember { mutableStateOf(false) }
+    val showLogoutDialog by sharedViewModel.showLogoutDialog.collectAsState()
 
 
     // Force recomposition by adding a key that changes when headerState updates
@@ -345,7 +348,20 @@ fun ReusableHeader(
             onMyListingsClick = { showMenuBottomSheet = false },
             onMyFavoritesClick = { showMenuBottomSheet = false },
             onPostClick = { showMenuBottomSheet = false },
-            onLogoutClick = { showMenuBottomSheet = false }
+            onLogoutClick = {
+                showMenuBottomSheet = false
+                sharedViewModel.onLogoutClicked()
+            }
+        )
+    }
+
+    if (showLogoutDialog) {
+        LogoutConfirmationDialog(
+            onConfirm = {
+                sharedViewModel.onLogoutConfirmed()
+                onLogoutComplete()
+            },
+            onDismiss = { sharedViewModel.onLogoutCancelled() }
         )
     }
 }
