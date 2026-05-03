@@ -4,6 +4,7 @@ import android.util.Base64
 import com.example.pivota.auth.data.mapper.AuthDataMapper
 import com.example.pivota.auth.data.remote.api.AuthApiService
 import com.example.pivota.auth.data.remote.dto.*
+import com.example.pivota.auth.domain.model.CompleteProfileResult
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.domain.repository.AuthRepository
 import com.example.pivota.core.database.dao.UserDao
@@ -294,18 +295,84 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+
+    // Helper function to update local user data from profile
+    private suspend fun updateLocalUserFromProfile(profile: CompleteProfileResult) {
+        try {
+            // Get existing user
+            val existingUser = userDao.getUserByEmail(profile.user?.email ?: return)
+
+            // Convert profile data to JSON strings
+            val jobSeekerJson = profile.jobSeekerProfile?.let { Json.encodeToString(it) }
+            val skilledProfessionalJson = profile.skilledProfessionalProfile?.let { Json.encodeToString(it) }
+            val intermediaryAgentJson = profile.intermediaryAgentProfile?.let { Json.encodeToString(it) }
+            val housingSeekerJson = profile.housingSeekerProfile?.let { Json.encodeToString(it) }
+            val supportBeneficiaryJson = profile.supportBeneficiaryProfile?.let { Json.encodeToString(it) }
+            val employerJson = profile.employerProfile?.let { Json.encodeToString(it) }
+            val propertyOwnerJson = profile.propertyOwnerProfile?.let { Json.encodeToString(it) }
+            val organizationJson = profile.organizationProfile?.let { Json.encodeToString(it) }
+            val individualJson = profile.individualProfile?.let { Json.encodeToString(it) }
+            val verificationsJson = profile.verifications.let { Json.encodeToString(it) }
+            val completionJson = profile.completion?.let { Json.encodeToString(it) }
+
+            // Update user with profile information
+            val updatedUser = UserEntity(
+                uuid = profile.user?.uuid ?: existingUser?.uuid ?: "",
+                email = profile.user?.email ?: existingUser?.email ?: return,
+                firstName = profile.user?.firstName ?: existingUser?.firstName ?: "",
+                lastName = profile.user?.lastName ?: existingUser?.lastName ?: "",
+                userName = profile.displayName,
+                phone = profile.user?.personalPhone ?: existingUser?.phone,
+                profileImage = profile.profileImageUrl ?: existingUser?.profileImage,
+                isAuthenticated = existingUser?.isAuthenticated ?: true,
+                isOnboardingComplete = existingUser?.isOnboardingComplete ?: true,
+                hasSeenWelcomeScreen = existingUser?.hasSeenWelcomeScreen ?: true,
+                primaryPurpose = profile.user?.primaryPurpose ?: existingUser?.primaryPurpose,
+                role = profile.user?.role ?: existingUser?.role,
+                accountType = profile.accountType,
+                accountId = profile.account.uuid,
+                accountName = profile.account.name,
+                organizationUuid = existingUser?.organizationUuid,
+                planSlug = existingUser?.planSlug,
+                tokenId = existingUser?.tokenId,
+                // Profile data as JSON
+                jobSeekerPreferences = jobSeekerJson,
+                skilledProfessionalProfile = skilledProfessionalJson,
+                intermediaryAgentProfile = intermediaryAgentJson,
+                housingSeekerPreferences = housingSeekerJson,
+                supportBeneficiaryNeeds = supportBeneficiaryJson,
+                employerRequirements = employerJson,
+                propertyOwnerPortfolio = propertyOwnerJson,
+                organizationProfile = organizationJson,
+                individualProfile = individualJson,
+                verifications = verificationsJson,
+                profileCompletion = completionJson,
+                updatedAt = System.currentTimeMillis()
+            )
+
+            userDao.updateUser(updatedUser)
+            println("✅ Local user data updated from profile")
+
+        } catch (e: Exception) {
+            println("⚠️ Failed to update local user from profile: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
+    // Update the extractUserFromToken function in AuthRepositoryImpl.kt
+
     /**
      * Extract user information from JWT token
-     * Updated for new JWT payload structure:
+     * Updated for new JWT payload structure matching backend:
      * - sub (userUuid)
      * - jti (tokenId)
      * - iat (issued at)
-     * - exp (expiration)
      * - email
      * - accountId
      * - role
      * - accountType
-     * - organizationUuid
+     * - organizationUuid (optional)
+     * - planSlug (optional)
      */
     private suspend fun extractUserFromToken(
         email: String,
@@ -332,24 +399,17 @@ class AuthRepositoryImpl @Inject constructor(
             val jsonElement = Json.parseToJsonElement(payloadJson)
             val jsonObject = jsonElement.jsonObject
 
-            // ✅ UPDATED: Extract fields from new JWT payload structure
-            val userUuid = jsonObject["sub"]?.jsonPrimitive?.contentOrNull ?: ""           // NEW: sub instead of userUuid
-            val tokenId = jsonObject["jti"]?.jsonPrimitive?.contentOrNull ?: ""            // NEW: jti instead of tokenId
+            // Extract fields from JWT payload (matching backend)
+            val userUuid = jsonObject["sub"]?.jsonPrimitive?.contentOrNull ?: ""
+            val tokenId = jsonObject["jti"]?.jsonPrimitive?.contentOrNull ?: ""
             val emailFromToken = jsonObject["email"]?.jsonPrimitive?.contentOrNull ?: email
             val accountId = jsonObject["accountId"]?.jsonPrimitive?.contentOrNull ?: ""
-            val role = jsonObject["role"]?.jsonPrimitive?.contentOrNull ?: "GeneralUser"
+            val role = jsonObject["role"]?.jsonPrimitive?.contentOrNull ?: "Individual"
             val accountType = jsonObject["accountType"]?.jsonPrimitive?.contentOrNull
             val organizationUuid = jsonObject["organizationUuid"]?.jsonPrimitive?.contentOrNull
+            val planSlug = jsonObject["planSlug"]?.jsonPrimitive?.contentOrNull
 
-            // ❌ REMOVED/Deprecated fields (no longer in JWT)
-            // These need to be fetched from Profile Service or stored separately
-            // - userName (not in JWT)
-            // - accountName (not in JWT)
-            // - firstName (not in JWT)
-            // - lastName (not in JWT)
-            // - planSlug (not in JWT)
-
-            println("🔍 [JWT Decoded - New Structure]")
+            println("🔍 [JWT Decoded - Backend Structure]")
             println("   - sub (userUuid): $userUuid")
             println("   - jti (tokenId): $tokenId")
             println("   - email: $emailFromToken")
@@ -369,12 +429,22 @@ class AuthRepositoryImpl @Inject constructor(
             val lastName = existingUser?.lastName ?: ""
             val userName = existingUser?.userName ?: firstName
 
+            // Get existing user from local DB for name fields (not in JWT)
+            val existingUser = userDao.getUserByEmail(emailFromToken)
+            val firstName = existingUser?.firstName ?: emailFromToken.substringBefore("@")
+            val lastName = existingUser?.lastName ?: ""
+            val userName = existingUser?.userName ?: firstName
+            val profileImage = existingUser?.profileImage
+            val phone = existingUser?.phone
+
             User(
                 uuid = userUuid,
                 email = emailFromToken,
                 firstName = firstName,
                 lastName = lastName,
                 userName = userName,
+                personalPhone = phone,
+                profileImage = profileImage,
                 accessToken = accessToken,
                 refreshToken = refreshToken,
                 isAuthenticated = true,
@@ -385,9 +455,10 @@ class AuthRepositoryImpl @Inject constructor(
                 tokenId = tokenId,
                 role = role,
                 organizationUuid = organizationUuid,
-                // Deprecated fields (not in JWT anymore)
+                planSlug = planSlug,
+                // Account name will come from profile fetch
                 accountName = existingUser?.accountName ?: "",
-                planSlug = existingUser?.planSlug
+                primaryPurpose = existingUser?.primaryPurpose
             )
         } catch (e: Exception) {
             println("🔍 [JWT Decode Error] ${e.message}")
@@ -416,6 +487,7 @@ class AuthRepositoryImpl @Inject constructor(
         val decodedBytes = Base64.decode(base64, Base64.DEFAULT)
         return String(decodedBytes, Charsets.UTF_8)
     }
+
 
     override suspend fun saveAuthenticatedUser(user: User) {
         // Save tokens to DataStore (simple key-value, more secure)
@@ -455,7 +527,13 @@ class AuthRepositoryImpl @Inject constructor(
         println("   - Name: ${user.userName}")
         println("   - Role: ${user.role}")
         println("   - Account Type: ${user.accountType}")
+        println("   - Account ID: ${user.accountId}")
+        println("   - Token ID: ${user.tokenId}")
+        user.organizationUuid?.let { println("   - Organization UUID: $it") }
+        user.planSlug?.let { println("   - Plan Slug: $it") }
     }
+
+
 
     private suspend fun saveBasicUserInfo(user: User) {
         // Save basic user info without tokens (for pre-fill after signup)

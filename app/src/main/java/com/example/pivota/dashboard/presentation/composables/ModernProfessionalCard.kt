@@ -49,7 +49,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
-import com.example.pivota.dashboard.domain.ProfessionalType
+
 
 // Add this enum to distinguish between individuals and organizations
 enum class ProviderType {

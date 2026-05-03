@@ -119,6 +119,7 @@ class LoginViewModel @Inject constructor(
             datastore.saveTokensWithTimestamp(accessToken, refreshToken)
             datastore.saveUserEmail(user.email)
             datastore.markOnboardingComplete(true)
+            datastore.saveGuestModeEnabled(false)
 
             // Save to Room Database
             val existingUser = userDao.getUserByEmail(user.email)

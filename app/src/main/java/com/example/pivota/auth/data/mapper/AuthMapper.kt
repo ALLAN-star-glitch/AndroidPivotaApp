@@ -451,4 +451,369 @@ class AuthDataMapper @Inject constructor() {
     fun toOtpRequestResult(response: BaseOtpResponseDto): Boolean {
         return response.success
     }
+
+
+// ======================================================
+// NEW PROFILE RESPONSE TO DOMAIN MAPPERS
+// ======================================================
+
+    /**
+     * Convert complete profile response to domain models
+     * This method maps the entire ProfileResponseDto to individual domain objects
+     */
+    fun toCompleteProfile(response: ProfileResponseDto): CompleteProfileResult {
+        return CompleteProfileResult(
+            account = response.account.toAccount(),
+            user = response.user?.toUser(),
+            individualProfile = response.profile?.toIndividualProfile(),
+            organizationProfile = response.organizationProfile?.toOrganizationProfile(),
+            jobSeekerProfile = response.jobSeekerProfile?.let { toJobSeekerPreferences(it.toJobSeekerDataDto()) },
+            skilledProfessionalProfile = response.skilledProfessionalProfile?.let {
+                toSkilledProfessionalProfile(it.toSkilledProfessionalDataDto())
+            },
+            intermediaryAgentProfile = response.intermediaryAgentProfile?.let {
+                toIntermediaryAgentProfile(it.toIntermediaryAgentDataDto())
+            },
+            housingSeekerProfile = response.housingSeekerProfile?.let {
+                toHousingSeekerPreferences(it.toHousingSeekerDataDto())
+            },
+            supportBeneficiaryProfile = response.supportBeneficiaryProfile?.let {
+                toSupportBeneficiaryNeeds(it.toSupportBeneficiaryDataDto())
+            },
+            employerProfile = response.employerProfile?.let {
+                toEmployerRequirements(it.toEmployerDataDto())
+            },
+            propertyOwnerProfile = response.propertyOwnerProfile?.let {
+                toPropertyOwnerPortfolio(it.toPropertyOwnerDataDto())
+            }
+        )
+    }
+
+    /**
+     * Convert AccountDataDto to Account domain model
+     */
+    fun AccountDataDto.toAccount(): Account {
+        return Account(
+            uuid = uuid,
+            accountCode = accountCode,
+            type = type,
+            status = status ?: "ACTIVE",  // Default to ACTIVE if not provided
+            isVerified = isVerified ?: false,  // Default to false
+            verifiedFeatures = verifiedFeatures ?: emptyList(),  // Default to empty list
+            createdAt = createdAt ?: "",  // Default to empty string
+            updatedAt = updatedAt ?: "",  // Default to empty string
+            name = name
+        )
+    }
+
+    /**
+     * Convert UserDataDto to existing User domain model
+     */
+    fun UserDataDto.toUser(): User {
+        return User(
+            uuid = uuid,
+            email = email,
+            firstName = firstName ?: "",
+            lastName = lastName ?: "",
+            userName = "${firstName ?: ""} ${lastName ?: ""}".trim(),
+            personalPhone = phone,
+            profileImage = profileImage,
+            isAuthenticated = true,
+            userUuid = uuid,
+            role = roleName,
+            // These will be populated from account data separately
+            accountId = null,
+            accountName = null,
+            accountType = null,
+            tokenId = null,
+            organizationUuid = null,
+            planSlug = null,
+            primaryPurpose = null,
+            profileImageUrl = profileImage,
+            accessToken = null,
+            refreshToken = null,
+            // Profile data is set separately in CompleteProfileResult
+            jobSeekerPreferences = null,
+            skilledProfessionalProfile = null,
+            intermediaryAgentProfile = null,
+            housingSeekerPreferences = null,
+            supportBeneficiaryNeeds = null,
+            employerRequirements = null,
+            propertyOwnerPortfolio = null
+        )
+    }
+
+    /**
+     * Convert IndividualProfileDto to IndividualProfile domain model
+     */
+    fun IndividualProfileDto.toIndividualProfile(): IndividualProfile {
+        return IndividualProfile(
+            bio = bio,
+            gender = gender,
+            dateOfBirth = dateOfBirth,
+            nationalId = nationalId,
+            profileImage = profileImage
+        )
+    }
+
+    /**
+     * Convert OrganizationProfileDto to OrganizationProfile domain model
+     */
+    fun OrganizationProfileDto.toOrganizationProfile(): OrganizationProfile {
+        return OrganizationProfile(
+            name = name,
+            type = type,
+            registrationNo = registrationNo,
+            kraPin = kraPin,
+            officialEmail = officialEmail,
+            officialPhone = officialPhone,
+            website = website,
+            about = about,
+            logo = logo,
+            physicalAddress = physicalAddress,
+            members = members.map { it.toTeamMember() },
+            pendingInvitations = pendingInvitations.map { it.toPendingInvitation() }
+        )
+    }
+
+    /**
+     * Convert TeamMemberDto to TeamMember domain model
+     */
+    fun TeamMemberDto.toTeamMember(): TeamMember {
+        return TeamMember(
+            userUuid = userUuid,
+            userName = userName,
+            userEmail = userEmail,
+            userImage = userImage,
+            roleName = roleName
+        )
+    }
+
+    /**
+     * Convert PendingInvitationDto to PendingInvitation domain model
+     */
+    fun PendingInvitationDto.toPendingInvitation(): PendingInvitation {
+        return PendingInvitation(
+            id = id,
+            email = email,
+            status = status,
+            expiresAt = expiresAt
+        )
+    }
+
+    /**
+     * Convert VerificationItemDto to VerificationItem domain model
+     */
+    fun VerificationItemDto.toVerificationItem(): VerificationItem {
+        return VerificationItem(
+            type = VerificationType.fromString(type),
+            status = VerificationStatus.fromString(status),
+            documentUrl = documentUrl,
+            rejectionReason = rejectionReason,
+            verifiedAt = verifiedAt,
+            expiresAt = expiresAt
+        )
+    }
+
+    /**
+     * Convert ProfileCompletionDto to ProfileCompletion domain model
+     */
+    fun ProfileCompletionDto.toProfileCompletion(): ProfileCompletion {
+        return ProfileCompletion(
+            accountCompleted = false,  // Backend doesn't send this, default to false
+            profileCompleted = percentage,  // Use percentage
+            documentsCompleted = 0  // Backend doesn't send this
+        )
+    }
+
+// ======================================================
+// DTO TO JOBSEEKER DATA DTO CONVERTERS (for profile response)
+// ======================================================
+
+    /**
+     * Convert JobSeekerProfileDto to JobSeekerProfileDataDto
+     * This bridges the profile response DTO to the existing mapper
+     */
+    fun JobSeekerProfileDto.toJobSeekerDataDto(): JobSeekerProfileDataDto {
+        return JobSeekerProfileDataDto(
+            headline = headline,
+            isActivelySeeking = isActivelySeeking,
+            skills = skills,
+            industries = industries,
+            jobTypes = jobTypes,
+            seniorityLevel = seniorityLevel,
+            noticePeriod = noticePeriod,
+            expectedSalary = expectedSalary,
+            workAuthorization = workAuthorization,
+            cvUrl = cvUrl,
+            portfolioImages = portfolioImages,
+            linkedInUrl = linkedInUrl,
+            githubUrl = githubUrl,
+            portfolioUrl = portfolioUrl,
+            hasAgent = false,
+            agentUuid = null
+        )
+    }
+
+    /**
+     * Convert SkilledProfessionalProfileDto to SkilledProfessionalProfileDataDto
+     */
+    fun SkilledProfessionalProfileDto.toSkilledProfessionalDataDto(): SkilledProfessionalProfileDataDto {
+        return SkilledProfessionalProfileDataDto(
+            title = title,
+            profession = profession,
+            specialties = specialties,
+            serviceAreas = serviceAreas,
+            yearsExperience = yearsExperience,
+            licenseNumber = licenseNumber,
+            insuranceInfo = insuranceInfo,
+            hourlyRate = hourlyRate,
+            dailyRate = dailyRate,
+            paymentTerms = paymentTerms,
+            availableToday = availableToday,
+            availableWeekends = availableWeekends,
+            emergencyService = emergencyService,
+            portfolioImages = portfolioImages,
+            certifications = certifications
+        )
+    }
+
+    /**
+     * Convert IntermediaryAgentProfileDto to IntermediaryAgentProfileDataDto
+     */
+    fun IntermediaryAgentProfileDto.toIntermediaryAgentDataDto(): IntermediaryAgentProfileDataDto {
+        return IntermediaryAgentProfileDataDto(
+            agentType = agentType,
+            specializations = specializations,
+            serviceAreas = serviceAreas,
+            licenseNumber = licenseNumber,
+            licenseBody = licenseBody,
+            yearsExperience = yearsExperience,
+            agencyName = agencyName,
+            agencyUuid = agencyUuid,
+            commissionRate = commissionRate,
+            feeStructure = feeStructure,
+            minimumFee = minimumFee,
+            typicalFee = typicalFee,
+            about = about,
+            profileImage = profileImage,
+            contactEmail = contactEmail,
+            contactPhone = contactPhone,
+            website = website,
+            socialLinks = socialLinks,
+            clientTypes = clientTypes
+        )
+    }
+
+    /**
+     * Convert HousingSeekerProfileDto to HousingSeekerProfileDataDto
+     */
+    fun HousingSeekerProfileDto.toHousingSeekerDataDto(): HousingSeekerProfileDataDto {
+        return HousingSeekerProfileDataDto(
+            // New simplified fields
+            searchType = searchType,
+            isLookingForRental = isLookingForRental,
+            isLookingToBuy = isLookingToBuy,
+            // Rental preferences
+            minBedrooms = minBedrooms,
+            maxBedrooms = maxBedrooms,
+            minBudget = minBudget,
+            maxBudget = maxBudget,
+            preferredTypes = preferredTypes,
+            preferredCities = preferredCities,
+            preferredNeighborhoods = preferredNeighborhoods,
+            moveInDate = moveInDate,
+            leaseDuration = leaseDuration,
+            householdSize = householdSize,
+            hasPets = hasPets,
+            petDetails = petDetails,
+            minimumLeaseTerm = minimumLeaseTerm,
+            maximumLeaseTerm = maximumLeaseTerm,
+            depositAmount = depositAmount,
+            isPetFriendly = isPetFriendly,
+            utilitiesIncluded = utilitiesIncluded,
+            utilitiesDetails = utilitiesDetails,
+            // Sale preferences
+            isNegotiable = isNegotiable,
+            titleDeedAvailable = titleDeedAvailable,
+            // Location
+            latitude = latitude,
+            longitude = longitude,
+            searchRadiusKm = searchRadiusKm,
+            hasAgent = hasAgent,
+            agentUuid = agentUuid
+        )
+    }
+
+    /**
+     * Convert SupportBeneficiaryProfileDto to SupportBeneficiaryProfileDataDto
+     */
+    fun SupportBeneficiaryProfileDto.toSupportBeneficiaryDataDto(): SupportBeneficiaryProfileDataDto {
+        return SupportBeneficiaryProfileDataDto(
+            needs = needs,
+            urgentNeeds = urgentNeeds,
+            familySize = familySize,
+            dependents = dependents,
+            householdComposition = householdComposition,
+            vulnerabilityFactors = vulnerabilityFactors,
+            city = city,
+            neighborhood = neighborhood,
+            latitude = latitude,
+            longitude = longitude,
+            landmark = landmark,
+            prefersAnonymity = prefersAnonymity,
+            languagePreference = languagePreference,
+            consentToShare = consentToShare,
+            referredBy = referredBy,
+            referredByUuid = referredByUuid,
+            caseWorkerUuid = caseWorkerUuid
+        )
+    }
+
+    /**
+     * Convert EmployerProfileDto to EmployerProfileDataDto
+     */
+    fun EmployerProfileDto.toEmployerDataDto(): EmployerProfileDataDto {
+        return EmployerProfileDataDto(
+            companyName = companyName,
+            industry = industry,
+            companySize = companySize,
+            foundedYear = foundedYear,
+            description = description,
+            logo = logo,
+            preferredSkills = preferredSkills,
+            remotePolicy = remotePolicy,
+            worksWithAgents = worksWithAgents,
+            preferredAgents = preferredAgents,
+            businessName = companyName,
+            isRegistered = isVerifiedEmployer,
+            yearsExperience = null
+        )
+    }
+
+    /**
+     * Convert PropertyOwnerProfileDto to PropertyOwnerProfileDataDto
+     */
+    fun PropertyOwnerProfileDto.toPropertyOwnerDataDto(): PropertyOwnerProfileDataDto {
+        return PropertyOwnerProfileDataDto(
+            // New simplified fields
+            listingType = listingType,
+            isListingForRent = isListingForRent,
+            isListingForSale = isListingForSale,
+            // Professional details
+            isProfessional = isProfessional,
+            licenseNumber = licenseNumber,
+            companyName = companyName,
+            yearsInBusiness = yearsInBusiness,
+            // Property details
+            propertyCount = propertyCount,
+            propertyTypes = propertyTypes,
+            preferredPropertyTypes = preferredPropertyTypes,
+            serviceAreas = serviceAreas,
+            propertyPurpose = propertyPurpose,
+            usesAgent = usesAgent,
+            managingAgentUuid = managingAgentUuid
+        )
+    }
 }
+

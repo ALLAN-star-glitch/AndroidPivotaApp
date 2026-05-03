@@ -71,14 +71,9 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                     navController.navigate(OnboardingFlow)
                 },
                 onNavigateToContinueWithGoogle = {
-                    coroutineScope.launch {
-                        onboardingDataStore.setOnboardingComplete(true)
-                        // Save guest mode flag
-                        onboardingDataStore.saveGuestModeEnabled(true)
-                    }
-                    navController.navigate(GuestDashboard) {
-                        popUpTo(Welcome) { inclusive = true }
-                    }
+                    // Google Login - this is a REAL login, not guest mode
+                    // Navigate to Google login flow
+                    navController.navigate(AuthFlow)  // Or a dedicated Google login screen
                 },
                 onNavigateToLogin = {
                     navController.navigate(AuthFlow)
@@ -178,6 +173,7 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                 isGuestMode = true
             )
         }
+
         /* ───────── AUTHENTICATED DASHBOARD ───────── */
         composable<Dashboard> {
             val loginViewModel: LoginViewModel = hiltViewModel()
@@ -212,7 +208,7 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
             DashboardScaffold(
                 isGuestMode = false,
                 successMessage = successMessage,
-                user = user,
+                // Note: user parameter removed - DashboardSharedViewModel will fetch profile using accessToken
                 accessToken = accessToken,
                 refreshToken = refreshToken,
                 onMessageConsumed = {

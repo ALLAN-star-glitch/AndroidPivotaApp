@@ -4,6 +4,9 @@ import com.example.pivota.auth.data.remote.api.AuthApiService
 import com.example.pivota.auth.data.repository.AuthRepositoryImpl
 import com.example.pivota.auth.domain.repository.AuthRepository
 import com.example.pivota.auth.domain.useCase.*
+import com.example.pivota.core.auth.TokenManager
+import com.example.pivota.core.auth.TokenProvider
+import com.example.pivota.core.di.UnauthHttpClient
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -12,6 +15,7 @@ import dagger.hilt.components.SingletonComponent
 import io.ktor.client.HttpClient
 import javax.inject.Singleton
 
+// auth/di/AuthModule.kt
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class AuthModule {
@@ -20,10 +24,16 @@ abstract class AuthModule {
     @Singleton
     abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindTokenProvider(impl: TokenManager): TokenProvider  // Add this
+
     companion object {
         @Provides
         @Singleton
-        fun provideAuthApiService(client: HttpClient): AuthApiService {
+        fun provideAuthApiService(
+            @UnauthHttpClient client: HttpClient
+        ): AuthApiService {
             return AuthApiService(client)
         }
 

@@ -5,6 +5,7 @@ import com.example.pivota.auth.data.remote.dto.BaseResponseDto
 import com.example.pivota.auth.data.remote.dto.GoogleSignInRequestDto
 import com.example.pivota.auth.data.remote.dto.LoginRequestDto
 import com.example.pivota.auth.data.remote.dto.LoginResponseDto
+import com.example.pivota.auth.data.remote.dto.ProfileResponseDto
 import com.example.pivota.auth.data.remote.dto.RefreshTokenResponseDto
 import com.example.pivota.auth.data.remote.dto.RequestOtpRequestDto
 import com.example.pivota.auth.data.remote.dto.SignupRequestDto
@@ -12,12 +13,14 @@ import com.example.pivota.auth.data.remote.dto.SignupResponseDto
 import com.example.pivota.auth.data.remote.dto.VerifyMfaLoginRequestDto
 import com.example.pivota.auth.data.remote.dto.VerifyOtpRequestDto
 import com.example.pivota.auth.data.remote.dto.VerifyOtpResponseDto
+import com.example.pivota.core.di.UnauthHttpClient
 import com.example.pivota.core.network.NetworkConstants
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.RedirectResponseException
 import io.ktor.client.plugins.ServerResponseException
+import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -27,7 +30,7 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 class AuthApiService @Inject constructor(
-    private val client: HttpClient
+    @param:UnauthHttpClient private val client: HttpClient
 ) {
 
     /**

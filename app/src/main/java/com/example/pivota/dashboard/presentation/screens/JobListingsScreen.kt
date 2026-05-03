@@ -25,15 +25,12 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -44,6 +41,7 @@ import androidx.window.core.layout.WindowWidthSizeClass
 import com.example.pivota.R
 import com.example.pivota.dashboard.domain.EmployerType
 import com.example.pivota.dashboard.domain.ListingStatus
+
 import com.example.pivota.dashboard.presentation.composables.ModernJobCardV2
 import com.example.pivota.dashboard.presentation.state.JobListingUiModel
 import com.example.pivota.dashboard.presentation.viewmodels.JobListingsViewModel

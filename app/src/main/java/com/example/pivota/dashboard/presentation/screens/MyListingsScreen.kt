@@ -40,7 +40,7 @@ import androidx.window.core.layout.WindowSizeClass
 import com.example.pivota.admin.presentation.screens.AdminJobListingUiModel
 import com.example.pivota.admin.presentation.screens.ApplicationFunnel
 import com.example.pivota.admin.presentation.screens.JobStatus
-import com.example.pivota.dashboard.domain.*
+import com.example.pivota.dashboard.domain.ListingStatus
 import com.example.pivota.dashboard.presentation.model.*
 import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
 import kotlinx.coroutines.delay

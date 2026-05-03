@@ -1,11 +1,19 @@
 package com.example.pivota.dashboard.presentation.screens
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -16,15 +24,21 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import androidx.window.core.layout.WindowWidthSizeClass
-import com.example.pivota.auth.domain.model.User
-import com.example.pivota.dashboard.presentation.composables.*
-import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
-import com.example.pivota.dashboard.presentation.state.JobListingUiModel as DashboardJobListingUiModel
-import com.example.pivota.dashboard.presentation.viewmodels.MyListingsViewModel
 import com.example.pivota.admin.presentation.screens.AdminHouseDetailsScreen
 import com.example.pivota.admin.presentation.screens.AdminJobDetailsScreen
 import com.example.pivota.admin.presentation.screens.AdminJobListingUiModel
+import com.example.pivota.admin.presentation.screens.ApplicationFunnel
 import com.example.pivota.admin.presentation.screens.JobStatus
+import com.example.pivota.core.presentations.composables.PivotaSnackbar
+import com.example.pivota.core.presentations.composables.SnackbarType
+import com.example.pivota.dashboard.presentation.composables.*
+import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
+import com.example.pivota.dashboard.presentation.state.JobListingUiModel as DashboardJobListingUiModel
+import com.example.pivota.dashboard.presentation.viewmodels.DashboardSharedViewModel
+import com.example.pivota.dashboard.presentation.viewmodels.DashboardViewModel
+import com.example.pivota.dashboard.presentation.viewmodels.HeaderState
+import com.example.pivota.dashboard.presentation.viewmodels.HouseListingsViewModel
+import com.example.pivota.dashboard.presentation.viewmodels.MyListingsViewModel
 import com.example.pivota.listings.presentation.screens.BookViewingScreen
 import com.example.pivota.listings.presentation.screens.HouseDetailsScreen
 import com.example.pivota.listings.presentation.screens.HousingPostScreen
@@ -36,15 +50,15 @@ import com.example.pivota.listings.presentation.screens.jobs.JobType
 import com.example.pivota.listings.presentation.screens.jobs.SalaryPeriod
 import com.example.pivota.listings.presentation.screens.jobs.Benefit
 import com.example.pivota.listings.presentation.screens.jobs.BenefitIcon
-import com.example.pivota.core.presentations.composables.PivotaSnackbar
-import com.example.pivota.core.presentations.composables.SnackbarType
 import topLevelRoutes
 import java.util.Date
 import java.util.concurrent.TimeUnit
 import androidx.compose.material3.SheetState
-import com.example.pivota.dashboard.presentation.viewmodels.DashboardViewModel
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.launch
 
-// Quick conversion function - for user-facing job details
+// Quick conversion functions (keep as is)
 private fun quickConvertToDetailsJob(dashboardJob: DashboardJobListingUiModel): DetailsJobListingUiModel {
     // Parse salary to get a number (simplified)
     val salaryValue = try {
@@ -164,7 +178,6 @@ private fun convertToAdminJobListing(dashboardJob: DashboardJobListingUiModel): 
 fun DashboardScaffold(
     isGuestMode: Boolean = false,
     successMessage: String? = null,
-    user: User? = null,
     accessToken: String? = null,
     refreshToken: String? = null,
     onMessageConsumed: (() -> Unit)? = null
@@ -173,13 +186,29 @@ fun DashboardScaffold(
     val sheetState = rememberModalBottomSheetState()
     var showSheet by remember { mutableStateOf(false) }
     val dashboardViewModel: DashboardViewModel = hiltViewModel()
+    val sharedViewModel: DashboardSharedViewModel = hiltViewModel()
+    val instanceId = System.identityHashCode(sharedViewModel)
+    println("🔍 [DashboardScaffold/ReusableHeader] ViewModel instance: $instanceId")
 
-    // State for showing welcome snackbar
+    // Helper functions to get state synchronously
+    val isLoading = sharedViewModel.isLoading()
+    val profileError = sharedViewModel.getErrorMessage()
+    val profile = sharedViewModel.getCurrentProfile()
+
+    val headerState by sharedViewModel.headerState.collectAsState()
+
     var showWelcomeSnackbar by remember { mutableStateOf(false) }
     var welcomeMessage by remember { mutableStateOf("") }
     var snackbarType by remember { mutableStateOf(SnackbarType.SUCCESS) }
 
-    // Show snackbar when successMessage is received
+
+    LaunchedEffect(Unit) {
+        if (!isGuestMode) {
+            sharedViewModel.debugRoomCache()
+        }
+    }
+
+
     LaunchedEffect(successMessage) {
         if (!successMessage.isNullOrBlank()) {
             welcomeMessage = successMessage
@@ -189,20 +218,40 @@ fun DashboardScaffold(
         }
     }
 
-    // Start token refresh when dashboard loads (only for authenticated users)
+    //  Only start token refresh and auto-logout monitoring, NOT profile loading
+    // Profile loading is now handled by ViewModel's init block
     LaunchedEffect(Unit) {
         if (!isGuestMode && accessToken != null) {
             dashboardViewModel.startTokenRefresh()
             println("🔄 Token auto-refresh started")
+
+            // ✅ Check token validity and refresh if needed
+            val isValid = dashboardViewModel.isTokenValid()
+            if (!isValid) {
+                println("⚠️ Token may be invalid, attempting refresh...")
+                dashboardViewModel.refreshTokenNow()
+            }
         }
     }
 
-    // Log user info if available
-    LaunchedEffect(user, accessToken) {
-        if (user != null) {
-            println("🔍 [DashboardScaffold] User logged in: ${user.email}")
-            println("🔍 [DashboardScaffold] Access token available: ${accessToken != null}")
-            println("🔍 [DashboardScaffold] Refresh token available: ${refreshToken != null}")
+    LaunchedEffect(Unit) {
+        dashboardViewModel.logoutEvent.collect {
+            println("🚨 Logout event received, navigating to login...")
+            sharedViewModel.reset()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        dashboardViewModel.networkErrorEvent.collect { errorMessage ->
+            println("⚠️ Network error: $errorMessage")
+        }
+    }
+
+    LaunchedEffect(headerState) {
+        if (headerState is HeaderState.Success) {
+            val headerUser = (headerState as HeaderState.Success).headerUser
+            println("🔍 [DashboardScaffold] User loaded: ${headerUser.name}")
+            println("🔍 [DashboardScaffold] Account type: ${headerUser.accountType}")
         }
     }
 
@@ -210,33 +259,215 @@ fun DashboardScaffold(
     var selectedListingForBooking by remember { mutableStateOf<HousingListingUiModel?>(null) }
     var selectedListingForViewing by remember { mutableStateOf<HousingListingUiModel?>(null) }
     var selectedListingForAdminView by remember { mutableStateOf<HousingListingUiModel?>(null) }
-
-    // State for user-facing job details navigation
     var selectedJobForViewing by remember { mutableStateOf<DetailsJobListingUiModel?>(null) }
-
-    // State for admin job details navigation
     var selectedAdminJobForViewing by remember { mutableStateOf<AdminJobListingUiModel?>(null) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    // Get window size class for responsive layout
     val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isTablet = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED ||
             windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
 
-    // Filter routes based on guest mode
-    val visibleRoutes = if (isGuestMode) {
-        topLevelRoutes.filter { !it.requiresAuth }
-    } else {
-        topLevelRoutes
+    val visibleRoutes = topLevelRoutes
+
+    if (isGuestMode) {
+        GuestContent(
+            navController = navController,
+            sheetState = sheetState,
+            showSheet = showSheet,
+            onShowSheetChange = { showSheet = it },
+            showWelcomeSnackbar = showWelcomeSnackbar,
+            welcomeMessage = welcomeMessage,
+            snackbarType = snackbarType,
+            onSnackbarDismiss = {
+                showWelcomeSnackbar = false
+                welcomeMessage = ""
+            }
+        )
+        return
     }
 
-    // For tablets, use NavigationRail instead of NavigationBar
-    if (isTablet) {
-        // Tablet layout with NavigationRail
+    // ============================================================
+// HANDLE AUTH ERRORS FIRST (Critical - must logout)
+// ============================================================
+    val isAuthError = sharedViewModel.isAuthError()
+    val offlineMessage by sharedViewModel.offlineMessage.collectAsState()
+    val isOffline by sharedViewModel.isOffline.collectAsState()
+
+    if (isAuthError) {
+        // Auth error - session expired
+        // The TokenManager will automatically emit logoutEvent
+        // which is already being collected below
+        LaunchedEffect(Unit) {
+            sharedViewModel.reset()
+        }
+
+        // Show user-friendly message while waiting for logout
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Default.Lock,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    "Session Expired",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Please login again",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+            }
+        }
+        return
+    }
+
+// ============================================================
+// ALWAYS SHOW DASHBOARD CONTENT (with skeleton only on first-ever load)
+// ============================================================
+// Only show skeleton if:
+// 1. Still loading AND
+// 2. No profile data available yet (first launch) AND
+// 3. Not offline (offline means we have cache)
+    val hasProfileData = sharedViewModel.hasProfileData()
+    val shouldShowSkeleton = isLoading && !hasProfileData && !isOffline
+
+    if (shouldShowSkeleton) {
+        DashboardLoadingSkeleton()
+    } else {
+        // Always show dashboard content - either from cache or fresh
+        // Show offline/warning banner if needed
+        Box {
+            if (isTablet) {
+                TabletDashboardContent(
+                    navController = navController,
+                    currentDestination = currentDestination,
+                    visibleRoutes = visibleRoutes,
+                    selectedListingForBooking = selectedListingForBooking,
+                    selectedListingForViewing = selectedListingForViewing,
+                    selectedListingForAdminView = selectedListingForAdminView,
+                    selectedJobForViewing = selectedJobForViewing,
+                    selectedAdminJobForViewing = selectedAdminJobForViewing,
+                    sharedViewModel = sharedViewModel,
+                    accessToken = accessToken,
+                    showSheet = showSheet,
+                    onShowSheetChange = { showSheet = it },
+                    sheetState = sheetState,
+                    onBookingSelected = { selectedListingForBooking = it },
+                    onViewingSelected = { selectedListingForViewing = it },
+                    onAdminViewSelected = { selectedListingForAdminView = it },
+                    onJobViewingSelected = { selectedJobForViewing = it },
+                    onAdminJobViewingSelected = { selectedAdminJobForViewing = it },
+                    showWelcomeSnackbar = showWelcomeSnackbar,
+                    welcomeMessage = welcomeMessage,
+                    snackbarType = snackbarType,
+                    onSnackbarDismiss = {
+                        showWelcomeSnackbar = false
+                        welcomeMessage = ""
+                    }
+                )
+            } else {
+                MobileDashboardContent(
+                    navController = navController,
+                    currentDestination = currentDestination,
+                    visibleRoutes = visibleRoutes,
+                    selectedListingForBooking = selectedListingForBooking,
+                    selectedListingForViewing = selectedListingForViewing,
+                    selectedListingForAdminView = selectedListingForAdminView,
+                    selectedJobForViewing = selectedJobForViewing,
+                    selectedAdminJobForViewing = selectedAdminJobForViewing,
+                    sharedViewModel = sharedViewModel,
+                    accessToken = accessToken,
+                    showSheet = showSheet,
+                    onShowSheetChange = { showSheet = it },
+                    sheetState = sheetState,
+                    onBookingSelected = { selectedListingForBooking = it },
+                    onViewingSelected = { selectedListingForViewing = it },
+                    onAdminViewSelected = { selectedListingForAdminView = it },
+                    onJobViewingSelected = { selectedJobForViewing = it },
+                    onAdminJobViewingSelected = { selectedAdminJobForViewing = it },
+                    showWelcomeSnackbar = showWelcomeSnackbar,
+                    welcomeMessage = welcomeMessage,
+                    snackbarType = snackbarType,
+                    onSnackbarDismiss = {
+                        showWelcomeSnackbar = false
+                        welcomeMessage = ""
+                    }
+                )
+            }
+
+            // Show offline/warning banner if needed
+            if (isOffline && offlineMessage != null) {
+                OfflineWarningBanner(
+                    message = offlineMessage!!,
+                    onDismiss = { sharedViewModel.dismissOfflineMessage() }
+                )
+            }
+
+            // Show retry button if offline and user wants to retry
+            if (isOffline && hasProfileData) {
+                FloatingActionButton(
+                    onClick = { sharedViewModel.refreshProfile() },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp),
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Retry")
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TabletDashboardContent(
+    navController: NavHostController,
+    currentDestination: NavDestination?,
+    visibleRoutes: List<TopLevelRoute>,
+    selectedListingForBooking: HousingListingUiModel?,
+    selectedListingForViewing: HousingListingUiModel?,
+    selectedListingForAdminView: HousingListingUiModel?,
+    selectedJobForViewing: DetailsJobListingUiModel?,
+    selectedAdminJobForViewing: AdminJobListingUiModel?,
+    sharedViewModel: DashboardSharedViewModel,
+    accessToken: String?,
+    showSheet: Boolean,
+    onShowSheetChange: (Boolean) -> Unit,
+    sheetState: SheetState,
+    onBookingSelected: (HousingListingUiModel?) -> Unit,
+    onViewingSelected: (HousingListingUiModel?) -> Unit,
+    onAdminViewSelected: (HousingListingUiModel?) -> Unit,
+    onJobViewingSelected: (DetailsJobListingUiModel?) -> Unit,
+    onAdminJobViewingSelected: (AdminJobListingUiModel?) -> Unit,
+    showWelcomeSnackbar: Boolean,
+    welcomeMessage: String,
+    snackbarType: SnackbarType,
+    onSnackbarDismiss: () -> Unit
+) {
+    // Use a Box with proper constraints to prevent snackbar from stretching
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .wrapContentSize(Alignment.TopStart) // This prevents stretching
+    ) {
         Row(modifier = Modifier.fillMaxSize()) {
-            // Navigation Rail on the left
             NavigationRail(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -250,28 +481,14 @@ fun DashboardScaffold(
                 ) {
                     visibleRoutes.forEach { route ->
                         val isSelected = currentDestination?.hierarchy?.any { it.route == route.route::class.qualifiedName } == true
-
                         NavigationRailItem(
-                            icon = {
-                                Icon(
-                                    route.icon,
-                                    contentDescription = route.contentDescription,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            },
-                            label = {
-                                Text(
-                                    route.label,
-                                    fontSize = 11.sp
-                                )
-                            },
+                            icon = { Icon(route.icon, contentDescription = route.contentDescription, modifier = Modifier.size(24.dp)) },
+                            label = { Text(route.label, fontSize = 11.sp) },
                             selected = isSelected,
                             onClick = {
                                 if (currentDestination?.route != route.route) {
                                     navController.navigate(route.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
                                     }
@@ -288,7 +505,7 @@ fun DashboardScaffold(
                 }
             }
 
-            // Main content
+            // Content area
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -301,11 +518,193 @@ fun DashboardScaffold(
                     selectedListingForAdminView = selectedListingForAdminView,
                     selectedJobForViewing = selectedJobForViewing,
                     selectedAdminJobForViewing = selectedAdminJobForViewing,
-                    isGuestMode = isGuestMode,
-                    user = user,
+                    isGuestMode = false,
+                    sharedViewModel = sharedViewModel,
                     accessToken = accessToken,
                     showSheet = showSheet,
-                    onShowSheetChange = { showSheet = it },
+                    onShowSheetChange = onShowSheetChange,
+                    sheetState = sheetState,
+                    onBookingSelected = onBookingSelected,
+                    onViewingSelected = onViewingSelected,
+                    onAdminViewSelected = onAdminViewSelected,
+                    onJobViewingSelected = onJobViewingSelected,
+                    onAdminJobViewingSelected = onAdminJobViewingSelected
+                )
+            }
+        }
+
+        // Snackbar - now properly constrained and won't stretch across whole screen
+        if (showWelcomeSnackbar && welcomeMessage.isNotBlank()) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = true,
+                enter = androidx.compose.animation.slideInVertically(
+                    initialOffsetY = { -it } // Slide in from top
+                ) + androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.slideOutVertically(
+                    targetOffsetY = { -it } // Slide out to top
+                ) + androidx.compose.animation.fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp) // Add some padding from the top edge
+                    .wrapContentWidth() // Only take needed width, not full width
+                    .zIndex(100f)
+            ) {
+                PivotaSnackbar(
+                    message = welcomeMessage,
+                    type = snackbarType,
+                    duration = 3000L,
+                    onDismiss = onSnackbarDismiss
+                )
+            }
+        }
+    }
+
+    if (showSheet) {
+        PostOptionsBottomSheet(
+            sheetState = sheetState,
+            onDismiss = { onShowSheetChange(false) },
+            onOptionSelected = { category ->
+                onShowSheetChange(false)
+                when (category) {
+                    "jobs" -> navController.navigate(PostJob)
+                    "housing" -> navController.navigate(PostHousing)
+                    "support" -> navController.navigate(PostSupport)
+                    "service" -> navController.navigate(PostService)
+                }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MobileDashboardContent(
+    navController: NavHostController,
+    currentDestination: NavDestination?,
+    visibleRoutes: List<TopLevelRoute>,
+    selectedListingForBooking: HousingListingUiModel?,
+    selectedListingForViewing: HousingListingUiModel?,
+    selectedListingForAdminView: HousingListingUiModel?,
+    selectedJobForViewing: DetailsJobListingUiModel?,
+    selectedAdminJobForViewing: AdminJobListingUiModel?,
+    sharedViewModel: DashboardSharedViewModel,
+    accessToken: String?,
+    showSheet: Boolean,
+    onShowSheetChange: (Boolean) -> Unit,
+    sheetState: SheetState,
+    onBookingSelected: (HousingListingUiModel?) -> Unit,
+    onViewingSelected: (HousingListingUiModel?) -> Unit,
+    onAdminViewSelected: (HousingListingUiModel?) -> Unit,
+    onJobViewingSelected: (DetailsJobListingUiModel?) -> Unit,
+    onAdminJobViewingSelected: (AdminJobListingUiModel?) -> Unit,
+    showWelcomeSnackbar: Boolean,
+    welcomeMessage: String,
+    snackbarType: SnackbarType,
+    onSnackbarDismiss: () -> Unit
+) {
+    MobileNavHost(
+        navController = navController,
+        selectedListingForBooking = selectedListingForBooking,
+        selectedListingForViewing = selectedListingForViewing,
+        selectedListingForAdminView = selectedListingForAdminView,
+        selectedJobForViewing = selectedJobForViewing,
+        selectedAdminJobForViewing = selectedAdminJobForViewing,
+        isGuestMode = false,
+        sharedViewModel = sharedViewModel,
+        accessToken = accessToken,
+        visibleRoutes = visibleRoutes,
+        currentDestination = currentDestination,
+        showSheet = showSheet,
+        onShowSheetChange = onShowSheetChange,
+        sheetState = sheetState,
+        onBookingSelected = onBookingSelected,
+        onViewingSelected = onViewingSelected,
+        onAdminViewSelected = onAdminViewSelected,
+        onJobViewingSelected = onJobViewingSelected,
+        onAdminJobViewingSelected = onAdminJobViewingSelected,
+        showWelcomeSnackbar = showWelcomeSnackbar,
+        welcomeMessage = welcomeMessage,
+        snackbarType = snackbarType,
+        onSnackbarDismiss = onSnackbarDismiss
+    )
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GuestContent(
+    navController: NavHostController,
+    sheetState: SheetState,
+    showSheet: Boolean,
+    onShowSheetChange: (Boolean) -> Unit,
+    showWelcomeSnackbar: Boolean,
+    welcomeMessage: String,
+    snackbarType: SnackbarType,
+    onSnackbarDismiss: () -> Unit
+) {
+    var selectedListingForBooking by remember { mutableStateOf<HousingListingUiModel?>(null) }
+    var selectedListingForViewing by remember { mutableStateOf<HousingListingUiModel?>(null) }
+    var selectedListingForAdminView by remember { mutableStateOf<HousingListingUiModel?>(null) }
+    var selectedJobForViewing by remember { mutableStateOf<DetailsJobListingUiModel?>(null) }
+    var selectedAdminJobForViewing by remember { mutableStateOf<AdminJobListingUiModel?>(null) }
+
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isTablet = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED ||
+            windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val visibleRoutes = topLevelRoutes
+
+    if (isTablet) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            NavigationRail(
+                modifier = Modifier.fillMaxHeight().navigationBarsPadding(),
+                containerColor = MaterialTheme.colorScheme.surface,
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    visibleRoutes.forEach { route ->
+                        val isSelected = currentDestination?.hierarchy?.any { it.route == route.route::class.qualifiedName } == true
+                        NavigationRailItem(
+                            icon = { Icon(route.icon, contentDescription = route.contentDescription, modifier = Modifier.size(24.dp)) },
+                            label = { Text(route.label, fontSize = 11.sp) },
+                            selected = isSelected,
+                            onClick = {
+                                if (currentDestination?.route != route.route) {
+                                    navController.navigate(route.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            },
+                            colors = NavigationRailItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                                selectedTextColor = MaterialTheme.colorScheme.tertiary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+                }
+            }
+            Box(modifier = Modifier.fillMaxSize().padding(start = 8.dp)) {
+                TabletNavHost(
+                    navController = navController,
+                    selectedListingForBooking = selectedListingForBooking,
+                    selectedListingForViewing = selectedListingForViewing,
+                    selectedListingForAdminView = selectedListingForAdminView,
+                    selectedJobForViewing = selectedJobForViewing,
+                    selectedAdminJobForViewing = selectedAdminJobForViewing,
+                    isGuestMode = true,
+                    sharedViewModel = hiltViewModel(),
+                    accessToken = null,
+                    showSheet = showSheet,
+                    onShowSheetChange = onShowSheetChange,
                     sheetState = sheetState,
                     onBookingSelected = { selectedListingForBooking = it },
                     onViewingSelected = { selectedListingForViewing = it },
@@ -315,38 +714,7 @@ fun DashboardScaffold(
                 )
             }
         }
-
-        // Bottom Sheet
-        if (showSheet && !isGuestMode) {
-            PostOptionsBottomSheet(
-                sheetState = sheetState,
-                onDismiss = { showSheet = false },
-                onOptionSelected = { category ->
-                    showSheet = false
-                    when (category) {
-                        "jobs" -> navController.navigate(PostJob)
-                        "housing" -> navController.navigate(PostHousing)
-                        "support" -> navController.navigate(PostSupport)
-                        "service" -> navController.navigate(PostService)
-                    }
-                }
-            )
-        }
-
-        // Show PivotaSnackbar for welcome message
-        if (showWelcomeSnackbar && welcomeMessage.isNotBlank()) {
-            PivotaSnackbar(
-                message = welcomeMessage,
-                type = snackbarType,
-                duration = 5000L,
-                onDismiss = {
-                    showWelcomeSnackbar = false
-                    welcomeMessage = ""
-                }
-            )
-        }
     } else {
-        // Mobile layout - Bottom navigation only on main screens
         MobileNavHost(
             navController = navController,
             selectedListingForBooking = selectedListingForBooking,
@@ -354,13 +722,13 @@ fun DashboardScaffold(
             selectedListingForAdminView = selectedListingForAdminView,
             selectedJobForViewing = selectedJobForViewing,
             selectedAdminJobForViewing = selectedAdminJobForViewing,
-            isGuestMode = isGuestMode,
-            user = user,
-            accessToken = accessToken,
+            isGuestMode = true,
+            sharedViewModel = hiltViewModel(),
+            accessToken = null,
             visibleRoutes = visibleRoutes,
             currentDestination = currentDestination,
             showSheet = showSheet,
-            onShowSheetChange = { showSheet = it },
+            onShowSheetChange = onShowSheetChange,
             sheetState = sheetState,
             onBookingSelected = { selectedListingForBooking = it },
             onViewingSelected = { selectedListingForViewing = it },
@@ -370,9 +738,154 @@ fun DashboardScaffold(
             showWelcomeSnackbar = showWelcomeSnackbar,
             welcomeMessage = welcomeMessage,
             snackbarType = snackbarType,
-            onSnackbarDismiss = {
-                showWelcomeSnackbar = false
-                welcomeMessage = ""
+            onSnackbarDismiss = onSnackbarDismiss
+        )
+    }
+
+    if (showSheet) {
+        PostOptionsBottomSheet(
+            sheetState = sheetState,
+            onDismiss = { onShowSheetChange(false) },
+            onOptionSelected = { category ->
+                onShowSheetChange(false)
+                when (category) {
+                    "jobs" -> navController.navigate(PostJob)
+                    "housing" -> navController.navigate(PostHousing)
+                    "support" -> navController.navigate(PostSupport)
+                    "service" -> navController.navigate(PostService)
+                }
+            }
+        )
+    }
+
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AuthenticatedContent(
+    navController: NavHostController,
+    sheetState: SheetState,
+    showSheet: Boolean,
+    onShowSheetChange: (Boolean) -> Unit,
+    showWelcomeSnackbar: Boolean,
+    welcomeMessage: String,
+    snackbarType: SnackbarType,
+    onSnackbarDismiss: () -> Unit,
+    accessToken: String?,
+    sharedViewModel: DashboardSharedViewModel
+) {
+    var selectedListingForBooking by remember { mutableStateOf<HousingListingUiModel?>(null) }
+    var selectedListingForViewing by remember { mutableStateOf<HousingListingUiModel?>(null) }
+    var selectedListingForAdminView by remember { mutableStateOf<HousingListingUiModel?>(null) }
+    var selectedJobForViewing by remember { mutableStateOf<DetailsJobListingUiModel?>(null) }
+    var selectedAdminJobForViewing by remember { mutableStateOf<AdminJobListingUiModel?>(null) }
+
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isTablet = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED ||
+            windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val visibleRoutes = topLevelRoutes
+
+    if (isTablet) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            NavigationRail(
+                modifier = Modifier.fillMaxHeight().navigationBarsPadding(),
+                containerColor = MaterialTheme.colorScheme.surface,
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    visibleRoutes.forEach { route ->
+                        val isSelected = currentDestination?.hierarchy?.any { it.route == route.route::class.qualifiedName } == true
+                        NavigationRailItem(
+                            icon = { Icon(route.icon, contentDescription = route.contentDescription, modifier = Modifier.size(24.dp)) },
+                            label = { Text(route.label, fontSize = 11.sp) },
+                            selected = isSelected,
+                            onClick = {
+                                if (currentDestination?.route != route.route) {
+                                    navController.navigate(route.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            },
+                            colors = NavigationRailItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                                selectedTextColor = MaterialTheme.colorScheme.tertiary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+                }
+            }
+            Box(modifier = Modifier.fillMaxSize().padding(start = 8.dp)) {
+                TabletNavHost(
+                    navController = navController,
+                    selectedListingForBooking = selectedListingForBooking,
+                    selectedListingForViewing = selectedListingForViewing,
+                    selectedListingForAdminView = selectedListingForAdminView,
+                    selectedJobForViewing = selectedJobForViewing,
+                    selectedAdminJobForViewing = selectedAdminJobForViewing,
+                    isGuestMode = false,
+                    sharedViewModel = sharedViewModel,
+                    accessToken = accessToken,
+                    showSheet = showSheet,
+                    onShowSheetChange = onShowSheetChange,
+                    sheetState = sheetState,
+                    onBookingSelected = { selectedListingForBooking = it },
+                    onViewingSelected = { selectedListingForViewing = it },
+                    onAdminViewSelected = { selectedListingForAdminView = it },
+                    onJobViewingSelected = { selectedJobForViewing = it },
+                    onAdminJobViewingSelected = { selectedAdminJobForViewing = it }
+                )
+            }
+        }
+    } else {
+        MobileNavHost(
+            navController = navController,
+            selectedListingForBooking = selectedListingForBooking,
+            selectedListingForViewing = selectedListingForViewing,
+            selectedListingForAdminView = selectedListingForAdminView,
+            selectedJobForViewing = selectedJobForViewing,
+            selectedAdminJobForViewing = selectedAdminJobForViewing,
+            isGuestMode = false,
+            sharedViewModel = sharedViewModel,
+            accessToken = accessToken,
+            visibleRoutes = visibleRoutes,
+            currentDestination = currentDestination,
+            showSheet = showSheet,
+            onShowSheetChange = onShowSheetChange,
+            sheetState = sheetState,
+            onBookingSelected = { selectedListingForBooking = it },
+            onViewingSelected = { selectedListingForViewing = it },
+            onAdminViewSelected = { selectedListingForAdminView = it },
+            onJobViewingSelected = { selectedJobForViewing = it },
+            onAdminJobViewingSelected = { selectedAdminJobForViewing = it },
+            showWelcomeSnackbar = showWelcomeSnackbar,
+            welcomeMessage = welcomeMessage,
+            snackbarType = snackbarType,
+            onSnackbarDismiss = onSnackbarDismiss
+        )
+    }
+
+    if (showSheet) {
+        PostOptionsBottomSheet(
+            sheetState = sheetState,
+            onDismiss = { onShowSheetChange(false) },
+            onOptionSelected = { category ->
+                onShowSheetChange(false)
+                when (category) {
+                    "jobs" -> navController.navigate(PostJob)
+                    "housing" -> navController.navigate(PostHousing)
+                    "support" -> navController.navigate(PostSupport)
+                    "service" -> navController.navigate(PostService)
+                }
             }
         )
     }
@@ -389,7 +902,7 @@ private fun MobileNavHost(
     selectedJobForViewing: DetailsJobListingUiModel?,
     selectedAdminJobForViewing: AdminJobListingUiModel?,
     isGuestMode: Boolean,
-    user: User?,
+    sharedViewModel: DashboardSharedViewModel,
     accessToken: String?,
     visibleRoutes: List<TopLevelRoute>,
     currentDestination: NavDestination?,
@@ -426,15 +939,16 @@ private fun MobileNavHost(
                 showWelcomeSnackbar = showWelcomeSnackbar,
                 welcomeMessage = welcomeMessage,
                 snackbarType = snackbarType,
-                onSnackbarDismiss = onSnackbarDismiss
+                onSnackbarDismiss = onSnackbarDismiss,
+                sharedViewModel = sharedViewModel
             ) {
                 DashboardScreen(
                     onNavigateToListings = {
                         navController.navigate(MyListings)
                     },
                     isGuestMode = isGuestMode,
-                    user = user,
-                    accessToken = accessToken
+                    accessToken = accessToken,
+                    sharedViewModel = sharedViewModel
                 )
             }
         }
@@ -452,7 +966,9 @@ private fun MobileNavHost(
                 showWelcomeSnackbar = showWelcomeSnackbar,
                 welcomeMessage = welcomeMessage,
                 snackbarType = snackbarType,
-                onSnackbarDismiss = onSnackbarDismiss
+                onSnackbarDismiss = onSnackbarDismiss,
+                sharedViewModel = sharedViewModel
+
             ) {
                 DiscoverScreen(
                     onNavigateToHouseListings = {
@@ -472,8 +988,8 @@ private fun MobileNavHost(
                     },
                     onNavigateToAllServices = {},
                     onNavigateToAllSupport = {},
-                    user = user,
-                    isGuestMode = isGuestMode
+                    isGuestMode = isGuestMode,
+                    sharedViewModel = sharedViewModel
                 )
             }
         }
@@ -491,11 +1007,12 @@ private fun MobileNavHost(
                 showWelcomeSnackbar = showWelcomeSnackbar,
                 welcomeMessage = welcomeMessage,
                 snackbarType = snackbarType,
-                onSnackbarDismiss = onSnackbarDismiss
+                onSnackbarDismiss = onSnackbarDismiss,
+                sharedViewModel = sharedViewModel
             ) {
                 ProfileScreen(
                     isGuestMode = isGuestMode,
-                    user = user
+                    sharedViewModel = sharedViewModel,
                 )
             }
         }
@@ -507,7 +1024,6 @@ private fun MobileNavHost(
                 ProfessionalsScreen()
             }
         }
-
 
         // House Details
         composable<HouseDetails> {
@@ -592,7 +1108,7 @@ private fun MobileNavHost(
         // House Listings
         composable<HouseListings> {
             NoBottomNavScaffold {
-                val viewModel: com.example.pivota.dashboard.presentation.viewmodels.HouseListingsViewModel = hiltViewModel()
+                val viewModel: HouseListingsViewModel = hiltViewModel()
                 HouseListingsScreen(
                     viewModel = viewModel,
                     onListingClick = { housingListing ->
@@ -709,7 +1225,6 @@ private fun MobileNavHost(
         }
 
         // My Listings
-        // My Listings
         composable<MyListings> {
             NoBottomNavScaffold {
                 val myListingsViewModel: MyListingsViewModel = hiltViewModel()
@@ -749,7 +1264,7 @@ private fun TabletNavHost(
     selectedJobForViewing: DetailsJobListingUiModel?,
     selectedAdminJobForViewing: AdminJobListingUiModel?,
     isGuestMode: Boolean,
-    user: User?,
+    sharedViewModel: DashboardSharedViewModel,
     accessToken: String?,
     showSheet: Boolean,
     onShowSheetChange: (Boolean) -> Unit,
@@ -772,8 +1287,8 @@ private fun TabletNavHost(
                     navController.navigate(MyListings)
                 },
                 isGuestMode = isGuestMode,
-                user = user,
-                accessToken = accessToken
+                accessToken = accessToken,
+                sharedViewModel = sharedViewModel
             )
         }
 
@@ -802,8 +1317,8 @@ private fun TabletNavHost(
                 },
                 onNavigateToAllServices = {},
                 onNavigateToAllSupport = {},
-                user = user,
-                isGuestMode = isGuestMode
+                isGuestMode = isGuestMode,
+                sharedViewModel = sharedViewModel
             )
         }
 
@@ -811,7 +1326,7 @@ private fun TabletNavHost(
         composable<Profile> {
             ProfileScreen(
                 isGuestMode = isGuestMode,
-                user = user
+                sharedViewModel = sharedViewModel
             )
         }
 
@@ -891,7 +1406,7 @@ private fun TabletNavHost(
 
         // House Listings
         composable<HouseListings> {
-            val viewModel: com.example.pivota.dashboard.presentation.viewmodels.HouseListingsViewModel = hiltViewModel()
+            val viewModel: HouseListingsViewModel = hiltViewModel()
             HouseListingsScreen(
                 viewModel = viewModel,
                 onListingClick = { housingListing ->
@@ -1023,6 +1538,7 @@ private fun TabletNavHost(
 
 // Main Screen Scaffold with Bottom Navigation
 @OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun MainScreenScaffold(
     navController: NavHostController,
@@ -1036,14 +1552,14 @@ fun MainScreenScaffold(
     welcomeMessage: String,
     snackbarType: SnackbarType,
     onSnackbarDismiss: () -> Unit,
-    content: @Composable () -> Unit
+    sharedViewModel: DashboardSharedViewModel,
+    content: @Composable () -> Unit,
+
 ) {
     Scaffold(
         bottomBar = {
             NavigationBar(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
+                modifier = Modifier.fillMaxWidth()
             ) {
                 visibleRoutes.forEach { route ->
                     val isSelected = currentDestination?.hierarchy?.any {
@@ -1083,6 +1599,127 @@ fun MainScreenScaffold(
                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
+                }
+            }
+        },
+        floatingActionButton = {
+            if (!isGuestMode) {
+                PulsingPostFab(
+                    onClick = { onShowSheetChange(true) }
+                )
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Main content
+            content()
+
+            // Snackbar positioned at bottom with small padding - using normal Box with Z-index
+            if (showWelcomeSnackbar && welcomeMessage.isNotBlank()) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = true,
+                    enter = androidx.compose.animation.slideInVertically(
+                        initialOffsetY = { it }
+                    ) + androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.slideOutVertically(
+                        targetOffsetY = { it }
+                    ) + androidx.compose.animation.fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(bottom = 16.dp)
+                        .zIndex(100f)  // Add zIndex to ensure it floats above content
+                ) {
+                    PivotaSnackbar(
+                        message = welcomeMessage,
+                        type = snackbarType,
+                        duration = 3000L,
+                        onDismiss = onSnackbarDismiss
+                    )
+                }
+            }
+        }
+    }
+
+    // Bottom Sheet (kept outside Scaffold as it's a modal)
+    if (showSheet && !isGuestMode) {
+        PostOptionsBottomSheet(
+            sheetState = sheetState,
+            onDismiss = { onShowSheetChange(false) },
+            onOptionSelected = { category ->
+                onShowSheetChange(false)
+                when (category) {
+                    "jobs" -> navController.navigate(PostJob)
+                    "housing" -> navController.navigate(PostHousing)
+                    "support" -> navController.navigate(PostSupport)
+                    "service" -> navController.navigate(PostService)
+                }
+            }
+        )
+    }
+}
+
+// No Bottom Navigation Scaffold for detail screens
+@Composable
+fun NoBottomNavScaffold(
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun OfflineWarningBanner(
+    message: String,
+    onDismiss: () -> Unit
+) {
+    var visible by remember { mutableStateOf(true) }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInVertically(initialOffsetY = { -it }),
+        exit = slideOutVertically(targetOffsetY = { -it })
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shadowElevation = 4.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.WifiOff,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = message,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = { visible = false; onDismiss() }) {
+                    Icon(Icons.Default.Close, contentDescription = "Dismiss", modifier = Modifier.size(16.dp))
                 }
             }
         },

@@ -3,6 +3,7 @@ package com.example.pivota.dashboard.presentation.state
 import com.example.pivota.dashboard.domain.EmployerType
 import com.example.pivota.dashboard.domain.ListingStatus
 
+
 data class JobListingUiModel(
     val id: String,
     val title: String,

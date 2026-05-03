@@ -34,42 +34,50 @@ class SplashViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
 
-            val hasValidSession = tokenManager.hasValidSession()
             val isGuestMode = dataStore.isGuestModeEnabled()
+            val hasValidSession = tokenManager.hasValidSession()
 
             println("🔍 [SplashViewModel] hasValidSession: $hasValidSession, isGuestMode: $isGuestMode")
 
-            if (hasValidSession) {
-                // Check if token needs refresh
-                val tokenAge = dataStore.getTokenAge()
-                val shouldRefresh = tokenAge > 12 * 60 * 1000L
-
-                if (shouldRefresh) {
-                    println("🔄 [SplashViewModel] Token is ${tokenAge / 1000}s old, refreshing...")
-                    val refreshSuccess = tokenManager.refreshToken()
+            when {
+                isGuestMode -> {
+                    println("👤 [SplashViewModel] Guest mode enabled")
+                    _startDestination.value = GuestDashboard
+                }
+                hasValidSession -> {
+                    // ✅ WAIT for token refresh to complete before navigating
+                    val refreshSuccess = refreshTokenAndWait()
 
                     if (refreshSuccess) {
                         println("✅ [SplashViewModel] Token refreshed successfully")
                         tokenManager.startAutoRefresh()
-                        _startDestination.value = Dashboard
                     } else {
-                        println("❌ [SplashViewModel] Token refresh failed")
-                        _startDestination.value = Welcome
+                        println("⚠️ [SplashViewModel] Token refresh failed - backend may be down")
                     }
-                } else {
-                    println("✅ [SplashViewModel] Token is valid (${tokenAge / 1000}s old)")
-                    tokenManager.startAutoRefresh()
+
                     _startDestination.value = Dashboard
                 }
-            } else if (isGuestMode) {
-                println("👤 [SplashViewModel] Guest mode enabled")
-                _startDestination.value = GuestDashboard
-            } else {
-                println("🆕 [SplashViewModel] New user, showing welcome")
-                _startDestination.value = Welcome
+                else -> {
+                    println("🆕 [SplashViewModel] New user")
+                    _startDestination.value = Welcome
+                }
             }
 
             _isLoading.value = false
         }
+    }
+
+    // ✅ New method - waits for refresh to complete
+    private suspend fun refreshTokenAndWait(): Boolean {
+        val tokenAge = dataStore.getTokenAge()
+        val shouldRefresh = tokenAge > 12 * 60 * 1000L
+
+        if (!shouldRefresh) {
+            println("✅ [SplashViewModel] Token is still valid (${tokenAge / 1000}s old)")
+            return true
+        }
+
+        println("🔄 [SplashViewModel] Token is ${tokenAge / 1000}s old, refreshing before navigation...")
+        return tokenManager.refreshToken()
     }
 }

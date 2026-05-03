@@ -142,23 +142,12 @@ fun SplashContent() {
         // ===== LOGO + TEXT =====
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Image(
-                painter = painterResource(id = R.drawable.pivotaconnect_logo_transparent),
+                painter = painterResource(id = R.drawable.pivotcntlogotransp),
                 contentDescription = "PivotaConnect Logo",
                 modifier = Modifier
                     .size(140.dp)
                     .scale(logoScale)
                     .alpha(logoAlpha)
-            )
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            Text(
-                text = "Connecting life opportunities",
-                color = onSurfaceVariant, // Warm Gray
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 0.6.sp,
-                modifier = Modifier.alpha(taglineAlpha)
             )
         }
     }

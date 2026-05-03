@@ -1,9 +1,9 @@
 package com.example.pivota.dashboard.presentation.model
 
 import androidx.compose.runtime.Immutable
-import com.example.pivota.dashboard.domain.ListingCategory
 import com.example.pivota.dashboard.domain.ListingStatus
-import com.example.pivota.dashboard.presentation.model.PerformanceHint
+import com.example.pivota.dashboard.domain.model.ListingCategory
+
 
 @Immutable
 data class ListingUiModel(
