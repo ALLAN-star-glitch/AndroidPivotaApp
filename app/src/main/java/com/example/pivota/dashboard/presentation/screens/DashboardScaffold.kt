@@ -1724,4 +1724,34 @@ fun OfflineWarningBanner(
             }
         }
     }
+
+    // Bottom Sheet (kept outside Scaffold as it's a modal)
+    if (showSheet && !isGuestMode) {
+        PostOptionsBottomSheet(
+            sheetState = sheetState,
+            onDismiss = { onShowSheetChange(false) },
+            onOptionSelected = { category ->
+                onShowSheetChange(false)
+                when (category) {
+                    "jobs" -> navController.navigate(PostJob)
+                    "housing" -> navController.navigate(PostHousing)
+                    "support" -> navController.navigate(PostSupport)
+                    "service" -> navController.navigate(PostService)
+                }
+            }
+        )
+    }
+}
+
+// No Bottom Navigation Scaffold for detail screens
+@Composable
+fun NoBottomNavScaffold(
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
+        content()
+    }
 }
