@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import coil3.compose.AsyncImage
@@ -52,6 +53,8 @@ import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.dashboard.presentation.composables.ReusableHeader
+import com.example.pivota.dashboard.presentation.viewmodels.DashboardSharedViewModel
+import com.example.pivota.dashboard.presentation.viewmodels.HeaderState
 import com.example.pivota.ui.theme.*
 import kotlinx.coroutines.delay
 
@@ -161,44 +164,54 @@ fun DashboardScreen(
     onNavigateToEscrow: () -> Unit = {},
     userType: UserType = UserType.BOTH,
     isGuestMode: Boolean = false,
-    user: User? = null,
     accessToken: String? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val sharedViewModel: DashboardSharedViewModel = hiltViewModel()
+    val headerState by sharedViewModel.headerState.collectAsState()
+    val headerUser = (headerState as? HeaderState.Success)?.headerUser
+    val currentProfile = sharedViewModel.getCurrentProfile()
 
-    // Extract user information for display
-    val displayName = remember(user) {
+    // Extract user information from shared ViewModel
+    val displayName = remember(headerUser, isGuestMode) {
         when {
-            user == null -> "Guest"
-            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
-            user.firstName.isNotBlank() -> user.firstName
-            else -> user.email.split("@").firstOrNull() ?: "Guest"
+            isGuestMode -> "Guest"
+            headerUser != null -> headerUser.shortName
+            else -> "Guest"
         }
     }
 
-    val fullName = remember(user) {
+    val fullName = remember(headerUser, isGuestMode) {
         when {
-            user == null -> "Guest"
-            user.userName.isNotBlank() -> user.userName
-            user.firstName.isNotBlank() && user.lastName.isNotBlank() -> "${user.firstName} ${user.lastName}"
-            user.firstName.isNotBlank() -> user.firstName
-            else -> user.email.split("@").firstOrNull() ?: "Guest"
+            isGuestMode -> "Guest User"
+            headerUser != null -> headerUser.name
+            else -> "Guest User"
         }
     }
 
-    val userRole = user?.role
-    val accountType = user?.accountType
+    val userRole = remember(headerUser, isGuestMode) {
+        when {
+            isGuestMode -> "Guest"
+            headerUser != null -> headerUser.roleDisplayName
+            else -> "Guest"
+        }
+    }
 
-    // Log user info for debugging
-    LaunchedEffect(user, accessToken) {
-        if (user != null) {
+    val accountType = remember(headerUser, isGuestMode) {
+        when {
+            isGuestMode -> "GUEST"
+            headerUser != null -> headerUser.accountType
+            else -> "GUEST"
+        }
+    }
+
+// Log user info for debugging
+    LaunchedEffect(headerUser, accessToken) {
+        if (headerUser != null) {
             println("🔍 [DashboardScreen] User loaded:")
-            println("   - Email: ${user.email}")
-            println("   - Name: ${user.userName}")
-            println("   - First: ${user.firstName}")
-            println("   - Last: ${user.lastName}")
-            println("   - Role: ${user.role}")
-            println("   - Account Type: ${user.accountType}")
+            println("   - Name: ${headerUser.name}")
+            println("   - Role: ${headerUser.role}")
+            println("   - Account Type: ${headerUser.accountType}")
             println("   - Access Token: ${if (accessToken != null) "Present" else "Missing"}")
         }
     }
@@ -376,14 +389,13 @@ fun DashboardScreen(
 
             ReusableHeader(
                 colorScheme = colorScheme,
-
-                user = user,
+                enhancedUser = currentProfile,
                 isGuestMode = isGuestMode,
-                isSticky = true,  // Sticky for dashboard
+                isSticky = true,
                 scrollOffset = scrollOffset,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()  // Push below status bar
+                    .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 pageTitle = "Dashboard",
                 pageSubtitle = "Track your business performance",

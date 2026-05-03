@@ -16,10 +16,10 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import androidx.window.core.layout.WindowWidthSizeClass
-import com.example.pivota.auth.domain.model.User
 import com.example.pivota.dashboard.presentation.composables.*
 import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
 import com.example.pivota.dashboard.presentation.state.JobListingUiModel as DashboardJobListingUiModel
+import com.example.pivota.dashboard.presentation.viewmodels.DashboardSharedViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.MyListingsViewModel
 import com.example.pivota.admin.presentation.screens.AdminHouseDetailsScreen
 import com.example.pivota.admin.presentation.screens.AdminJobDetailsScreen
@@ -43,6 +43,7 @@ import java.util.Date
 import java.util.concurrent.TimeUnit
 import androidx.compose.material3.SheetState
 import com.example.pivota.dashboard.presentation.viewmodels.DashboardViewModel
+import com.example.pivota.dashboard.presentation.viewmodels.HeaderState
 
 // Quick conversion function - for user-facing job details
 private fun quickConvertToDetailsJob(dashboardJob: DashboardJobListingUiModel): DetailsJobListingUiModel {
@@ -164,7 +165,6 @@ private fun convertToAdminJobListing(dashboardJob: DashboardJobListingUiModel): 
 fun DashboardScaffold(
     isGuestMode: Boolean = false,
     successMessage: String? = null,
-    user: User? = null,
     accessToken: String? = null,
     refreshToken: String? = null,
     onMessageConsumed: (() -> Unit)? = null
@@ -173,6 +173,10 @@ fun DashboardScaffold(
     val sheetState = rememberModalBottomSheetState()
     var showSheet by remember { mutableStateOf(false) }
     val dashboardViewModel: DashboardViewModel = hiltViewModel()
+
+    // NEW: Shared ViewModel for profile data across all dashboard tabs
+    val sharedViewModel: DashboardSharedViewModel = hiltViewModel()
+    val headerState by sharedViewModel.headerState.collectAsState()
 
     // State for showing welcome snackbar
     var showWelcomeSnackbar by remember { mutableStateOf(false) }
@@ -195,6 +199,9 @@ fun DashboardScaffold(
             dashboardViewModel.startTokenRefresh()
             println("🔄 Token auto-refresh started")
 
+            // Load profile data when authenticated
+            sharedViewModel.loadProfile()
+
             // Optionally, check token validity on start
             val isValid = dashboardViewModel.isTokenValid()
             if (!isValid) {
@@ -207,6 +214,8 @@ fun DashboardScaffold(
     LaunchedEffect(Unit) {
         dashboardViewModel.logoutEvent.collect {
             println("🚨 Logout event received, navigating to login...")
+            // Reset shared view model on logout
+            sharedViewModel.reset()
             // Navigate to login screen
             // You might want to emit an event to your navigation controller
         }
@@ -219,13 +228,12 @@ fun DashboardScaffold(
         }
     }
 
-
-    // Log user info if available
-    LaunchedEffect(user, accessToken) {
-        if (user != null) {
-            println("🔍 [DashboardScaffold] User logged in: ${user.email}")
-            println("🔍 [DashboardScaffold] Access token available: ${accessToken != null}")
-            println("🔍 [DashboardScaffold] Refresh token available: ${refreshToken != null}")
+    // Log user info if available (from shared header state)
+    LaunchedEffect(headerState) {
+        if (headerState is HeaderState.Success) {
+            val headerUser = (headerState as HeaderState.Success).headerUser
+            println("🔍 [DashboardScaffold] User loaded: ${headerUser.name}")
+            println("🔍 [DashboardScaffold] Account type: ${headerUser.accountType}")
         }
     }
 
@@ -320,7 +328,7 @@ fun DashboardScaffold(
                     selectedJobForViewing = selectedJobForViewing,
                     selectedAdminJobForViewing = selectedAdminJobForViewing,
                     isGuestMode = isGuestMode,
-                    user = user,
+                    sharedViewModel = sharedViewModel,
                     accessToken = accessToken,
                     showSheet = showSheet,
                     onShowSheetChange = { showSheet = it },
@@ -373,7 +381,7 @@ fun DashboardScaffold(
             selectedJobForViewing = selectedJobForViewing,
             selectedAdminJobForViewing = selectedAdminJobForViewing,
             isGuestMode = isGuestMode,
-            user = user,
+            sharedViewModel = sharedViewModel,
             accessToken = accessToken,
             visibleRoutes = visibleRoutes,
             currentDestination = currentDestination,
@@ -407,7 +415,7 @@ private fun MobileNavHost(
     selectedJobForViewing: DetailsJobListingUiModel?,
     selectedAdminJobForViewing: AdminJobListingUiModel?,
     isGuestMode: Boolean,
-    user: User?,
+    sharedViewModel: DashboardSharedViewModel,
     accessToken: String?,
     visibleRoutes: List<TopLevelRoute>,
     currentDestination: NavDestination?,
@@ -451,7 +459,6 @@ private fun MobileNavHost(
                         navController.navigate(MyListings)
                     },
                     isGuestMode = isGuestMode,
-                    user = user,
                     accessToken = accessToken
                 )
             }
@@ -490,7 +497,6 @@ private fun MobileNavHost(
                     },
                     onNavigateToAllServices = {},
                     onNavigateToAllSupport = {},
-                    user = user,
                     isGuestMode = isGuestMode
                 )
             }
@@ -512,8 +518,7 @@ private fun MobileNavHost(
                 onSnackbarDismiss = onSnackbarDismiss
             ) {
                 ProfileScreen(
-                    isGuestMode = isGuestMode,
-                    user = user
+                    isGuestMode = isGuestMode
                 )
             }
         }
@@ -525,7 +530,6 @@ private fun MobileNavHost(
                 ProfessionalsScreen()
             }
         }
-
 
         // House Details
         composable<HouseDetails> {
@@ -727,7 +731,6 @@ private fun MobileNavHost(
         }
 
         // My Listings
-        // My Listings
         composable<MyListings> {
             NoBottomNavScaffold {
                 val myListingsViewModel: MyListingsViewModel = hiltViewModel()
@@ -767,7 +770,7 @@ private fun TabletNavHost(
     selectedJobForViewing: DetailsJobListingUiModel?,
     selectedAdminJobForViewing: AdminJobListingUiModel?,
     isGuestMode: Boolean,
-    user: User?,
+    sharedViewModel: DashboardSharedViewModel,
     accessToken: String?,
     showSheet: Boolean,
     onShowSheetChange: (Boolean) -> Unit,
@@ -790,7 +793,6 @@ private fun TabletNavHost(
                     navController.navigate(MyListings)
                 },
                 isGuestMode = isGuestMode,
-                user = user,
                 accessToken = accessToken
             )
         }
@@ -820,7 +822,6 @@ private fun TabletNavHost(
                 },
                 onNavigateToAllServices = {},
                 onNavigateToAllSupport = {},
-                user = user,
                 isGuestMode = isGuestMode
             )
         }
@@ -828,8 +829,7 @@ private fun TabletNavHost(
         // Profile
         composable<Profile> {
             ProfileScreen(
-                isGuestMode = isGuestMode,
-                user = user
+                isGuestMode = isGuestMode
             )
         }
 
@@ -1113,7 +1113,7 @@ fun MainScreenScaffold(
         },
         floatingActionButtonPosition = FabPosition.End,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) {  _ -> // Suppress the warning with @Suppress annotation on the function
+    ) {  _ ->
         Box(
             modifier = Modifier
                 .fillMaxSize()

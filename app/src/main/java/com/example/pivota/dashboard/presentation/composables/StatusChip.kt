@@ -6,7 +6,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.AnnotatedString
-import com.example.pivota.dashboard.domain.model.ListingStatus
+import com.example.pivota.dashboard.domain.ListingStatus
+
 
 @Composable
 fun StatusChip(status: ListingStatus) {

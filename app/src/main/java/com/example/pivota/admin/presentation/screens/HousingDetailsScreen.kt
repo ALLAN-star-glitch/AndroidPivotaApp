@@ -39,7 +39,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
 import com.example.pivota.R
-import com.example.pivota.dashboard.domain.model.ListingStatus
+import com.example.pivota.dashboard.domain.ListingStatus
 import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
 import com.example.pivota.listings.presentation.composables.SimpleHousingImageGallery
 import com.example.pivota.ui.theme.PivotaConnectTheme

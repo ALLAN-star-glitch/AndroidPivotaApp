@@ -1,7 +1,6 @@
-
 package com.example.pivota.dashboard.presentation.state
 
-import com.example.pivota.auth.domain.model.CompleteProfileResult
+import com.example.pivota.dashboard.domain.model.CompleteProfile
 
 /**
  * UI state for the Profile screen
@@ -17,7 +16,7 @@ sealed class ProfileUiState {
      * @param profile The complete profile data from the API
      */
     data class Success(
-        val profile: CompleteProfileResult
+        val profile: CompleteProfile
     ) : ProfileUiState()
 
     /**
@@ -53,7 +52,7 @@ sealed class ProfileUiState {
     /**
      * Get profile data if state is Success
      */
-    val profileData: CompleteProfileResult?
+    val profileData: CompleteProfile?
         get() = when (this) {
             is Success -> profile
             else -> null

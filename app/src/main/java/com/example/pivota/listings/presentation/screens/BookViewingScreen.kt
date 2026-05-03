@@ -51,9 +51,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.R
-import com.example.pivota.dashboard.domain.model.ListingStatus
 import com.example.pivota.listings.domain.models.HousingPost
 import com.example.pivota.core.presentations.composables.TopBar
+import com.example.pivota.dashboard.domain.ListingStatus
 import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
 import java.text.NumberFormat
 import java.util.Date

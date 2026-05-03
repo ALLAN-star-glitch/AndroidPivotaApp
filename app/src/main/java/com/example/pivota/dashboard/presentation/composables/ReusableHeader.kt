@@ -32,8 +32,8 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
-import com.example.pivota.auth.domain.model.User
 import com.example.pivota.core.presentations.viewmodel.ThemeViewModel
+import com.example.pivota.dashboard.domain.model.CompleteProfile
 import com.example.pivota.dashboard.presentation.screens.ProfileMenuBottomSheet
 
 @SuppressLint("Range")
@@ -43,7 +43,7 @@ fun ReusableHeader(
     modifier: Modifier = Modifier,
     colorScheme: ColorScheme,
     pageTitle: String,
-    user: User? = null,
+    enhancedUser: CompleteProfile? = null,
     isGuestMode: Boolean = false,
     isSticky: Boolean = false,
     pageSubtitle: String? = null,
@@ -52,7 +52,7 @@ fun ReusableHeader(
     notificationCount: Int = 0,
 ) {
     val context = LocalContext.current
-    val profileUrl = user?.profileImageUrl?.takeIf { it.isNotBlank() }
+    val profileUrl = enhancedUser?.profileImageUrl?.takeIf { it.isNotBlank() }
     var showMenuBottomSheet by remember { mutableStateOf(false) }
 
     // Animated rotation for dropdown icon
@@ -69,26 +69,26 @@ fun ReusableHeader(
     // Simple logic: hide title and subtitle when scrolled more than 20px
     val isScrolled = scrollOffset > 20f
 
-    // Get user info - FULL NAME (no truncation)
-    val firstName = remember(user, isGuestMode) {
+    // Get user info from CompleteProfile
+    val firstName = remember(enhancedUser, isGuestMode) {
         when {
-            user == null || isGuestMode -> "Guest"
-            user.firstName.isNotBlank() -> user.firstName.trim()
-            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
-            user.email.isNotBlank() -> user.email.split("@").firstOrNull() ?: "Guest"
+            isGuestMode -> "Guest"
+            enhancedUser != null -> enhancedUser.user.shortName
             else -> "Guest"
         }
     }
 
-    // Shortened role names
-    val userRole = remember(user, isGuestMode) {
+    // Get user role directly from backend (enhancedUser.user.role)
+    val userRole = remember(enhancedUser, isGuestMode) {
         when {
             isGuestMode -> "Guest"
-            user?.role?.equals("admin", ignoreCase = true) == true -> "Admin"
-            user?.role?.equals("professional", ignoreCase = true) == true -> "Pro"
-            else -> "General User"
+            enhancedUser != null -> enhancedUser.user.role
+            else -> "Guest"
         }
     }
+
+    // Get verification badge for the header
+    val isVerified = enhancedUser?.isFullyVerified == true
 
     Column(
         modifier = modifier
@@ -158,8 +158,8 @@ fun ReusableHeader(
                                     .fillMaxSize()
                                     .clip(CircleShape)
                                     .border(
-                                        2.dp,
-                                        colorScheme.tertiary.copy(alpha = 0.5f),
+                                        if (isVerified) 2.dp else 0.dp,
+                                        if (isVerified) colorScheme.tertiary else Color.Transparent,
                                         CircleShape
                                     ),
                                 placeholder = painterResource(R.drawable.job_placeholder3),
@@ -190,6 +190,15 @@ fun ReusableHeader(
                                 modifier = Modifier.weight(1f, fill = false),
                                 softWrap = false
                             )
+                            // Verification badge (small checkmark)
+                            if (isVerified && !isGuestMode) {
+                                Icon(
+                                    Icons.Outlined.Verified,
+                                    contentDescription = "Verified",
+                                    tint = colorScheme.tertiary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
                             // Rotating dropdown icon
                             Icon(
                                 Icons.Outlined.KeyboardArrowDown,
@@ -214,9 +223,9 @@ fun ReusableHeader(
                     }
                 }
 
-                // Right side - Action icons (Theme Switcher + Notifications) with increased spacing
+                // Right side - Action icons (Theme Switcher + Notifications)
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp), // Increased from 8.dp to 12.dp
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // 1. Theme Switcher Icon
@@ -329,7 +338,7 @@ fun HeaderActionIcon(
             .size(38.dp)
             .clip(CircleShape)
             .background(
-                color = colorScheme.surfaceVariant.copy(alpha = 0.7f), // Increased alpha for better visibility
+                color = colorScheme.surfaceVariant.copy(alpha = 0.7f),
                 shape = CircleShape
             )
             .clickable(onClick = onClick),
@@ -338,7 +347,7 @@ fun HeaderActionIcon(
         Icon(
             icon,
             contentDescription = null,
-            tint = colorScheme.primary, // Changed to primary for better visibility
+            tint = colorScheme.primary,
             modifier = Modifier.size(20.dp)
         )
     }

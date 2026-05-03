@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import coil3.compose.AsyncImage
@@ -38,6 +39,8 @@ import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.dashboard.presentation.composables.*
+import com.example.pivota.dashboard.presentation.viewmodels.DashboardSharedViewModel
+import com.example.pivota.dashboard.presentation.viewmodels.HeaderState
 
 @SuppressLint("FrequentlyChangingValue")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,10 +53,12 @@ fun DiscoverScreen(
     onNavigateToAllProviders: () -> Unit = {},
     onNavigateToAllServices: () -> Unit = {},
     onNavigateToAllSupport: () -> Unit = {},
-    user: User? = null,
     isGuestMode: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val sharedViewModel: DashboardSharedViewModel = hiltViewModel()
+    val headerState by sharedViewModel.headerState.collectAsState()
+    val headerUser = (headerState as? HeaderState.Success)?.headerUser
 
     val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isExpanded = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
@@ -142,7 +147,7 @@ fun DiscoverScreen(
                         colorScheme = colorScheme,
                         pageTitle = "PivotaConnect",
                         pageSubtitle = "Connect to opportunities near you",
-                        user = user,
+                        enhancedUser = sharedViewModel.getCurrentProfile(),
                         isGuestMode = isGuestMode,
                         isSticky = false,
                         modifier = Modifier
@@ -154,12 +159,10 @@ fun DiscoverScreen(
 
                 // Marketing Carousel Banner
                 item {
-                    val displayName = remember(user, isGuestMode) {
+                    val displayName = remember(headerUser, isGuestMode) {
                         when {
-                            user == null || isGuestMode -> "Guest"
-                            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
-                            user.firstName.isNotBlank() -> user.firstName
-                            user.email.isNotBlank() -> user.email.split("@").firstOrNull() ?: "Guest"
+                            isGuestMode -> "Guest"
+                            headerUser != null -> headerUser.shortName
                             else -> "Guest"
                         }
                     }

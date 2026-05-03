@@ -39,8 +39,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.example.pivota.R
-import com.example.pivota.dashboard.domain.model.EmployerType
-import com.example.pivota.dashboard.domain.model.ListingStatus
+import com.example.pivota.dashboard.domain.EmployerType
+import com.example.pivota.dashboard.domain.ListingStatus
+
 import com.example.pivota.dashboard.presentation.composables.ModernJobCardV2
 import com.example.pivota.dashboard.presentation.state.JobListingUiModel
 import com.example.pivota.dashboard.presentation.viewmodels.JobListingsViewModel

@@ -173,6 +173,7 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
                 isGuestMode = true
             )
         }
+
         /* ───────── AUTHENTICATED DASHBOARD ───────── */
         composable<Dashboard> {
             val loginViewModel: LoginViewModel = hiltViewModel()
@@ -207,7 +208,7 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
             DashboardScaffold(
                 isGuestMode = false,
                 successMessage = successMessage,
-                user = user,
+                // Note: user parameter removed - DashboardSharedViewModel will fetch profile using accessToken
                 accessToken = accessToken,
                 refreshToken = refreshToken,
                 onMessageConsumed = {

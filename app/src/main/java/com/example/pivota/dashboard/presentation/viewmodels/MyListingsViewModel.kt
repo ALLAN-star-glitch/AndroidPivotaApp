@@ -2,11 +2,11 @@ package com.example.pivota.dashboard.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.pivota.dashboard.domain.ListingFilter
+import com.example.pivota.dashboard.domain.ListingStatus
+import com.example.pivota.dashboard.domain.ListingType
 import com.example.pivota.dashboard.domain.model.Listing
 import com.example.pivota.dashboard.domain.model.ListingCategory
-import com.example.pivota.dashboard.domain.model.ListingFilter
-import com.example.pivota.dashboard.domain.model.ListingStatus
-import com.example.pivota.dashboard.domain.model.ListingType
 import com.example.pivota.dashboard.presentation.model.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*

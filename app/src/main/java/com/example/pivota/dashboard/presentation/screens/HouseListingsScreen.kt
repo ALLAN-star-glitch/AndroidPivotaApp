@@ -38,12 +38,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.example.pivota.R
-import com.example.pivota.dashboard.domain.model.ListingStatus
+
 import com.example.pivota.dashboard.presentation.composables.ModernHousingCardV2
 import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
 import com.example.pivota.dashboard.presentation.viewmodels.HouseListingsViewModel
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.rememberScrollState
+import com.example.pivota.dashboard.domain.ListingStatus
 
 // Category type for housing filtering
 enum class HousingCategoryType {

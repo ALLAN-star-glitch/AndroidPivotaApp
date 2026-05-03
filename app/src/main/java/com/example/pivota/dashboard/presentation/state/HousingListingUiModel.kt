@@ -1,7 +1,8 @@
 package com.example.pivota.dashboard.presentation.state
 
 import com.example.pivota.R
-import com.example.pivota.dashboard.domain.model.ListingStatus
+import com.example.pivota.dashboard.domain.ListingStatus
+
 
 data class HousingListingUiModel(
     val id: String,

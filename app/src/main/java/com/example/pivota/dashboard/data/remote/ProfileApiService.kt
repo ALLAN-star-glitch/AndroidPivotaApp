@@ -1,10 +1,8 @@
-
 package com.example.pivota.dashboard.data.remote
 
-import com.example.pivota.auth.data.remote.dto.BaseResponseDto
-import com.example.pivota.auth.data.remote.dto.ProfileResponseDto
 import com.example.pivota.core.di.AuthHttpClient
 import com.example.pivota.core.network.NetworkConstants
+import com.example.pivota.dashboard.data.dto.ProfileResponseDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
@@ -16,16 +14,16 @@ import io.ktor.http.contentType
 import javax.inject.Inject
 
 class ProfileApiService @Inject constructor(
-    @param:AuthHttpClient  private val client: HttpClient  // WITH auth header
+    @param:AuthHttpClient private val client: HttpClient
 ) {
 
-    suspend fun fetchProfile(): BaseResponseDto<ProfileResponseDto> {
+    suspend fun fetchProfile(): ProfileResponseDto {
         println("🔍 ========== FETCH PROFILE REQUEST ==========")
         println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/users-profile-module/me")
         println("🔍 ============================================")
 
         return try {
-            val response: BaseResponseDto<ProfileResponseDto> = client.get("v1/users-profile-module/me") {
+            val response: ProfileResponseDto = client.get("v1/users-profile-module/me") {
                 contentType(ContentType.Application.Json)
             }.body()
 

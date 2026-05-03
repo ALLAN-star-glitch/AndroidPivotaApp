@@ -52,7 +52,8 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
-import com.example.pivota.dashboard.domain.model.EmployerType
+import com.example.pivota.dashboard.domain.EmployerType
+
 
 @Composable
 fun ModernJobCard(
