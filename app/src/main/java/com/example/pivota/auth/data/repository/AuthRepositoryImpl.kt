@@ -417,7 +417,17 @@ class AuthRepositoryImpl @Inject constructor(
             println("   - role: $role")
             println("   - accountType: $accountType")
             println("   - organizationUuid: $organizationUuid")
-            println("   - planSlug: $planSlug")
+
+            // Since firstName, lastName, userName are no longer in JWT,
+            // we need to get them from:
+            // 1. Previously stored user in local DB
+            // 2. Or fetch from Profile Service
+            // 3. Or use email prefix as fallback
+
+            val existingUser = userDao.getUserByEmail(emailFromToken)
+            val firstName = existingUser?.firstName ?: emailFromToken.substringBefore("@")
+            val lastName = existingUser?.lastName ?: ""
+            val userName = existingUser?.userName ?: firstName
 
             // Get existing user from local DB for name fields (not in JWT)
             val existingUser = userDao.getUserByEmail(emailFromToken)
@@ -438,7 +448,7 @@ class AuthRepositoryImpl @Inject constructor(
                 accessToken = accessToken,
                 refreshToken = refreshToken,
                 isAuthenticated = true,
-                // JWT payload fields
+                // JWT payload fields (new structure)
                 userUuid = userUuid,
                 accountId = accountId,
                 accountType = accountType,

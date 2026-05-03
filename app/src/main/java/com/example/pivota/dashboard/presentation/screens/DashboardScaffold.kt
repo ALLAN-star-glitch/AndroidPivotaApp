@@ -1722,6 +1722,63 @@ fun OfflineWarningBanner(
                     Icon(Icons.Default.Close, contentDescription = "Dismiss", modifier = Modifier.size(16.dp))
                 }
             }
+        },
+        floatingActionButton = {
+            if (!isGuestMode) {
+                PulsingPostFab(
+                    onClick = { onShowSheetChange(true) }
+                )
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = innerPadding.calculateBottomPadding())
+        ) {
+            // Main content
+            content()
+
+            // ✅ Snackbar INSIDE the Box - positioned at bottom
+            if (showWelcomeSnackbar && welcomeMessage.isNotBlank()) {
+                PivotaSnackbar(
+                    message = welcomeMessage,
+                    type = snackbarType,
+                    duration = 3000L,  // Reduced to 3 seconds
+                    onDismiss = onSnackbarDismiss
+                )
+            }
         }
+    }
+
+    // Bottom Sheet (kept outside Scaffold as it's a modal)
+    if (showSheet && !isGuestMode) {
+        PostOptionsBottomSheet(
+            sheetState = sheetState,
+            onDismiss = { onShowSheetChange(false) },
+            onOptionSelected = { category ->
+                onShowSheetChange(false)
+                when (category) {
+                    "jobs" -> navController.navigate(PostJob)
+                    "housing" -> navController.navigate(PostHousing)
+                    "support" -> navController.navigate(PostSupport)
+                    "service" -> navController.navigate(PostService)
+                }
+            }
+        )
+    }
+}
+
+// No Bottom Navigation Scaffold for detail screens
+@Composable
+fun NoBottomNavScaffold(
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
+        content()
     }
 }
