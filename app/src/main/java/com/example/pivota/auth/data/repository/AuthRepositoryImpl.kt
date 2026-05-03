@@ -437,6 +437,14 @@ class AuthRepositoryImpl @Inject constructor(
             val profileImage = existingUser?.profileImage
             val phone = existingUser?.phone
 
+            // Get existing user from local DB for name fields (not in JWT)
+            val existingUser = userDao.getUserByEmail(emailFromToken)
+            val firstName = existingUser?.firstName ?: emailFromToken.substringBefore("@")
+            val lastName = existingUser?.lastName ?: ""
+            val userName = existingUser?.userName ?: firstName
+            val profileImage = existingUser?.profileImage
+            val phone = existingUser?.phone
+
             User(
                 uuid = userUuid,
                 email = emailFromToken,
