@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.pivota.admin.presentation.screens.JobStatus
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.JobStatus
 import com.example.pivota.ui.theme.PivotaConnectTheme
 
 

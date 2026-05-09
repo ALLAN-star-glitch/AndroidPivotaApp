@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,41 +24,65 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import androidx.window.core.layout.WindowWidthSizeClass
-import com.example.pivota.admin.presentation.screens.AdminHouseDetailsScreen
-import com.example.pivota.admin.presentation.screens.AdminJobDetailsScreen
-import com.example.pivota.admin.presentation.screens.AdminJobListingUiModel
-import com.example.pivota.admin.presentation.screens.ApplicationFunnel
-import com.example.pivota.admin.presentation.screens.JobStatus
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.housing.AdminHouseDetailsScreen
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.AdminJobDetailsScreen
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.AdminJobListingUiModel
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.JobStatus
 import com.example.pivota.core.presentations.composables.PivotaSnackbar
 import com.example.pivota.core.presentations.composables.SnackbarType
-import com.example.pivota.dashboard.presentation.composables.*
 import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
 import com.example.pivota.dashboard.presentation.state.JobListingUiModel as DashboardJobListingUiModel
-import com.example.pivota.dashboard.presentation.viewmodels.DashboardSharedViewModel
-import com.example.pivota.dashboard.presentation.viewmodels.DashboardViewModel
-import com.example.pivota.dashboard.presentation.viewmodels.HeaderState
-import com.example.pivota.dashboard.presentation.viewmodels.HouseListingsViewModel
-import com.example.pivota.dashboard.presentation.viewmodels.MyListingsViewModel
-import com.example.pivota.listings.presentation.screens.BookViewingScreen
-import com.example.pivota.listings.presentation.screens.HouseDetailsScreen
-import com.example.pivota.listings.presentation.screens.HousingPostScreen
-import com.example.pivota.listings.presentation.screens.JobPostScreen
-import com.example.pivota.listings.presentation.screens.PostServiceScreen
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardSharedViewModel
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardViewModel
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HeaderState
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HouseListingsViewModel
+import com.example.pivota.dashboard.presentation.viewmodels.client_admin_viewmodels.MyListingsViewModel
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.housing.BookViewingScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.housing.HouseDetailsScreen
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.housing.HousingPostScreen
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.JobPostScreen
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.professional.PostServiceScreen
 import com.example.pivota.listings.presentation.screens.jobs.JobDetailsScreen
 import com.example.pivota.listings.presentation.screens.jobs.JobListingUiModel as DetailsJobListingUiModel
 import com.example.pivota.listings.presentation.screens.jobs.JobType
 import com.example.pivota.listings.presentation.screens.jobs.SalaryPeriod
 import com.example.pivota.listings.presentation.screens.jobs.Benefit
 import com.example.pivota.listings.presentation.screens.jobs.BenefitIcon
-import topLevelRoutes
+import com.example.pivota.dashboard.presentation.navigation.topLevelRoutes
 import java.util.Date
 import java.util.concurrent.TimeUnit
 import androidx.compose.material3.SheetState
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
-import kotlinx.coroutines.launch
 import com.example.pivota.core.presentations.composables.PivotaFullScreenLoading
+import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.PostOptionsBottomSheet
+import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.PulsingPostFab
+import com.example.pivota.dashboard.presentation.navigation.AdminHouseDetails
+import com.example.pivota.dashboard.presentation.navigation.AdminJobDetails
+import com.example.pivota.dashboard.presentation.navigation.BookViewing
+import com.example.pivota.dashboard.presentation.navigation.Connect
+import com.example.pivota.dashboard.presentation.navigation.Dashboard
+import com.example.pivota.dashboard.presentation.navigation.HouseDetails
+import com.example.pivota.dashboard.presentation.navigation.HouseListings
+import com.example.pivota.dashboard.presentation.navigation.JobDetails
+import com.example.pivota.dashboard.presentation.navigation.JobListings
+import com.example.pivota.dashboard.presentation.navigation.MyListings
+import com.example.pivota.dashboard.presentation.navigation.PostHousing
+import com.example.pivota.dashboard.presentation.navigation.PostJob
+import com.example.pivota.dashboard.presentation.navigation.PostService
+import com.example.pivota.dashboard.presentation.navigation.PostSupport
+import com.example.pivota.dashboard.presentation.navigation.Professionals
+import com.example.pivota.dashboard.presentation.navigation.Profile
+import com.example.pivota.dashboard.presentation.navigation.TopLevelRoute
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.MyListingsScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens.DashboardLoadingSkeleton
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens.DashboardScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens.DiscoverScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.housing.HouseListingsScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.jobs.JobListingsScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ProfessionalsScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens.ProfileScreen
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.ApplicationFunnel
 
 // Quick conversion functions (keep as is)
 private fun quickConvertToDetailsJob(dashboardJob: DashboardJobListingUiModel): DetailsJobListingUiModel {
@@ -167,7 +190,7 @@ private fun convertToAdminJobListing(dashboardJob: DashboardJobListingUiModel): 
         employerName = dashboardJob.company,
         employerVerified = true,
         averageTimeToApply = 3.2,
-        applicationFunnel = com.example.pivota.admin.presentation.screens.ApplicationFunnel(
+        applicationFunnel = ApplicationFunnel(
             viewed = 100,
             applied = 24,
             reviewed = 12
@@ -1555,7 +1578,7 @@ fun MainScreenScaffold(
     sharedViewModel: DashboardSharedViewModel,
     content: @Composable () -> Unit,
 
-) {
+    ) {
     Scaffold(
         bottomBar = {
             NavigationBar(

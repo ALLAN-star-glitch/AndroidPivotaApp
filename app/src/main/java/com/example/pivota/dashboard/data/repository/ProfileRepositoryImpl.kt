@@ -5,7 +5,7 @@ import com.example.pivota.core.network.NetworkError
 import com.example.pivota.core.network.safeApiCall
 import com.example.pivota.dashboard.data.mapper.ProfileDtoMapper
 import com.example.pivota.dashboard.data.remote.ProfileApiService
-import com.example.pivota.dashboard.domain.model.CompleteProfile
+import com.example.pivota.dashboard.domain.model.profile_models.CompleteProfile
 import com.example.pivota.dashboard.domain.repository.ProfileRepository
 import javax.inject.Inject
 

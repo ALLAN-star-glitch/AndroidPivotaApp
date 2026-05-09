@@ -1,6 +1,6 @@
 package com.example.pivota.dashboard.presentation.state
 
-import com.example.pivota.dashboard.domain.model.CompleteProfile
+import com.example.pivota.dashboard.domain.model.profile_models.CompleteProfile
 
 sealed class DashboardState {
     data object Loading : DashboardState()
