@@ -1,7 +1,7 @@
 package com.example.pivota.dashboard.domain.useCase
 
 import com.example.pivota.core.network.ApiResult
-import com.example.pivota.dashboard.domain.model.CompleteProfile
+import com.example.pivota.dashboard.domain.model.profile_models.CompleteProfile
 import com.example.pivota.dashboard.domain.repository.ProfileRepository
 import javax.inject.Inject
 

@@ -1,41 +1,37 @@
 package com.example.pivota.core.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
-import com.example.pivota.PivotaApp
 import com.example.pivota.auth.presentation.screens.AdaptiveResetPasswordScreen
 import com.example.pivota.auth.presentation.screens.LoginScreen
 import com.example.pivota.auth.presentation.screens.SplashScreen
 import com.example.pivota.auth.presentation.viewModel.LoginViewModel
 import com.example.pivota.auth.presentation.viewModel.SharedAuthViewModel
-import com.example.pivota.dashboard.presentation.bookservice.ReviewAndPayScreen
-import com.example.pivota.dashboard.presentation.bookservice.ScheduleServiceScreen
-import com.example.pivota.dashboard.presentation.bookservice.SelectServiceScreen
-import com.example.pivota.dashboard.presentation.bookservice.ServiceDetailsScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ReviewAndPayScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ScheduleServiceScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.SelectServiceScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ServiceDetailsScreen
 import com.example.pivota.core.preferences.PivotaDataStore
 import com.example.pivota.dashboard.presentation.screens.DashboardScaffold
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardSharedViewModel
 import com.example.pivota.welcome.presentation.screens.OnboardingPager
 import com.example.pivota.welcome.presentation.screens.WelcomeScreen
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.android.EntryPointAccessors
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -177,12 +173,34 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
         /* ───────── AUTHENTICATED DASHBOARD ───────── */
         composable<Dashboard> {
             val loginViewModel: LoginViewModel = hiltViewModel()
+            val sharedDashboardViewModel: DashboardSharedViewModel = hiltViewModel()
 
             val loginSuccessMessage = sharedAuthViewModel.peekLoginSuccessMessage()
             val signupSuccessMessage = sharedAuthViewModel.peekSignupSuccessMessage()
             var user by remember { mutableStateOf(sharedAuthViewModel.peekUser()) }
             var accessToken by remember { mutableStateOf(sharedAuthViewModel.peekAccessToken()) }
             var refreshToken by remember { mutableStateOf(sharedAuthViewModel.peekRefreshToken()) }
+
+            // Collect logout event from DashboardSharedViewModel
+            val logoutEvent by sharedDashboardViewModel.logoutEvent.collectAsState()
+
+            LaunchedEffect(logoutEvent) {
+                if (logoutEvent) {
+                    println("🚨 [NavHostSetup] Logout event detected, navigating to Welcome screen...")
+
+                    // Reset the event
+                    sharedDashboardViewModel.resetLogoutEvent()
+
+                    // ✅ Clear all auth data using existing method
+                    sharedAuthViewModel.clearAllAuthData()
+
+                    // Navigate to Login screen (not login)
+                    navController.navigate(AuthFlow) {
+                        popUpTo(0) { inclusive = true }  // Clear entire back stack
+                        launchSingleTop = true
+                    }
+                }
+            }
 
             // If user is null (app was killed), restore from database
             LaunchedEffect(Unit) {
@@ -208,7 +226,6 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
             DashboardScaffold(
                 isGuestMode = false,
                 successMessage = successMessage,
-                // Note: user parameter removed - DashboardSharedViewModel will fetch profile using accessToken
                 accessToken = accessToken,
                 refreshToken = refreshToken,
                 onMessageConsumed = {

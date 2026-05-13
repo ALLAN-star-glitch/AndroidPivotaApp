@@ -26,8 +26,9 @@ import kotlin.coroutines.cancellation.CancellationException
 @Singleton
 class TokenManager @Inject constructor(
     private val dataStore: PivotaDataStore,
-    private val authUseCases: AuthUseCases
-) : TokenProvider {  // Implement TokenProvider
+    private val authUseCases: dagger.Lazy<AuthUseCases>
+) : TokenProvider {
+
     private val mutex = Mutex()
     private var refreshJob: kotlinx.coroutines.Job? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -145,7 +146,7 @@ class TokenManager @Inject constructor(
 
             // Add timeout to prevent hanging
             val result = withTimeoutOrNull(REFRESH_TIMEOUT_MS) {
-                authUseCases.refreshToken(refreshToken)
+                authUseCases.get().refreshToken(refreshToken)  // ✅ Added .get()
             }
 
             if (result == null) {
@@ -303,7 +304,7 @@ class TokenManager @Inject constructor(
             return dataStore.getAccessToken()
         } catch (e: kotlinx.coroutines.CancellationException) {
             println("⚠️ [TokenManager] getValidToken was cancelled")
-            return dataStore.getAccessToken() // Return existing token on cancellation
+            return dataStore.getAccessToken()
         } catch (e: Exception) {
             println("❌ [TokenManager] Error getting valid token: ${e.message}")
             return dataStore.getAccessToken()
@@ -321,7 +322,6 @@ class TokenManager @Inject constructor(
 
     // Check if user has a valid session (non-suspend version for quick checks)
     suspend fun hasValidSessionSync(): Boolean {
-        // Note: This is a simplified version - use with caution
         return dataStore.getAccessToken() != null && dataStore.getRefreshToken() != null
     }
 
@@ -360,5 +360,73 @@ class TokenManager @Inject constructor(
 
     override suspend fun getRefreshToken(): String? {
         return dataStore.getRefreshToken()
+    }
+
+    /**
+     * Call logout API to invalidate refresh token on server
+     * Then clear local session
+     */
+    suspend fun logout(onComplete: () -> Unit = {}) {
+        try {
+            println("🚨 [TokenManager] Logging out - calling API...")
+
+            // Get current refresh token
+            val refreshToken = dataStore.getRefreshToken()
+
+            // Call logout API if we have a token
+            if (refreshToken != null) {
+                val result = authUseCases.get().logout(refreshToken)  // ✅ Added .get()
+                when (result) {
+                    is ApiResult.Success -> {
+                        println("✅ [TokenManager] Logout API call successful")
+                    }
+                    is ApiResult.Error -> {
+                        println("⚠️ [TokenManager] Logout API failed: ${result.networkError.userFriendlyMessage}")
+                        // Continue with local logout even if API fails
+                    }
+                    else -> {}
+                }
+            } else {
+                println("⚠️ [TokenManager] No refresh token found, skipping API call")
+            }
+
+            // Always clear local session regardless of API result
+            clearLocalSession()
+            onComplete()
+
+        } catch (e: Exception) {
+            println("❌ [TokenManager] Exception during logout: ${e.message}")
+            // Still clear local session
+            clearLocalSession()
+            onComplete()
+        }
+    }
+
+    /**
+     * Clear local session data without calling API
+     * Used for force logout or when API call fails
+     */
+    suspend fun clearLocalSession() {
+        try {
+            println("🔐 [TokenManager] Clearing local session...")
+
+            // Stop auto-refresh
+            stopAutoRefresh()
+
+            // Clear DataStore
+            dataStore.clearSession()
+            dataStore.clearGuestMode()
+
+            // Reset failure counters
+            consecutiveFailures = 0
+            isRefreshing = false
+
+            // Emit logout event for navigation
+            _logoutEvent.emit(Unit)
+
+            println("✅ [TokenManager] Local session cleared successfully")
+        } catch (e: Exception) {
+            println("❌ [TokenManager] Error clearing local session: ${e.message}")
+        }
     }
 }

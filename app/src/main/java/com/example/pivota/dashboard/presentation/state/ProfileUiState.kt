@@ -1,6 +1,6 @@
 package com.example.pivota.dashboard.presentation.state
 
-import com.example.pivota.dashboard.domain.model.CompleteProfile
+import com.example.pivota.dashboard.domain.model.profile_models.CompleteProfile
 
 /**
  * UI state for the Profile screen

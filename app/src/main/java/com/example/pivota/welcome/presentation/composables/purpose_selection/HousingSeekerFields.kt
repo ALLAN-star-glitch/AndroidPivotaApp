@@ -3,13 +3,15 @@ package com.example.pivota.welcome.presentation.composables.purpose_selection
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,7 +20,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -29,12 +30,12 @@ import com.example.pivota.welcome.presentation.state.HousingSeekerFormData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalAnimationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HousingSeekerFields(
     data: HousingSeekerFormData,
     onDataChange: (HousingSeekerFormData) -> Unit
-): Boolean { // Return validation state
+): Boolean {
     val searchTypes = listOf("RENTAL", "SALE", "BOTH")
 
     val propertyTypes = listOf(
@@ -42,46 +43,12 @@ fun HousingSeekerFields(
         "STUDIO", "TOWNHOUSE", "LAND", "CONDO", "VILLA"
     )
 
-    val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
-    var lastSelectedIndex by remember { mutableStateOf(-1) }
-
+    var showBottomSheet by remember { mutableStateOf(false) }
     val selectedCount = data.propertyTypes.size
     val hasSelectedSearchType = data.searchType.isNotEmpty()
 
-    // Validation logic - button enabled when search type selected AND at least one property type
+    // Validation logic
     val isValid = hasSelectedSearchType && selectedCount > 0
-
-    // Smart auto-scroll: finds and scrolls to next unselected property type
-    LaunchedEffect(data.propertyTypes) {
-        if (lastSelectedIndex != -1 && data.propertyTypes.isNotEmpty()) {
-            coroutineScope.launch {
-                delay(50)
-
-                var nextIndex = -1
-
-                for (i in lastSelectedIndex + 1 until propertyTypes.size) {
-                    if (!data.propertyTypes.contains(propertyTypes[i])) {
-                        nextIndex = i
-                        break
-                    }
-                }
-
-                if (nextIndex == -1) {
-                    for (i in 0 until lastSelectedIndex) {
-                        if (!data.propertyTypes.contains(propertyTypes[i])) {
-                            nextIndex = i
-                            break
-                        }
-                    }
-                }
-
-                if (nextIndex != -1 && nextIndex < propertyTypes.size) {
-                    listState.animateScrollToItem(nextIndex)
-                }
-            }
-        }
-    }
 
     Card(
         shape = RoundedCornerShape(24.dp),
@@ -90,10 +57,7 @@ fun HousingSeekerFields(
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 0.dp,
-                shape = RoundedCornerShape(24.dp),
-            )
+            .shadow(elevation = 0.dp, shape = RoundedCornerShape(24.dp))
     ) {
         Column(
             modifier = Modifier
@@ -176,7 +140,7 @@ fun HousingSeekerFields(
                 }
             }
 
-            // Property Types - Animated conditional display
+            // Property Types Section - Only visible when search type is selected
             AnimatedVisibility(
                 visible = hasSelectedSearchType,
                 enter = fadeIn(animationSpec = tween(400)) +
@@ -204,7 +168,7 @@ fun HousingSeekerFields(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Property type header with elegant counter and clear button
+                    // Property type header
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -223,181 +187,136 @@ fun HousingSeekerFields(
                             )
 
                             Text(
-                                text = "Select all that apply",
+                                text = if (selectedCount > 0)
+                                    "${selectedCount} type${if (selectedCount > 1) "s" else ""} selected"
+                                else
+                                    "Select property types to continue",
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = if (selectedCount == 0)
+                                        MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             )
                         }
 
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Clear selection button
-                            if (selectedCount > 0) {
-                                ClearSelectionButton(
-                                    onClick = {
-                                        onDataChange(data.copy(propertyTypes = emptyList()))
-                                    }
+                        // Change Button (removed Select button logic)
+                        if (selectedCount > 0) {
+                            Button(
+                                onClick = { showBottomSheet = true },
+                                modifier = Modifier.height(40.dp),
+                                shape = RoundedCornerShape(20.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
-                            }
-
-                            // Animated counter
-                            AnimatedContent(
-                                targetState = selectedCount,
-                                transitionSpec = {
-                                    fadeIn(animationSpec = tween(200)) +
-                                            scaleIn(initialScale = 0.7f) togetherWith
-                                            fadeOut(animationSpec = tween(100)) +
-                                            scaleOut(targetScale = 0.7f)
-                                }
-                            ) { count ->
-                                if (count > 0) {
-                                    Surface(
-                                        shape = RoundedCornerShape(20.dp),
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        modifier = Modifier
-                                    ) {
-                                        Text(
-                                            text = "$count",
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                            style = MaterialTheme.typography.labelMedium.copy(
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontSize = 13.sp,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Property type pills in horizontal scroll with scroll state
-                    LazyRow(
-                        state = listState,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(propertyTypes.size) { index ->
-                            val type = propertyTypes[index]
-                            val isSelected = data.propertyTypes.contains(type)
-
-                            ElegantPill(
-                                selected = isSelected,
-                                onClick = {
-                                    val updated = if (data.propertyTypes.contains(type)) {
-                                        data.propertyTypes.filter { it != type }
-                                    } else {
-                                        lastSelectedIndex = index
-                                        data.propertyTypes + type
-                                    }
-                                    onDataChange(data.copy(propertyTypes = updated))
-                                },
-                                label = type.replaceFirstChar { it.uppercase() },
-                                modifier = Modifier
-                            )
-                        }
-                    }
-
-                    // Validation message when search type selected but no property types
-                    if (hasSelectedSearchType && selectedCount == 0) {
-                        AnimatedVisibility(
-                            visible = true,
-                            enter = fadeIn(animationSpec = tween(300)) +
-                                    slideInVertically(initialOffsetY = { 20 })
-                        ) {
-                            Card(
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
-                                ),
-                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = androidx.compose.material.icons.Icons.Default.Info,
-                                        contentDescription = "Info",
-                                        modifier = Modifier.size(16.dp),
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                    Text(
-                                        text = "Please select at least one property type to continue",
-                                        style = MaterialTheme.typography.bodySmall.copy(
-                                            fontSize = 12.sp,
-                                            color = MaterialTheme.colorScheme.error
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Elegant progress indicator
-                    if (selectedCount > 0 && selectedCount < propertyTypes.size) {
-                        ElegantProgressBar(
-                            progress = selectedCount.toFloat() / propertyTypes.size
-                        )
-                    }
-
-                    // Smart navigation hint
-                    if (selectedCount > 0 && selectedCount < propertyTypes.size) {
-                        AnimatedVisibility(
-                            visible = true,
-                            enter = fadeIn(animationSpec = tween(300)) +
-                                    slideInVertically(initialOffsetY = { 20 }),
-                            exit = fadeOut(animationSpec = tween(200))
-                        ) {
-                            Text(
-                                text = "✨ Automatically scrolling to next option",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                                ),
-                                modifier = Modifier.alpha(0.7f)
-                            )
-                        }
-                    }
-
-                    // Completion message with clear button
-                    if (selectedCount == propertyTypes.size) {
-                        AnimatedVisibility(
-                            visible = true,
-                            enter = fadeIn(animationSpec = tween(300)) +
-                                    slideInVertically(initialOffsetY = { 20 })
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Change",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "✓ All property types selected",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.primary
-                                    ),
-                                    modifier = Modifier.weight(1f).alpha(0.8f)
+                                    text = "Change",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
                                 )
+                            }
+                        }
+                    }
 
-                                TextButton(
-                                    onClick = { onDataChange(data.copy(propertyTypes = emptyList())) },
-                                    modifier = Modifier.height(32.dp)
+                    // Display selected property types as chips
+                    if (selectedCount > 0) {
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn() + scaleIn()
+                        ) {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
+                                    items(data.propertyTypes) { propertyType ->
+                                        SelectedPropertyChip(
+                                            label = propertyType.replaceFirstChar { it.uppercase() },
+                                            onRemove = {
+                                                val updated = data.propertyTypes.filter { it != propertyType }
+                                                onDataChange(data.copy(propertyTypes = updated))
+                                            }
+                                        )
+                                    }
+                                }
+
+                                // Clear all button for multiple selections
+                                if (selectedCount > 1) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End
+                                    ) {
+                                        TextButton(
+                                            onClick = { onDataChange(data.copy(propertyTypes = emptyList())) },
+                                            modifier = Modifier.height(32.dp)
+                                        ) {
+                                            Text(
+                                                text = "Clear all",
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Progress indicator
+                                if (selectedCount < propertyTypes.size) {
+                                    ElegantProgressBar(
+                                        progress = selectedCount.toFloat() / propertyTypes.size
+                                    )
+                                }
+
+                                // Completion message
+                                if (selectedCount == propertyTypes.size) {
                                     Text(
-                                        text = "Clear all",
+                                        text = "✓ Great! You've selected all property types",
                                         style = MaterialTheme.typography.labelSmall.copy(
                                             fontSize = 11.sp,
                                             color = MaterialTheme.colorScheme.primary
-                                        )
+                                        ),
+                                        modifier = Modifier.alpha(0.8f)
                                     )
                                 }
+                            }
+                        }
+                    } else {
+                        // Empty state - show hint to select
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showBottomSheet = true }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AddCircle,
+                                    contentDescription = "Add",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Tap to select property types",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                )
                             }
                         }
                     }
@@ -406,7 +325,237 @@ fun HousingSeekerFields(
         }
     }
 
-    return isValid // Return validation state
+    // Bottom Sheet for Property Selection
+    if (showBottomSheet) {
+        PropertyTypeBottomSheet(
+            propertyTypes = propertyTypes,
+            selectedTypes = data.propertyTypes,
+            onSelectionChange = { updatedSelection ->
+                onDataChange(data.copy(propertyTypes = updatedSelection))
+            },
+            onDismiss = { showBottomSheet = false }
+        )
+    }
+
+    return isValid
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PropertyTypeBottomSheet(
+    propertyTypes: List<String>,
+    selectedTypes: List<String>,
+    onSelectionChange: (List<String>) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var localSelectedTypes by remember(selectedTypes) { mutableStateOf(selectedTypes.toSet()) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            // Header
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Select Property Types",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 22.sp
+                    )
+                )
+
+                Text(
+                    text = "Choose all property types you're interested in",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+            }
+
+            // Selection count
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "${localSelectedTypes.size} of ${propertyTypes.size} selected",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
+
+            // Divider
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+            )
+
+            // Checkbox list
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                propertyTypes.forEach { propertyType ->
+                    val formattedLabel = propertyType.replaceFirstChar { it.uppercase() }
+                    val isSelected = localSelectedTypes.contains(propertyType)
+
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected)
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                            else
+                                MaterialTheme.colorScheme.surface
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                localSelectedTypes = if (isSelected) {
+                                    localSelectedTypes - propertyType
+                                } else {
+                                    localSelectedTypes + propertyType
+                                }
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = isSelected,
+                                onCheckedChange = { checked ->
+                                    localSelectedTypes = if (checked) {
+                                        localSelectedTypes + propertyType
+                                    } else {
+                                        localSelectedTypes - propertyType
+                                    }
+                                },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = MaterialTheme.colorScheme.outline
+                                )
+                            )
+
+                            Text(
+                                text = formattedLabel,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+                                ),
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Selected",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Clear all button
+                OutlinedButton(
+                    onClick = { localSelectedTypes = emptySet() },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Clear",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Clear All")
+                }
+
+                // Apply button
+                Button(
+                    onClick = {
+                        onSelectionChange(localSelectedTypes.toList())
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = localSelectedTypes.isNotEmpty()
+                ) {
+                    Text("Apply (${localSelectedTypes.size})")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+fun SelectedPropertyChip(
+    label: String,
+    onRemove: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+
+            IconButton(
+                onClick = onRemove,
+                modifier = Modifier.size(20.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Remove",
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -445,7 +594,7 @@ fun ClearSelectionButton(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = androidx.compose.material.icons.Icons.Default.Close,
+                imageVector = Icons.Default.Close,
                 contentDescription = "Clear",
                 modifier = Modifier.size(12.dp),
                 tint = MaterialTheme.colorScheme.onErrorContainer

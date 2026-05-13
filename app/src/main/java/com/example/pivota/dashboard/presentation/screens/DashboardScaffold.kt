@@ -24,39 +24,65 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import androidx.window.core.layout.WindowWidthSizeClass
-import com.example.pivota.admin.presentation.screens.AdminHouseDetailsScreen
-import com.example.pivota.admin.presentation.screens.AdminJobDetailsScreen
-import com.example.pivota.admin.presentation.screens.AdminJobListingUiModel
-import com.example.pivota.admin.presentation.screens.ApplicationFunnel
-import com.example.pivota.admin.presentation.screens.JobStatus
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.housing.AdminHouseDetailsScreen
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.AdminJobDetailsScreen
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.AdminJobListingUiModel
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.JobStatus
 import com.example.pivota.core.presentations.composables.PivotaSnackbar
 import com.example.pivota.core.presentations.composables.SnackbarType
-import com.example.pivota.dashboard.presentation.composables.*
 import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
 import com.example.pivota.dashboard.presentation.state.JobListingUiModel as DashboardJobListingUiModel
-import com.example.pivota.dashboard.presentation.viewmodels.DashboardSharedViewModel
-import com.example.pivota.dashboard.presentation.viewmodels.DashboardViewModel
-import com.example.pivota.dashboard.presentation.viewmodels.HeaderState
-import com.example.pivota.dashboard.presentation.viewmodels.HouseListingsViewModel
-import com.example.pivota.dashboard.presentation.viewmodels.MyListingsViewModel
-import com.example.pivota.listings.presentation.screens.BookViewingScreen
-import com.example.pivota.listings.presentation.screens.HouseDetailsScreen
-import com.example.pivota.listings.presentation.screens.HousingPostScreen
-import com.example.pivota.listings.presentation.screens.JobPostScreen
-import com.example.pivota.listings.presentation.screens.PostServiceScreen
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardSharedViewModel
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardViewModel
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HeaderState
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HouseListingsViewModel
+import com.example.pivota.dashboard.presentation.viewmodels.client_admin_viewmodels.MyListingsViewModel
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.housing.BookViewingScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.housing.HouseDetailsScreen
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.housing.HousingPostScreen
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.JobPostScreen
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.professional.PostServiceScreen
 import com.example.pivota.listings.presentation.screens.jobs.JobDetailsScreen
 import com.example.pivota.listings.presentation.screens.jobs.JobListingUiModel as DetailsJobListingUiModel
 import com.example.pivota.listings.presentation.screens.jobs.JobType
 import com.example.pivota.listings.presentation.screens.jobs.SalaryPeriod
 import com.example.pivota.listings.presentation.screens.jobs.Benefit
 import com.example.pivota.listings.presentation.screens.jobs.BenefitIcon
-import topLevelRoutes
+import com.example.pivota.dashboard.presentation.navigation.topLevelRoutes
 import java.util.Date
 import java.util.concurrent.TimeUnit
 import androidx.compose.material3.SheetState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.zIndex
-import kotlinx.coroutines.launch
+import com.example.pivota.core.presentations.composables.PivotaFullScreenLoading
+import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.PostOptionsBottomSheet
+import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.PulsingPostFab
+import com.example.pivota.dashboard.presentation.navigation.AdminHouseDetails
+import com.example.pivota.dashboard.presentation.navigation.AdminJobDetails
+import com.example.pivota.dashboard.presentation.navigation.BookViewing
+import com.example.pivota.dashboard.presentation.navigation.Connect
+import com.example.pivota.dashboard.presentation.navigation.Dashboard
+import com.example.pivota.dashboard.presentation.navigation.HouseDetails
+import com.example.pivota.dashboard.presentation.navigation.HouseListings
+import com.example.pivota.dashboard.presentation.navigation.JobDetails
+import com.example.pivota.dashboard.presentation.navigation.JobListings
+import com.example.pivota.dashboard.presentation.navigation.MyListings
+import com.example.pivota.dashboard.presentation.navigation.PostHousing
+import com.example.pivota.dashboard.presentation.navigation.PostJob
+import com.example.pivota.dashboard.presentation.navigation.PostService
+import com.example.pivota.dashboard.presentation.navigation.PostSupport
+import com.example.pivota.dashboard.presentation.navigation.Professionals
+import com.example.pivota.dashboard.presentation.navigation.Profile
+import com.example.pivota.dashboard.presentation.navigation.TopLevelRoute
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.MyListingsScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens.DashboardLoadingSkeleton
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens.DashboardScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens.DiscoverScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.housing.HouseListingsScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.jobs.JobListingsScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ProfessionalsScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens.ProfileScreen
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.ApplicationFunnel
 
 // Quick conversion functions (keep as is)
 private fun quickConvertToDetailsJob(dashboardJob: DashboardJobListingUiModel): DetailsJobListingUiModel {
@@ -164,7 +190,7 @@ private fun convertToAdminJobListing(dashboardJob: DashboardJobListingUiModel): 
         employerName = dashboardJob.company,
         employerVerified = true,
         averageTimeToApply = 3.2,
-        applicationFunnel = com.example.pivota.admin.presentation.screens.ApplicationFunnel(
+        applicationFunnel = ApplicationFunnel(
             viewed = 100,
             applied = 24,
             reviewed = 12
@@ -192,22 +218,20 @@ fun DashboardScaffold(
 
     // Helper functions to get state synchronously
     val isLoading = sharedViewModel.isLoading()
+    val isLoggingOut by sharedViewModel.isLoggingOut.collectAsState()
     val profileError = sharedViewModel.getErrorMessage()
     val profile = sharedViewModel.getCurrentProfile()
-
     val headerState by sharedViewModel.headerState.collectAsState()
 
     var showWelcomeSnackbar by remember { mutableStateOf(false) }
     var welcomeMessage by remember { mutableStateOf("") }
     var snackbarType by remember { mutableStateOf(SnackbarType.SUCCESS) }
 
-
     LaunchedEffect(Unit) {
         if (!isGuestMode) {
             sharedViewModel.debugRoomCache()
         }
     }
-
 
     LaunchedEffect(successMessage) {
         if (!successMessage.isNullOrBlank()) {
@@ -218,14 +242,12 @@ fun DashboardScaffold(
         }
     }
 
-    //  Only start token refresh and auto-logout monitoring, NOT profile loading
-    // Profile loading is now handled by ViewModel's init block
+    // Only start token refresh and auto-logout monitoring, NOT profile loading
     LaunchedEffect(Unit) {
         if (!isGuestMode && accessToken != null) {
             dashboardViewModel.startTokenRefresh()
             println("🔄 Token auto-refresh started")
 
-            // ✅ Check token validity and refresh if needed
             val isValid = dashboardViewModel.isTokenValid()
             if (!isValid) {
                 println("⚠️ Token may be invalid, attempting refresh...")
@@ -289,21 +311,17 @@ fun DashboardScaffold(
     }
 
     // ============================================================
-// HANDLE AUTH ERRORS FIRST (Critical - must logout)
-// ============================================================
+    // HANDLE AUTH ERRORS FIRST (Critical - must logout)
+    // ============================================================
     val isAuthError = sharedViewModel.isAuthError()
     val offlineMessage by sharedViewModel.offlineMessage.collectAsState()
     val isOffline by sharedViewModel.isOffline.collectAsState()
 
     if (isAuthError) {
-        // Auth error - session expired
-        // The TokenManager will automatically emit logoutEvent
-        // which is already being collected below
         LaunchedEffect(Unit) {
             sharedViewModel.reset()
         }
 
-        // Show user-friendly message while waiting for logout
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -337,21 +355,17 @@ fun DashboardScaffold(
         return
     }
 
-// ============================================================
-// ALWAYS SHOW DASHBOARD CONTENT (with skeleton only on first-ever load)
-// ============================================================
-// Only show skeleton if:
-// 1. Still loading AND
-// 2. No profile data available yet (first launch) AND
-// 3. Not offline (offline means we have cache)
+    // ============================================================
+    // ALWAYS SHOW DASHBOARD CONTENT (with skeleton only on first-ever load)
+    // ============================================================
     val hasProfileData = sharedViewModel.hasProfileData()
-    val shouldShowSkeleton = isLoading && !hasProfileData && !isOffline
+
+    // ✅ Fixed: Use isLoggingOut to prevent skeleton during logout
+    val shouldShowSkeleton = isLoading && !hasProfileData && !isOffline && !isLoggingOut
 
     if (shouldShowSkeleton) {
         DashboardLoadingSkeleton()
     } else {
-        // Always show dashboard content - either from cache or fresh
-        // Show offline/warning banner if needed
         Box {
             if (isTablet) {
                 TabletDashboardContent(
@@ -431,9 +445,18 @@ fun DashboardScaffold(
                     Icon(Icons.Default.Refresh, contentDescription = "Retry")
                 }
             }
+
+            // Show logging out indicator
+            if (isLoggingOut) {
+                PivotaFullScreenLoading(
+                    message = "Logging out..."
+                )
+            }
         }
     }
 }
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1555,7 +1578,7 @@ fun MainScreenScaffold(
     sharedViewModel: DashboardSharedViewModel,
     content: @Composable () -> Unit,
 
-) {
+    ) {
     Scaffold(
         bottomBar = {
             NavigationBar(
@@ -1723,35 +1746,5 @@ fun OfflineWarningBanner(
                 }
             }
         }
-    }
-
-    // Bottom Sheet (kept outside Scaffold as it's a modal)
-    if (showSheet && !isGuestMode) {
-        PostOptionsBottomSheet(
-            sheetState = sheetState,
-            onDismiss = { onShowSheetChange(false) },
-            onOptionSelected = { category ->
-                onShowSheetChange(false)
-                when (category) {
-                    "jobs" -> navController.navigate(PostJob)
-                    "housing" -> navController.navigate(PostHousing)
-                    "support" -> navController.navigate(PostSupport)
-                    "service" -> navController.navigate(PostService)
-                }
-            }
-        )
-    }
-}
-
-// No Bottom Navigation Scaffold for detail screens
-@Composable
-fun NoBottomNavScaffold(
-    content: @Composable () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        content()
     }
 }
