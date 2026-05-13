@@ -201,33 +201,29 @@ fun HousingSeekerFields(
                             )
                         }
 
-                        // Select Property Types Button
-                        Button(
-                            onClick = { showBottomSheet = true },
-                            modifier = Modifier.height(40.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (selectedCount > 0)
-                                    MaterialTheme.colorScheme.primaryContainer
-                                else
-                                    MaterialTheme.colorScheme.primary,
-                                contentColor = if (selectedCount > 0)
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                else
-                                    MaterialTheme.colorScheme.onPrimary
-                            )
-                        ) {
-                            Icon(
-                                imageVector = if (selectedCount > 0) Icons.Default.Edit else Icons.Default.Add,
-                                contentDescription = "Select",
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (selectedCount > 0) "Change" else "Select",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                        // Change Button (removed Select button logic)
+                        if (selectedCount > 0) {
+                            Button(
+                                onClick = { showBottomSheet = true },
+                                modifier = Modifier.height(40.dp),
+                                shape = RoundedCornerShape(20.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Change",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Change",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
 
