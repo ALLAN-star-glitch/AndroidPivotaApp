@@ -14,8 +14,6 @@ import kotlinx.serialization.Serializable
 @Serializable object PostSupport
 @Serializable object PostService
 
-
-
 @Serializable object MyListings
 
 @Serializable object HouseListings
@@ -26,7 +24,7 @@ import kotlinx.serialization.Serializable
 data object BookViewing
 
 @Serializable
-data object  HouseDetails
+data object HouseDetails
 
 @Serializable
 data object AdminHouseDetails
@@ -39,5 +37,28 @@ object JobApplicationForm // Optional - if you want an application form screen
 
 @Serializable
 object AdminJobDetails
+
+// All Services Screen - Browse all COMPLIMENTARY categories
+@Serializable
+object AllServices
+
+// Category-filtered listing routes
+@Serializable
+data class HousingListingsWithCategory(
+    val categoryId: String,
+    val categoryName: String
+)
+
+@Serializable
+data class JobListingsWithCategory(
+    val categoryId: String,
+    val categoryName: String
+)
+
+@Serializable
+data class SupportListingsWithCategory(
+    val categoryId: String,
+    val categoryName: String
+)
 
 // Add more routes as needed

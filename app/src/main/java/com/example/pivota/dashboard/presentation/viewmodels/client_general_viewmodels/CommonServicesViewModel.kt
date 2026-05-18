@@ -25,54 +25,75 @@ class CommonServicesViewModel @Inject constructor(
     val uiState: StateFlow<CommonServicesUiState> = _uiState.asStateFlow()
 
     private var hasLoaded = false
-    private var hasReceivedData = false  // Track if we've ever received data
+    private var hasReceivedData = false
     private var currentIsTablet = false
+    private var currentDisplayCount = 0
+    private var isLoading = false
+    private var currentJob: kotlinx.coroutines.Job? = null
 
     init {
         loadCommonServices()
     }
 
     fun loadCommonServices(isTablet: Boolean = false) {
-        if (hasLoaded && _uiState.value is CommonServicesUiState.Success && currentIsTablet == isTablet) {
+        val displayCount = if (isTablet) 12 else 8
+
+        // If tablet state changed, cancel the current load and reload
+        if (currentIsTablet != isTablet && isLoading) {
+            println("📱 [ViewModel] Tablet state changed from $currentIsTablet to $isTablet - cancelling current load")
+            currentJob?.cancel()
+            isLoading = false
+        }
+
+        // Check if we already have the correct data loaded
+        val hasCorrectData = hasLoaded &&
+                _uiState.value is CommonServicesUiState.Success &&
+                currentIsTablet == isTablet &&
+                currentDisplayCount == displayCount
+
+        if (hasCorrectData) {
+            println("📱 [ViewModel] Already have correct data ($displayCount items), skipping")
             return
         }
 
+        println("📱 [ViewModel] Loading common services - isTablet=$isTablet, displayCount=$displayCount")
+
+        // Cancel any existing job
+        currentJob?.cancel()
+        isLoading = true
         currentIsTablet = isTablet
+        currentDisplayCount = displayCount
         hasReceivedData = false
 
-        val displayCount = if (isTablet) 12 else 8
-        val perPillarCount = displayCount / 3  // 8/3=2, 12/3=4
-        val remainder = displayCount % 3       // 8%3=2, 12%3=0
+        val perPillarCount = displayCount / 3
+        val remainder = displayCount % 3
 
-        getCommonServicesUseCase()
+        currentJob = getCommonServicesUseCase()
             .onEach { allServices ->
                 if (allServices.isNotEmpty()) {
                     hasReceivedData = true
 
-                    // Group by vertical
                     val housingServices = allServices.filter { it.vertical == "HOUSING" }
                     val jobsServices = allServices.filter { it.vertical == "JOBS" }
                     val socialServices = allServices.filter { it.vertical == "SOCIAL_SUPPORT" }
 
-                    // Take from each pillar with distribution
                     val selected = mutableListOf<DiscoveryCategory>()
 
-                    // For mobile (8 items): 3 from HOUSING, 3 from JOBS, 2 from SOCIAL
-                    // For tablet (12 items): 4 from each pillar
                     selected.addAll(housingServices.take(perPillarCount + if (remainder > 0) 1 else 0))
                     selected.addAll(jobsServices.take(perPillarCount + if (remainder > 1) 1 else 0))
                     selected.addAll(socialServices.take(perPillarCount))
 
-                    // Ensure we have exactly displayCount items
                     val finalServices = selected.take(displayCount)
 
                     _uiState.value = CommonServicesUiState.Success(finalServices)
                     println("🔄 UI Updated with fresh data at ${System.currentTimeMillis()}")
                     hasLoaded = true
+                    isLoading = false
 
                     println("✅ Loaded ${finalServices.size} common services (isTablet=$isTablet)")
                     println("📊 Distribution - HOUSING: ${finalServices.count { it.vertical == "HOUSING" }}, JOBS: ${finalServices.count { it.vertical == "JOBS" }}, SOCIAL: ${finalServices.count { it.vertical == "SOCIAL_SUPPORT" }}")
                 } else if (hasReceivedData) {
+                    isLoading = false
                     _uiState.value = CommonServicesUiState.Error("No services available")
                     println("⚠️ No common services found")
                 } else {
@@ -80,6 +101,7 @@ class CommonServicesViewModel @Inject constructor(
                 }
             }
             .catch { error ->
+                isLoading = false
                 if (hasReceivedData) {
                     println("⚠️ Error but keeping cached data: ${error.message}")
                 } else {
@@ -91,9 +113,13 @@ class CommonServicesViewModel @Inject constructor(
     }
 
     fun refresh(isTablet: Boolean = false) {
+        println("📱 [ViewModel] Refresh called - isTablet=$isTablet")
         hasLoaded = false
         hasReceivedData = false
         currentIsTablet = isTablet
+        currentDisplayCount = if (isTablet) 12 else 8
+        isLoading = false
+        currentJob?.cancel()
         _uiState.value = CommonServicesUiState.Loading
         forceNetworkRefresh()
     }
@@ -101,7 +127,6 @@ class CommonServicesViewModel @Inject constructor(
     private fun forceNetworkRefresh() {
         viewModelScope.launch {
             getCommonServicesUseCase.refresh()
-            // Small delay to allow cache to update
             delay(500)
             loadCommonServices(currentIsTablet)
         }

@@ -59,6 +59,7 @@ import com.example.pivota.dashboard.presentation.composables.client_general_comp
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.PulsingPostFab
 import com.example.pivota.dashboard.presentation.navigation.AdminHouseDetails
 import com.example.pivota.dashboard.presentation.navigation.AdminJobDetails
+import com.example.pivota.dashboard.presentation.navigation.AllServices
 import com.example.pivota.dashboard.presentation.navigation.BookViewing
 import com.example.pivota.dashboard.presentation.navigation.Connect
 import com.example.pivota.dashboard.presentation.navigation.Dashboard
@@ -83,6 +84,7 @@ import com.example.pivota.dashboard.presentation.screens.client_general_screens.
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ProfessionalsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens.ProfileScreen
 import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.ApplicationFunnel
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.AllServicesScreen
 
 // Quick conversion functions (keep as is)
 private fun quickConvertToDetailsJob(dashboardJob: DashboardJobListingUiModel): DetailsJobListingUiModel {
@@ -1009,8 +1011,13 @@ private fun MobileNavHost(
                     onNavigateToAllProviders = {
                         navController.navigate(Professionals)
                     },
-                    onNavigateToAllServices = {},
+                    onNavigateToAllServices = {
+                        navController.navigate(AllServices)  // ← THIS NEEDS TO BE CHANGED
+                    },
                     onNavigateToAllSupport = {},
+                    onServiceClick = { id, name, vertical ->
+                        println("Service clicked: $name (ID: $id, Vertical: $vertical)")
+                    },
                     isGuestMode = isGuestMode,
                     sharedViewModel = sharedViewModel
                 )
@@ -1045,6 +1052,22 @@ private fun MobileNavHost(
         composable<Professionals> {
             NoBottomNavScaffold {
                 ProfessionalsScreen()
+            }
+        }
+
+        composable<AllServices> {
+            NoBottomNavScaffold {
+                AllServicesScreen(
+                    onServiceClick = { id, name, vertical ->
+                        // Navigate back to discover or to listings
+                        navController.popBackStack()
+                        println("Service clicked: $name (ID: $id, Vertical: $vertical)")
+                        // You can add navigation to filtered listings here
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
             }
         }
 
@@ -1320,6 +1343,18 @@ private fun TabletNavHost(
             ProfessionalsScreen()
         }
 
+        composable<AllServices> {
+            AllServicesScreen(
+                onServiceClick = { id, name, vertical ->
+                    navController.popBackStack()
+                    println("Service clicked: $name (ID: $id, Vertical: $vertical)")
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
         // Connect (Discover)
         composable<Connect> {
             DiscoverScreen(
@@ -1338,8 +1373,14 @@ private fun TabletNavHost(
                 onNavigateToAllProviders = {
                     navController.navigate(Professionals)
                 },
-                onNavigateToAllServices = {},
+                onNavigateToAllServices = {
+                    // Navigate to All Services Screen
+                    navController.navigate(AllServices)
+                },
                 onNavigateToAllSupport = {},
+                onServiceClick = { id, name, vertical ->
+                    println("Service clicked: $name (ID: $id, Vertical: $vertical)")
+                },
                 isGuestMode = isGuestMode,
                 sharedViewModel = sharedViewModel
             )

@@ -57,6 +57,7 @@ import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewm
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardSharedViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HeaderState
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.getIconForService
+import kotlinx.coroutines.delay
 
 @SuppressLint("FrequentlyChangingValue")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,9 +86,17 @@ fun DiscoverScreen(
     val isExpanded = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
     val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
     val isTablet = isExpanded || isMedium
+    var lastTabletValue by remember { mutableStateOf(isTablet) }
+
+    LaunchedEffect(Unit) {
+        delay(100) // Wait for window size to be properly detected
+        println("📱 [DiscoverScreen] Initial load after delay - isTablet: $isTablet")
+        commonServicesViewModel.loadCommonServices(isTablet)
+    }
 
     LaunchedEffect(isTablet) {
-        println("📱 [DiscoverScreen] isTablet: $isTablet, isExpanded: $isExpanded, isMedium: $isMedium")
+        // Reload when tablet state changes
+        println("📱 [DiscoverScreen] isTablet changed to: $isTablet")
         commonServicesViewModel.loadCommonServices(isTablet)
     }
 
