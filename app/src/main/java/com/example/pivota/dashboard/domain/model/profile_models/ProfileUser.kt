@@ -14,7 +14,9 @@ data class ProfileUser(
     val phoneNumber: String?,
     val profileImageUrl: String?,
     val status: UserStatus,
-    val role: String
+    val role: String,
+    val scope: String? = null,
+    val planName: String? = null
 ) {
     val displayName: String get() = if (firstName.isNotBlank()) "$firstName $lastName".trim() else fullName
     val shortName: String get() = if (firstName.isNotBlank()) firstName else email.substringBefore("@")

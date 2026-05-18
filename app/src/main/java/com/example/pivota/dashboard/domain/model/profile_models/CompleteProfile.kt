@@ -20,7 +20,9 @@ data class CompleteProfile(
     val verifications: List<VerificationItem>,
     val completion: ProfileCompletion,
     val createdAt: String,
-    val updatedAt: String
+    val updatedAt: String,
+    val planName: String? = null,
+    val scope: String? = null
 ) {
     val displayName: String get() = user.displayName
     val profileImageUrl: String? get() = user.profileImageUrl ?: individualProfile?.profileImage

@@ -31,7 +31,8 @@ data class UserProfDto(
     @SerialName("housingSeekerProfile") val housingSeekerProfile: HousingSeekerProfileDataDto? = null,
     @SerialName("propertyOwnerProfile") val propertyOwnerProfile: PropertyOwnerProfileDataDto? = null,
     @SerialName("supportBeneficiaryProfile") val supportBeneficiaryProfile: SupportBeneficiaryProfileDataDto? = null,
-    @SerialName("intermediaryAgentProfile") val intermediaryAgentProfile: IntermediaryAgentProfileDataDto? = null
+    @SerialName("intermediaryAgentProfile") val intermediaryAgentProfile: IntermediaryAgentProfileDataDto? = null,
+    @SerialName("planName") val planName: String? = null
 )
 
 // ======================================================
@@ -241,8 +242,7 @@ data class AccountBaseDto(
     @SerialName("uuid") val uuid: String,
     @SerialName("accountCode") val accountCode: String,
     @SerialName("type") val type: String,
-    @SerialName("isBusiness") val isBusiness: Boolean,
-    @SerialName("businessType") val businessType: String? = null
+    @SerialName("planName") val planName: String? = null
 )
 
 @Serializable
@@ -254,7 +254,8 @@ data class UserBaseDto(
     @SerialName("email") val email: String,
     @SerialName("phone") val phone: String,
     @SerialName("status") val status: String,
-    @SerialName("roleName") val roleName: String
+    @SerialName("roleName") val roleName: String,
+    @SerialName( "scope") val scope: String? = null
 )
 
 @Serializable

@@ -4,6 +4,7 @@ import android.app.Application
 import com.example.pivota.core.data.ThemeManager
 import com.example.pivota.core.utils.TabletDetector
 import com.example.pivota.core.network.KtorClientFactory
+import com.example.pivota.dashboard.data.sync.CategoriesSyncManager
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -19,9 +20,13 @@ class PivotaApp : Application() {
         println("✅ [PivotaApp] KtorClientFactory initialized in attachBaseContext")
     }
 
+    @Inject lateinit var categoriesSyncManager: CategoriesSyncManager
+
     override fun onCreate() {
         KtorClientFactory.init(this)
         super.onCreate()
+
+        categoriesSyncManager.startAutoSync()
 
         println("========================================")
         println("🚀 PivotaApp Initializing...")

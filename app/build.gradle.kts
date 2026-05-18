@@ -1,3 +1,4 @@
+import com.google.firebase.appdistribution.gradle.firebaseAppDistribution
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -7,6 +8,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     id("com.google.dagger.hilt.android")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.appdistribution")
 }
 
 android {
@@ -34,6 +37,17 @@ android {
                 "proguard-rules.pro"
             )
         }
+
+        create("staging") {
+            initWith(getByName("debug"))
+
+
+            firebaseAppDistribution {
+                artifactType = "APK"
+                testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com"
+                releaseNotes = "Automated test distribution for PivotaConnect-Staging."
+            }
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -60,6 +74,8 @@ dependencies {
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.compose.ui.unit)
+    implementation(libs.androidx.compose.material3)
+    //implementation(libs.androidx.compose.remote.creation.compose)
 
     val nav_version = "2.9.0"
     val room_version = "2.8.4"
@@ -139,4 +155,9 @@ dependencies {
     implementation("com.auth0:java-jwt:4.5.1")
 
     implementation("com.airbnb.android:lottie-compose:6.4.0")
+
+
+    implementation(platform("com.google.firebase:firebase-bom:34.13.0"))
+
+    implementation("com.google.firebase:firebase-analytics")
 }

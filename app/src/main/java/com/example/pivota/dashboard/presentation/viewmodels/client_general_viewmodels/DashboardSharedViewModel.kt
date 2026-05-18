@@ -15,6 +15,7 @@ import com.example.pivota.dashboard.domain.model.profile_models.AccountStatus
 import com.example.pivota.dashboard.domain.model.profile_models.AccountType
 import com.example.pivota.dashboard.domain.model.profile_models.UserStatus
 import com.example.pivota.dashboard.domain.useCase.GetProfileUseCase
+import com.example.pivota.dashboard.presentation.state.CommonServicesUiState
 import com.example.pivota.dashboard.presentation.state.DashboardState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,6 +47,9 @@ class DashboardSharedViewModel @Inject constructor(
     val logoutEvent: StateFlow<Boolean> = _logoutEvent.asStateFlow()
     private val _isLoggingOut = MutableStateFlow(false)
     val isLoggingOut: StateFlow<Boolean> = _isLoggingOut.asStateFlow()
+
+    private val _commonServicesState = MutableStateFlow<CommonServicesUiState>(CommonServicesUiState.Loading)
+    val commonServicesState: StateFlow<CommonServicesUiState> = _commonServicesState.asStateFlow()
 
     // ======================================================
     // PROFILE STATE
@@ -401,6 +405,11 @@ class DashboardSharedViewModel @Inject constructor(
      * Update all UI states with profile data
      */
     private fun updateStatesWithProfile(profile: CompleteProfile) {
+
+        println("🔍 [DEBUG] Profile user scope: ${profile.user.scope}")
+        println("🔍 [DEBUG] Profile user planName: ${profile.user.planName}")
+        println("🔍 [DEBUG] Profile root planName: ${profile.planName}")
+        println("🔍 [DEBUG] Profile root scope: ${profile.scope}")
         _dashboardState.value = DashboardState.Success(profile)
         _profileState.value = ProfileLoadState.Success(profile)
 
@@ -416,7 +425,9 @@ class DashboardSharedViewModel @Inject constructor(
                 avatarUrl = profile.profileImageUrl,
                 isVerified = profile.account.isVerified,
                 role = profile.user.role,
-                accountType = profile.account.type.name
+                accountType = profile.account.type.name,
+                scope = profile.user.scope,
+                planName = profile.planName ?: profile.user.planName  // ← USE root planName first
             )
         )
     }
@@ -621,6 +632,11 @@ class DashboardSharedViewModel @Inject constructor(
             onComplete()
         }
     }
+
+
+    fun updateCommonServicesState(state: CommonServicesUiState) {
+        _commonServicesState.value = state
+    }
 }
 
 // ======================================================
@@ -663,6 +679,8 @@ data class HeaderUser(
     val avatarUrl: String?,
     val isVerified: Boolean,
     val role: String,
+    val scope: String?,
+    val planName: String? = null,
     val accountType: String
 ) {
     val displayInitial: String

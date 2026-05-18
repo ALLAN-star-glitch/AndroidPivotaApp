@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "466386361089",
+    "project_id": "login-register-auth-proj-1",
+    "storage_bucket": "login-register-auth-proj-1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:466386361089:android:6ab76ee4d338674b88d900",
+        "android_client_info": {
+          "package_name": "com.example.loginregister1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDhEI1P3If0uq8nVevJyI4ZFBZsahpntw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:466386361089:android:95c9a4d61087013f88d900",
+        "android_client_info": {
+          "package_name": "com.example.pivota"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDhEI1P3If0uq8nVevJyI4ZFBZsahpntw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

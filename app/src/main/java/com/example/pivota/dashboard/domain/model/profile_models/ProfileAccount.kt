@@ -13,7 +13,8 @@ data class ProfileAccount(
     val isVerified: Boolean,
     val verifiedFeatures: List<VerifiedFeature>,
     val createdAt: String,
-    val updatedAt: String
+    val updatedAt: String,
+    val planName: String? = null
 ) {
     val isActive: Boolean get() = status == AccountStatus.ACTIVE
     val isIndividual: Boolean get() = type == AccountType.INDIVIDUAL

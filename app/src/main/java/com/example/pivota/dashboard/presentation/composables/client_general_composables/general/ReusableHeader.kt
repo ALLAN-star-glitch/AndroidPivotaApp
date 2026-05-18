@@ -39,6 +39,45 @@ import com.example.pivota.dashboard.presentation.composables.client_general_comp
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardSharedViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HeaderState
 
+// Plan configuration data class
+data class PlanConfig(
+    val name: String,
+    val icon: ImageVector,
+    val color: Color
+)
+
+// Plan configurations using theme colors
+val getPlanConfig: @Composable (String?) -> PlanConfig = { planName ->
+    val colorScheme = MaterialTheme.colorScheme
+
+    when (planName) {
+        "Free Forever" -> PlanConfig(
+            name = "Free Plan",
+            icon = Icons.Outlined.EmojiEvents,
+            color = colorScheme.tertiary  // Use theme tertiary color
+        )
+        "Starter" -> PlanConfig(
+            name = "Starter Plan",
+            icon = Icons.Outlined.Whatshot,
+            color = colorScheme.secondary  // Use theme secondary color (green)
+        )
+        "Pro" -> PlanConfig(
+            name = "Pro Plan",
+            icon = Icons.Outlined.WorkspacePremium,
+            color = colorScheme.primary  // Use theme primary color (blue)
+        )
+        "Enterprise" -> PlanConfig(
+            name = "Enterprise Plan",
+            icon = Icons.Outlined.Business,
+            color = colorScheme.primary.copy(alpha = 0.8f)  // Primary with slight transparency
+        )
+        else -> PlanConfig(
+            name = "Member Plan",
+            icon = Icons.Outlined.Person,
+            color = colorScheme.onSurfaceVariant
+        )
+    }
+}
 
 @SuppressLint("Range")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,29 +93,25 @@ fun ReusableHeader(
     sharedViewModel: DashboardSharedViewModel,
     messageCount: Int = 0,
     notificationCount: Int = 0,
-    onLogoutComplete: () -> Unit = {}  // ✅ Add this parameter
+    onLogoutComplete: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showMenuBottomSheet by remember { mutableStateOf(false) }
     val showLogoutDialog by sharedViewModel.showLogoutDialog.collectAsState()
 
-
-    // Force recomposition by adding a key that changes when headerState updates
     val headerState by sharedViewModel.headerState.collectAsState()
 
-    // Add a derived state that forces recomposition
     val headerUser = remember(headerState) {
         (headerState as? HeaderState.Success)?.headerUser
     }
     val isLoading = headerState is HeaderState.Loading
 
-    // Add a LaunchedEffect that triggers recomposition when headerState changes
     LaunchedEffect(headerState) {
         println("🔍 [ReusableHeader] headerState type: ${headerState::class.simpleName}")
         when (headerState) {
             is HeaderState.Success -> {
                 val user = (headerState as HeaderState.Success).headerUser
-                println("🔍 [ReusableHeader] SUCCESS - name: ${user.name}, shortName: ${user.shortName}")
+                println("🔍 [ReusableHeader] SUCCESS - name: ${user.name}, shortName: ${user.shortName}, scope: ${user.scope}, planName: ${user.planName}, role: ${user.role}")
             }
             is HeaderState.Loading -> println("🔍 [ReusableHeader] LOADING")
             is HeaderState.Error -> println("🔍 [ReusableHeader] ERROR: ${(headerState as HeaderState.Error).message}")
@@ -84,7 +119,6 @@ fun ReusableHeader(
         }
     }
 
-    // Animated rotation for dropdown icon
     val rotateAngle by animateFloatAsState(
         targetValue = if (showMenuBottomSheet) 180f else 0f,
         animationSpec = tween(durationMillis = 200),
@@ -95,17 +129,36 @@ fun ReusableHeader(
     val isDarkTheme by themeViewModel.isDarkTheme
     val isScrolled = scrollOffset > 20f
 
-    // Use headerUser for all data
+    // Get user data
     val firstName = when {
         isGuestMode -> "Guest"
         headerUser != null -> headerUser.shortName
         else -> "User"
     }
 
-    val userRole = when {
+    // Determine display text based on scope
+    val userScope = headerUser?.scope ?: "BUSINESS"
+    val planName = headerUser?.planName
+    val userRole = headerUser?.role ?: "Member"
+
+    // Scope-specific display logic
+    val isSystemScope = userScope == "SYSTEM"
+    val isBusinessScope = userScope == "BUSINESS"
+
+    // Get plan config with theme awareness
+    val planConfig = if (isBusinessScope) getPlanConfig(planName) else null
+
+    // Display text format:
+    // - SYSTEM scope: Just the role name (e.g., "PlatformSystemAdmin")
+    // - BUSINESS scope: "Plan Name | Role Name" (e.g., "Free | Individual")
+    val displayText = when {
         isGuestMode -> "Guest"
-        headerUser != null -> headerUser.role
-        else -> "Member"
+        isSystemScope -> userRole
+        isBusinessScope -> {
+            val planDisplayName = planConfig?.name ?: "Member"
+            planDisplayName
+        }
+        else -> userRole
     }
 
     val profileImageUrl = when {
@@ -116,9 +169,8 @@ fun ReusableHeader(
 
     val isVerified = !isGuestMode && (headerUser?.isVerified == true)
 
-    // Log current values
     LaunchedEffect(headerUser, isLoading) {
-        println("🔍 [ReusableHeader] Current values - firstName: $firstName, userRole: $userRole, isLoading: $isLoading, headerUser: ${headerUser != null}")
+        println("🔍 [ReusableHeader] Current values - firstName: $firstName, displayText: $displayText, scope: $userScope, planName: $planName, isLoading: $isLoading")
     }
 
     Column(
@@ -134,7 +186,7 @@ fun ReusableHeader(
                     spotColor = Color.Black.copy(alpha = 0.06f)
                 ),
             shape = RoundedCornerShape(24.dp),
-            color = colorScheme.surface.copy(alpha = 0.98f),
+            color = Color.Transparent,
             tonalElevation = 0.dp
         ) {
             Row(
@@ -225,9 +277,10 @@ fun ReusableHeader(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
+
                             Text(
                                 text = "Hi, $firstName",
                                 fontSize = 15.sp,
@@ -261,15 +314,78 @@ fun ReusableHeader(
                             )
                         }
 
-                        Text(
-                            text = userRole,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            letterSpacing = 0.1.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        // Display text (Plan | Role for business, Role for system)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (isBusinessScope && planConfig != null) {
+                                // Business scope: Show pill with Plan | Role
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Color.Transparent,
+                                    modifier = Modifier
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                    ) {
+                                        Icon(
+                                            planConfig.icon,
+                                            contentDescription = null,
+                                            tint = planConfig.color,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Text(
+                                            text = displayText,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = planConfig.color,
+                                            letterSpacing = 0.2.sp
+                                        )
+                                    }
+                                }
+                            } else if (isSystemScope) {
+                                // System scope: Show role pill
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Color.Transparent,
+                                    modifier = Modifier
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.AdminPanelSettings,
+                                            contentDescription = null,
+                                            tint = colorScheme.primary,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Text(
+                                            text = displayText,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = colorScheme.primary,
+                                            letterSpacing = 0.2.sp
+                                        )
+                                    }
+                                }
+                            } else {
+                                // Fallback
+                                Text(
+                                    text = displayText,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = colorScheme.onSurfaceVariant,
+                                    letterSpacing = 0.1.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
                     }
                 }
 

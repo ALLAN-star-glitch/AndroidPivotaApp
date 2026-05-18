@@ -11,6 +11,7 @@ import android.content.Context
 import androidx.room.Room
 import com.example.pivota.core.database.DatabaseConstants
 import com.example.pivota.core.database.PivotaDatabase
+import com.example.pivota.core.database.dao.CategoryDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -41,6 +42,12 @@ object DatabaseModule {
     @Provides
     fun provideUserDao(database: PivotaDatabase) = database.userDao()
 
+
+    @Provides
+    @Singleton
+    fun provideCategoryDao(database: PivotaDatabase): CategoryDao {
+        return database.categoryDao()
+    }
     @Provides
     fun provideOrgMemberDao(database: PivotaDatabase) = database.orgMemberDao()
 }

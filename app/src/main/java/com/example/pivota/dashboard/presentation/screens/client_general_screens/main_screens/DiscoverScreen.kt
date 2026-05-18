@@ -26,6 +26,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,15 +41,22 @@ import coil3.request.allowHardware
 import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.auth.domain.model.User
+import com.example.pivota.dashboard.domain.model.listings_models.general.DiscoveryCategory
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.BannerType
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.MarketingCarouselBanner
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.ReusableHeader
+import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.EmptyServicesState
+import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.ErrorServicesState
+import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.ServiceGridSkeleton
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ModernHousingCardV2
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ModernJobCardV2
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ModernProfessionalCardV2
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ProfessionalType
+import com.example.pivota.dashboard.presentation.state.CommonServicesUiState
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.CommonServicesViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardSharedViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HeaderState
+import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.getIconForService
 
 @SuppressLint("FrequentlyChangingValue")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,17 +69,28 @@ fun DiscoverScreen(
     onNavigateToAllProviders: () -> Unit = {},
     onNavigateToAllServices: () -> Unit = {},
     onNavigateToAllSupport: () -> Unit = {},
+    onServiceClick: (String, String, String) -> Unit = { _, _, _ -> }, // id, name, vertical
     isGuestMode: Boolean = false,
-    sharedViewModel: DashboardSharedViewModel = hiltViewModel()
+    sharedViewModel: DashboardSharedViewModel = hiltViewModel(),
+    commonServicesViewModel: CommonServicesViewModel = hiltViewModel()
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val headerState by sharedViewModel.headerState.collectAsState()
     val headerUser = (headerState as? HeaderState.Success)?.headerUser
 
+    // Collect Common Services state
+    val commonServicesState by commonServicesViewModel.uiState.collectAsState()
+
     val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isExpanded = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
     val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
     val isTablet = isExpanded || isMedium
+
+    LaunchedEffect(isTablet) {
+        println("📱 [DiscoverScreen] isTablet: $isTablet, isExpanded: $isExpanded, isMedium: $isMedium")
+        commonServicesViewModel.loadCommonServices(isTablet)
+    }
+
 
     // Adaptive grid columns based on screen size
     val jobGridColumns = when {
@@ -90,6 +110,8 @@ fun DiscoverScreen(
         isMedium -> 2
         else -> 1
     }
+
+    val serviceGridColumns = if (isTablet) 6 else 4
 
     val primaryColor = colorScheme.primary
     val secondaryColor = colorScheme.secondary
@@ -148,7 +170,7 @@ fun DiscoverScreen(
                 contentPadding = PaddingValues(bottom = 100.dp),
                 horizontalAlignment = Alignment.Start
             ) {
-                // Reusable Header (replaces NonStickyHeader)
+                // Reusable Header
                 item {
                     ReusableHeader(
                         colorScheme = colorScheme,
@@ -187,7 +209,6 @@ fun DiscoverScreen(
                                         // Navigate to upgrade
                                     }
                                 }
-
                                 BannerType.JOBS -> onNavigateToAllJobs()
                                 BannerType.HOUSING -> onNavigateToAllHousing()
                                 BannerType.PROFESSIONALS -> onNavigateToAllProviders()
@@ -225,7 +246,9 @@ fun DiscoverScreen(
                     )
                 }
 
-                // COMMON SERVICES SECTION
+                // ============================================================
+                // COMMON SERVICES SECTION - NOW USING REAL DATA
+                // ============================================================
                 item {
                     ModernSectionHeader(
                         title = "Common Services",
@@ -235,15 +258,59 @@ fun DiscoverScreen(
                         colorScheme = colorScheme
                     )
                 }
-                item {
-                    ModernServiceGrid(
-                        colorScheme = colorScheme,
-                        horizontalPadding = horizontalPadding,
-                        isTablet = isTablet
-                    )
+
+                val currentState = commonServicesState
+
+                // Display Common Services based on state
+                when (currentState) {
+                    is CommonServicesUiState.Loading -> {
+                        item {
+                            ServiceGridSkeleton(
+                            columnsPerRow = serviceGridColumns,
+                            rowsToShow = 2,
+                            horizontalPadding = horizontalPadding,
+                        )
+
+                        }
+                    }
+
+                    is CommonServicesUiState.Success -> {
+                        val services = currentState.services
+                        if (services.isNotEmpty()) {
+                            item {
+                                DynamicServiceGrid(
+                                    services = services,
+                                    colorScheme = colorScheme,
+                                    horizontalPadding = horizontalPadding,
+                                    columnsPerRow = serviceGridColumns,
+                                    onServiceClick = { category ->
+                                        onServiceClick(category.id, category.name, category.vertical)
+                                    }
+                                )
+                            }
+                        } else {
+                            item {
+                                EmptyServicesState(
+                                    colorScheme = colorScheme,
+                                    horizontalPadding = horizontalPadding
+                                )
+                            }
+                        }
+                    }
+
+                    is CommonServicesUiState.Error -> {
+                        item {
+                            ErrorServicesState(
+                                message = currentState.message,
+                                colorScheme = colorScheme,
+                                horizontalPadding = horizontalPadding,
+                                onRetry = { commonServicesViewModel.refresh() }
+                            )
+                        }
+                    }
                 }
 
-                // Jobs Section
+                // Jobs Section (keep as is with sample data for now)
                 item {
                     ModernSectionHeader(
                         title = "Jobs Near You",
@@ -253,8 +320,6 @@ fun DiscoverScreen(
                         colorScheme = colorScheme
                     )
                 }
-
-                // Jobs Grid
                 item {
                     Column(
                         modifier = Modifier
@@ -294,7 +359,7 @@ fun DiscoverScreen(
                     }
                 }
 
-                // Housing Section
+                // Housing Section (keep as is with sample data for now)
                 item {
                     ModernSectionHeader(
                         title = "Housing Opportunities",
@@ -304,8 +369,6 @@ fun DiscoverScreen(
                         colorScheme = colorScheme
                     )
                 }
-
-                // Housing Grid
                 item {
                     Column(
                         modifier = Modifier
@@ -359,8 +422,6 @@ fun DiscoverScreen(
                         colorScheme = colorScheme
                     )
                 }
-
-                // Professionals Grid
                 item {
                     Column(
                         modifier = Modifier
@@ -424,7 +485,7 @@ fun DiscoverScreen(
                 }
             }
 
-            // STICKY SEARCH + PILLS SECTION
+            // STICKY SEARCH + PILLS SECTION (unchanged)
             if (isSearchBarPinned) {
                 Surface(
                     modifier = Modifier
@@ -483,6 +544,119 @@ fun DiscoverScreen(
     }
 }
 
+
+@Composable
+fun DynamicServiceGrid(
+    services: List<DiscoveryCategory>,
+    colorScheme: ColorScheme,
+    horizontalPadding: Dp,
+    columnsPerRow: Int,
+    onServiceClick: (DiscoveryCategory) -> Unit
+) {
+    val servicesWithIcons = services.mapIndexed { index, service ->
+        Triple(service, getIconForService(service.name, service.vertical), index)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = horizontalPadding)
+    ) {
+        servicesWithIcons.chunked(columnsPerRow).forEach { rowItems ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                rowItems.forEach { (service, icon, index) ->
+                    ServiceCardCircle(
+                        service = service,
+                        icon = icon,
+                        colorScheme = colorScheme,
+                        onClick = { onServiceClick(service) },
+                        modifier = Modifier.weight(1f),
+                        index = index
+                    )
+                }
+                // Fill empty spots
+                repeat(columnsPerRow - rowItems.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ServiceCardCircle(
+    service: DiscoveryCategory,
+    icon: ImageVector,
+    colorScheme: ColorScheme,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    index: Int = 0  // Add index for alternating colors
+) {
+    // Define alternating color schemes based on theme
+    val lightColors = listOf(
+        colorScheme.primary.copy(alpha = 0.08f),
+        colorScheme.secondary.copy(alpha = 0.08f),
+        colorScheme.tertiary.copy(alpha = 0.08f),
+        colorScheme.primary.copy(alpha = 0.12f),
+        colorScheme.secondary.copy(alpha = 0.12f),
+        colorScheme.tertiary.copy(alpha = 0.12f)
+    )
+
+    val iconTintColors = listOf(
+        colorScheme.primary,
+        colorScheme.secondary,
+        colorScheme.tertiary,
+        colorScheme.primary,
+        colorScheme.secondary,
+        colorScheme.tertiary
+    )
+
+    // Choose color based on index (wrap around using modulo)
+    val backgroundColor = lightColors[index % lightColors.size]
+    val iconColor = iconTintColors[index % iconTintColors.size]
+
+    Column(
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Circular icon container with alternating colors
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(backgroundColor),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = service.name,
+                tint = iconColor,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = service.name,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            softWrap = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
 
 // Data classes for items (same as before)
 data class JobItem(
@@ -560,213 +734,6 @@ private val supportItems = listOf(
     SupportItem("Legal Aid Kenya", "Free Legal Advice & Representation", "Regional Offices", false),
     SupportItem("Food for All", "Community Food Programs", "Nairobi & Kiambu", false)
 )
-
-// NON-STICKY HEADER - With appropriate top spacing
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NonStickyHeader(
-    colorScheme: ColorScheme,
-    user: User? = null,
-    isGuestMode: Boolean = false,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    val profileUrl = user?.profileImageUrl?.takeIf { it.isNotBlank() }
-    var showMenuBottomSheet by remember { mutableStateOf(false) }
-
-    // Get user info
-    val firstName = remember(user, isGuestMode) {
-        when {
-            user == null || isGuestMode -> "Guest"
-            user.firstName.isNotBlank() -> user.firstName
-            user.userName.isNotBlank() -> user.userName.split(" ").firstOrNull() ?: "Guest"
-            else -> "Guest"
-        }
-    }
-
-    // Get user role
-    val userRole = remember(user, isGuestMode) {
-        when {
-            isGuestMode -> "Guest User"
-            user?.role?.equals("admin", ignoreCase = true) == true -> "Administrator"
-            user?.role?.equals("professional", ignoreCase = true) == true -> "Professional"
-            else -> "General User"
-        }
-    }
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .statusBarsPadding()  // Add status bar padding back for non-sticky header
-            .padding(horizontal = 16.dp)
-            .padding(top = 8.dp, bottom = 8.dp)  // Small top padding
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(24.dp),
-                ambientColor = Color.Black.copy(alpha = 0.08f),
-                spotColor = Color.Black.copy(alpha = 0.06f)
-            ),
-        shape = RoundedCornerShape(24.dp),
-        color = colorScheme.surface.copy(alpha = 0.98f),
-        tonalElevation = 0.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Left side - Profile Avatar and User Info
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Profile Avatar (Clickable)
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .clickable { showMenuBottomSheet = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isGuestMode || profileUrl.isNullOrBlank()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    color = colorScheme.primary.copy(alpha = 0.1f),
-                                    shape = CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Outlined.AccountCircle,
-                                contentDescription = "Profile",
-                                tint = colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                    } else {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(profileUrl)
-                                .size(128)
-                                .allowHardware(false)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Profile",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                                .border(
-                                    2.dp,
-                                    colorScheme.tertiary.copy(alpha = 0.5f),
-                                    CircleShape
-                                ),
-                            placeholder = painterResource(R.drawable.job_placeholder3),
-                            error = painterResource(R.drawable.job_placeholder3)
-                        )
-                    }
-                }
-
-                // User Info Column
-                Column(
-                    modifier = Modifier.clickable { showMenuBottomSheet = true }
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = "Hi, $firstName",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = colorScheme.onSurface,
-                            letterSpacing = 0.2.sp
-                        )
-                        // Dropdown Icon - Now next to the name
-                        Icon(
-                            Icons.Outlined.KeyboardArrowDown,
-                            contentDescription = "Menu",
-                            tint = colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Text(
-                        text = userRole,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        letterSpacing = 0.1.sp
-                    )
-                }
-            }
-
-            // Right side - Action icons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Message Icon
-                HeaderIcon(Icons.Outlined.MailOutline, colorScheme)
-
-                // Notifications Icon with badge
-                Box {
-                    HeaderIcon(Icons.Outlined.NotificationsNone, colorScheme)
-                    // Notification badge
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = 4.dp, y = 4.dp)
-                            .size(10.dp)
-                            .background(
-                                color = colorScheme.tertiary,
-                                shape = CircleShape
-                            )
-                            .border(
-                                width = 1.5.dp,
-                                color = colorScheme.error,
-                                shape = CircleShape
-                            )
-                    )
-                }
-            }
-        }
-    }
-
-    // Profile Menu Bottom Sheet
-    if (showMenuBottomSheet) {
-        ProfileMenuBottomSheet(
-            onDismiss = { showMenuBottomSheet = false },
-            colorScheme = colorScheme,
-            onMyAccountClick = {
-                showMenuBottomSheet = false
-                // Navigate to My Account
-            },
-            onMyListingsClick = {
-                showMenuBottomSheet = false
-                // Navigate to My Listings
-            },
-            onMyFavoritesClick = {
-                showMenuBottomSheet = false
-                // Navigate to My Favorites
-            },
-            onPostClick = {
-                showMenuBottomSheet = false
-                // Navigate to Post
-            },
-            onLogoutClick = {
-                showMenuBottomSheet = false
-                // Handle logout
-            }
-        )
-    }
-}
-
-
 
 
 @Composable

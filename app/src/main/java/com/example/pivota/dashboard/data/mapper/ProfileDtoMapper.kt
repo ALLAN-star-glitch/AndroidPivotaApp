@@ -76,7 +76,9 @@ class ProfileDtoMapper @Inject constructor() {
             verifications = emptyList(),
             completion = toProfileCompletion(userProfDto.completion),
             createdAt = userProfDto.createdAt,
-            updatedAt = userProfDto.updatedAt
+            updatedAt = userProfDto.updatedAt,
+            planName = userProfDto.planName,  // ← Root level
+            scope = userProfDto.user.scope     // ← Root level scope
         )
     }
 
@@ -95,7 +97,8 @@ class ProfileDtoMapper @Inject constructor() {
             phoneNumber = userDto.phone.takeIf { it.isNotBlank() },
             profileImageUrl = profileDto.profileImage,
             status = UserStatus.Companion.fromString(userDto.status),
-            role = userDto.roleName
+            role = userDto.roleName,
+            scope = userDto.scope
         )
     }
 
@@ -109,7 +112,8 @@ class ProfileDtoMapper @Inject constructor() {
             isVerified = false,
             verifiedFeatures = emptyList(),
             createdAt = "",
-            updatedAt = ""
+            updatedAt = "",
+            planName = accountDto.planName
         )
     }
 
