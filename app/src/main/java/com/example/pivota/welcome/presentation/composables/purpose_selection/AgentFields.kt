@@ -3,15 +3,16 @@ package com.example.pivota.welcome.presentation.composables.purpose_selection
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,15 +21,18 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.ui.theme.*
+import com.example.pivota.welcome.presentation.screens.SuggestionPill
 import com.example.pivota.welcome.presentation.state.AgentFormData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -43,6 +47,10 @@ fun AgentFields(
     var currentServiceAreaInput by remember { mutableStateOf("") }
     var showDuplicateError by remember { mutableStateOf(false) }
     var errorField by remember { mutableStateOf("") }
+    var isSpecFocused by remember { mutableStateOf(false) }
+    var isAreaFocused by remember { mutableStateOf(false) }
+    var showSpecAddHint by remember { mutableStateOf(false) }
+    var showAreaAddHint by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     val specializationsList = remember(data.specializations) {
@@ -58,6 +66,17 @@ fun AgentFields(
     }
 
     val agentTypes = listOf("Housing Agent", "Recruitment Agent", "Broker", "Insurance Agent", "Real Estate Agent")
+
+    // Dynamic placeholders
+    val specPlaceholder = if (specializationsList.isEmpty())
+        "Type a specialization (e.g., Residential, Commercial)"
+    else
+        "Type another specialization"
+
+    val areaPlaceholder = if (serviceAreasList.isEmpty())
+        "Type a service area (e.g., Nairobi, Kiambu)"
+    else
+        "Type another area"
 
     fun addItem(currentInput: String, currentList: List<String>, onAdd: (String) -> Unit, onClearInput: () -> Unit, field: String) {
         val trimmedItem = currentInput.trim()
@@ -175,7 +194,7 @@ fun AgentFields(
                 }
             }
 
-            // Specializations Section
+            // Specializations Section - Redesigned
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -249,85 +268,183 @@ fun AgentFields(
                     }
                 }
 
-                // Input Field
-                OutlinedTextField(
-                    value = currentSpecializationInput,
-                    onValueChange = { currentSpecializationInput = it },
-                    placeholder = {
-                        Text(
-                            if (specializationsList.isEmpty()) "Add a specialization" else "Add another specialization",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp)
-                        )
-                    },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = {
-                                addItem(
-                                    currentSpecializationInput,
-                                    specializationsList,
-                                    { newSpecs -> onDataChange(data.copy(specializations = newSpecs)) },
-                                    { currentSpecializationInput = "" },
-                                    "spec"
-                                )
-                            },
-                            enabled = currentSpecializationInput.isNotBlank()
+                // Redesigned Specialization Input Field
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
                         ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "Add",
-                                tint = if (currentSpecializationInput.isNotBlank())
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            BasicTextField(
+                                value = currentSpecializationInput,
+                                onValueChange = {
+                                    currentSpecializationInput = it
+                                    if (it.isNotBlank() && !showSpecAddHint) {
+                                        showSpecAddHint = true
+                                    } else if (it.isBlank() && showSpecAddHint) {
+                                        showSpecAddHint = false
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .onFocusChanged { isSpecFocused = it.isFocused },
+                                textStyle = LocalTextStyle.current.copy(
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    lineHeight = 20.sp
+                                ),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Text,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        if (currentSpecializationInput.isNotBlank()) {
+                                            addItem(
+                                                currentSpecializationInput,
+                                                specializationsList,
+                                                { newSpecs -> onDataChange(data.copy(specializations = newSpecs)) },
+                                                { currentSpecializationInput = "" },
+                                                "spec"
+                                            )
+                                        }
+                                    }
+                                ),
+                                singleLine = true,
+                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                decorationBox = { innerTextField ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            if (currentSpecializationInput.isEmpty()) {
+                                                Text(
+                                                    text = specPlaceholder,
+                                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                                        fontSize = 14.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                    )
+                                                )
+                                            }
+                                            innerTextField()
+                                        }
+
+                                        AnimatedVisibility(
+                                            visible = currentSpecializationInput.isNotBlank(),
+                                            enter = scaleIn() + fadeIn(),
+                                            exit = scaleOut() + fadeOut()
+                                        ) {
+                                            IconButton(
+                                                onClick = {
+                                                    if (currentSpecializationInput.isNotBlank()) {
+                                                        addItem(
+                                                            currentSpecializationInput,
+                                                            specializationsList,
+                                                            { newSpecs -> onDataChange(data.copy(specializations = newSpecs)) },
+                                                            { currentSpecializationInput = "" },
+                                                            "spec"
+                                                        )
+                                                    }
+                                                },
+                                                modifier = Modifier.size(40.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Add,
+                                                    contentDescription = "Add Specialization",
+                                                    modifier = Modifier.size(24.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+
+                            // Custom border
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .border(
+                                        width = 1.dp,
+                                        color = when {
+                                            showDuplicateError && errorField == "spec" -> MaterialTheme.colorScheme.error
+                                            isSpecFocused -> MaterialTheme.colorScheme.primary
+                                            else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                                        },
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
                             )
                         }
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            if (currentSpecializationInput.isNotBlank()) {
-                                addItem(
-                                    currentSpecializationInput,
-                                    specializationsList,
-                                    { newSpecs -> onDataChange(data.copy(specializations = newSpecs)) },
-                                    { currentSpecializationInput = "" },
-                                    "spec"
+
+                        // Error or hint message
+                        if (showDuplicateError && errorField == "spec") {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = "Error",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                                Text(
+                                    text = "This specialization has already been added",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                )
+                            }
+                        } else if (showSpecAddHint && currentSpecializationInput.isNotBlank()) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = "Hint",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                )
+                                Text(
+                                    text = "Press the + button or Done key to add",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                    )
                                 )
                             }
                         }
-                    ),
-                    isError = showDuplicateError && errorField == "spec",
-                    supportingText = {
-                        if (showDuplicateError && errorField == "spec") {
-                            Text(
-                                "This specialization has already been added",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontSize = 11.sp
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                        errorBorderColor = MaterialTheme.colorScheme.error,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        errorLabelColor = MaterialTheme.colorScheme.error
-                    )
-                )
+                    }
+                }
 
-                // Suggestions
+                // Suggestions for Specializations
                 val specSuggestions = listOf("Residential", "Commercial", "Luxury", "Industrial", "Agricultural", "Land")
                 if (specSuggestions.isNotEmpty()) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "Suggestions",
+                            text = "Quick suggestions",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
@@ -362,7 +479,7 @@ fun AgentFields(
                 }
             }
 
-            // Service Areas Section
+            // Service Areas Section - Redesigned
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -436,85 +553,183 @@ fun AgentFields(
                     }
                 }
 
-                // Input Field
-                OutlinedTextField(
-                    value = currentServiceAreaInput,
-                    onValueChange = { currentServiceAreaInput = it },
-                    placeholder = {
-                        Text(
-                            if (serviceAreasList.isEmpty()) "Add a service area" else "Add another area",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp)
-                        )
-                    },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = {
-                                addItem(
-                                    currentServiceAreaInput,
-                                    serviceAreasList,
-                                    { newAreas -> onDataChange(data.copy(serviceAreas = newAreas)) },
-                                    { currentServiceAreaInput = "" },
-                                    "area"
-                                )
-                            },
-                            enabled = currentServiceAreaInput.isNotBlank()
+                // Redesigned Service Area Input Field
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
                         ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "Add",
-                                tint = if (currentServiceAreaInput.isNotBlank())
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            BasicTextField(
+                                value = currentServiceAreaInput,
+                                onValueChange = {
+                                    currentServiceAreaInput = it
+                                    if (it.isNotBlank() && !showAreaAddHint) {
+                                        showAreaAddHint = true
+                                    } else if (it.isBlank() && showAreaAddHint) {
+                                        showAreaAddHint = false
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .onFocusChanged { isAreaFocused = it.isFocused },
+                                textStyle = LocalTextStyle.current.copy(
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    lineHeight = 20.sp
+                                ),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Text,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        if (currentServiceAreaInput.isNotBlank()) {
+                                            addItem(
+                                                currentServiceAreaInput,
+                                                serviceAreasList,
+                                                { newAreas -> onDataChange(data.copy(serviceAreas = newAreas)) },
+                                                { currentServiceAreaInput = "" },
+                                                "area"
+                                            )
+                                        }
+                                    }
+                                ),
+                                singleLine = true,
+                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                decorationBox = { innerTextField ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            if (currentServiceAreaInput.isEmpty()) {
+                                                Text(
+                                                    text = areaPlaceholder,
+                                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                                        fontSize = 14.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                    )
+                                                )
+                                            }
+                                            innerTextField()
+                                        }
+
+                                        AnimatedVisibility(
+                                            visible = currentServiceAreaInput.isNotBlank(),
+                                            enter = scaleIn() + fadeIn(),
+                                            exit = scaleOut() + fadeOut()
+                                        ) {
+                                            IconButton(
+                                                onClick = {
+                                                    if (currentServiceAreaInput.isNotBlank()) {
+                                                        addItem(
+                                                            currentServiceAreaInput,
+                                                            serviceAreasList,
+                                                            { newAreas -> onDataChange(data.copy(serviceAreas = newAreas)) },
+                                                            { currentServiceAreaInput = "" },
+                                                            "area"
+                                                        )
+                                                    }
+                                                },
+                                                modifier = Modifier.size(40.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Add,
+                                                    contentDescription = "Add Area",
+                                                    modifier = Modifier.size(24.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+
+                            // Custom border
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .border(
+                                        width = 1.dp,
+                                        color = when {
+                                            showDuplicateError && errorField == "area" -> MaterialTheme.colorScheme.error
+                                            isAreaFocused -> MaterialTheme.colorScheme.primary
+                                            else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                                        },
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
                             )
                         }
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            if (currentServiceAreaInput.isNotBlank()) {
-                                addItem(
-                                    currentServiceAreaInput,
-                                    serviceAreasList,
-                                    { newAreas -> onDataChange(data.copy(serviceAreas = newAreas)) },
-                                    { currentServiceAreaInput = "" },
-                                    "area"
+
+                        // Error or hint message
+                        if (showDuplicateError && errorField == "area") {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = "Error",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                                Text(
+                                    text = "This service area has already been added",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                )
+                            }
+                        } else if (showAreaAddHint && currentServiceAreaInput.isNotBlank()) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = "Hint",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                )
+                                Text(
+                                    text = "Press the + button or Done key to add",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                    )
                                 )
                             }
                         }
-                    ),
-                    isError = showDuplicateError && errorField == "area",
-                    supportingText = {
-                        if (showDuplicateError && errorField == "area") {
-                            Text(
-                                "This service area has already been added",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontSize = 11.sp
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                        errorBorderColor = MaterialTheme.colorScheme.error,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        errorLabelColor = MaterialTheme.colorScheme.error
-                    )
-                )
+                    }
+                }
 
-                // Suggestions
+                // Suggestions for Service Areas
                 val areaSuggestions = listOf("Nairobi", "Kiambu", "Kajiado", "Machakos", "Mombasa", "Kisumu")
                 if (areaSuggestions.isNotEmpty()) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "Suggestions",
+                            text = "Quick suggestions",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
@@ -650,6 +865,7 @@ fun ElegantPillWithRemove(
                     tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
                 )
             }
+
         }
     }
 }

@@ -3,18 +3,18 @@ package com.example.pivota.welcome.presentation.composables.purpose_selection
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,15 +22,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pivota.ui.theme.*
+import com.example.pivota.welcome.presentation.screens.SuggestionPill
 import com.example.pivota.welcome.presentation.state.SupportBeneficiaryFormData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -45,6 +48,7 @@ fun SupportBeneficiaryFields(
     var currentUrgentNeedInput by remember { mutableStateOf("") }
     var showDuplicateError by remember { mutableStateOf(false) }
     var showAddHint by remember { mutableStateOf(false) }
+    var isFocused by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     val urgentNeedsList = remember(data.urgentNeeds) {
@@ -139,6 +143,12 @@ fun SupportBeneficiaryFields(
         onDataChange(data.copy(supportTypes = emptyList()))
     }
 
+    // Dynamic placeholder text
+    val needPlaceholder = if (urgentNeedsList.isEmpty())
+        "Type your need (e.g., Food for family)"
+    else
+        "Type another need"
+
     Card(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
@@ -221,7 +231,7 @@ fun SupportBeneficiaryFields(
                         )
                     }
 
-                    // Animated counter only (clear button moved below)
+                    // Animated counter only
                     AnimatedContent(
                         targetState = selectedCount,
                         transitionSpec = {
@@ -346,7 +356,7 @@ fun SupportBeneficiaryFields(
                 }
             }
 
-            // Urgent Needs Section - Animated conditional display (hidden until support type selected)
+            // Urgent Needs Section - Animated conditional display
             AnimatedVisibility(
                 visible = hasSelectedSupport,
                 enter = fadeIn(animationSpec = tween(400)) +
@@ -372,7 +382,7 @@ fun SupportBeneficiaryFields(
                         )
             ) {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -454,88 +464,165 @@ fun SupportBeneficiaryFields(
                         }
                     }
 
-                    // Add Need Input
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    // Add Need Section - Redesigned like job skills with plus icon inside input
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        OutlinedTextField(
-                            value = currentUrgentNeedInput,
-                            onValueChange = {
-                                currentUrgentNeedInput = it
-                                if (it.isNotBlank() && !showAddHint) {
-                                    showAddHint = true
-                                } else if (it.isBlank() && showAddHint) {
-                                    showAddHint = false
-                                }
-                            },
-                            placeholder = {
-                                Text(
-                                    if (urgentNeedsList.isEmpty()) "Type your need and tap + to add"
-                                    else "Type another need and tap +",
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontSize = 14.sp
-                                    )
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Input field with trailing plus icon
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                            ) {
+                                BasicTextField(
+                                    value = currentUrgentNeedInput,
+                                    onValueChange = {
+                                        currentUrgentNeedInput = it
+                                        if (it.isNotBlank() && !showAddHint) {
+                                            showAddHint = true
+                                        } else if (it.isBlank() && showAddHint) {
+                                            showAddHint = false
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .onFocusChanged { isFocused = it.isFocused },
+                                    textStyle = LocalTextStyle.current.copy(
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        lineHeight = 20.sp
+                                    ),
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Text,
+                                        imeAction = ImeAction.Done
+                                    ),
+                                    keyboardActions = KeyboardActions(
+                                        onDone = {
+                                            if (currentUrgentNeedInput.isNotBlank()) {
+                                                addNeed(currentUrgentNeedInput)
+                                            }
+                                        }
+                                    ),
+                                    singleLine = true,
+                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                    decorationBox = { innerTextField ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                if (currentUrgentNeedInput.isEmpty()) {
+                                                    Text(
+                                                        text = needPlaceholder,
+                                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                                            fontSize = 14.sp,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                        )
+                                                    )
+                                                }
+                                                innerTextField()
+                                            }
+
+                                            AnimatedVisibility(
+                                                visible = currentUrgentNeedInput.isNotBlank(),
+                                                enter = scaleIn() + fadeIn(),
+                                                exit = scaleOut() + fadeOut()
+                                            ) {
+                                                IconButton(
+                                                    onClick = {
+                                                        if (currentUrgentNeedInput.isNotBlank()) {
+                                                            addNeed(currentUrgentNeedInput)
+                                                        }
+                                                    },
+                                                    modifier = Modifier.size(40.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Add,
+                                                        contentDescription = "Add Need",
+                                                        modifier = Modifier.size(24.dp),
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                 )
-                            },
-                            trailingIcon = {
-                                AnimatedVisibility(
-                                    visible = currentUrgentNeedInput.isNotBlank(),
-                                    enter = scaleIn() + fadeIn(),
-                                    exit = scaleOut() + fadeOut()
-                                ) {
-                                    IconButton(
-                                        onClick = { addNeed(currentUrgentNeedInput) }
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Add,
-                                            contentDescription = "Add need",
-                                            tint = MaterialTheme.colorScheme.primary
+
+                                // Custom border for the input field
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .border(
+                                            width = 1.dp,
+                                            color = when {
+                                                showDuplicateError -> MaterialTheme.colorScheme.error
+                                                isFocused -> MaterialTheme.colorScheme.primary
+                                                else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                                            },
+                                            shape = RoundedCornerShape(12.dp)
                                         )
-                                    }
-                                }
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Text,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = {
-                                    if (currentUrgentNeedInput.isNotBlank()) {
-                                        addNeed(currentUrgentNeedInput)
-                                    }
-                                }
-                            ),
-                            isError = showDuplicateError,
-                            supportingText = {
-                                if (showDuplicateError) {
-                                    Text(
-                                        "This need has already been added",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontSize = 11.sp
+                                )
+                            }
+
+                            // Error or hint message
+                            if (showDuplicateError) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(start = 4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = "Error",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.error
                                     )
-                                } else if (showAddHint && currentUrgentNeedInput.isNotBlank()) {
                                     Text(
-                                        "Tap the + button or press Done to add",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                        text = "This need has already been added",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
                                     )
                                 }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                                errorBorderColor = MaterialTheme.colorScheme.error,
-                                errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f),
-                                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                errorLabelColor = MaterialTheme.colorScheme.error
-                            )
-                        )
+                            } else if (showAddHint && currentUrgentNeedInput.isNotBlank()) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(start = 4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = "Hint",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                    )
+                                    Text(
+                                        text = "Press the + button or Done key to add",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                        )
+                                    )
+                                }
+                            }
+                        }
                     }
 
-                    // Suggestions
+                    // Quick Suggestions (preserved and enhanced)
                     if (urgentNeedSuggestions.isNotEmpty()) {
                         Column(
                             verticalArrangement = Arrangement.spacedBy(8.dp)

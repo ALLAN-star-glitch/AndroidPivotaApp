@@ -23,7 +23,7 @@ data class JobSeekerFormData(
     var isActivelySeeking: Boolean = true,
     var skills: String = "",
     var industries: String = "",
-    var jobTypes: String = "",
+    var jobType: String = "",
     var seniorityLevel: String = "",
     var expectedSalary: String = "",
     var noticePeriod: String = "",

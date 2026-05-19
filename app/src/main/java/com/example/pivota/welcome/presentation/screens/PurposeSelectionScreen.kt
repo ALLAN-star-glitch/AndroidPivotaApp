@@ -46,12 +46,12 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun AdaptivePurposeSelectionScreenContent(
+    modifier: Modifier = Modifier,
     onContinue: () -> Unit,
     onSkipToDashboard: () -> Unit,
     onJustExploring: () -> Unit,
     currentStep: Int = 2,
     totalSteps: Int = 6,
-    modifier: Modifier = Modifier,
     viewModel: PurposeSelectionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()

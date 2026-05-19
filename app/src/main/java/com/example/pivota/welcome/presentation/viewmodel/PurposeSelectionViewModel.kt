@@ -113,7 +113,6 @@ class PurposeSelectionViewModel @Inject constructor(
                                     isActivelySeeking = data.isActivelySeeking,
                                     skills = parseCommaSeparated(data.skills),
                                     industries = parseCommaSeparated(data.industries),
-                                    jobTypes = parseCommaSeparated(data.jobTypes),
                                     seniorityLevel = data.seniorityLevel.takeIf { it.isNotBlank() },
                                     expectedSalary = data.expectedSalary.toIntOrNull()
                                 )
@@ -248,7 +247,7 @@ class PurposeSelectionViewModel @Inject constructor(
                 "Hire Employees" -> _uiState.value.employerData.businessName.isNotBlank()
                 "List Properties" -> {
                     val data = _uiState.value.propertyOwnerData
-                    data.listingType.isNotBlank()
+                    data.professionalStatus.isNotBlank()
                 }
                 else -> true
             }
