@@ -2,11 +2,13 @@ package com.example.pivota.dashboard.presentation.viewmodels.client_general_view
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.pivota.auth.domain.useCase.AuthUseCases
 import com.example.pivota.core.auth.TokenManager
 import com.example.pivota.core.database.dao.UserDao
 import com.example.pivota.core.database.entity.UserEntity
 import com.example.pivota.core.network.ApiResult
 import com.example.pivota.core.network.NetworkError
+import com.example.pivota.core.preferences.PivotaDataStore
 import com.example.pivota.dashboard.domain.model.profile_models.CompleteProfile
 import com.example.pivota.dashboard.domain.model.profile_models.ProfileAccount
 import com.example.pivota.dashboard.domain.model.profile_models.ProfileCompletion
@@ -18,6 +20,8 @@ import com.example.pivota.dashboard.domain.useCase.GetProfileUseCase
 import com.example.pivota.dashboard.presentation.state.CommonServicesUiState
 import com.example.pivota.dashboard.presentation.state.DashboardState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,7 +34,9 @@ import javax.inject.Inject
 class DashboardSharedViewModel @Inject constructor(
     private val getProfileUseCase: GetProfileUseCase,
     private val userDao: UserDao,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val datastore: PivotaDataStore,
+    private val authUseCases: AuthUseCases
 ) : ViewModel() {
 
     // ======================================================
@@ -168,24 +174,56 @@ class DashboardSharedViewModel @Inject constructor(
     fun onLogoutConfirmed() {
         _showLogoutDialog.value = false
 
-        // ✅ INSTANT: Reset UI state immediately (synchronous)
+        // Clear UI state instantly
         _headerState.value = HeaderState.Loading
         _profileState.value = ProfileLoadState.Loading
         _dashboardState.value = DashboardState.Loading
-        _logoutEvent.value = true  // Trigger navigation instantly
 
-        // ✅ BACKGROUND: Perform actual logout operations later
-        viewModelScope.launch {
+        // Launch network logout in a separate coroutine that won't be cancelled
+        // Use GlobalScope or a custom application scope
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                // These can take time, but user already sees logged-out state
-                userDao.deleteAll()
-                tokenManager.logout()
+                println("🌐 [LOGOUT] Starting network logout...")
 
-                println("✅ Background logout completed")
+                // Get refresh token before clearing
+                val refreshToken = datastore.getRefreshToken()
+                println("🌐 [LOGOUT] Refresh token: ${refreshToken?.take(20)}...")
+
+                if (refreshToken != null) {
+                    // Make the actual network call
+                    // You need to inject AuthUseCases or add this method to TokenManager
+                    val result = authUseCases.logout(refreshToken)
+
+                    when (result) {
+                        is ApiResult.Success -> {
+                            println("✅ [LOGOUT] Network logout successful")
+                        }
+                        is ApiResult.Error -> {
+                            println("⚠️ [LOGOUT] Network logout error: ${result.networkError.message}")
+                        }
+                        else -> {}
+                    }
+                } else {
+                    println("⚠️ [LOGOUT] No refresh token found")
+                }
             } catch (e: Exception) {
-                println("⚠️ Background logout error: ${e.message}")
+                println("❌ [LOGOUT] Exception: ${e.message}")
+            } finally {
+                // Clear storage after network call
+                try {
+                    userDao.deleteAll()
+                    tokenManager.clearLocalSession()
+                    datastore.markOnboardingComplete(false)
+                    datastore.saveGuestModeEnabled(false)
+                    println("✅ [LOGOUT] Storage cleared")
+                } catch (e: Exception) {
+                    println("❌ [LOGOUT] Storage clear error: ${e.message}")
+                }
             }
         }
+
+        // Navigate instantly - network call continues in background
+        _logoutEvent.value = true
     }
 
     fun onLogoutCancelled() {

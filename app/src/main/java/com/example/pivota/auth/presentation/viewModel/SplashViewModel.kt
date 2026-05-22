@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pivota.auth.domain.useCase.AuthUseCases
 import com.example.pivota.core.auth.TokenManager
+import com.example.pivota.core.database.dao.UserDao
 import com.example.pivota.core.navigation.*
 import com.example.pivota.core.preferences.PivotaDataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,7 +18,8 @@ import javax.inject.Inject
 class SplashViewModel @Inject constructor(
     private val authUseCases: AuthUseCases,
     private val tokenManager: TokenManager,
-    private val dataStore: PivotaDataStore
+    private val dataStore: PivotaDataStore,
+    private val userDao: UserDao  // ✅ Inject UserDao
 ) : ViewModel() {
 
     private val _startDestination = MutableStateFlow<Any?>(null)
@@ -36,30 +38,49 @@ class SplashViewModel @Inject constructor(
 
             val isGuestMode = dataStore.isGuestModeEnabled()
             val hasValidSession = tokenManager.hasValidSession()
+            val hasSeenWelcome = dataStore.isWelcomeScreenSeen()
+            val userExists = userDao.getAuthenticatedUser() != null
 
-            println("🔍 [SplashViewModel] hasValidSession: $hasValidSession, isGuestMode: $isGuestMode")
+            println("🔍 [SplashViewModel] State:")
+            println("   isGuestMode: $isGuestMode")
+            println("   hasValidSession: $hasValidSession")
+            println("   hasSeenWelcome: $hasSeenWelcome")
+            println("   userExists: $userExists")
 
             when {
                 isGuestMode -> {
                     println("👤 [SplashViewModel] Guest mode enabled")
                     _startDestination.value = GuestDashboard
                 }
-                hasValidSession -> {
-                    // ✅ WAIT for token refresh to complete before navigating
-                    val refreshSuccess = refreshTokenAndWait()
 
+                // ✅ User is properly logged in with valid session AND user exists in DB
+                hasValidSession && userExists -> {
+                    println("✅ [SplashViewModel] User logged in, refreshing token...")
+
+                    val refreshSuccess = refreshTokenAndWait()
                     if (refreshSuccess) {
                         println("✅ [SplashViewModel] Token refreshed successfully")
                         tokenManager.startAutoRefresh()
                     } else {
-                        println("⚠️ [SplashViewModel] Token refresh failed - backend may be down")
+                        println("⚠️ [SplashViewModel] Token refresh failed")
                     }
 
                     _startDestination.value = Dashboard
                 }
+
+                // ✅ User has tokens but no user in DB (inconsistent state) - go to login
+                hasValidSession && !userExists -> {
+                    println("⚠️ [SplashViewModel] Inconsistent state: tokens exist but no user in DB")
+                    // Clear invalid session
+                    tokenManager.clearLocalSession()
+                    dataStore.clearSession()
+                    _startDestination.value = determineAuthDestination(hasSeenWelcome)
+                }
+
+                // ✅ No session - determine auth destination
                 else -> {
-                    println("🆕 [SplashViewModel] New user")
-                    _startDestination.value = Welcome
+                    println("🆕 [SplashViewModel] No session")
+                    _startDestination.value = determineAuthDestination(hasSeenWelcome)
                 }
             }
 
@@ -67,7 +88,16 @@ class SplashViewModel @Inject constructor(
         }
     }
 
-    // ✅ New method - waits for refresh to complete
+    private fun determineAuthDestination(hasSeenWelcome: Boolean): Any {
+        return if (hasSeenWelcome) {
+            // User has seen welcome screen before, go to login
+            AuthFlow
+        } else {
+            // First time user, show welcome screen
+            Welcome
+        }
+    }
+
     private suspend fun refreshTokenAndWait(): Boolean {
         val tokenAge = dataStore.getTokenAge()
         val shouldRefresh = tokenAge > 12 * 60 * 1000L

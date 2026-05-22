@@ -41,6 +41,12 @@ fun OnboardingPager(
     signupViewModel: SignupViewModel = hiltViewModel(),
     datastore: PivotaDataStore,
 ) {
+    // ✅ Set welcome flag when onboarding starts
+    LaunchedEffect(Unit) {
+        datastore.markWelcomeScreenSeen(true)
+        println("🔍 [OnboardingPager] Setting hasSeenWelcome = true")
+    }
+
     val pagerState = rememberPagerState(
         initialPage = 0,
         pageCount = { 3 }
@@ -82,7 +88,6 @@ fun OnboardingPager(
                 AnimatedContent(
                     targetState = page,
                     transitionSpec = {
-                        // Smoother page transition animations
                         fadeIn(
                             animationSpec = tween(
                                 durationMillis = 500,
@@ -115,15 +120,29 @@ fun OnboardingPager(
                             onContinue = { goToNextPage() },
                             onLoginClick = onLoginClick,
                             onSkipToDashboard = {
-                                onOnboardingComplete()
+                                // ✅ Set flags when skipping to dashboard
+                                coroutineScope.launch {
+                                    datastore.markWelcomeScreenSeen(true)
+                                    datastore.markOnboardingComplete(true)
+                                    datastore.saveGuestModeEnabled(true)
+                                    onOnboardingComplete()
+                                }
                             },
                             currentStep = currentPageValue,
-                            totalSteps = 3
+                            totalSteps = 3,
+                            viewModel = hiltViewModel(),
+                            datastore = datastore
                         )
                         1 -> AdaptivePurposeSelectionScreenContent(
                             onContinue = { goToNextPage() },
                             onSkipToDashboard = {
-                                onOnboardingComplete()
+                                // ✅ Set flags when skipping to dashboard
+                                coroutineScope.launch {
+                                    datastore.markWelcomeScreenSeen(true)
+                                    datastore.markOnboardingComplete(true)
+                                    datastore.saveGuestModeEnabled(true)
+                                    onOnboardingComplete()
+                                }
                             },
                             onJustExploring = {},
                             currentStep = currentPageValue,
@@ -136,12 +155,16 @@ fun OnboardingPager(
                             isLoginScreen = false,
                             onRegisterSuccess = { message, accessToken, refreshToken, user ->
                                 coroutineScope.launch {
-                                    datastore.clear()
+                                    // ✅ Clear onboarding cache but preserve welcome flag
+                                    datastore.clearOnboardingCache()
+                                    datastore.markOnboardingComplete(true)
+                                    datastore.saveGuestModeEnabled(false)
                                 }
                                 onSignupSuccess(message, accessToken, refreshToken, user)
                             },
                             onGoogleLoginClick = {},
-                            onLoginClick = onLoginClick
+                            onLoginClick = onLoginClick,
+                            onRegisterClick = {}
                         )
                     }
                 }

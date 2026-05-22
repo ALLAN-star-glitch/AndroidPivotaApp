@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -63,6 +64,7 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
         /* ───────── WELCOME SCREEN ───────── */
         composable<Welcome> {
             WelcomeScreen(
+                datastore = onboardingDataStore,
                 onNavigateToContinueSetup = {
                     navController.navigate(OnboardingFlow)
                 },
@@ -186,17 +188,14 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
 
             LaunchedEffect(logoutEvent) {
                 if (logoutEvent) {
-                    println("🚨 [NavHostSetup] Logout event detected, navigating to Welcome screen...")
+                    println("🚨 [NavHostSetup] Logout event detected...")
 
-                    // Reset the event
                     sharedDashboardViewModel.resetLogoutEvent()
-
-                    // ✅ Clear all auth data using existing method
                     sharedAuthViewModel.clearAllAuthData()
 
-                    // Navigate to Login screen (not login)
+                    // ✅ Navigate to AuthFlow (login), NOT Welcome
                     navController.navigate(AuthFlow) {
-                        popUpTo(0) { inclusive = true }  // Clear entire back stack
+                        popUpTo(0) { inclusive = true }
                         launchSingleTop = true
                     }
                 }
@@ -271,7 +270,7 @@ fun NavHostSetup(modifier: Modifier = Modifier) {
 
 @Composable
 fun rememberOnboardingDataStore(): PivotaDataStore {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
 
     val entryPoint = remember {
         EntryPointAccessors.fromApplication(

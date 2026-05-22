@@ -185,10 +185,17 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun isWelcomeScreenSeen(): Boolean {
-        return dataStore.data.map { it[WELCOME_SCREEN_SEEN] ?: false }.first()
+        val value = dataStore.data.map { it[WELCOME_SCREEN_SEEN] ?: false }.first()
+        println("🔍 [DataStore] isWelcomeScreenSeen returning: $value")
+        return value
     }
 
     suspend fun markWelcomeScreenSeen(seen: Boolean) {
+        println("🔍 [DataStore] markWelcomeScreenSeen called with: $seen")
+        println("🔍 [DataStore] Stack trace:")
+        Thread.currentThread().stackTrace.take(10).forEach { stack ->
+            println("    at ${stack.className}.${stack.methodName}(${stack.fileName}:${stack.lineNumber})")
+        }
         dataStore.edit { it[WELCOME_SCREEN_SEEN] = seen }
     }
 
@@ -454,7 +461,6 @@ class PivotaDataStore @Inject constructor(
     suspend fun resetOnboarding() {
         dataStore.edit {
             it.remove(ONBOARDING_COMPLETE)
-            it.remove(WELCOME_SCREEN_SEEN)
         }
     }
 

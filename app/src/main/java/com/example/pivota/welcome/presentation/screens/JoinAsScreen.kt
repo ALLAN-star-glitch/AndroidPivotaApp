@@ -31,7 +31,9 @@ import com.example.pivota.core.presentations.composables.buttons.PivotaPrimaryBu
 import com.example.pivota.core.presentations.composables.buttons.PivotaSkipButton
 import com.example.pivota.welcome.presentation.viewmodel.JoiningAsViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.pivota.core.preferences.PivotaDataStore
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
@@ -42,7 +44,8 @@ fun AdaptiveJoiningAsScreenContent(
     onSkipToDashboard: () -> Unit,
     currentStep: Int = 0,
     totalSteps: Int = 3,
-    viewModel: JoiningAsViewModel = hiltViewModel()
+    viewModel: JoiningAsViewModel = hiltViewModel(),
+    datastore: PivotaDataStore
 ) {
     val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isMediumScreen = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
@@ -75,7 +78,8 @@ fun AdaptiveJoiningAsScreenContent(
                         onLoginClick = onLoginClick,
                         onSkipToDashboard = onSkipToDashboard,
                         currentStep = currentStep,
-                        totalSteps = totalSteps
+                        totalSteps = totalSteps,
+                        datastore = datastore
                     )
                 }
             }
@@ -90,6 +94,7 @@ fun AdaptiveJoiningAsScreenContent(
                 onSkipToDashboard = onSkipToDashboard,
                 currentStep = currentStep,
                 totalSteps = totalSteps,
+                datastore = datastore,
                 modifier = modifier
             )
         }
@@ -169,10 +174,12 @@ fun TwoPaneJoiningAsRightContent(
     onLoginClick: () -> Unit,
     onSkipToDashboard: () -> Unit,
     currentStep: Int = 0,
-    totalSteps: Int = 3
+    totalSteps: Int = 3,
+    datastore: PivotaDataStore
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showContent by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         delay(400)
@@ -347,7 +354,15 @@ fun TwoPaneJoiningAsRightContent(
             ) {
                 PivotaSkipButton(
                     text = "Skip to Dashboard",
-                    onClick = onSkipToDashboard,
+                    onClick = {
+                        coroutineScope.launch {
+                            // Set welcome flag before skipping
+                            datastore.markWelcomeScreenSeen(true)
+                            datastore.markOnboardingComplete(true)
+                            datastore.saveGuestModeEnabled(true)
+                            onSkipToDashboard()
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     icon = ImageVector.vectorResource(R.drawable.ic_skip)
                 )
@@ -378,10 +393,12 @@ fun JoiningAsScreenContent(
     onSkipToDashboard: () -> Unit,
     currentStep: Int = 0,
     totalSteps: Int = 3,
+    datastore: PivotaDataStore,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showContent by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         delay(300)
@@ -559,7 +576,15 @@ fun JoiningAsScreenContent(
         ) {
             PivotaSkipButton(
                 text = "Skip to Dashboard",
-                onClick = onSkipToDashboard,
+                onClick = {
+                    coroutineScope.launch {
+                        // Set welcome flag before skipping
+                        datastore.markWelcomeScreenSeen(true)
+                        datastore.markOnboardingComplete(true)
+                        datastore.saveGuestModeEnabled(true)
+                        onSkipToDashboard()
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 icon = ImageVector.vectorResource(R.drawable.ic_skip)
             )
@@ -578,7 +603,6 @@ fun JoiningAsScreenContent(
                 )
             }
         }
-
     }
 }
 
