@@ -23,8 +23,11 @@ class ResetPasswordUseCase @Inject constructor(
                 if (response.success) {
                     ApiResult.Success(response.message ?: "Password reset successful")
                 } else {
+                    // ✅ FIXED: Use data class constructor
                     ApiResult.Error(
-                        networkError = NetworkError.Unknown,
+                        networkError = NetworkError.Unknown(
+                            originalMessage = response.message ?: "Password reset failed"
+                        ),
                         technicalMessage = response.message ?: "Password reset failed"
                     )
                 }

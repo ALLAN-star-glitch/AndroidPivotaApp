@@ -26,14 +26,20 @@ class ProfileRepositoryImpl @Inject constructor(
                         if (domainProfile != null) {
                             ApiResult.Success(domainProfile)
                         } else {
+                            // ✅ FIXED: Use data class constructor
                             ApiResult.Error(
-                                networkError = NetworkError.Unknown,
+                                networkError = NetworkError.Unknown(
+                                    originalMessage = "Failed to map profile data"
+                                ),
                                 technicalMessage = "Failed to map profile data"
                             )
                         }
                     } else {
+                        // ✅ FIXED: Use data class constructor
                         ApiResult.Error(
-                            networkError = NetworkError.Unknown,
+                            networkError = NetworkError.Unknown(
+                                originalMessage = response.message ?: "Unknown error"
+                            ),
                             technicalMessage = response.message
                         )
                     }

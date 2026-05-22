@@ -42,8 +42,11 @@ class VerifyMfaLoginUseCase @Inject constructor(
                         )
                     )
                 } else {
+                    // ✅ FIXED: Use data class constructor
                     ApiResult.Error(
-                        networkError = NetworkError.Unknown,
+                        networkError = NetworkError.Unknown(
+                            originalMessage = response.message ?: "MFA verification failed"
+                        ),
                         technicalMessage = response.message ?: "MFA verification failed"
                     )
                 }

@@ -142,14 +142,20 @@ class CategoriesRepositoryImpl @Inject constructor(
                 }
                 ApiResult.Success(domainCategories)
             } else {
+                // ✅ FIXED: Use data class constructor
                 ApiResult.Error(
-                    networkError = NetworkError.Unknown,
+                    networkError = NetworkError.Unknown(
+                        originalMessage = "No cached data available"
+                    ),
                     technicalMessage = "No cached data available"
                 )
             }
         } catch (e: Exception) {
+            // ✅ FIXED: Use data class constructor
             ApiResult.Error(
-                networkError = NetworkError.Unknown,
+                networkError = NetworkError.Unknown(
+                    originalMessage = e.message ?: "Failed to load cached data"
+                ),
                 technicalMessage = e.message ?: "Failed to load cached data"
             )
         }
@@ -189,8 +195,11 @@ class CategoriesRepositoryImpl @Inject constructor(
                         val domainCategories = mapper.toCategoryDomainList(response.data)
                         ApiResult.Success(domainCategories)
                     } else {
+                        // ✅ FIXED: Use data class constructor
                         ApiResult.Error(
-                            networkError = NetworkError.Unknown,
+                            networkError = NetworkError.Unknown(
+                                originalMessage = response.message ?: "Unknown error"
+                            ),
                             technicalMessage = response.message
                         )
                     }

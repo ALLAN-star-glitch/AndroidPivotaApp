@@ -24,8 +24,11 @@ class RefreshTokenUseCase @Inject constructor(
 
                     ApiResult.Success(accessToken to newRefreshToken)
                 } else {
+                    // ✅ FIXED: Use data class constructor
                     ApiResult.Error(
-                        networkError = NetworkError.Unknown,
+                        networkError = NetworkError.Unknown(
+                            originalMessage = response.message ?: "Token refresh failed"
+                        ),
                         technicalMessage = response.message ?: "Token refresh failed"
                     )
                 }

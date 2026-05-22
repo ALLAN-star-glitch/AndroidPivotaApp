@@ -231,7 +231,8 @@ class AuthRepositoryImpl @Inject constructor(
                         ApiResult.Success(loginResponse)
                     } catch (e: Exception) {
                         println("❌ [Google Sign-In] Parse error: ${e.message}")
-                        ApiResult.Error(NetworkError.ParsingError)
+                        // ✅ FIXED: Use data class constructor
+                        ApiResult.Error(NetworkError.ParsingError(originalMessage = e.message), e.message)
                     }
                 }
                 is ApiResult.Error -> {

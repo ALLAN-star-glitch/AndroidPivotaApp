@@ -38,13 +38,8 @@ fun AdaptiveAuthLayout(
     onGoogleSignUpClick: () -> Unit = {},
     successMessage: String? = null
 ) {
-    var showContent by remember { mutableStateOf(false) }
+    var showContent by remember { mutableStateOf(true) }
 
-    // Animate content entrance for mobile only
-    LaunchedEffect(Unit) {
-        delay(300)
-        showContent = true
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
@@ -101,11 +96,7 @@ fun AdaptiveAuthLayout(
             /* ───────── SINGLE PANE LAYOUT (Mobile Overlay) - WITH ANIMATIONS ───────── */
             AnimatedVisibility(
                 visible = showContent,
-                enter = fadeIn(animationSpec = tween(600, easing = FastOutSlowInEasing)) +
-                        slideInVertically(
-                            initialOffsetY = { 50 },
-                            animationSpec = tween(600, easing = FastOutSlowInEasing)
-                        )
+                enter = fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing))
             ) {
                 Box(
                     modifier = Modifier

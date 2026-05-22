@@ -29,8 +29,11 @@ class RegisterUserUseCase @Inject constructor(
                 if (response.success && response.data != null) {
                     ApiResult.Success(response.data)
                 } else {
+                    // ✅ FIXED: Use data class constructor
                     ApiResult.Error(
-                        networkError = NetworkError.Unknown,
+                        networkError = NetworkError.Unknown(
+                            originalMessage = response.message ?: "Signup failed"
+                        ),
                         technicalMessage = response.message ?: "Signup failed"
                     )
                 }

@@ -23,22 +23,18 @@ suspend inline fun <reified T> safeApiCall(
         }
     } catch (e: TimeoutCancellationException) {
         println("❌ API call timed out: ${e.message}")
-        ApiResult.Error(NetworkError.Timeout, e.message)
+        ApiResult.Error(NetworkError.Timeout(originalMessage = e.message), e.message)
     } catch (e: ResponseException) {
-        // ✅ NOW USING handleHttpResponse for HTTP status codes
         println("❌ HTTP Response Error: ${e.response.status.value} - ${e.response.status.description}")
 
         val networkError = NetworkExceptionHandler.handleHttpResponse(e.response)
-            ?: NetworkExceptionHandler.handleException(e)
 
         println("❌ Mapped to error: ${networkError.message}")
         ApiResult.Error(networkError, e.message)
     } catch (e: NoTransformationFoundException) {
-        // Response parsing failed (JSON doesn't match DTO)
         println("❌ Response parsing failed: ${e.message}")
-        ApiResult.Error(NetworkError.ParsingError, e.message)
+        ApiResult.Error(NetworkError.ParsingError(originalMessage = e.message), e.message)
     } catch (e: Exception) {
-        // ✅ NOW USING isNetworkAvailable for debugging
         val networkError = NetworkExceptionHandler.handleException(e)
         val isNetworkAvail = NetworkExceptionHandler.isNetworkAvailable(e)
 
@@ -57,14 +53,14 @@ fun ApiResult<*>.getUserFriendlyMessage(): String {
     }
 }
 
-// Extension function to check if error is recoverable
+// ✅ FIXED: Use 'is' for data class type checking
 fun ApiResult<*>.isRecoverable(): Boolean {
     return when (this) {
         is ApiResult.Error -> {
             when (networkError) {
-                NetworkError.NoInternet -> true
-                NetworkError.Timeout -> true
-                NetworkError.ServerUnreachable -> true
+                is NetworkError.NoInternet -> true
+                is NetworkError.Timeout -> true
+                is NetworkError.ServerUnreachable -> true
                 else -> false
             }
         }

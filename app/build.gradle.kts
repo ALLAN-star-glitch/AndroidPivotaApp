@@ -24,8 +24,8 @@ android {
         applicationId = "com.example.pivota"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.0.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -41,18 +41,54 @@ android {
         create("staging") {
             initWith(getByName("debug"))
 
+            versionNameSuffix = "-staging"
 
             firebaseAppDistribution {
                 artifactType = "APK"
                 testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com"
-                releaseNotes = "Automated test distribution for PivotaConnect-Staging."
+                releaseNotes = """
+                    PivotaConnect v1.0.3 (Build 3)
+                    
+                      New Features:
+                    • Added "All Services" screen to browse all common services with search and filter
+                    • Added filter functionality for Property Services, Career Services, and Community Support
+                    • Added offline support for categories using Room database
+                    • Added background sync for categories (updates every 3 hours)
+                    • Added skeleton loading states for better UX
+                    
+                      Improvements:
+                    • Redesigned Common Services section with circular icons
+                    • Better tablet support - now shows 12 items instead of 8 on tablets
+                    • Improved error handling with retry mechanisms
+                    • Better filter UI with bottom sheet and filter badge
+                    • Sticky search bar on scroll for All Services screen
+                    
+                      Bug Fixes:
+                    • Fixed issue where tablet was showing wrong number of items
+                    • Fixed "No services available" appearing on first launch
+                    • Fixed filter pills not working correctly
+                    • Fixed card text wrapping issues
+                    
+                      Testing Focus:
+                    • Test Common Services section on both mobile and tablet
+                    • Test offline mode (turn off wifi, restart app)
+                    • Test filter functionality in All Services screen
+                    • Verify background sync works when app is in background
+                    
+                    Known Issues:
+                    • First load may briefly show 8 items before correcting to 12 on tablet
+                    
+                    Please report any issues to the development team.
+                """.trimIndent()
             }
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlin {
         compilerOptions {
             jvmTarget = JvmTarget.JVM_17
@@ -145,7 +181,6 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
-
     // Credential Manager (as per documentation)
     implementation("androidx.credentials:credentials:1.6.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
@@ -155,7 +190,6 @@ dependencies {
     implementation("com.auth0:java-jwt:4.5.1")
 
     implementation("com.airbnb.android:lottie-compose:6.4.0")
-
 
     implementation(platform("com.google.firebase:firebase-bom:34.13.0"))
 

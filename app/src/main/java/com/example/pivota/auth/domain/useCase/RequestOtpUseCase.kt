@@ -2,6 +2,7 @@ package com.example.pivota.auth.domain.useCase
 
 import com.example.pivota.auth.domain.repository.AuthRepository
 import com.example.pivota.core.network.ApiResult
+import com.example.pivota.core.network.NetworkError
 import javax.inject.Inject
 
 class RequestOtpUseCase @Inject constructor(
@@ -20,8 +21,11 @@ class RequestOtpUseCase @Inject constructor(
                 if (result.data.success) {
                     ApiResult.Success(Unit)
                 } else {
+                    // ✅ FIXED: Use data class constructor with import
                     ApiResult.Error(
-                        networkError = com.example.pivota.core.network.NetworkError.Unknown,
+                        networkError = NetworkError.Unknown(
+                            originalMessage = result.data.message ?: "OTP request failed"
+                        ),
                         technicalMessage = result.data.message
                     )
                 }

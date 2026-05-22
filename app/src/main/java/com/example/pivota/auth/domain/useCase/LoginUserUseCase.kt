@@ -18,12 +18,23 @@ class LoginUserUseCase @Inject constructor(
     suspend operator fun invoke(email: String, password: String): ApiResult<LoginResponse> {
         return when (val result = repository.login(email, password)) {
             is ApiResult.Success -> {
-                val response = result.data
+                val response = result.data  // This is LoginResponseDto
 
-                if (response.success && response.data != null) {
+                // ✅ CRITICAL: Check the 'success' field from backend
+                if (!response.success) {
+                    // Backend returned error with 200 status code
+                    return ApiResult.Error(
+                        networkError = NetworkError.Unauthorized(
+                            originalMessage = response.message ?: "Invalid credentials",
+                            userFriendlyMessage = response.message ?: "Invalid email or password"
+                        ),
+                        technicalMessage = response.message
+                    )
+                }
+
+                // Now handle successful case
+                if (response.data != null) {
                     val data = response.data
-
-                    // Check if MFA is required (first stage)
                     if (data.message == "MFA_REQUIRED") {
                         ApiResult.Success(
                             LoginResponse.MfaRequired(
@@ -32,26 +43,27 @@ class LoginUserUseCase @Inject constructor(
                             )
                         )
                     } else {
-                        // This case shouldn't happen as per API flow, but handle it
                         ApiResult.Error(
-                            networkError = NetworkError.Unknown,
-                            technicalMessage = "Invalid login response: ${response.message}"
+                            networkError = NetworkError.Unknown(
+                                originalMessage = response.message ?: "Invalid login response"
+                            ),
+                            technicalMessage = response.message ?: "Invalid login response"
                         )
                     }
                 } else {
                     ApiResult.Error(
-                        networkError = NetworkError.Unknown,
+                        networkError = NetworkError.Unknown(
+                            originalMessage = response.message ?: "Login failed"
+                        ),
                         technicalMessage = response.message ?: "Login failed"
                     )
                 }
             }
             is ApiResult.Error -> {
-                // Pass through the network error
+                // This handles real HTTP errors (non-200 status codes)
                 result
             }
-            ApiResult.Loading -> {
-                ApiResult.Loading
-            }
+            ApiResult.Loading -> ApiResult.Loading
         }
     }
 }

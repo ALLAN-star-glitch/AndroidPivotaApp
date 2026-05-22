@@ -167,35 +167,23 @@ class DashboardSharedViewModel @Inject constructor(
 
     fun onLogoutConfirmed() {
         _showLogoutDialog.value = false
-        _isLoggingOut.value = true  // ✅ Set logging out state
+
+        // ✅ INSTANT: Reset UI state immediately (synchronous)
+        _headerState.value = HeaderState.Loading
+        _profileState.value = ProfileLoadState.Loading
+        _dashboardState.value = DashboardState.Loading
+        _logoutEvent.value = true  // Trigger navigation instantly
+
+        // ✅ BACKGROUND: Perform actual logout operations later
         viewModelScope.launch {
             try {
-                // Clear Room database
+                // These can take time, but user already sees logged-out state
                 userDao.deleteAll()
-
-                // Reset all states (but keep logout state separate)
-                _dashboardState.value = DashboardState.Loading
-                _profileState.value = ProfileLoadState.Loading
-                _headerState.value = HeaderState.Loading
-                _selectedTab.value = 0
-                lastFetchTime = 0L
-                isFetching = false
-                hasEverLoadedProfile = false
-                _isOffline.value = false
-                _offlineMessage.value = null
-
-                // Call token manager logout
                 tokenManager.logout()
 
-                // Trigger logout event
-                _logoutEvent.value = true
-
+                println("✅ Background logout completed")
             } catch (e: Exception) {
-                println("❌ Logout error: ${e.message}")
-                _offlineMessage.value = "Logout failed. Please try again."
-                _isOffline.value = true
-            } finally {
-                _isLoggingOut.value = false
+                println("⚠️ Background logout error: ${e.message}")
             }
         }
     }
