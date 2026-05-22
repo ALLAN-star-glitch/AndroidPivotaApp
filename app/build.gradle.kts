@@ -24,8 +24,8 @@ android {
         applicationId = "com.example.pivota"
         minSdk = 24
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.3"
+        versionCode = 4
+        versionName = "1.0.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -45,41 +45,42 @@ android {
 
             firebaseAppDistribution {
                 artifactType = "APK"
-                testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com"
+                testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
                 releaseNotes = """
-                    PivotaConnect v1.0.3 (Build 3)
-                    
-                      New Features:
-                    • Added "All Services" screen to browse all common services with search and filter
-                    • Added filter functionality for Property Services, Career Services, and Community Support
-                    • Added offline support for categories using Room database
-                    • Added background sync for categories (updates every 3 hours)
-                    • Added skeleton loading states for better UX
-                    
-                      Improvements:
-                    • Redesigned Common Services section with circular icons
-                    • Better tablet support - now shows 12 items instead of 8 on tablets
-                    • Improved error handling with retry mechanisms
-                    • Better filter UI with bottom sheet and filter badge
-                    • Sticky search bar on scroll for All Services screen
-                    
-                      Bug Fixes:
-                    • Fixed issue where tablet was showing wrong number of items
-                    • Fixed "No services available" appearing on first launch
-                    • Fixed filter pills not working correctly
-                    • Fixed card text wrapping issues
-                    
-                      Testing Focus:
-                    • Test Common Services section on both mobile and tablet
-                    • Test offline mode (turn off wifi, restart app)
-                    • Test filter functionality in All Services screen
-                    • Verify background sync works when app is in background
-                    
-                    Known Issues:
-                    • First load may briefly show 8 items before correcting to 12 on tablet
-                    
-                    Please report any issues to the development team.
-                """.trimIndent()
+            PivotaConnect v1.0.4 (Build 4)
+            
+            LOGOUT IMPROVEMENTS (Major Update)
+            
+            - INSTANT LOGOUT - Logout now feels instantaneous with no delay
+            - Proper network cleanup - Backend logout API is called correctly
+            - Persistent storage cleared - Room database and DataStore properly cleared
+            - Correct navigation - After logout, users go directly to Login screen (not Welcome screen)
+            - Welcome screen flag preserved - Returning users no longer see welcome screen on every login
+            - Fixed app restart behavior - After killing app, logged-out users see Login screen
+            
+            Bug Fixes
+            
+            - Fixed issue where users were seeing Welcome screen after logout and app restart
+            - Fixed network logout not being called during instant logout
+            - Fixed inconsistent state between tokens and user data in database
+            - Fixed navigation flow after logout (now goes to Login instead of Welcome)
+            
+            New Features (from previous builds)
+            
+            - Added "All Services" screen to browse all common services with search and filter
+            - Added filter functionality for Property Services, Career Services, and Community Support
+            - Added offline support for categories using Room database
+            - Added background sync for categories (updates every 3 hours)
+            - Added skeleton loading states for better UX
+            
+            Improvements
+            
+            - Redesigned Common Services section with circular icons
+            - Better tablet support - now shows 12 items instead of 8 on tablets
+            - Improved error handling with retry mechanisms
+            - Better filter UI with bottom sheet and filter badge
+            - Sticky search bar on scroll for All Services screen
+        """.trimIndent()
             }
         }
     }
