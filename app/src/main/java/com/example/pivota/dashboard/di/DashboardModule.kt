@@ -5,7 +5,10 @@ import com.example.pivota.dashboard.data.repository.CategoriesRepositoryImpl
 import com.example.pivota.dashboard.data.repository.ProfileRepositoryImpl
 import com.example.pivota.dashboard.domain.repository.CategoriesRepository
 import com.example.pivota.dashboard.domain.repository.ProfileRepository
+import com.example.pivota.dashboard.domain.repository.ServiceOfferingsRepository
+import com.example.pivota.dashboard.data.repository.ServiceOfferingsRepositoryImpl
 import com.example.pivota.dashboard.domain.useCase.GetCommonServicesUseCase
+import com.example.pivota.dashboard.domain.useCase.GetOfferingsByCategoryUseCase
 import com.example.pivota.dashboard.domain.useCase.GetProfileUseCase
 import dagger.Binds
 import dagger.Module
@@ -26,6 +29,10 @@ abstract class DashboardModule {
     @Singleton
     abstract fun bindCategoriesRepository(impl: CategoriesRepositoryImpl): CategoriesRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindServiceOfferingRepository(impl: ServiceOfferingsRepositoryImpl): ServiceOfferingsRepository
+
     companion object {
         @Provides
         @Singleton
@@ -37,6 +44,12 @@ abstract class DashboardModule {
         @Singleton
         fun provideGetCommonServicesUseCase(repository: CategoriesRepository): GetCommonServicesUseCase {
             return GetCommonServicesUseCase(repository)
+        }
+
+        @Provides
+        @Singleton
+        fun provideGetOfferingsByCategoryUseCase(repository: ServiceOfferingsRepository): GetOfferingsByCategoryUseCase {
+            return GetOfferingsByCategoryUseCase(repository)
         }
     }
 }

@@ -1,6 +1,8 @@
 package com.example.pivota.dashboard.presentation.screens
 
 import android.annotation.SuppressLint
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -54,6 +56,7 @@ import java.util.concurrent.TimeUnit
 import androidx.compose.material3.SheetState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.zIndex
+import androidx.navigation.toRoute
 import com.example.pivota.core.presentations.composables.PivotaFullScreenLoading
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.PostOptionsBottomSheet
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.PulsingPostFab
@@ -74,6 +77,7 @@ import com.example.pivota.dashboard.presentation.navigation.PostService
 import com.example.pivota.dashboard.presentation.navigation.PostSupport
 import com.example.pivota.dashboard.presentation.navigation.Professionals
 import com.example.pivota.dashboard.presentation.navigation.Profile
+import com.example.pivota.dashboard.presentation.navigation.ServiceOfferings
 import com.example.pivota.dashboard.presentation.navigation.TopLevelRoute
 import com.example.pivota.dashboard.presentation.screens.client_admin_screens.MyListingsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens.DashboardLoadingSkeleton
@@ -85,6 +89,7 @@ import com.example.pivota.dashboard.presentation.screens.client_general_screens.
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens.ProfileScreen
 import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.ApplicationFunnel
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.AllServicesScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ServiceOfferingsScreen
 
 // Quick conversion functions (keep as is)
 private fun quickConvertToDetailsJob(dashboardJob: DashboardJobListingUiModel): DetailsJobListingUiModel {
@@ -200,6 +205,7 @@ private fun convertToAdminJobListing(dashboardJob: DashboardJobListingUiModel): 
     )
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("ViewModelConstructorInComposable")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -460,6 +466,7 @@ fun DashboardScaffold(
 
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TabletDashboardContent(
@@ -601,6 +608,7 @@ private fun TabletDashboardContent(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MobileDashboardContent(
@@ -655,6 +663,7 @@ private fun MobileDashboardContent(
 }
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GuestContent(
@@ -785,6 +794,7 @@ private fun GuestContent(
 
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AuthenticatedContent(
@@ -917,6 +927,7 @@ private fun AuthenticatedContent(
 }
 
 // Mobile NavHost with proper bottom navigation
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MobileNavHost(
@@ -1059,13 +1070,40 @@ private fun MobileNavHost(
             NoBottomNavScaffold {
                 AllServicesScreen(
                     onServiceClick = { id, name, vertical ->
-                        // Navigate back to discover or to listings
-                        navController.popBackStack()
-                        println("Service clicked: $name (ID: $id, Vertical: $vertical)")
-                        // You can add navigation to filtered listings here
+                        // Navigate to service offerings for this category
+                        navController.navigate(ServiceOfferings(
+                            categoryId = id,
+                            categoryName = name
+                        ))
                     },
                     onNavigateBack = {
                         navController.popBackStack()
+                    }
+                )
+            }
+        }
+
+
+        // Add this after your AllServices composable or anywhere in the NavHost
+        composable<ServiceOfferings> { backStackEntry ->
+            val serviceOfferings = backStackEntry.toRoute<ServiceOfferings>()
+            val categoryId = serviceOfferings.categoryId
+            val categoryName = serviceOfferings.categoryName
+
+            NoBottomNavScaffold {
+                ServiceOfferingsScreen(
+                    categoryId = categoryId,
+                    categoryName = categoryName,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onOfferingClick = { offeringId ->
+                        // For now, just navigate back or show a toast
+                        // You can add navigation later when you create the details screen
+                        println("Service offering clicked: $offeringId from category: $categoryName")
+                        // Optional: Show a snackbar or toast message
+                        // For now, just stay on the screen or navigate back
+                        // navController.popBackStack()
                     }
                 )
             }
@@ -1300,6 +1338,7 @@ private fun MobileNavHost(
 }
 
 // Tablet NavHost
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TabletNavHost(
@@ -1351,6 +1390,24 @@ private fun TabletNavHost(
                 },
                 onNavigateBack = {
                     navController.popBackStack()
+                }
+            )
+        }
+
+        composable<ServiceOfferings> { backStackEntry ->
+            val serviceOfferings = backStackEntry.toRoute<ServiceOfferings>()
+            val categoryId = serviceOfferings.categoryId
+            val categoryName = serviceOfferings.categoryName
+
+            ServiceOfferingsScreen(
+                categoryId = categoryId,
+                categoryName = categoryName,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onOfferingClick = { offeringId ->
+                    println("Service offering clicked: $offeringId from category: $categoryName")
+                    // For now, just stay on the screen
                 }
             )
         }

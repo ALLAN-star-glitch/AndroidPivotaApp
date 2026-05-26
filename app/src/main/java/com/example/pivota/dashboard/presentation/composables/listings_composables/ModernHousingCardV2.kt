@@ -29,6 +29,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -60,251 +67,359 @@ fun ModernHousingCardV2(
     onViewDetailsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
-    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val surfaceColor = MaterialTheme.colorScheme.surface
-    val secondaryColor = MaterialTheme.colorScheme.secondary
-    val tertiaryColor = MaterialTheme.colorScheme.tertiary
+    val colorScheme = MaterialTheme.colorScheme
+    val primaryColor = colorScheme.primary
+    val onSurfaceColor = colorScheme.onSurface
+    val onSurfaceVariantColor = colorScheme.onSurfaceVariant
+    val surfaceColor = colorScheme.surface
+    val secondaryColor = colorScheme.secondary
+    val tertiaryColor = colorScheme.tertiary
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onViewDetailsClick() },
+            .clickable { onViewDetailsClick() }
+            .drawBehind {
+                // Subtle dotted border pattern
+                val strokeWidth = 1f
+                val pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
+                drawRoundRect(
+                    color = primaryColor.copy(alpha = 0.15f),
+                    style = Stroke(width = strokeWidth, pathEffect = pathEffect),
+                    cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx())
+                )
+            },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = surfaceColor
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 1.dp
+            defaultElevation = 2.dp
         )
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            surfaceColor,
+                            surfaceColor.copy(alpha = 0.95f)
+                        )
+                    )
+                )
         ) {
-            // Left side: Image with rounded corners
+            // Decorative pattern - subtle dots in corner
             Box(
                 modifier = Modifier
-                    .size(90.dp, 90.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .align(Alignment.TopEnd)
+                    .size(80.dp)
+                    .drawBehind {
+                        val dotSize = 2.dp.toPx()
+                        val spacing = 8.dp.toPx()
+                        repeat(6) { row ->
+                            repeat(6) { col ->
+                                if (row * col % 2 == 0) {
+                                    drawCircle(
+                                        color = primaryColor.copy(alpha = 0.06f),
+                                        radius = dotSize,
+                                        center = Offset(
+                                            x = size.width - (col * spacing) - spacing,
+                                            y = row * spacing
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+            ) {}
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (imageUrl != null && imageUrl.toString().isNotBlank()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(imageUrl)
-                            .crossfade(true)
-                            .size(Size(360, 360)) // Limit image size to prevent memory issues
-                            .build(),
-                        contentDescription = "$title image",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        error = painterResource(id = R.drawable.houses),
-                        fallback = painterResource(id = R.drawable.houses)
-                    )
-                } else {
+                // Left side: Image with gradient ring
+                Box(
+                    modifier = Modifier.size(90.dp, 90.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Gradient ring for featured/verified listings
+                    Surface(
+                        modifier = Modifier.size(90.dp, 90.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.Transparent,
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.5.dp,
+                            Brush.sweepGradient(
+                                colors = listOf(
+                                    primaryColor,
+                                    secondaryColor,
+                                    tertiaryColor,
+                                    primaryColor
+                                )
+                            )
+                        )
+                    ) {}
+
                     Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier
+                            .size(84.dp, 84.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                    ) {
+                        if (imageUrl != null && imageUrl.toString().isNotBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(imageUrl)
+                                    .crossfade(true)
+                                    .size(Size(360, 360))
+                                    .build(),
+                                contentDescription = "$title image",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                                error = painterResource(id = R.drawable.houses),
+                                fallback = painterResource(id = R.drawable.houses)
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                primaryColor.copy(alpha = 0.2f),
+                                                primaryColor.copy(alpha = 0.05f)
+                                            )
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.LocationOn,
+                                    contentDescription = null,
+                                    tint = primaryColor,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Right side: Content
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    // Top row: Two badges
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = primaryColor.copy(alpha = 0.1f),
+                            modifier = Modifier
+                        ) {
+                            Text(
+                                text = propertyType.uppercase(),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = primaryColor,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                maxLines = 1
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = if (listingType == "For Sale") tertiaryColor.copy(alpha = 0.1f) else secondaryColor.copy(alpha = 0.1f),
+                            modifier = Modifier
+                        ) {
+                            Text(
+                                text = listingType.uppercase(),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (listingType == "For Sale") tertiaryColor else secondaryColor,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                maxLines = 1
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Title
+                    Text(
+                        text = title,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = onSurfaceColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    // Price
+                    Text(
+                        text = price,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = primaryColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Location with icon
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.LocationOn,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(40.dp)
+                            contentDescription = "Location",
+                            tint = onSurfaceVariantColor,
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Text(
+                            text = location,
+                            fontSize = 11.sp,
+                            color = onSurfaceVariantColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
-                }
-            }
 
-            // Right side: Content
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                // Top row: Two badges
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = primaryColor.copy(alpha = 0.1f),
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Property Features Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Bed,
+                                contentDescription = "Bedrooms",
+                                tint = onSurfaceVariantColor,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Text(
+                                text = bedrooms.toString(),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = onSurfaceColor
+                            )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Shower,
+                                contentDescription = "Bathrooms",
+                                tint = onSurfaceVariantColor,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Text(
+                                text = bathrooms.toString(),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = onSurfaceColor
+                            )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.SquareFoot,
+                                contentDescription = "Square Meters",
+                                tint = onSurfaceVariantColor,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Text(
+                                text = "$squareMeters m²",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = onSurfaceColor
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Divider line with gradient
+                    Box(
                         modifier = Modifier
-                    ) {
-                        Text(
-                            text = propertyType.uppercase(),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = primaryColor,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                            maxLines = 1
-                        )
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = if (listingType == "For Sale") tertiaryColor.copy(alpha = 0.1f) else secondaryColor.copy(alpha = 0.1f),
-                        modifier = Modifier
-                    ) {
-                        Text(
-                            text = listingType.uppercase(),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = if (listingType == "For Sale") tertiaryColor else secondaryColor,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                            maxLines = 1
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // Title
-                Text(
-                    text = title,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = onSurfaceColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleSmall
-                )
-
-                // Price
-                Text(
-                    text = price,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = primaryColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Location with icon
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.LocationOn,
-                        contentDescription = "Location",
-                        tint = onSurfaceVariantColor,
-                        modifier = Modifier.size(12.dp)
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        primaryColor.copy(alpha = 0.1f),
+                                        primaryColor.copy(alpha = 0.3f),
+                                        primaryColor.copy(alpha = 0.1f)
+                                    )
+                                )
+                            )
                     )
-                    Text(
-                        text = location,
-                        fontSize = 11.sp,
-                        color = onSurfaceVariantColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                // Property Features Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                    // View details link and posted time row
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Bed,
-                            contentDescription = "Bedrooms",
-                            tint = onSurfaceVariantColor,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Text(
-                            text = bedrooms.toString(),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = onSurfaceColor
-                        )
+                        // View details link
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.clickable { onViewDetailsClick() }
+                        ) {
+                            Text(
+                                text = "View details",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = tertiaryColor
+                            )
+                            Text(
+                                text = "→",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = tertiaryColor
+                            )
+                        }
+
+                        // Posted time
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.AccessTime,
+                                contentDescription = "Posted time",
+                                tint = onSurfaceVariantColor.copy(alpha = 0.6f),
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Text(
+                                text = postedTime,
+                                fontSize = 10.sp,
+                                color = onSurfaceVariantColor.copy(alpha = 0.7f),
+                                maxLines = 1
+                            )
+                        }
                     }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Shower,
-                            contentDescription = "Bathrooms",
-                            tint = onSurfaceVariantColor,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Text(
-                            text = bathrooms.toString(),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = onSurfaceColor
-                        )
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.SquareFoot,
-                            contentDescription = "Square Meters",
-                            tint = onSurfaceVariantColor,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Text(
-                            text = "$squareMeters m²",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = onSurfaceColor
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // View details link only (no button)
-                Text(
-                    text = "View details →",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = tertiaryColor,
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.clickable { onViewDetailsClick() }
-                )
-            }
-
-            // Top right: Posted time
-            Column(
-                horizontalAlignment = Alignment.End,
-                modifier = Modifier.padding(top = 0.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.AccessTime,
-                        contentDescription = "Posted time",
-                        tint = onSurfaceVariantColor.copy(alpha = 0.6f),
-                        modifier = Modifier.size(12.dp)
-                    )
-                    Text(
-                        text = postedTime,
-                        fontSize = 10.sp,
-                        color = onSurfaceVariantColor.copy(alpha = 0.7f),
-                        maxLines = 1,
-                        style = MaterialTheme.typography.labelSmall
-                    )
                 }
             }
         }
@@ -378,22 +493,6 @@ private fun PreviewModernHousingCardV2Light() {
                 isVerified = false,
                 onViewDetailsClick = {}
             )
-
-            // For Rent - Room
-            ModernHousingCardV2(
-                imageUrl = null,
-                title = "Single Room",
-                price = "KES 3,500",
-                location = "Nairobi, Eastlands",
-                postedTime = "5h ago",
-                propertyType = "Room",
-                listingType = "For Rent",
-                bedrooms = 1,
-                bathrooms = 1,
-                squareMeters = 15,
-                isVerified = false,
-                onViewDetailsClick = {}
-            )
         }
     }
 }
@@ -428,49 +527,6 @@ private fun PreviewModernHousingCardV2Dark() {
                 isVerified = true,
                 onViewDetailsClick = {}
             )
-        }
-    }
-}
-
-// Preview showing all property types
-@Preview(
-    name = "All Property Types",
-    showBackground = true,
-    heightDp = 650,
-    widthDp = 400
-)
-@Composable
-private fun PreviewAllPropertyTypes() {
-    PivotaConnectTheme(darkTheme = false) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            listOf(
-                Triple("Apartment", "For Rent", "KES 45,000"),
-                Triple("House", "For Sale", "KES 8,500,000"),
-                Triple("Bedsitter", "For Rent", "KES 8,000"),
-                Triple("Room", "For Rent", "KES 3,500"),
-                Triple("Penthouse", "For Rent", "KES 120,000"),
-                Triple("Townhouse", "For Sale", "KES 6,200,000"),
-                Triple("Studio", "For Rent", "KES 2,500/day"),
-                Triple("Commercial", "For Sale", "KES 12,000,000")
-            ).forEach { (type, listing, price) ->
-                ModernHousingCardV2(
-                    title = "$type in Nairobi",
-                    price = price,
-                    location = "Nairobi, Kenya",
-                    postedTime = "Today",
-                    propertyType = type,
-                    listingType = listing,
-                    bedrooms = if (type == "Bedsitter" || type == "Room" || type == "Studio") 1 else 2,
-                    bathrooms = 1,
-                    squareMeters = if (type == "Bedsitter") 25 else 80,
-                    onViewDetailsClick = {}
-                )
-            }
         }
     }
 }

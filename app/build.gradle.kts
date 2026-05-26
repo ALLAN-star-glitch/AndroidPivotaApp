@@ -24,8 +24,8 @@ android {
         applicationId = "com.example.pivota"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.0.4"
+        versionCode = 6
+        versionName = "1.0.6"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -47,40 +47,83 @@ android {
                 artifactType = "APK"
                 testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
                 releaseNotes = """
-            PivotaConnect v1.0.4 (Build 4)
-            
-            LOGOUT IMPROVEMENTS (Major Update)
-            
-            - INSTANT LOGOUT - Logout now feels instantaneous with no delay
-            - Proper network cleanup - Backend logout API is called correctly
-            - Persistent storage cleared - Room database and DataStore properly cleared
-            - Correct navigation - After logout, users go directly to Login screen (not Welcome screen)
-            - Welcome screen flag preserved - Returning users no longer see welcome screen on every login
-            - Fixed app restart behavior - After killing app, logged-out users see Login screen
-            
-            Bug Fixes
-            
-            - Fixed issue where users were seeing Welcome screen after logout and app restart
-            - Fixed network logout not being called during instant logout
-            - Fixed inconsistent state between tokens and user data in database
-            - Fixed navigation flow after logout (now goes to Login instead of Welcome)
-            
-            New Features (from previous builds)
-            
-            - Added "All Services" screen to browse all common services with search and filter
-            - Added filter functionality for Property Services, Career Services, and Community Support
-            - Added offline support for categories using Room database
-            - Added background sync for categories (updates every 3 hours)
-            - Added skeleton loading states for better UX
-            
-            Improvements
-            
-            - Redesigned Common Services section with circular icons
-            - Better tablet support - now shows 12 items instead of 8 on tablets
-            - Improved error handling with retry mechanisms
-            - Better filter UI with bottom sheet and filter badge
-            - Sticky search bar on scroll for All Services screen
-        """.trimIndent()
+PivotaConnect v1.0.6 (Build 6)
+
+PREMIUM CARD REDESIGN - Complete Visual Overhaul (Major Update)
+
+All listing cards have been completely redesigned with a modern, premium look:
+
+NEW CARD DESIGNS:
+
+Service Offering Card:
+- Professional avatar with gradient verification ring for verified professionals
+- Category badge and verified badge
+- Rating stars with 5-star system (full and half-star support)
+- Years of experience badge
+- Location with icon
+- Premium price display
+- "View service →" text link
+- Subtle dot pattern decoration
+- Gradient divider line
+- Enhanced visual hierarchy
+
+Job Card (ModernJobCardV2):
+- Company logo with gradient ring
+- Employment type badge (Formal/Informal)
+- Job type badge (Remote, Full-time, Contract, Gig, etc.)
+- Job title and company name
+- Location with icon
+- "View details →" text link
+- Posted time integrated at bottom
+- Premium card styling
+
+Housing Card (ModernHousingCardV2):
+- Property image with gradient ring
+- Property type badge (Apartment, House, Bedsitter, Room)
+- Listing type badge (For Rent/For Sale) with color coding
+- Price, location, and property features (bedrooms, bathrooms, sqm)
+- "View details →" text link
+- Premium visual treatment
+
+Professional Card (ModernProfessionalCardV2):
+- Circular profile image with gradient ring
+- "SERVICE" badge and Individual/Company badge
+- Professional name and profession
+- Rating with star icon and jobs completed count
+- "View profile →" text link
+- Premium card design with professional layout
+
+Visual Enhancements Across All Cards:
+- Dotted border pattern for premium feel
+- Decorative dot pattern in top-right corner
+- Sweep gradient rings for featured/verified items
+- Subtle linear gradient backgrounds
+- Gradient divider lines separating content
+- Consistent elevation (2dp default, 6dp on press)
+- Uniform icon sizes (11-12dp)
+- Better typography and spacing
+- Dark/Light theme support
+- Improved touch feedback
+
+Technical Improvements:
+- All cards are fully clickable with no button UI
+- Consistent design language across all listing types
+- Proper theming using MaterialTheme colors
+- Smooth image loading with Coil
+- Proper placeholder and error handling for images
+
+Bug Fixes (from v1.0.5):
+- Fixed DayAvailability mapping issues
+- Fixed Moshi serialization for availability data
+- Fixed logout flow with proper cleanup
+- Fixed navigation after logout
+
+Previous Features:
+- Service Offerings flow with search, filter, and pagination
+- Skeleton loading for better UX
+- Offline support for categories
+- Tablet support improvements
+                """.trimIndent()
             }
         }
     }
@@ -195,4 +238,10 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.13.0"))
 
     implementation("com.google.firebase:firebase-analytics")
+
+    implementation("com.squareup.moshi:moshi:1.15.2")
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.2")
+    ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")  // For codegen (no reflection)
+
+    ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")
 }

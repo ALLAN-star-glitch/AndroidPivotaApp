@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
@@ -26,6 +27,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -52,188 +60,301 @@ fun ModernJobCardV2(
     jobType: String,         // e.g., "Remote", "Full-time", "Contract", "Gig", "Part-time", "Hybrid", "On-site"
     onViewDetailsClick: () -> Unit = {},
 ) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
-    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val surfaceColor = MaterialTheme.colorScheme.surface
-    val secondaryColor = MaterialTheme.colorScheme.secondary
-    val tertiaryColor = MaterialTheme.colorScheme.tertiary
+    val colorScheme = MaterialTheme.colorScheme
+    val primaryColor = colorScheme.primary
+    val onSurfaceColor = colorScheme.onSurface
+    val onSurfaceVariantColor = colorScheme.onSurfaceVariant
+    val surfaceColor = colorScheme.surface
+    val secondaryColor = colorScheme.secondary
+    val tertiaryColor = colorScheme.tertiary
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onViewDetailsClick() },
+            .clickable { onViewDetailsClick() }
+            .drawBehind {
+                // Subtle dotted border pattern
+                val strokeWidth = 1f
+                val pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
+                drawRoundRect(
+                    color = primaryColor.copy(alpha = 0.15f),
+                    style = Stroke(width = strokeWidth, pathEffect = pathEffect),
+                    cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx())
+                )
+            },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = surfaceColor
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 1.dp
+            defaultElevation = 2.dp
         )
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            surfaceColor,
+                            surfaceColor.copy(alpha = 0.95f)
+                        )
+                    )
+                )
         ) {
-            // Left side: Image with rounded corners
+            // Decorative pattern - subtle dots in corner
             Box(
                 modifier = Modifier
-                    .size(70.dp, 70.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .align(Alignment.TopEnd)
+                    .size(80.dp)
+                    .drawBehind {
+                        val dotSize = 2.dp.toPx()
+                        val spacing = 8.dp.toPx()
+                        repeat(6) { row ->
+                            repeat(6) { col ->
+                                if (row * col % 2 == 0) {
+                                    drawCircle(
+                                        color = primaryColor.copy(alpha = 0.06f),
+                                        radius = dotSize,
+                                        center = Offset(
+                                            x = size.width - (col * spacing) - spacing,
+                                            y = row * spacing
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+            ) {}
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (imageUrl != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(imageUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "$companyName logo",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        error = painterResource(id = R.drawable.job_placeholder1)
+                // Left side: Company logo with gradient ring
+                Box(
+                    modifier = Modifier.size(56.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Gradient ring for verified/featured jobs
+                    Surface(
+                        modifier = Modifier.size(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.Transparent,
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.5.dp,
+                            Brush.sweepGradient(
+                                colors = listOf(
+                                    primaryColor,
+                                    secondaryColor,
+                                    tertiaryColor,
+                                    primaryColor
+                                )
+                            )
+                        )
+                    ) {}
+
+                    Surface(
+                        modifier = Modifier.size(48.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        color = primaryColor.copy(alpha = 0.1f)
+                    ) {
+                        if (imageUrl != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(imageUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "$companyName logo",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                                error = painterResource(id = R.drawable.job_placeholder1)
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                primaryColor.copy(alpha = 0.2f),
+                                                primaryColor.copy(alpha = 0.05f)
+                                            )
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = companyName
+                                        .split(" ")
+                                        .take(2)
+                                        .map { it.firstOrNull()?.toString() ?: "" }
+                                        .joinToString("")
+                                        .uppercase()
+                                        .take(2),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = primaryColor
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Right side: Content
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    // Top row: Two badges - Employment Type + Job Type
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // First badge - Employment Type (Formal/Informal)
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = primaryColor.copy(alpha = 0.1f),
+                            modifier = Modifier
+                        ) {
+                            Text(
+                                text = employmentType.uppercase(),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = primaryColor,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                maxLines = 1
+                            )
+                        }
+
+                        // Second badge - Job Type
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = secondaryColor.copy(alpha = 0.1f),
+                            modifier = Modifier
+                        ) {
+                            Text(
+                                text = jobType,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = secondaryColor,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Job Title
+                    Text(
+                        text = jobTitle,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = onSurfaceColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+
+                    // Company Name
+                    Text(
+                        text = companyName,
+                        fontSize = 12.sp,
+                        color = onSurfaceVariantColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Location with icon
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.LocationOn,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
+                            contentDescription = "Location",
+                            tint = onSurfaceVariantColor,
+                            modifier = Modifier.size(11.dp)
                         )
-                    }
-                }
-            }
-
-            // Right side: Content
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                // Top row: Two badges - Employment Type + Job Type
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // First badge - Employment Type (Formal/Informal)
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = primaryColor.copy(alpha = 0.1f),
-                        modifier = Modifier
-                    ) {
                         Text(
-                            text = employmentType.uppercase(),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = primaryColor,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                            maxLines = 1
-                        )
-                    }
-
-                    // Second badge - Job Type (Remote, Full-time, Contract, Gig, etc.)
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = secondaryColor.copy(alpha = 0.1f),
-                        modifier = Modifier
-                    ) {
-                        Text(
-                            text = jobType,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = secondaryColor,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            text = location,
+                            fontSize = 11.sp,
+                            color = onSurfaceVariantColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                // Job Title
-                Text(
-                    text = jobTitle,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = onSurfaceColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleSmall
-                )
-
-                // Company Name
-                Text(
-                    text = companyName,
-                    fontSize = 11.sp,
-                    color = onSurfaceVariantColor.copy(alpha = 0.8f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Location with icon
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.LocationOn,
-                        contentDescription = "Location",
-                        tint = onSurfaceVariantColor,
-                        modifier = Modifier.size(12.dp)
+                    // Divider line with gradient
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        primaryColor.copy(alpha = 0.1f),
+                                        primaryColor.copy(alpha = 0.3f),
+                                        primaryColor.copy(alpha = 0.1f)
+                                    )
+                                )
+                            )
                     )
-                    Text(
-                        text = location,
-                        fontSize = 11.sp,
-                        color = onSurfaceVariantColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                // View details link only (no button)
-                Text(
-                    text = "View details →",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = tertiaryColor,
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.clickable { onViewDetailsClick() }
-                )
-            }
+                    // View details link and posted time row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // View details link
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.clickable { onViewDetailsClick() }
+                        ) {
+                            Text(
+                                text = "View details",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = tertiaryColor
+                            )
+                            Text(
+                                text = "→",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = tertiaryColor
+                            )
+                        }
 
-            // Top right: Posted time
-            Column(
-                horizontalAlignment = Alignment.End,
-                modifier = Modifier.padding(top = 0.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.AccessTime,
-                        contentDescription = "Posted time",
-                        tint = onSurfaceVariantColor.copy(alpha = 0.6f),
-                        modifier = Modifier.size(12.dp)
-                    )
-                    Text(
-                        text = postedTime,
-                        fontSize = 10.sp,
-                        color = onSurfaceVariantColor.copy(alpha = 0.7f),
-                        maxLines = 1,
-                        style = MaterialTheme.typography.labelSmall
-                    )
+                        // Posted time
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.AccessTime,
+                                contentDescription = "Posted time",
+                                tint = onSurfaceVariantColor.copy(alpha = 0.6f),
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Text(
+                                text = postedTime,
+                                fontSize = 10.sp,
+                                color = onSurfaceVariantColor.copy(alpha = 0.7f),
+                                maxLines = 1
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -243,7 +364,7 @@ fun ModernJobCardV2(
 // Sample image URL for testing
 private const val SAMPLE_IMAGE_URL = "https://images.unsplash.com/photo-1573164713988-8665fc963095?w=100&h=100&fit=crop"
 
-// Light Theme Preview - Multiple Cards showing different combinations
+// Light Theme Preview - Multiple Cards
 @Preview(
     name = "Light Theme - Multiple Cards",
     showBackground = true,
@@ -307,30 +428,6 @@ private fun PreviewModernJobCardV2Light() {
                 jobType = "Contract",
                 onViewDetailsClick = {}
             )
-
-            // Formal + Part-time
-            ModernJobCardV2(
-                imageUrl = SAMPLE_IMAGE_URL,
-                jobTitle = "Customer Service Representative",
-                companyName = "Equity Bank",
-                location = "Nairobi, CBD",
-                postedTime = "1d ago",
-                employmentType = "Formal",
-                jobType = "Part-time",
-                onViewDetailsClick = {}
-            )
-
-            // Informal + On-site
-            ModernJobCardV2(
-                imageUrl = null,
-                jobTitle = "Plumber",
-                companyName = "Rapid Repairs",
-                location = "Nairobi, All areas",
-                postedTime = "6h ago",
-                employmentType = "Informal",
-                jobType = "On-site",
-                onViewDetailsClick = {}
-            )
         }
     }
 }
@@ -359,110 +456,6 @@ private fun PreviewModernJobCardV2Dark() {
                 postedTime = "Just now",
                 employmentType = "Formal",
                 jobType = "Hybrid",
-                onViewDetailsClick = {}
-            )
-        }
-    }
-}
-
-// Preview showing all job type combinations
-@Preview(
-    name = "All Job Type Combinations",
-    showBackground = true,
-    heightDp = 600,
-    widthDp = 400
-)
-@Composable
-private fun PreviewAllJobCombinations() {
-    PivotaConnectTheme(darkTheme = false) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Formal combinations
-            ModernJobCardV2(
-                jobTitle = "Formal + Remote",
-                companyName = "Tech Corp",
-                location = "Remote",
-                postedTime = "2h ago",
-                employmentType = "Formal",
-                jobType = "Remote",
-                onViewDetailsClick = {}
-            )
-            ModernJobCardV2(
-                jobTitle = "Formal + Full-time",
-                companyName = "Finance Ltd",
-                location = "Nairobi",
-                postedTime = "3h ago",
-                employmentType = "Formal",
-                jobType = "Full-time",
-                onViewDetailsClick = {}
-            )
-            ModernJobCardV2(
-                jobTitle = "Formal + Contract",
-                companyName = "Consulting Group",
-                location = "Nairobi",
-                postedTime = "1d ago",
-                employmentType = "Formal",
-                jobType = "Contract",
-                onViewDetailsClick = {}
-            )
-            ModernJobCardV2(
-                jobTitle = "Formal + Part-time",
-                companyName = "Retail Store",
-                location = "Nairobi",
-                postedTime = "2d ago",
-                employmentType = "Formal",
-                jobType = "Part-time",
-                onViewDetailsClick = {}
-            )
-            ModernJobCardV2(
-                jobTitle = "Formal + Hybrid",
-                companyName = "Tech Startup",
-                location = "Nairobi",
-                postedTime = "5h ago",
-                employmentType = "Formal",
-                jobType = "Hybrid",
-                onViewDetailsClick = {}
-            )
-
-            // Informal combinations
-            ModernJobCardV2(
-                jobTitle = "Informal + Gig",
-                companyName = "Freelance Hub",
-                location = "Nairobi",
-                postedTime = "1h ago",
-                employmentType = "Informal",
-                jobType = "Gig",
-                onViewDetailsClick = {}
-            )
-            ModernJobCardV2(
-                jobTitle = "Informal + Contract",
-                companyName = "Construction Co",
-                location = "Nairobi",
-                postedTime = "4h ago",
-                employmentType = "Informal",
-                jobType = "Contract",
-                onViewDetailsClick = {}
-            )
-            ModernJobCardV2(
-                jobTitle = "Informal + On-site",
-                companyName = "Maintenance Services",
-                location = "Nairobi",
-                postedTime = "6h ago",
-                employmentType = "Informal",
-                jobType = "On-site",
-                onViewDetailsClick = {}
-            )
-            ModernJobCardV2(
-                jobTitle = "Informal + Flexible",
-                companyName = "Task Network",
-                location = "Nairobi",
-                postedTime = "1d ago",
-                employmentType = "Informal",
-                jobType = "Flexible",
                 onViewDetailsClick = {}
             )
         }

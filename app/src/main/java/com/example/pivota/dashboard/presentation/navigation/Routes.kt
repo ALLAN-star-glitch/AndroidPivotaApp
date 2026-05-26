@@ -42,6 +42,13 @@ object AdminJobDetails
 @Serializable
 object AllServices
 
+// Service Offerings Screen - Shows professionals offering a specific service
+@Serializable
+data class ServiceOfferings(
+    val categoryId: String,
+    val categoryName: String
+)
+
 // Category-filtered listing routes
 @Serializable
 data class HousingListingsWithCategory(
