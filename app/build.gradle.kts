@@ -24,8 +24,8 @@ android {
         applicationId = "com.example.pivota"
         minSdk = 24
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.0.6"
+        versionCode = 7
+        versionName = "1.0.7"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -47,82 +47,64 @@ android {
                 artifactType = "APK"
                 testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
                 releaseNotes = """
-PivotaConnect v1.0.6 (Build 6)
+PivotaConnect v1.0.7 (Build 7)
 
-PREMIUM CARD REDESIGN - Complete Visual Overhaul (Major Update)
+SUBCATEGORIES & NAVIGATION IMPROVEMENTS (Major Update)
 
-All listing cards have been completely redesigned with a modern, premium look:
+Complete subcategories system with enhanced navigation flow:
 
-NEW CARD DESIGNS:
+NEW FEATURES:
 
-Service Offering Card:
-- Professional avatar with gradient verification ring for verified professionals
-- Category badge and verified badge
-- Rating stars with 5-star system (full and half-star support)
-- Years of experience badge
-- Location with icon
-- Premium price display
-- "View service →" text link
-- Subtle dot pattern decoration
-- Gradient divider line
-- Enhanced visual hierarchy
+Subcategories System:
+- Categories now display folder icon (📁) and "Browse" text when they have subcategories
+- Clicking categories with subcategories navigates to Subcategories screen
+- Subcategories displayed in responsive grid with circular icons
+- Parent category name shown below each subcategory for context
+- Smooth navigation between All Services -> Subcategories -> Service Offerings
 
-Job Card (ModernJobCardV2):
-- Company logo with gradient ring
-- Employment type badge (Formal/Informal)
-- Job type badge (Remote, Full-time, Contract, Gig, etc.)
-- Job title and company name
-- Location with icon
-- "View details →" text link
-- Posted time integrated at bottom
-- Premium card styling
+Common Services Section Updates:
+- Common Services grid now shows subcategory indicators
+- Folder badge appears on services with subcategories
+- "Browse" text below services that have subcategories
+- Proper click handling for both subcategory and direct navigation
 
-Housing Card (ModernHousingCardV2):
-- Property image with gradient ring
-- Property type badge (Apartment, House, Bedsitter, Room)
-- Listing type badge (For Rent/For Sale) with color coding
-- Price, location, and property features (bedrooms, bathrooms, sqm)
-- "View details →" text link
-- Premium visual treatment
+Backend Fixes:
+- Fixed discovery metadata `hasSubcategories` calculation
+- Subcategories now determined dynamically from actual data
+- Categories without subcategories no longer show folder icon
+- Fixed "Job Fairs" incorrectly showing subcategory indicator
 
-Professional Card (ModernProfessionalCardV2):
-- Circular profile image with gradient ring
-- "SERVICE" badge and Individual/Company badge
-- Professional name and profession
-- Rating with star icon and jobs completed count
-- "View profile →" text link
-- Premium card design with professional layout
+Navigation Improvements:
+- Proper back stack handling between screens
+- Seamless navigation: All Services → Subcategories → Service Offerings
+- Direct navigation for categories without subcategories
+- Consistent navigation experience across mobile and tablet
 
-Visual Enhancements Across All Cards:
-- Dotted border pattern for premium feel
-- Decorative dot pattern in top-right corner
-- Sweep gradient rings for featured/verified items
-- Subtle linear gradient backgrounds
-- Gradient divider lines separating content
-- Consistent elevation (2dp default, 6dp on press)
-- Uniform icon sizes (11-12dp)
-- Better typography and spacing
-- Dark/Light theme support
-- Improved touch feedback
+UI Enhancements:
+- Subcategories screen matches main All Services screen design
+- Circular icon layout for subcategories
+- Responsive grid (6/4/3 columns based on screen size)
+- Top bar shows parent category name and "Subcategories" subtitle
+- Consistent spacing and padding across all screens
+
+Bug Fixes (from v1.0.6):
+- Fixed incorrect subcategory indicators on categories without subcategories
+- Fixed navigation back from subcategories to all services
+- Fixed discovery metadata inconsistencies
+- Improved error handling for empty subcategories
 
 Technical Improvements:
-- All cards are fully clickable with no button UI
-- Consistent design language across all listing types
-- Proper theming using MaterialTheme colors
-- Smooth image loading with Coil
-- Proper placeholder and error handling for images
+- Added `hasSubcategories` field to DiscoveryCategory model
+- SubcategoriesScreen with proper state management (Loading/Success/Error)
+- GetSubcategoriesUseCase for fetching subcategories
+- SubcategoriesViewModel for state handling
+- Proper navigation routes for Subcategories screen
 
-Bug Fixes (from v1.0.5):
-- Fixed DayAvailability mapping issues
-- Fixed Moshi serialization for availability data
-- Fixed logout flow with proper cleanup
-- Fixed navigation after logout
-
-Previous Features:
-- Service Offerings flow with search, filter, and pagination
+Previous Features (v1.0.6):
+- Premium Card Redesign for all listing types
+- Service Offerings flow with search and filter
 - Skeleton loading for better UX
 - Offline support for categories
-- Tablet support improvements
                 """.trimIndent()
             }
         }
@@ -242,6 +224,4 @@ dependencies {
     implementation("com.squareup.moshi:moshi:1.15.2")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.2")
     ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")  // For codegen (no reflection)
-
-    ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")
 }

@@ -30,17 +30,47 @@ class AllServicesViewModel @Inject constructor(
     }
 
     fun loadAllServices() {
+        println("🔵 [AllServicesViewModel] loadAllServices() called")
+
         getAllServicesUseCase()
             .onEach { allServices ->
+                println("🔵 [AllServicesViewModel] Received ${allServices.size} services")
+                println("========== ALL SERVICES DATA ==========")
+                allServices.forEachIndexed { index, category ->
+                    println("${index + 1}. Category: '${category.name}'")
+                    println("   - ID: ${category.id}")
+                    println("   - hasSubcategories: ${category.hasSubcategories}")
+                    println("   - type: ${category.type}")
+                    println("   - vertical: ${category.vertical}")
+                    println("   - slug: ${category.slug}")
+                    println("---")
+                }
+                println("========================================")
+
+                // Check specifically for Job Fairs
+                val jobFairs = allServices.find { it.name == "Job Fairs" || it.id == "cmnbohmsc003barihgdp7hi6x" }
+                if (jobFairs != null) {
+                    println("🎯 FOUND JOB FAIRS:")
+                    println("   - Name: ${jobFairs.name}")
+                    println("   - ID: ${jobFairs.id}")
+                    println("   - hasSubcategories: ${jobFairs.hasSubcategories}")
+                    println("   - This should be FALSE according to API data!")
+                } else {
+                    println("⚠️ Job Fairs NOT found in the list!")
+                }
+
                 if (allServices.isNotEmpty()) {
                     hasReceivedData = true
                     _uiState.value = CommonServicesUiState.Success(allServices)
                     println("✅ Loaded ${allServices.size} services for All Services screen")
                 } else if (!hasReceivedData) {
                     _uiState.value = CommonServicesUiState.Error("No services available")
+                    println("⚠️ No services available")
                 }
             }
             .catch { error ->
+                println("❌ [AllServicesViewModel] Error loading services: ${error.message}")
+                error.printStackTrace()
                 if (!hasReceivedData) {
                     _uiState.value = CommonServicesUiState.Error(error.message ?: "Failed to load services")
                 }
@@ -50,10 +80,13 @@ class AllServicesViewModel @Inject constructor(
     }
 
     fun refresh() {
+        println("🔄 [AllServicesViewModel] refresh() called")
         hasReceivedData = false
         _uiState.value = CommonServicesUiState.Loading
         viewModelScope.launch {
+            println("🔄 [AllServicesViewModel] Refreshing cache...")
             getAllServicesUseCase.refresh()
+            println("🔄 [AllServicesViewModel] Cache refreshed, reloading...")
             loadAllServices()
         }
     }

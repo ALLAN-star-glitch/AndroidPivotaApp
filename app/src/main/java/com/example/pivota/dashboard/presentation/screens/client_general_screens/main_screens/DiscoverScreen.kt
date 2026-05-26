@@ -71,6 +71,7 @@ fun DiscoverScreen(
     onNavigateToAllServices: () -> Unit = {},
     onNavigateToAllSupport: () -> Unit = {},
     onServiceClick: (String, String, String) -> Unit = { _, _, _ -> }, // id, name, vertical
+    onSubcategoriesClick: (String, String, String) -> Unit = { _, _, _ -> },
     isGuestMode: Boolean = false,
     sharedViewModel: DashboardSharedViewModel = hiltViewModel(),
     commonServicesViewModel: CommonServicesViewModel = hiltViewModel()
@@ -294,6 +295,9 @@ fun DiscoverScreen(
                                     columnsPerRow = serviceGridColumns,
                                     onServiceClick = { category ->
                                         onServiceClick(category.id, category.name, category.vertical)
+                                    },
+                                    onSubcategoriesClick = { category ->  // ADD THIS
+                                        onSubcategoriesClick(category.id, category.name, category.vertical)
                                     }
                                 )
                             }
@@ -560,7 +564,8 @@ fun DynamicServiceGrid(
     colorScheme: ColorScheme,
     horizontalPadding: Dp,
     columnsPerRow: Int,
-    onServiceClick: (DiscoveryCategory) -> Unit
+    onServiceClick: (DiscoveryCategory) -> Unit,
+    onSubcategoriesClick: (DiscoveryCategory) -> Unit  // ADD THIS
 ) {
     val servicesWithIcons = services.mapIndexed { index, service ->
         Triple(service, getIconForService(service.name, service.vertical), index)
@@ -583,12 +588,17 @@ fun DynamicServiceGrid(
                         service = service,
                         icon = icon,
                         colorScheme = colorScheme,
-                        onClick = { onServiceClick(service) },
+                        onClick = {
+                            if (service.hasSubcategories) {
+                                onSubcategoriesClick(service)
+                            } else {
+                                onServiceClick(service)
+                            }
+                        },
                         modifier = Modifier.weight(1f),
                         index = index
                     )
                 }
-                // Fill empty spots
                 repeat(columnsPerRow - rowItems.size) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
@@ -604,9 +614,8 @@ fun ServiceCardCircle(
     colorScheme: ColorScheme,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    index: Int = 0  // Add index for alternating colors
+    index: Int = 0
 ) {
-    // Define alternating color schemes based on theme
     val lightColors = listOf(
         colorScheme.primary.copy(alpha = 0.08f),
         colorScheme.secondary.copy(alpha = 0.08f),
@@ -625,7 +634,6 @@ fun ServiceCardCircle(
         colorScheme.tertiary
     )
 
-    // Choose color based on index (wrap around using modulo)
     val backgroundColor = lightColors[index % lightColors.size]
     val iconColor = iconTintColors[index % iconTintColors.size]
 
@@ -635,20 +643,43 @@ fun ServiceCardCircle(
             .padding(horizontal = 4.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Circular icon container with alternating colors
+        // Circular icon container with badge for subcategories
         Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(backgroundColor),
+            modifier = Modifier.size(56.dp),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                icon,
-                contentDescription = service.name,
-                tint = iconColor,
-                modifier = Modifier.size(28.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(backgroundColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = service.name,
+                    tint = iconColor,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
+            // Show badge if has subcategories
+            if (service.hasSubcategories) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(18.dp)
+                        .clip(CircleShape)
+                        .background(iconColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "📁",
+                        fontSize = 8.sp,
+                        color = colorScheme.onPrimary
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -664,6 +695,17 @@ fun ServiceCardCircle(
             softWrap = true,
             modifier = Modifier.fillMaxWidth()
         )
+
+        // Show "Browse" text if has subcategories
+        if (service.hasSubcategories) {
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "Browse",
+                fontSize = 8.sp,
+                color = iconColor,
+                fontWeight = FontWeight.Medium
+            )
+        }
     }
 }
 

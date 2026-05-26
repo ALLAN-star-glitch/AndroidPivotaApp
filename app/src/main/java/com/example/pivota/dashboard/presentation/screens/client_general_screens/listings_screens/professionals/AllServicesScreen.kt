@@ -60,6 +60,7 @@ enum class ServiceFilterPill {
 fun AllServicesScreen(
     viewModel: AllServicesViewModel = hiltViewModel(),
     onServiceClick: (String, String, String) -> Unit = { _, _, _ -> },
+    onSubcategoriesClick: (String, String, String) -> Unit = { _, _, _ -> },
     onNavigateBack: () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -260,12 +261,25 @@ fun AllServicesScreen(
                                 )
                             }
                         } else {
+                            // In the items block where you handle clicks
                             items(filteredServices, key = { it.id }) { category ->
                                 AllServicesGridItem(
                                     category = category,
                                     colorScheme = colorScheme,
                                     onClick = {
-                                        onServiceClick(category.id, category.name, category.vertical)
+                                        println("🖱️ [UI] CLICKED ON CATEGORY: ${category.name}")
+                                        println("   - ID: ${category.id}")
+                                        println("   - hasSubcategories: ${category.hasSubcategories}")
+                                        println("   - type: ${category.type}")
+                                        println("   - vertical: ${category.vertical}")
+
+                                        if (category.hasSubcategories) {
+                                            println("   ✅ Decision: GO TO SUBCATEGORIES SCREEN")
+                                            onSubcategoriesClick(category.id, category.name, category.vertical)
+                                        } else {
+                                            println("   ❌ Decision: GO DIRECTLY TO SERVICE OFFERINGS")
+                                            onServiceClick(category.id, category.name, category.vertical)
+                                        }
                                     }
                                 )
                             }
@@ -842,19 +856,43 @@ private fun AllServicesGridItem(
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Icon with optional badge for subcategories
         Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(CircleShape)
-                .background(pillarColor.copy(alpha = 0.1f)),
+            modifier = Modifier.size(64.dp),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                icon,
-                contentDescription = category.name,
-                tint = pillarColor,
-                modifier = Modifier.size(32.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(pillarColor.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = category.name,
+                    tint = pillarColor,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            // Show badge if has subcategories
+            if (category.hasSubcategories) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(pillarColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "📁",
+                        fontSize = 10.sp,
+                        color = colorScheme.onPrimary
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -869,6 +907,18 @@ private fun AllServicesGridItem(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth()
         )
+
+        // Show subcategories indicator text if available
+        if (category.hasSubcategories) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Browse ↓",
+                fontSize = 9.sp,
+                color = pillarColor,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 

@@ -78,6 +78,7 @@ import com.example.pivota.dashboard.presentation.navigation.PostSupport
 import com.example.pivota.dashboard.presentation.navigation.Professionals
 import com.example.pivota.dashboard.presentation.navigation.Profile
 import com.example.pivota.dashboard.presentation.navigation.ServiceOfferings
+import com.example.pivota.dashboard.presentation.navigation.Subcategories
 import com.example.pivota.dashboard.presentation.navigation.TopLevelRoute
 import com.example.pivota.dashboard.presentation.screens.client_admin_screens.MyListingsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens.DashboardLoadingSkeleton
@@ -90,6 +91,7 @@ import com.example.pivota.dashboard.presentation.screens.client_general_screens.
 import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.ApplicationFunnel
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.AllServicesScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ServiceOfferingsScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.SubcategoriesScreen
 
 // Quick conversion functions (keep as is)
 private fun quickConvertToDetailsJob(dashboardJob: DashboardJobListingUiModel): DetailsJobListingUiModel {
@@ -1023,11 +1025,23 @@ private fun MobileNavHost(
                         navController.navigate(Professionals)
                     },
                     onNavigateToAllServices = {
-                        navController.navigate(AllServices)  // ← THIS NEEDS TO BE CHANGED
+                        navController.navigate(AllServices)
                     },
                     onNavigateToAllSupport = {},
                     onServiceClick = { id, name, vertical ->
-                        println("Service clicked: $name (ID: $id, Vertical: $vertical)")
+                        // Direct navigation for categories WITHOUT subcategories
+                        navController.navigate(ServiceOfferings(
+                            categoryId = id,
+                            categoryName = name
+                        ))
+                    },
+                    onSubcategoriesClick = { id, name, vertical ->
+                        // Navigation for categories WITH subcategories
+                        navController.navigate(Subcategories(
+                            parentCategoryId = id,
+                            parentCategoryName = name,
+                            vertical = vertical
+                        ))
                     },
                     isGuestMode = isGuestMode,
                     sharedViewModel = sharedViewModel
@@ -1076,6 +1090,39 @@ private fun MobileNavHost(
                             categoryName = name
                         ))
                     },
+                    onSubcategoriesClick = { id, name, vertical ->
+                        // Navigate to Subcategories screen
+                        navController.navigate(
+                            Subcategories(
+                                parentCategoryId = id,
+                                parentCategoryName = name,
+                                vertical = vertical
+                            )
+                        )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+
+
+            }
+        }
+
+        composable<Subcategories> { backStackEntry ->
+            val subcategories = backStackEntry.toRoute<Subcategories>()
+            NoBottomNavScaffold {
+                SubcategoriesScreen(
+                    parentCategoryId = subcategories.parentCategoryId,
+                    parentCategoryName = subcategories.parentCategoryName,
+                    vertical = subcategories.vertical,
+                    onSubcategoryClick = { subcategoryId, subcategoryName, vertical ->
+                        // Navigate to Service Offerings with the subcategory
+                        navController.navigate(ServiceOfferings(
+                            categoryId = subcategoryId,
+                            categoryName = subcategoryName
+                        ))
+                    },
                     onNavigateBack = {
                         navController.popBackStack()
                     }
@@ -1084,7 +1131,7 @@ private fun MobileNavHost(
         }
 
 
-        // Add this after your AllServices composable or anywhere in the NavHost
+
         composable<ServiceOfferings> { backStackEntry ->
             val serviceOfferings = backStackEntry.toRoute<ServiceOfferings>()
             val categoryId = serviceOfferings.categoryId
@@ -1385,8 +1432,38 @@ private fun TabletNavHost(
         composable<AllServices> {
             AllServicesScreen(
                 onServiceClick = { id, name, vertical ->
+                    // Navigate to service offerings for this category
+                    navController.navigate(ServiceOfferings(
+                        categoryId = id,
+                        categoryName = name
+                    ))
+                },
+                onSubcategoriesClick = { id, name, vertical ->
+                    // Navigate to Subcategories screen
+                    navController.navigate(Subcategories(
+                        parentCategoryId = id,
+                        parentCategoryName = name,
+                        vertical = vertical
+                    ))
+                },
+                onNavigateBack = {
                     navController.popBackStack()
-                    println("Service clicked: $name (ID: $id, Vertical: $vertical)")
+                }
+            )
+        }
+
+        composable<Subcategories> { backStackEntry ->
+            val subcategories = backStackEntry.toRoute<Subcategories>()
+            SubcategoriesScreen(
+                parentCategoryId = subcategories.parentCategoryId,
+                parentCategoryName = subcategories.parentCategoryName,
+                vertical = subcategories.vertical,
+                onSubcategoryClick = { subcategoryId, subcategoryName, vertical ->
+                    // Navigate to Service Offerings with the subcategory
+                    navController.navigate(ServiceOfferings(
+                        categoryId = subcategoryId,
+                        categoryName = subcategoryName
+                    ))
                 },
                 onNavigateBack = {
                     navController.popBackStack()
@@ -1431,12 +1508,23 @@ private fun TabletNavHost(
                     navController.navigate(Professionals)
                 },
                 onNavigateToAllServices = {
-                    // Navigate to All Services Screen
                     navController.navigate(AllServices)
                 },
                 onNavigateToAllSupport = {},
                 onServiceClick = { id, name, vertical ->
-                    println("Service clicked: $name (ID: $id, Vertical: $vertical)")
+                    // Direct navigation for categories WITHOUT subcategories
+                    navController.navigate(ServiceOfferings(
+                        categoryId = id,
+                        categoryName = name
+                    ))
+                },
+                onSubcategoriesClick = { id, name, vertical ->
+                    // Navigation for categories WITH subcategories
+                    navController.navigate(Subcategories(
+                        parentCategoryId = id,
+                        parentCategoryName = name,
+                        vertical = vertical
+                    ))
                 },
                 isGuestMode = isGuestMode,
                 sharedViewModel = sharedViewModel

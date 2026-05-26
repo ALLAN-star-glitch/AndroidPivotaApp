@@ -353,7 +353,7 @@ private fun ServiceOfferingsHeader(
                             )
                         )
                         Text(
-                            text = "Service Providers",
+                            text = "Service Offerings",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = colorScheme.onSurfaceVariant
                             )

@@ -40,5 +40,5 @@ data class DiscoveryCategory(
     val slug: String,
     val vertical: String,
     val type: String,
-    val hasSubcategories: Boolean
+    val hasSubcategories: Boolean = false
 )

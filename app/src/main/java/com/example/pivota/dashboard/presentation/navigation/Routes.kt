@@ -42,6 +42,14 @@ object AdminJobDetails
 @Serializable
 object AllServices
 
+// Subcategories Screen - Shows subcategories for a selected parent category
+@Serializable
+data class Subcategories(
+    val parentCategoryId: String,
+    val parentCategoryName: String,
+    val vertical: String
+)
+
 // Service Offerings Screen - Shows professionals offering a specific service
 @Serializable
 data class ServiceOfferings(
