@@ -1,6 +1,8 @@
 package com.example.pivota.dashboard.domain.repository
 
 import com.example.pivota.core.network.ApiResult
+import com.example.pivota.dashboard.data.dto.CreateServiceOfferingRequestDto
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOfferingsResponse
 import kotlinx.coroutines.flow.Flow
 
@@ -17,6 +19,10 @@ interface ServiceOfferingsRepository {
     fun getOfferingsByCategoryStream(
         categoryId: String
     ): Flow<ServiceOfferingsResponse>
+
+    suspend fun createServiceOffering(
+        request: CreateServiceOfferingRequestDto
+    ): ApiResult<ServiceOfferingsResponse>
 
     suspend fun refreshOfferingsByCategory(categoryId: String)
 

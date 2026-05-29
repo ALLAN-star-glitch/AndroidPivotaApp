@@ -3,6 +3,7 @@ package com.example.pivota.dashboard.di
 import com.example.pivota.dashboard.data.remote.CategoriesApiService
 import com.example.pivota.dashboard.data.remote.ProfileApiService
 import com.example.pivota.dashboard.data.remote.ServiceOfferingsApiService
+import com.example.pivota.dashboard.data.remote.PricingUnitsApiService
 import com.example.pivota.core.di.AuthHttpClient
 import dagger.Module
 import dagger.Provides
@@ -37,5 +38,13 @@ object ApiServiceModule {
         @AuthHttpClient client: HttpClient
     ): ServiceOfferingsApiService {
         return ServiceOfferingsApiService(client)
+    }
+
+    @Provides
+    @Singleton
+    fun providePricingUnitsApiService(
+        @AuthHttpClient client: HttpClient
+    ): PricingUnitsApiService {
+        return PricingUnitsApiService(client)
     }
 }

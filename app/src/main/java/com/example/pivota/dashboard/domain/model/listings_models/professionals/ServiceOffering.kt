@@ -12,7 +12,6 @@ data class ServiceOffering(
     val description: String,
     val categoryId: String,
     val categoryName: String,
-    val verticals: List<String>,
     val basePrice: Double,
     val priceUnit: String,
     val currency: String,

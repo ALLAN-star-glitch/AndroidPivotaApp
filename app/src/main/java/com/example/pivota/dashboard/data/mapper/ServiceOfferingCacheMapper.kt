@@ -54,8 +54,7 @@ class ServiceOfferingCacheMapper @Inject constructor(
         dto: ServiceOfferingDto,
         categoryId: String
     ): ServiceOfferingEntity {
-        // Serialize lists to JSON strings
-        val verticalsJson = moshi.adapter<List<String>>(STRING_LIST_TYPE).toJson(dto.verticals)
+
         val serviceAreasJson = moshi.adapter<List<String>>(STRING_LIST_TYPE).toJson(dto.serviceAreas)
 
         // Convert DTO availability to domain model first, then serialize
@@ -74,7 +73,6 @@ class ServiceOfferingCacheMapper @Inject constructor(
             description = dto.description,
             categoryId = categoryId,
             categoryName = dto.categoryName,
-            verticals = verticalsJson,
             basePrice = dto.basePrice,
             priceUnit = dto.priceUnit,
             currency = dto.currency,
@@ -95,7 +93,7 @@ class ServiceOfferingCacheMapper @Inject constructor(
 
     fun toDomain(entity: ServiceOfferingEntity): ServiceOffering {
         // Deserialize JSON strings back to lists
-        val verticals = moshi.adapter<List<String>>(STRING_LIST_TYPE).fromJson(entity.verticals) ?: emptyList()
+
         val serviceAreas = moshi.adapter<List<String>>(STRING_LIST_TYPE).fromJson(entity.serviceAreas) ?: emptyList()
 
         // Deserialize as domain model directly
@@ -113,7 +111,6 @@ class ServiceOfferingCacheMapper @Inject constructor(
             description = entity.description,
             categoryId = entity.categoryId,
             categoryName = entity.categoryName,
-            verticals = verticals,
             basePrice = entity.basePrice,
             priceUnit = entity.priceUnit,
             currency = entity.currency,

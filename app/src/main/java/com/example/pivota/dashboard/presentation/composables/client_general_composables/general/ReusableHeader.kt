@@ -54,22 +54,22 @@ val getPlanConfig: @Composable (String?) -> PlanConfig = { planName ->
         "Free Forever" -> PlanConfig(
             name = "Free Plan",
             icon = Icons.Outlined.EmojiEvents,
-            color = colorScheme.tertiary  // Use theme tertiary color
+            color = colorScheme.tertiary
         )
         "Starter" -> PlanConfig(
             name = "Starter Plan",
             icon = Icons.Outlined.Whatshot,
-            color = colorScheme.secondary  // Use theme secondary color (green)
+            color = colorScheme.secondary
         )
         "Pro" -> PlanConfig(
             name = "Pro Plan",
             icon = Icons.Outlined.WorkspacePremium,
-            color = colorScheme.primary  // Use theme primary color (blue)
+            color = colorScheme.primary
         )
         "Enterprise" -> PlanConfig(
             name = "Enterprise Plan",
             icon = Icons.Outlined.Business,
-            color = colorScheme.primary.copy(alpha = 0.8f)  // Primary with slight transparency
+            color = colorScheme.primary.copy(alpha = 0.8f)
         )
         else -> PlanConfig(
             name = "Member Plan",
@@ -93,7 +93,9 @@ fun ReusableHeader(
     sharedViewModel: DashboardSharedViewModel,
     messageCount: Int = 0,
     notificationCount: Int = 0,
-    onLogoutComplete: () -> Unit = {}
+    onLogoutComplete: () -> Unit = {},
+    onMessageClick: () -> Unit = {},
+    onNotificationClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showMenuBottomSheet by remember { mutableStateOf(false) }
@@ -105,6 +107,9 @@ fun ReusableHeader(
         (headerState as? HeaderState.Success)?.headerUser
     }
     val isLoading = headerState is HeaderState.Loading
+
+    // Combine message and notification counts for the badge
+    val totalUnread = messageCount + notificationCount
 
     LaunchedEffect(headerState) {
         println("🔍 [ReusableHeader] headerState type: ${headerState::class.simpleName}")
@@ -389,22 +394,30 @@ fun ReusableHeader(
                     }
                 }
 
+                // Header Action Icons - Only 2 icons: Theme + Notifications/Messages combined
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Icon 1: Theme Toggle
                     HeaderActionIcon(
                         icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
                         colorScheme = colorScheme,
                         onClick = { themeViewModel.toggleTheme() }
                     )
 
+                    // Icon 2: Combined Notifications & Messages with Badge
                     Box {
                         HeaderActionIcon(
-                            icon = Icons.Outlined.MailOutline,
-                            colorScheme = colorScheme
+                            icon = Icons.Outlined.NotificationsActive,
+                            colorScheme = colorScheme,
+                            onClick = {
+                                // Open notifications/messages center
+                                onNotificationClick()
+                                onMessageClick()
+                            }
                         )
-                        if (notificationCount > 0) {
+                        if (totalUnread > 0) {
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
@@ -415,7 +428,7 @@ fun ReusableHeader(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = if (notificationCount > 99) "99+" else notificationCount.toString(),
+                                    text = if (totalUnread > 99) "99+" else totalUnread.toString(),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White

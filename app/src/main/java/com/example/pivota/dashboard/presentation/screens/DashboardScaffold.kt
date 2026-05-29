@@ -495,11 +495,8 @@ private fun TabletDashboardContent(
     snackbarType: SnackbarType,
     onSnackbarDismiss: () -> Unit
 ) {
-    // Use a Box with proper constraints to prevent snackbar from stretching
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .wrapContentSize(Alignment.TopStart) // This prevents stretching
+        modifier = Modifier.fillMaxSize()
     ) {
         Row(modifier = Modifier.fillMaxSize()) {
             NavigationRail(
@@ -567,20 +564,38 @@ private fun TabletDashboardContent(
             }
         }
 
-        // Snackbar - now properly constrained and won't stretch across whole screen
+        // ✅ ADD FAB FOR TABLET (same as mobile)
+        // Check if we're on a main screen that should show the FAB
+        val isMainScreen = when (currentDestination?.route) {
+            Dashboard::class.qualifiedName,
+            Connect::class.qualifiedName,
+            Profile::class.qualifiedName -> true
+            else -> false
+        }
+
+        if (isMainScreen) {
+            PulsingPostFab(
+                onClick = { onShowSheetChange(true) },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            )
+        }
+
+        // Snackbar
         if (showWelcomeSnackbar && welcomeMessage.isNotBlank()) {
             androidx.compose.animation.AnimatedVisibility(
                 visible = true,
                 enter = androidx.compose.animation.slideInVertically(
-                    initialOffsetY = { -it } // Slide in from top
+                    initialOffsetY = { -it }
                 ) + androidx.compose.animation.fadeIn(),
                 exit = androidx.compose.animation.slideOutVertically(
-                    targetOffsetY = { -it } // Slide out to top
+                    targetOffsetY = { -it }
                 ) + androidx.compose.animation.fadeOut(),
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 16.dp) // Add some padding from the top edge
-                    .wrapContentWidth() // Only take needed width, not full width
+                    .padding(top = 16.dp)
+                    .wrapContentWidth()
                     .zIndex(100f)
             ) {
                 PivotaSnackbar(
@@ -1812,11 +1827,10 @@ fun MainScreenScaffold(
             }
         },
         floatingActionButton = {
-            if (!isGuestMode) {
                 PulsingPostFab(
                     onClick = { onShowSheetChange(true) }
                 )
-            }
+
         },
         floatingActionButtonPosition = FabPosition.End,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)

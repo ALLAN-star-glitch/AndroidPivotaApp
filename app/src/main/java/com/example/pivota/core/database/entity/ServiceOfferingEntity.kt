@@ -15,7 +15,6 @@ data class ServiceOfferingEntity(
     val description: String,
     val categoryId: String,
     val categoryName: String,
-    val verticals: String, // Store as JSON string
     val basePrice: Double,
     val priceUnit: String,
     val currency: String,

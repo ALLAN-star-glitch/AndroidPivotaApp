@@ -2,13 +2,17 @@
 package com.example.pivota.dashboard.di
 
 import com.example.pivota.dashboard.data.repository.CategoriesRepositoryImpl
+import com.example.pivota.dashboard.data.repository.PricingUnitsRepositoryImpl
 import com.example.pivota.dashboard.data.repository.ProfileRepositoryImpl
+import com.example.pivota.dashboard.data.repository.ServiceOfferingsRepositoryImpl
 import com.example.pivota.dashboard.domain.repository.CategoriesRepository
+import com.example.pivota.dashboard.domain.repository.PricingUnitsRepository
 import com.example.pivota.dashboard.domain.repository.ProfileRepository
 import com.example.pivota.dashboard.domain.repository.ServiceOfferingsRepository
-import com.example.pivota.dashboard.data.repository.ServiceOfferingsRepositoryImpl
 import com.example.pivota.dashboard.domain.useCase.GetCommonServicesUseCase
+import com.example.pivota.dashboard.domain.useCase.GetComplimentaryCategoriesUseCase
 import com.example.pivota.dashboard.domain.useCase.GetOfferingsByCategoryUseCase
+import com.example.pivota.dashboard.domain.useCase.GetPricingUnitsByCategoryUseCase
 import com.example.pivota.dashboard.domain.useCase.GetProfileUseCase
 import dagger.Binds
 import dagger.Module
@@ -33,6 +37,10 @@ abstract class DashboardModule {
     @Singleton
     abstract fun bindServiceOfferingRepository(impl: ServiceOfferingsRepositoryImpl): ServiceOfferingsRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindPricingUnitsRepository(impl: PricingUnitsRepositoryImpl): PricingUnitsRepository
+
     companion object {
         @Provides
         @Singleton
@@ -50,6 +58,18 @@ abstract class DashboardModule {
         @Singleton
         fun provideGetOfferingsByCategoryUseCase(repository: ServiceOfferingsRepository): GetOfferingsByCategoryUseCase {
             return GetOfferingsByCategoryUseCase(repository)
+        }
+
+        @Provides
+        @Singleton
+        fun provideGetPricingUnitsByCategoryUseCase(repository: PricingUnitsRepository): GetPricingUnitsByCategoryUseCase {
+            return GetPricingUnitsByCategoryUseCase(repository)
+        }
+
+        @Provides
+        @Singleton
+        fun provideGetComplimentaryCategoriesUseCase(repository: CategoriesRepository): GetComplimentaryCategoriesUseCase {
+            return GetComplimentaryCategoriesUseCase(repository)
         }
     }
 }

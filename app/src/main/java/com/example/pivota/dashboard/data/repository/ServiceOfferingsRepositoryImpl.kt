@@ -5,9 +5,12 @@ import com.example.pivota.core.database.entity.ServiceOfferingsCacheMetadataEnti
 import com.example.pivota.core.network.ApiResult
 import com.example.pivota.core.network.NetworkError
 import com.example.pivota.core.network.safeApiCall
+import com.example.pivota.dashboard.data.dto.CreateServiceOfferingRequestDto
 import com.example.pivota.dashboard.data.mapper.ServiceOfferingCacheMapper
 import com.example.pivota.dashboard.data.mapper.ServiceOfferingMapper
 import com.example.pivota.dashboard.data.remote.ServiceOfferingsApiService
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.DayAvailability
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
 import com.example.pivota.dashboard.domain.repository.ServiceOfferingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -160,6 +163,87 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                 ),
                 technicalMessage = e.message
             )
+        }
+    }
+
+
+    override suspend fun createServiceOffering(request: CreateServiceOfferingRequestDto): ApiResult<ServiceOfferingsResponse> {
+        println("🔍 ========== CREATE SERVICE OFFERING ==========")
+        println("🔍 Title: ${request.title}")
+        println("🔍 CategoryId: ${request.categoryId}")
+        println("🔍 BasePrice: ${request.basePrice}")
+        println("🔍 =============================================")
+
+        val result = safeApiCall {
+            apiService.createServiceOffering(request)
+        }
+
+        return when (result) {
+            is ApiResult.Success -> {
+                val response = result.data
+                println("🔍 CREATE SERVICE OFFERING RESPONSE: success=${response.success}, message=${response.message}")
+
+                if (response.success && response.data != null) {
+                    // Manually create ServiceOffering from the response data
+                    val createdData = response.data
+                    val domainOffering = ServiceOffering(
+                        id = createdData.id,
+                        externalId = createdData.externalId,
+                        professionalName = createdData.professionalName,
+                        professionalAvatar = createdData.professionalAvatar,
+                        isVerified = createdData.isVerified,
+                        title = createdData.title,
+                        description = createdData.description,
+                        categoryId = createdData.categoryId,
+                        categoryName = createdData.categoryName,
+                        basePrice = createdData.basePrice,
+                        priceUnit = createdData.priceUnit,
+                        currency = createdData.currency,
+                        locationCity = createdData.locationCity,
+                        locationNeighborhood = createdData.locationNeighborhood,
+                        availability = createdData.availability?.map { dayDto ->
+                            DayAvailability(
+                                day = dayDto.day,
+                                open = dayDto.open,
+                                close = dayDto.close,
+                                isClosed = dayDto.isClosed
+                            )
+                        } ?: emptyList(),
+                        yearsExperience = createdData.yearsExperience,
+                        hourlyRate = createdData.hourlyRate,
+                        serviceAreas = createdData.serviceAreas,
+                        status = createdData.status,
+                        averageRating = createdData.averageRating,
+                        reviewCount = createdData.reviewCount,
+                        createdAt = createdData.createdAt,
+                        updatedAt = createdData.updatedAt
+                    )
+
+                    val serviceOfferingsResponse = ServiceOfferingsResponse(
+                        success = response.success,
+                        message = response.message,
+                        code = response.code.toString(),
+                        data = listOf(domainOffering),
+                        pagination = null
+                    )
+                    ApiResult.Success(serviceOfferingsResponse)
+                } else {
+                    ApiResult.Error(
+                        networkError = NetworkError.Unknown(
+                            originalMessage = response.message
+                        ),
+                        technicalMessage = response.message
+                    )
+                }
+            }
+            is ApiResult.Error -> {
+                println("❌ CREATE SERVICE OFFERING ERROR: ${result.technicalMessage}")
+                ApiResult.Error(
+                    networkError = result.networkError,
+                    technicalMessage = result.technicalMessage
+                )
+            }
+            ApiResult.Loading -> ApiResult.Loading
         }
     }
 }

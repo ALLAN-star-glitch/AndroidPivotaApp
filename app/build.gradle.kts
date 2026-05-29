@@ -24,8 +24,8 @@ android {
         applicationId = "com.example.pivota"
         minSdk = 24
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.0.7"
+        versionCode = 8
+        versionName = "1.0.8"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -47,64 +47,44 @@ android {
                 artifactType = "APK"
                 testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
                 releaseNotes = """
-PivotaConnect v1.0.7 (Build 7)
+PivotaConnect v1.0.8 (Build 8)
 
-SUBCATEGORIES & NAVIGATION IMPROVEMENTS (Major Update)
+🚀 NEW: POST PROFESSIONAL SERVICES!
+You can now post your services directly from the mobile app!
 
-Complete subcategories system with enhanced navigation flow:
+WHAT'S NEW:
+• Complete service posting form with live preview
+• Dynamic pricing units - options change based on your selected category
+• See price ranges (minimum and maximum allowed prices)
+• Set your availability (working hours for each day)
+• Real-time form validation with helpful error messages
+• Loading indicators while fetching categories and pricing rules
 
-NEW FEATURES:
+PRICING OPTIONS AVAILABLE:
+Per Hour | Per Day | Per Week | Per Month | Per Year | Fixed Price
+Per Visit | Per Session | Per Unit | Per Square Foot/Meter
+Per Trip | Per Page | Per Test | Per Course | Per Booth
+Per Event | Per Watt | Percentage | Package
 
-Subcategories System:
-- Categories now display folder icon (📁) and "Browse" text when they have subcategories
-- Clicking categories with subcategories navigates to Subcategories screen
-- Subcategories displayed in responsive grid with circular icons
-- Parent category name shown below each subcategory for context
-- Smooth navigation between All Services -> Subcategories -> Service Offerings
+IMPROVEMENTS:
+• Categories load faster (caching enabled)
+• Header simplified - now only 2 icons (Theme toggle + Notifications)
+• Notifications and messages combined into one inbox icon
+• Better loading states throughout the app
+• Improved error messages
 
-Common Services Section Updates:
-- Common Services grid now shows subcategory indicators
-- Folder badge appears on services with subcategories
-- "Browse" text below services that have subcategories
-- Proper click handling for both subcategory and direct navigation
+BUG FIXES:
+• Fixed FAB (Post button) now appears on tablets
+• Fixed category selection in forms
+• "Job Fairs" no longer incorrectly shows subcategories
+• Fixed price validation for decimal values
 
-Backend Fixes:
-- Fixed discovery metadata `hasSubcategories` calculation
-- Subcategories now determined dynamically from actual data
-- Categories without subcategories no longer show folder icon
-- Fixed "Job Fairs" incorrectly showing subcategory indicator
-
-Navigation Improvements:
-- Proper back stack handling between screens
-- Seamless navigation: All Services → Subcategories → Service Offerings
-- Direct navigation for categories without subcategories
-- Consistent navigation experience across mobile and tablet
-
-UI Enhancements:
-- Subcategories screen matches main All Services screen design
-- Circular icon layout for subcategories
-- Responsive grid (6/4/3 columns based on screen size)
-- Top bar shows parent category name and "Subcategories" subtitle
-- Consistent spacing and padding across all screens
-
-Bug Fixes (from v1.0.6):
-- Fixed incorrect subcategory indicators on categories without subcategories
-- Fixed navigation back from subcategories to all services
-- Fixed discovery metadata inconsistencies
-- Improved error handling for empty subcategories
-
-Technical Improvements:
-- Added `hasSubcategories` field to DiscoveryCategory model
-- SubcategoriesScreen with proper state management (Loading/Success/Error)
-- GetSubcategoriesUseCase for fetching subcategories
-- SubcategoriesViewModel for state handling
-- Proper navigation routes for Subcategories screen
-
-Previous Features (v1.0.6):
-- Premium Card Redesign for all listing types
-- Service Offerings flow with search and filter
-- Skeleton loading for better UX
-- Offline support for categories
+PREVIOUS FEATURES (still available):
+• Browse services by category
+• View service offerings with premium cards
+• Dark/Light theme support
+• Tablet support
+• Subcategories navigation
                 """.trimIndent()
             }
         }
@@ -137,6 +117,7 @@ dependencies {
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.compose.ui.unit)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.foundation)
     //implementation(libs.androidx.compose.remote.creation.compose)
 
     val nav_version = "2.9.0"

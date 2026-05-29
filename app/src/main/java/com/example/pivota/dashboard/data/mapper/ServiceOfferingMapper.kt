@@ -37,7 +37,6 @@ class ServiceOfferingMapper @Inject constructor() {
             description = dto.description,
             categoryId = dto.categoryId,
             categoryName = dto.categoryName,
-            verticals = dto.verticals,
             basePrice = dto.basePrice,
             priceUnit = dto.priceUnit,
             currency = dto.currency,

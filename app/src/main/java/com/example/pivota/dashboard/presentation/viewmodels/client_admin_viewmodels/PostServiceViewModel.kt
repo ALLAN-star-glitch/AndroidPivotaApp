@@ -1,0 +1,336 @@
+package com.example.pivota.dashboard.presentation.viewmodels.client_admin_viewmodels
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.pivota.core.network.ApiResult
+import com.example.pivota.dashboard.data.dto.CreateServiceOfferingRequestDto
+import com.example.pivota.dashboard.data.dto.DayAvailabilityDto
+import com.example.pivota.dashboard.domain.model.listings_models.general.DiscoveryCategory
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.DayAvailability
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.PricingUnitOption
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.PricingUnitsByCategory
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
+import com.example.pivota.dashboard.domain.useCase.CreateServiceOfferingUseCase
+import com.example.pivota.dashboard.domain.useCase.GetComplimentaryCategoriesUseCase
+import com.example.pivota.dashboard.domain.useCase.GetPricingUnitsByCategoryUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class PostServiceViewModel @Inject constructor(
+    private val createServiceOfferingUseCase: CreateServiceOfferingUseCase,
+    private val getPricingUnitsByCategoryUseCase: GetPricingUnitsByCategoryUseCase,
+    private val getComplimentaryCategoriesUseCase: GetComplimentaryCategoriesUseCase
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(PostServiceUiState())
+    val uiState: StateFlow<PostServiceUiState> = _uiState.asStateFlow()
+
+    // Categories state
+    private val _categoriesState = MutableStateFlow<CategoriesState>(CategoriesState.Loading)
+    val categoriesState: StateFlow<CategoriesState> = _categoriesState.asStateFlow()
+
+    // Pricing units state
+    private val _pricingUnitsState = MutableStateFlow<PricingUnitsState>(PricingUnitsState.Idle)
+    val pricingUnitsState: StateFlow<PricingUnitsState> = _pricingUnitsState.asStateFlow()
+
+    init {
+        loadCategories()
+    }
+
+    private fun loadCategories() {
+        viewModelScope.launch {
+            _categoriesState.value = CategoriesState.Loading
+
+            getComplimentaryCategoriesUseCase().collect { categories ->
+                println("📋 [PostServiceViewModel] Loaded ${categories.size} categories")
+                _categoriesState.value = CategoriesState.Success(categories)
+
+                // Update dropdown options in UI state
+                val categoryNames = categories.map { it.name }
+                val categoryMap = categories.associate { it.name to it.id }
+                _uiState.update {
+                    it.copy(
+                        availableCategories = categoryNames,
+                        categoryIdMap = categoryMap
+                    )
+                }
+            }
+        }
+    }
+
+    fun updateTitle(title: String) {
+        _uiState.update { it.copy(title = title) }
+    }
+
+    fun updateCategory(categoryName: String, categoryId: String) {
+        _uiState.update {
+            it.copy(
+                category = categoryName,
+                categoryId = categoryId
+            )
+        }
+        // Fetch pricing units when category changes
+        if (categoryId.isNotBlank()) {
+            fetchPricingUnitsForCategory(categoryId)
+        }
+    }
+
+    fun updateDescription(description: String) {
+        _uiState.update { it.copy(description = description) }
+    }
+
+    fun updateBasePrice(price: String) {
+        _uiState.update { it.copy(basePrice = price) }
+        // Validate price when it changes
+        validatePriceAgainstSelectedUnit(_uiState.value.priceUnit)
+    }
+
+    fun updateCurrency(currency: String) {
+        _uiState.update { it.copy(currency = currency) }
+    }
+
+    fun updatePriceUnit(unit: String) {
+        _uiState.update { it.copy(priceUnit = unit) }
+        validatePriceAgainstSelectedUnit(unit)
+    }
+
+    fun updateYearsExperience(experience: String) {
+        _uiState.update { it.copy(yearsExperience = experience) }
+    }
+
+    fun updateLocationCity(city: String) {
+        _uiState.update { it.copy(locationCity = city) }
+    }
+
+    fun updateLocationNeighborhood(neighborhood: String) {
+        _uiState.update { it.copy(locationNeighborhood = neighborhood) }
+    }
+
+    fun updateAdditionalNotes(notes: String) {
+        _uiState.update { it.copy(additionalNotes = notes) }
+    }
+
+    fun updateAvailability(availability: List<DayAvailability>) {
+        _uiState.update { it.copy(availability = availability) }
+    }
+
+    private fun fetchPricingUnitsForCategory(categoryId: String) {
+        viewModelScope.launch {
+            _pricingUnitsState.value = PricingUnitsState.Loading
+
+            val result = getPricingUnitsByCategoryUseCase(categoryId)
+
+            when (result) {
+                is ApiResult.Success -> {
+                    val pricingData = result.data
+                    println("✅ [PostServiceViewModel] Pricing units loaded for: ${pricingData.categoryName}")
+                    println("   Allowed units: ${pricingData.allowedUnits.map { it.unit }}")
+
+                    _pricingUnitsState.value = PricingUnitsState.Success(pricingData)
+
+                    // Update available price units in UI state
+                    val allowedUnitsList = pricingData.allowedUnits.map { it.unit }
+                    _uiState.update {
+                        it.copy(
+                            allowedPriceUnits = allowedUnitsList,
+                            pricingRules = pricingData.allowedUnits
+                        )
+                    }
+
+                    // If current price unit is not allowed, reset to first allowed unit
+                    val currentUnit = _uiState.value.priceUnit
+                    if (allowedUnitsList.isNotEmpty() && currentUnit !in allowedUnitsList) {
+                        updatePriceUnit(allowedUnitsList.first())
+                    }
+                }
+                is ApiResult.Error -> {
+                    val errorMessage = result.networkError.userFriendlyMessage
+                    println("❌ [PostServiceViewModel] Failed to load pricing units: $errorMessage")
+                    _pricingUnitsState.value = PricingUnitsState.Error(errorMessage)
+                }
+                ApiResult.Loading -> {
+                    // Already handled
+                }
+            }
+        }
+    }
+
+    private fun validatePriceAgainstSelectedUnit(unit: String) {
+        val currentPrice = _uiState.value.basePrice.toDoubleOrNull()
+        if (currentPrice == null) return
+
+        val pricingRules = _uiState.value.pricingRules
+        val ruleForUnit = pricingRules.find { it.unit == unit }
+
+        if (ruleForUnit != null) {
+            val priceError = when {
+                currentPrice < ruleForUnit.minPrice ->
+                    "Price must be at least ${ruleForUnit.currency} ${ruleForUnit.minPrice} for ${ruleForUnit.label}"
+                ruleForUnit.maxPrice != null && currentPrice > ruleForUnit.maxPrice ->
+                    "Price cannot exceed ${ruleForUnit.currency} ${ruleForUnit.maxPrice} for ${ruleForUnit.label}"
+                else -> null
+            }
+
+            _uiState.update { it.copy(priceValidationError = priceError) }
+        }
+    }
+
+    fun submitService(onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, isSuccess = false) }
+
+            // Validate required fields
+            val validationError = validateForm()
+            if (validationError != null) {
+                _uiState.update {
+                    it.copy(isLoading = false, error = validationError)
+                }
+                onError(validationError)
+                return@launch
+            }
+
+            // Validate price against rules
+            val priceError = _uiState.value.priceValidationError
+            if (priceError != null) {
+                _uiState.update {
+                    it.copy(isLoading = false, error = priceError)
+                }
+                onError(priceError)
+                return@launch
+            }
+
+            // Build the request
+            val request = buildRequest()
+
+            println("🔵 [PostServiceViewModel] Submitting service offering...")
+            println("🔵 Title: ${request.title}")
+            println("🔵 CategoryId: ${request.categoryId}")
+            println("🔵 BasePrice: ${request.basePrice}")
+            println("🔵 PriceUnit: ${request.priceUnit}")
+
+            val result = createServiceOfferingUseCase(request)
+
+            when (result) {
+                is ApiResult.Success -> {
+                    println("✅ [PostServiceViewModel] Service created successfully!")
+                    val createdOffering = result.data.data?.firstOrNull()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isSuccess = true,
+                            error = null,
+                            createdOffering = createdOffering
+                        )
+                    }
+                    onSuccess()
+                }
+                is ApiResult.Error -> {
+                    val errorMessage = result.networkError.userFriendlyMessage
+                    println("❌ [PostServiceViewModel] Error: $errorMessage")
+                    _uiState.update {
+                        it.copy(isLoading = false, error = errorMessage)
+                    }
+                    onError(errorMessage)
+                }
+                ApiResult.Loading -> {
+                    // Already handled
+                }
+            }
+        }
+    }
+
+    private fun validateForm(): String? {
+        val state = _uiState.value
+        return when {
+            state.title.isBlank() -> "Please enter a service title"
+            state.category.isBlank() -> "Please select a category"
+            state.description.isBlank() -> "Please enter a service description"
+            state.basePrice.isBlank() -> "Please enter a base price"
+            state.basePrice.toDoubleOrNull() == null -> "Please enter a valid price"
+            state.locationCity.isBlank() -> "Please enter a city/town"
+            else -> null
+        }
+    }
+
+    private fun buildRequest(): CreateServiceOfferingRequestDto {
+        val state = _uiState.value
+
+        val availability = state.availability
+            .filter { !it.isClosed }
+            .map { day ->
+                DayAvailabilityDto(
+                    day = day.day,
+                    open = day.open,
+                    close = day.close,
+                    isClosed = day.isClosed
+                )
+            }
+
+        return CreateServiceOfferingRequestDto(
+            title = state.title,
+            description = state.description,
+            categoryId = state.categoryId,
+            basePrice = state.basePrice.toDouble(),
+            priceUnit = state.priceUnit,
+            currency = state.currency,
+            locationCity = state.locationCity,
+            locationNeighborhood = state.locationNeighborhood.takeIf { it.isNotBlank() },
+            yearsExperience = state.yearsExperience.toIntOrNull(),
+            additionalNotes = state.additionalNotes.takeIf { it.isNotBlank() },
+            availability = availability.takeIf { it.isNotEmpty() }
+        )
+    }
+
+    fun resetState() {
+        _uiState.value = PostServiceUiState()
+        _pricingUnitsState.value = PricingUnitsState.Idle
+        loadCategories() // Reload categories when resetting
+    }
+}
+
+// Categories State
+sealed class CategoriesState {
+    object Loading : CategoriesState()
+    data class Success(val categories: List<DiscoveryCategory>) : CategoriesState()
+    data class Error(val message: String) : CategoriesState()
+}
+
+// Pricing Units State
+sealed class PricingUnitsState {
+    object Idle : PricingUnitsState()
+    object Loading : PricingUnitsState()
+    data class Success(val data: PricingUnitsByCategory) : PricingUnitsState()
+    data class Error(val message: String) : PricingUnitsState()
+}
+
+// Updated UI State
+data class PostServiceUiState(
+    val title: String = "",
+    val category: String = "",
+    val categoryId: String = "",
+    val description: String = "",
+    val basePrice: String = "",
+    val currency: String = "KES",
+    val priceUnit: String = "PER_HOUR",
+    val yearsExperience: String = "",
+    val locationCity: String = "",
+    val locationNeighborhood: String = "",
+    val additionalNotes: String = "",
+    val availability: List<DayAvailability> = emptyList(),
+    val isLoading: Boolean = false,
+    val isSuccess: Boolean = false,
+    val error: String? = null,
+    val createdOffering: ServiceOffering? = null,
+    // New fields for categories and pricing rules
+    val availableCategories: List<String> = emptyList(),
+    val categoryIdMap: Map<String, String> = emptyMap(),
+    val allowedPriceUnits: List<String> = emptyList(),
+    val pricingRules: List<PricingUnitOption> = emptyList(),
+    val priceValidationError: String? = null
+)

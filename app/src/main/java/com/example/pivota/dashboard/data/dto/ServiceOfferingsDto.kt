@@ -1,10 +1,7 @@
 package com.example.pivota.dashboard.data.dto
 
-
-
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
 
 // ======================================================
 // SERVICE OFFERING DTOS
@@ -31,7 +28,6 @@ data class ServiceOfferingDto(
     @SerialName("description") val description: String,
     @SerialName("categoryId") val categoryId: String,
     @SerialName("categoryName") val categoryName: String,
-    @SerialName("verticals") val verticals: List<String>,
     @SerialName("basePrice") val basePrice: Double,
     @SerialName("priceUnit") val priceUnit: String,
     @SerialName("currency") val currency: String,
@@ -64,6 +60,7 @@ data class PaginationInfoDto(
     @SerialName("hasMore") val hasMore: Boolean
 )
 
+
 // ======================================================
 // SERVICE OFFERING REQUEST DTO
 // ======================================================
@@ -72,7 +69,6 @@ data class PaginationInfoDto(
 data class CreateServiceOfferingRequestDto(
     @SerialName("title") val title: String,
     @SerialName("description") val description: String,
-    @SerialName("verticals") val verticals: List<String>,
     @SerialName("categoryId") val categoryId: String,
     @SerialName("basePrice") val basePrice: Double,
     @SerialName("priceUnit") val priceUnit: String,
@@ -82,4 +78,44 @@ data class CreateServiceOfferingRequestDto(
     @SerialName("yearsExperience") val yearsExperience: Int? = null,
     @SerialName("additionalNotes") val additionalNotes: String? = null,
     @SerialName("availability") val availability: List<DayAvailabilityDto>? = null
+)
+
+// ======================================================
+// CREATE SERVICE OFFERING RESPONSE DTO
+// ======================================================
+
+@Serializable
+data class CreateServiceOfferingResponseDto(
+    @SerialName("success") val success: Boolean,
+    @SerialName("message") val message: String,
+    @SerialName("code") val code: Int,
+    @SerialName("data") val data: CreatedServiceOfferingDataDto? = null,
+    @SerialName("status") val status: String
+)
+
+@Serializable
+data class CreatedServiceOfferingDataDto(
+    @SerialName("id") val id: String,
+    @SerialName("externalId") val externalId: String,
+    @SerialName("professionalName") val professionalName: String,
+    @SerialName("professionalAvatar") val professionalAvatar: String? = null,
+    @SerialName("isVerified") val isVerified: Boolean,
+    @SerialName("title") val title: String,
+    @SerialName("description") val description: String,
+    @SerialName("categoryId") val categoryId: String,
+    @SerialName("categoryName") val categoryName: String,
+    @SerialName("basePrice") val basePrice: Double,
+    @SerialName("priceUnit") val priceUnit: String,
+    @SerialName("currency") val currency: String,
+    @SerialName("locationCity") val locationCity: String,
+    @SerialName("locationNeighborhood") val locationNeighborhood: String? = null,
+    @SerialName("availability") val availability: List<DayAvailabilityDto>? = null,
+    @SerialName("yearsExperience") val yearsExperience: Int,
+    @SerialName("hourlyRate") val hourlyRate: Double,
+    @SerialName("serviceAreas") val serviceAreas: List<String>,
+    @SerialName("status") val status: String,
+    @SerialName("averageRating") val averageRating: Double,
+    @SerialName("reviewCount") val reviewCount: Int,
+    @SerialName("createdAt") val createdAt: String,
+    @SerialName("updatedAt") val updatedAt: String
 )
