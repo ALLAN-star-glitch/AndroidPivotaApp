@@ -24,8 +24,8 @@ android {
         applicationId = "com.example.pivota"
         minSdk = 24
         targetSdk = 36
-        versionCode = 8
-        versionName = "1.0.8"
+        versionCode = 9
+        versionName = "1.0.9"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -47,44 +47,44 @@ android {
                 artifactType = "APK"
                 testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
                 releaseNotes = """
-PivotaConnect v1.0.8 (Build 8)
+PivotaConnect v1.0.9 (Build 9)
 
-🚀 NEW: POST PROFESSIONAL SERVICES!
-You can now post your services directly from the mobile app!
+🚀 NEW: MULTI-STEP SERVICE POSTING FORM WITH STEPPER
+• Complete redesign of service posting with 5-step wizard
+• Visual step indicator with progress tracking
+• Steps: Category → Basic Info → Pricing → Availability → Location
+• Navigate between completed steps easily
+• Auto-scrolling stepper that follows your progress
 
-WHAT'S NEW:
-• Complete service posting form with live preview
-• Dynamic pricing units - options change based on your selected category
-• See price ranges (minimum and maximum allowed prices)
-• Set your availability (working hours for each day)
-• Real-time form validation with helpful error messages
-• Loading indicators while fetching categories and pricing rules
+✨ ENHANCEMENTS:
+• Step completion validation with visual checkmarks
+• ServiceLivePreview shows real-time form data
+• Responsive tablet layout with split-screen preview
+• Animated transitions between form steps
+• AM/PM time picker for availability
+• Manual text input for number pickers
+• Tap to edit number values directly
 
-PRICING OPTIONS AVAILABLE:
-Per Hour | Per Day | Per Week | Per Month | Per Year | Fixed Price
-Per Visit | Per Session | Per Unit | Per Square Foot/Meter
-Per Trip | Per Page | Per Test | Per Course | Per Booth
-Per Event | Per Watt | Percentage | Package
+🎨 UI IMPROVEMENTS:
+• Step indicator with numbered circles
+• Completion status icons (checkmark for completed steps)
+• Better form organization by sections
+• Improved loading states
+• Enhanced error messages
 
-IMPROVEMENTS:
-• Categories load faster (caching enabled)
-• Header simplified - now only 2 icons (Theme toggle + Notifications)
-• Notifications and messages combined into one inbox icon
-• Better loading states throughout the app
-• Improved error messages
+🐛 FIXES:
+• Fixed weight modifier issues in layouts
+• Fixed long press infinite increment issue
+• Improved time picker with AM/PM format
+• Fixed number picker validation
 
-BUG FIXES:
-• Fixed FAB (Post button) now appears on tablets
-• Fixed category selection in forms
-• "Job Fairs" no longer incorrectly shows subcategories
-• Fixed price validation for decimal values
-
-PREVIOUS FEATURES (still available):
-• Browse services by category
-• View service offerings with premium cards
+📱 FEATURES OVERVIEW:
+• Post professional services
+• Dynamic pricing based on category
+• Set working hours per day
+• Location-based service offering
 • Dark/Light theme support
-• Tablet support
-• Subcategories navigation
+• Tablet optimized
                 """.trimIndent()
             }
         }

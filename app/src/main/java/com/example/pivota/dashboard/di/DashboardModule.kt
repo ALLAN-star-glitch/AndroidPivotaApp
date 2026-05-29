@@ -11,6 +11,7 @@ import com.example.pivota.dashboard.domain.repository.ProfileRepository
 import com.example.pivota.dashboard.domain.repository.ServiceOfferingsRepository
 import com.example.pivota.dashboard.domain.useCase.GetCommonServicesUseCase
 import com.example.pivota.dashboard.domain.useCase.GetComplimentaryCategoriesUseCase
+import com.example.pivota.dashboard.domain.useCase.GetFullComplimentaryCategoriesUseCase
 import com.example.pivota.dashboard.domain.useCase.GetOfferingsByCategoryUseCase
 import com.example.pivota.dashboard.domain.useCase.GetPricingUnitsByCategoryUseCase
 import com.example.pivota.dashboard.domain.useCase.GetProfileUseCase
@@ -70,6 +71,14 @@ abstract class DashboardModule {
         @Singleton
         fun provideGetComplimentaryCategoriesUseCase(repository: CategoriesRepository): GetComplimentaryCategoriesUseCase {
             return GetComplimentaryCategoriesUseCase(repository)
+        }
+
+        @Provides
+        @Singleton
+        fun provideGetFullComplimentaryCategoriesUseCase(
+            repository: CategoriesRepository
+        ): GetFullComplimentaryCategoriesUseCase {
+            return GetFullComplimentaryCategoriesUseCase(repository)
         }
     }
 }

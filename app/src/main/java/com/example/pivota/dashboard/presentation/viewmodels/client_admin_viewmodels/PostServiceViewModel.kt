@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.pivota.core.network.ApiResult
 import com.example.pivota.dashboard.data.dto.CreateServiceOfferingRequestDto
 import com.example.pivota.dashboard.data.dto.DayAvailabilityDto
+import com.example.pivota.dashboard.domain.model.listings_models.general.Category
 import com.example.pivota.dashboard.domain.model.listings_models.general.DiscoveryCategory
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.DayAvailability
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.PricingUnitOption
@@ -12,6 +13,7 @@ import com.example.pivota.dashboard.domain.model.listings_models.professionals.P
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
 import com.example.pivota.dashboard.domain.useCase.CreateServiceOfferingUseCase
 import com.example.pivota.dashboard.domain.useCase.GetComplimentaryCategoriesUseCase
+import com.example.pivota.dashboard.domain.useCase.GetFullComplimentaryCategoriesUseCase
 import com.example.pivota.dashboard.domain.useCase.GetPricingUnitsByCategoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +27,7 @@ import javax.inject.Inject
 class PostServiceViewModel @Inject constructor(
     private val createServiceOfferingUseCase: CreateServiceOfferingUseCase,
     private val getPricingUnitsByCategoryUseCase: GetPricingUnitsByCategoryUseCase,
-    private val getComplimentaryCategoriesUseCase: GetComplimentaryCategoriesUseCase
+    private val getFullComplimentaryCategoriesUseCase: GetFullComplimentaryCategoriesUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PostServiceUiState())
@@ -47,18 +49,43 @@ class PostServiceViewModel @Inject constructor(
         viewModelScope.launch {
             _categoriesState.value = CategoriesState.Loading
 
-            getComplimentaryCategoriesUseCase().collect { categories ->
+            getFullComplimentaryCategoriesUseCase().collect { categories ->
                 println("📋 [PostServiceViewModel] Loaded ${categories.size} categories")
-                _categoriesState.value = CategoriesState.Success(categories)
 
-                // Update dropdown options in UI state
-                val categoryNames = categories.map { it.name }
-                val categoryMap = categories.associate { it.name to it.id }
-                _uiState.update {
-                    it.copy(
-                        availableCategories = categoryNames,
-                        categoryIdMap = categoryMap
-                    )
+                if (categories.isNotEmpty()) {
+                    _categoriesState.value = CategoriesState.Success(categories)
+
+                    // Filter top-level categories (parentId == null)
+                    val topLevelCategories = categories.filter { it.parentId == null }
+                    val categoryNames = topLevelCategories.map { it.name }
+                    val categoryMap = topLevelCategories.associate { it.name to it.id }
+
+                    // Build subcategory maps for each parent category
+                    val subcategoryMap = mutableMapOf<String, List<Category>>()
+                    val subcategoryIdMap = mutableMapOf<String, String>()
+
+                    categories.filter { it.parentId != null }.forEach { subcategory ->
+                        val parentId = subcategory.parentId
+                        if (parentId != null) {
+                            val parentCategory = categories.find { it.id == parentId }
+                            if (parentCategory != null) {
+                                val currentList = subcategoryMap[parentCategory.name] ?: emptyList()
+                                subcategoryMap[parentCategory.name] = currentList + subcategory
+                                subcategoryIdMap[subcategory.name] = subcategory.id
+                            }
+                        }
+                    }
+
+                    _uiState.update {
+                        it.copy(
+                            availableCategories = categoryNames,
+                            categoryIdMap = categoryMap,
+                            allCategories = categories,
+                            subcategoryIdMap = subcategoryIdMap
+                        )
+                    }
+                } else {
+                    _categoriesState.value = CategoriesState.Error("No categories available")
                 }
             }
         }
@@ -69,15 +96,31 @@ class PostServiceViewModel @Inject constructor(
     }
 
     fun updateCategory(categoryName: String, categoryId: String) {
+        val categories = (_categoriesState.value as? CategoriesState.Success)?.categories ?: emptyList()
+        val subcategories = categories.filter { it.parentId == categoryId }.map { it.name }
+
         _uiState.update {
             it.copy(
                 category = categoryName,
-                categoryId = categoryId
+                categoryId = categoryId,
+                subcategory = "",  // Clear subcategory when category changes
+                subcategoryId = "",  // Clear subcategory ID
+                availableSubcategories = subcategories
             )
         }
+
         // Fetch pricing units when category changes
         if (categoryId.isNotBlank()) {
             fetchPricingUnitsForCategory(categoryId)
+        }
+    }
+
+    fun updateSubcategory(subcategoryName: String, subcategoryId: String) {
+        _uiState.update {
+            it.copy(
+                subcategory = subcategoryName,
+                subcategoryId = subcategoryId
+            )
         }
     }
 
@@ -261,6 +304,13 @@ class PostServiceViewModel @Inject constructor(
     private fun buildRequest(): CreateServiceOfferingRequestDto {
         val state = _uiState.value
 
+        // Use subcategoryId if selected, otherwise use categoryId
+        val finalCategoryId = if (state.subcategoryId.isNotBlank()) {
+            state.subcategoryId
+        } else {
+            state.categoryId
+        }
+
         val availability = state.availability
             .filter { !it.isClosed }
             .map { day ->
@@ -275,7 +325,7 @@ class PostServiceViewModel @Inject constructor(
         return CreateServiceOfferingRequestDto(
             title = state.title,
             description = state.description,
-            categoryId = state.categoryId,
+            categoryId = finalCategoryId,  // Use subcategory ID if available
             basePrice = state.basePrice.toDouble(),
             priceUnit = state.priceUnit,
             currency = state.currency,
@@ -297,7 +347,7 @@ class PostServiceViewModel @Inject constructor(
 // Categories State
 sealed class CategoriesState {
     object Loading : CategoriesState()
-    data class Success(val categories: List<DiscoveryCategory>) : CategoriesState()
+    data class Success(val categories: List<Category>) : CategoriesState()  // Changed to Category
     data class Error(val message: String) : CategoriesState()
 }
 
@@ -314,6 +364,8 @@ data class PostServiceUiState(
     val title: String = "",
     val category: String = "",
     val categoryId: String = "",
+    val subcategory: String = "",
+    val subcategoryId: String = "",
     val description: String = "",
     val basePrice: String = "",
     val currency: String = "KES",
@@ -330,6 +382,9 @@ data class PostServiceUiState(
     // New fields for categories and pricing rules
     val availableCategories: List<String> = emptyList(),
     val categoryIdMap: Map<String, String> = emptyMap(),
+    val availableSubcategories: List<String> = emptyList(),
+    val subcategoryIdMap: Map<String, String> = emptyMap(),
+    val allCategories: List<Category> = emptyList(),  // ADD THIS for reference
     val allowedPriceUnits: List<String> = emptyList(),
     val pricingRules: List<PricingUnitOption> = emptyList(),
     val priceValidationError: String? = null

@@ -16,9 +16,9 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopBar(
-    icon: ImageVector,
     title: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    icon: ImageVector? = null  // ← Make icon optional with default null
 ) {
     CenterAlignedTopAppBar(
         title = {
@@ -39,14 +39,16 @@ fun TopBar(
             }
         },
         actions = {
-            // Contextual help for managers
-            IconButton(onClick = { /* Open Help BottomSheet */ }) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(22.dp)
-                )
+            // Only show icon if provided
+            if (icon != null) {
+                IconButton(onClick = { /* Open Help BottomSheet */ }) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         },
     )
