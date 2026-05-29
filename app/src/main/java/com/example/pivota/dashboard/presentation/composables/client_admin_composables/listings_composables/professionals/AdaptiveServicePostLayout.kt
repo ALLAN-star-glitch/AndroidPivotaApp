@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.*
@@ -40,8 +41,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.window.core.layout.WindowSizeClass
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.pivota.core.presentations.composables.PivotaFullScreenLoading
 import com.example.pivota.core.presentations.composables.PivotaSnackbar
 import com.example.pivota.core.presentations.composables.SnackbarType
 import com.example.pivota.core.presentations.composables.TopBar
@@ -57,8 +64,8 @@ import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 import java.util.*
-
-
+import com.example.pivota.R
+import com.example.pivota.ui.theme.SuccessGreen
 
 
 // Default price units (fallback when backend not available)
@@ -83,6 +90,7 @@ enum class FormStep(val title: String, val stepNumber: Int) {
 @Composable
 fun AdaptiveServicePostLayout(
     onBack: () -> Unit,
+    onNavigateToServiceDetails: ((String) -> Unit)? = null,
     viewModel: PostServiceViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -95,14 +103,19 @@ fun AdaptiveServicePostLayout(
     var showSuccessSnackbar by remember { mutableStateOf(false) }
     var showErrorSnackbar by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    var successMessage by remember { mutableStateOf("") }
+
+    // Success Dialog state
+    var showSuccessDialog by remember { mutableStateOf(false) }
+    var createdServiceId by remember { mutableStateOf<String?>(null) }
 
     // Current step
     var currentStep by remember { mutableStateOf(FormStep.CATEGORY) }
 
-    // Handle back button - go to previous step or exit
+    // Handle back button
     val handleBack = {
         when (currentStep) {
-            FormStep.CATEGORY -> onBack()  // First step, go back to previous screen
+            FormStep.CATEGORY -> onBack()
             FormStep.BASIC_INFO -> currentStep = FormStep.CATEGORY
             FormStep.PRICING -> currentStep = FormStep.BASIC_INFO
             FormStep.AVAILABILITY -> currentStep = FormStep.PRICING
@@ -110,46 +123,103 @@ fun AdaptiveServicePostLayout(
         }
     }
 
-    // Handle success
+    // Handle error from ViewModel
+    LaunchedEffect(uiState.error) {
+        println("🔔 [AdaptiveServicePostLayout] error changed: ${uiState.error}")
+        uiState.error?.let { error ->
+            kotlinx.coroutines.delay(100)
+            errorMessage = error
+            showErrorSnackbar = true
+            println("🔔 [AdaptiveServicePostLayout] Showing error snackbar: $error")
+        }
+    }
+
+    // Handle success - show snackbar first, then dialog
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
+            successMessage = "Service posted successfully!"
             showSuccessSnackbar = true
+
+            // Wait for snackbar to show, then show dialog
             kotlinx.coroutines.delay(1500)
-            onBack()
-            viewModel.resetState()
+
+            createdServiceId = uiState.createdOffering?.id
+            showSuccessDialog = true
+            viewModel.resetSuccess()
         }
     }
 
-    // Handle error
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            errorMessage = it
-            showErrorSnackbar = true
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            TopBar(
-                title = "Post a Service",
-                onBack = handleBack
-            )
-        },
-        containerColor = colorScheme.background
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (isWide) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    Surface(
+    // Use a Box at the root level to overlay everything
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Scaffold with TopBar and content
+        Scaffold(
+            topBar = {
+                TopBar(
+                    title = "Post a Service",
+                    onBack = handleBack
+                )
+            },
+            containerColor = colorScheme.background
+        ) { paddingValues ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Main content
+                if (isWide) {
+                    Row(
                         modifier = Modifier
-                            .weight(1.2f)
-                            .fillMaxHeight(),
-                        color = colorScheme.surface,
-                        tonalElevation = 2.dp
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .weight(1.2f)
+                                .fillMaxHeight(),
+                            color = colorScheme.surface,
+                            tonalElevation = 2.dp
+                        ) {
+                            ServicePostStepperContent(
+                                viewModel = viewModel,
+                                uiState = uiState,
+                                categoriesState = categoriesState,
+                                pricingUnitsState = pricingUnitsState,
+                                currentStep = currentStep,
+                                onStepChange = { currentStep = it },
+                                onSubmit = {
+                                    viewModel.submitService(
+                                        onSuccess = {},
+                                        onError = {}
+                                    )
+                                }
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(0.8f)
+                                .fillMaxHeight()
+                                .background(colorScheme.background)
+                                .padding(32.dp),
+                            contentAlignment = Alignment.TopCenter
+                        ) {
+                            ServiceLivePreview(
+                                title = uiState.title.ifEmpty { "Service Title" },
+                                category = uiState.category.ifEmpty { "Category Name" },
+                                subcategory = uiState.subcategory,
+                                price = uiState.basePrice.ifEmpty { "0.00" },
+                                currency = uiState.currency,
+                                priceUnit = uiState.priceUnit,
+                                location = if (uiState.locationCity.isNotEmpty())
+                                    "${uiState.locationCity}${uiState.locationNeighborhood?.let { ", $it" } ?: ""}"
+                                else "City, Neighborhood",
+                                experience = uiState.yearsExperience.ifEmpty { "X" }
+                            )
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .imePadding()
                     ) {
                         ServicePostStepperContent(
                             viewModel = viewModel,
@@ -166,76 +236,88 @@ fun AdaptiveServicePostLayout(
                             }
                         )
                     }
-
-                    Box(
-                        modifier = Modifier
-                            .weight(0.8f)
-                            .fillMaxHeight()
-                            .background(colorScheme.background)
-                            .padding(32.dp),
-                        contentAlignment = Alignment.TopCenter
-                    ) {
-                        ServiceLivePreview(
-                            title = uiState.title.ifEmpty { "Service Title" },
-                            category = uiState.category.ifEmpty { "Category Name" },
-                            subcategory = uiState.subcategory,
-                            price = uiState.basePrice.ifEmpty { "0.00" },
-                            currency = uiState.currency,
-                            priceUnit = uiState.priceUnit,
-                            location = if (uiState.locationCity.isNotEmpty())
-                                "${uiState.locationCity}${uiState.locationNeighborhood?.let { ", $it" } ?: ""}"
-                            else "City, Neighborhood",
-                            experience = uiState.yearsExperience.ifEmpty { "X" }
-                        )
-                    }
                 }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .imePadding()
-                ) {
-                    ServicePostStepperContent(
-                        viewModel = viewModel,
-                        uiState = uiState,
-                        categoriesState = categoriesState,
-                        pricingUnitsState = pricingUnitsState,
-                        currentStep = currentStep,
-                        onStepChange = { currentStep = it },
-                        onSubmit = {
-                            viewModel.submitService(
-                                onSuccess = {},
-                                onError = {}
-                            )
-                        }
+
+                // Full screen loading OVERLAY
+                if (uiState.isLoading) {
+                    PivotaFullScreenLoading(
+                        modifier = Modifier,
+                        message = "Posting your service..."
                     )
                 }
             }
+        }
 
+        // Snackbars - placed OUTSIDE Scaffold at the very top level
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 80.dp)
+                .zIndex(2000f),
+            contentAlignment = Alignment.TopCenter
+        ) {
             // Success Snackbar
             if (showSuccessSnackbar) {
                 PivotaSnackbar(
-                    message = "Service posted successfully!",
+                    message = successMessage,
                     type = SnackbarType.SUCCESS,
                     duration = 3000,
-                    onDismiss = { showSuccessSnackbar = false }
+                    onDismiss = {
+                        showSuccessSnackbar = false
+                        successMessage = ""
+                    }
                 )
             }
 
             // Error Snackbar
             if (showErrorSnackbar && errorMessage.isNotBlank()) {
+                val isPermissionError = errorMessage.contains("permission", ignoreCase = true) ||
+                        errorMessage.contains("professional", ignoreCase = true) ||
+                        errorMessage.contains("permissions", ignoreCase = true) ||
+                        errorMessage.contains("professional-services.create.own", ignoreCase = true) ||
+                        errorMessage.contains("PROFILE_NOT_FOUND", ignoreCase = true)
+
                 PivotaSnackbar(
                     message = errorMessage,
                     type = SnackbarType.ERROR,
-                    duration = 4000,
+                    duration = 8000,
+                    actionText = if (isPermissionError) "Get Professional Status" else null,
+                    onAction = if (isPermissionError) {
+                        {
+                            showErrorSnackbar = false
+                            errorMessage = ""
+                            viewModel.resetError()
+                        }
+                    } else null,
                     onDismiss = {
                         showErrorSnackbar = false
                         errorMessage = ""
+                        viewModel.resetError()
                     }
                 )
             }
         }
+    }
+
+    // Success Dialog
+    if (showSuccessDialog) {
+        SuccessDialog(
+            message = "Your service has been posted successfully!",
+            onViewListing = {
+                showSuccessDialog = false
+                createdServiceId?.let { serviceId ->
+                    onNavigateToServiceDetails?.invoke(serviceId)
+                } ?: onBack()
+            },
+            onPostAnother = {
+                showSuccessDialog = false
+                viewModel.resetState()
+                currentStep = FormStep.CATEGORY
+            },
+            onDismiss = {
+                // Don't dismiss on back press, force user to choose
+            }
+        )
     }
 }
 
@@ -1593,21 +1675,24 @@ fun ServiceLocationStep(
         Spacer(modifier = Modifier.height(24.dp))
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f).height(50.dp), shape = RoundedCornerShape(8.dp)) {
+            OutlinedButton(
+                onClick = onBack,
+                modifier = Modifier.weight(1f).height(50.dp),
+                shape = RoundedCornerShape(8.dp),
+                enabled = !isLoading  // Disable back button while loading
+            ) {
                 Text("Back", fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
+
             Button(
                 onClick = onSubmit,
                 modifier = Modifier.weight(2f).height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary),
                 shape = RoundedCornerShape(8.dp),
-                enabled = !isLoading && uiState.locationCity.isNotBlank()
+                enabled = !isLoading && uiState.locationCity.isNotBlank()  // Disable while loading
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = colorScheme.onPrimary, strokeWidth = 2.dp)
-                } else {
-                    Text("Post Service", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                }
+                // No loading indicator here - full screen loading will show instead
+                Text("Post Service", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -1777,6 +1862,130 @@ fun ServiceTextField(
     Spacer(modifier = Modifier.height(12.dp))
 }
 
+
+@Composable
+fun SuccessDialog(
+    message: String,
+    onViewListing: () -> Unit,
+    onPostAnother: () -> Unit,
+    onDismiss: () -> Unit = {}
+) {
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.pivota_success_lottie)
+    )
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        iterations = 1,
+        isPlaying = true
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                LottieAnimation(
+                    composition = composition,
+                    progress = { progress },
+                    modifier = Modifier.size(120.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Success",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = SuccessGreen
+                    ),
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "What would you like to do next?",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        confirmButton = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onViewListing,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Visibility,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "View My Service",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = onPostAnother,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Post Another Service",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        },
+        dismissButton = {}
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceDropdown(
@@ -1844,6 +2053,10 @@ fun ServiceDropdown(
         }
     }
 }
+
+
+
+
 
 data class ServiceDayAvailability(
     val day: String,

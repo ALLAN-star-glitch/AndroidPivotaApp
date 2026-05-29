@@ -11,9 +11,13 @@ import com.example.pivota.ui.theme.PivotaConnectTheme
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun PostServiceScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateToServiceDetails: ((String) -> Unit)? = null
 ) {
-    AdaptiveServicePostLayout(onBack = onBack)
+    AdaptiveServicePostLayout(
+        onBack = onBack,
+        onNavigateToServiceDetails = onNavigateToServiceDetails
+    )
 }
 
 @RequiresApi(Build.VERSION_CODES.O)

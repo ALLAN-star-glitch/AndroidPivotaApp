@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -22,11 +23,6 @@ import com.example.pivota.ui.theme.SuccessGreen
 import com.example.pivota.ui.theme.WarningAmber
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-// Pure red color for errors
-val PureRed = Color(0xFFDC2626)
-val PureRedDark = Color(0xFFB91C1C)
-val OnPureRed = Color(0xFFFFFFFF)
 
 @Composable
 fun PivotaSnackbar(
@@ -39,6 +35,7 @@ fun PivotaSnackbar(
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val colorScheme = MaterialTheme.colorScheme
 
     LaunchedEffect(message) {
         if (message.isNotBlank()) {
@@ -49,24 +46,24 @@ fun PivotaSnackbar(
 
     AnimatedVisibility(
         visible = message.isNotBlank(),
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
     ) {
         Card(
             modifier = modifier
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
                 .fillMaxWidth()
-                .zIndex(1000f),
+                .zIndex(2000f),
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(
                 containerColor = when (type) {
-                    SnackbarType.ERROR -> PureRed
-                    SnackbarType.SUCCESS -> SuccessGreen
-                    SnackbarType.WARNING -> WarningAmber
-                    SnackbarType.INFO -> InfoBlue
+                    SnackbarType.ERROR -> colorScheme.error
+                    SnackbarType.SUCCESS -> SuccessGreen  // Use dedicated success color
+                    SnackbarType.WARNING -> WarningAmber  // Use dedicated warning color
+                    SnackbarType.INFO -> InfoBlue        // Use dedicated info color
                 }
             ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -82,42 +79,50 @@ fun PivotaSnackbar(
                         SnackbarType.INFO -> Icons.Default.Info
                     },
                     contentDescription = null,
-                    tint = when (type) {
-                        SnackbarType.ERROR -> OnPureRed
-                        SnackbarType.SUCCESS -> Color.White
-                        SnackbarType.WARNING -> Color.White
-                        SnackbarType.INFO -> Color.White
-                    },
+                    tint = Color.White,
                     modifier = Modifier.size(22.dp)
                 )
+
                 Spacer(modifier = Modifier.width(12.dp))
+
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = when (type) {
-                            SnackbarType.ERROR -> OnPureRed
-                            else -> Color.White
-                        },
+                        color = Color.White,
                         fontSize = 14.sp
                     ),
                     modifier = Modifier.weight(1f)
                 )
+
+                // Action button - compact styling
                 if (actionText != null && onAction != null) {
-                    TextButton(
+                    Button(
                         onClick = onAction,
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        modifier = Modifier
+                            .wrapContentWidth()
+                            .height(36.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorScheme.surface,
+                            contentColor = when (type) {
+                                SnackbarType.ERROR -> colorScheme.error
+                                SnackbarType.SUCCESS -> SuccessGreen
+                                SnackbarType.WARNING -> WarningAmber
+                                SnackbarType.INFO -> InfoBlue
+                            }
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                     ) {
                         Text(
-                            actionText,
-                            color = when (type) {
-                                SnackbarType.ERROR -> OnPureRed
-                                else -> Color.White
-                            },
+                            text = actionText,
                             fontSize = 13.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                            fontWeight = FontWeight.Medium
                         )
                     }
+
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
+
                 IconButton(
                     onClick = onDismiss,
                     modifier = Modifier.size(32.dp)
@@ -125,10 +130,7 @@ fun PivotaSnackbar(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Dismiss",
-                        tint = when (type) {
-                            SnackbarType.ERROR -> OnPureRed.copy(alpha = 0.9f)
-                            else -> Color.White.copy(alpha = 0.8f)
-                        },
+                        tint = Color.White.copy(alpha = 0.8f),
                         modifier = Modifier.size(18.dp)
                     )
                 }

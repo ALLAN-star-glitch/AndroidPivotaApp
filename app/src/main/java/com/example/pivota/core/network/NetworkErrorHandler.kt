@@ -186,7 +186,7 @@ class NetworkExceptionHandler {
                 )
                 403 -> NetworkError.Unauthorized(
                     originalMessage = originalMessage,
-                    userFriendlyMessage = originalMessage ?: "Access denied.",
+                    userFriendlyMessage = originalMessage ?: "Access denied. You don't have permission to perform this action.",
                     statusCode = statusCode
                 )
                 404 -> NetworkError.NotFound(

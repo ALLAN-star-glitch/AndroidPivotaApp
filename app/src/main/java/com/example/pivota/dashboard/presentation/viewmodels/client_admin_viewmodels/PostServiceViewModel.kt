@@ -274,10 +274,30 @@ class PostServiceViewModel @Inject constructor(
                     onSuccess()
                 }
                 is ApiResult.Error -> {
-                    val errorMessage = result.networkError.userFriendlyMessage
-                    println("❌ [PostServiceViewModel] Error: $errorMessage")
+                    // Get the original message from the backend
+                    val originalMessage = result.networkError.originalMessage
+                    val statusCode = result.networkError.statusCode
+
+                    println("❌ [PostServiceViewModel] Status Code: $statusCode")
+                    println("❌ [PostServiceViewModel] Original Message: $originalMessage")
+
+                    // Make the error message more user-friendly
+                    val errorMessage = when {
+                        originalMessage?.contains("professional-services.create.own") == true ->
+                            "You don't have permission to post services. Please ensure you have a professional contractor account."
+                        originalMessage?.contains("PROFILE_NOT_FOUND") == true ->
+                            "Please create a professional profile first. Go to Profile → Become a Professional"
+                        originalMessage?.contains("Insufficient permissions") == true ->
+                            "You need professional status to post services. Please complete your professional profile."
+                        !originalMessage.isNullOrBlank() -> originalMessage
+                        statusCode == 403 -> "Access denied. You don't have permission to perform this action."
+                        else -> "An unexpected error occurred. Please try again."
+                    }
+
+                    println("❌ [PostServiceViewModel] Final Error: $errorMessage")
+
                     _uiState.update {
-                        it.copy(isLoading = false, error = errorMessage)
+                        it.copy(isLoading = false, error = errorMessage, isSuccess = false)
                     }
                     onError(errorMessage)
                 }
@@ -341,6 +361,14 @@ class PostServiceViewModel @Inject constructor(
         _uiState.value = PostServiceUiState()
         _pricingUnitsState.value = PricingUnitsState.Idle
         loadCategories() // Reload categories when resetting
+    }
+
+    fun resetError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    fun resetSuccess() {
+        _uiState.update { it.copy(isSuccess = false) }
     }
 }
 

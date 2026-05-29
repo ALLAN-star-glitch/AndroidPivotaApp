@@ -24,8 +24,8 @@ android {
         applicationId = "com.example.pivota"
         minSdk = 24
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.0.9"
+        versionCode = 10
+        versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -47,44 +47,48 @@ android {
                 artifactType = "APK"
                 testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
                 releaseNotes = """
-PivotaConnect v1.0.9 (Build 9)
+PivotaConnect v1.1.0 (Build 10)
 
-🚀 NEW: MULTI-STEP SERVICE POSTING FORM WITH STEPPER
-• Complete redesign of service posting with 5-step wizard
-• Visual step indicator with progress tracking
-• Steps: Category → Basic Info → Pricing → Availability → Location
-• Navigate between completed steps easily
-• Auto-scrolling stepper that follows your progress
+NEW: POST SERVICE SUCCESS FLOW
+- Added elegant success dialog with Lottie animation after posting
+- Two clear options: View My Service or Post Another Service
+- Improved user experience with visual feedback
 
-✨ ENHANCEMENTS:
-• Step completion validation with visual checkmarks
-• ServiceLivePreview shows real-time form data
-• Responsive tablet layout with split-screen preview
-• Animated transitions between form steps
-• AM/PM time picker for availability
-• Manual text input for number pickers
-• Tap to edit number values directly
+ENHANCEMENTS:
+- Redesigned PivotaSnackbar with proper theming
+- Success snackbar now uses brand green color
+- Error snackbar shows actual backend messages (no more generic errors)
+- Added action button to snackbar for permission errors
+- Snackbar now appears at top of screen with proper z-index
+- Added professional profile detection with helpful error messages
+- Improved error handling for permission-related issues
 
-🎨 UI IMPROVEMENTS:
-• Step indicator with numbered circles
-• Completion status icons (checkmark for completed steps)
-• Better form organization by sections
-• Improved loading states
-• Enhanced error messages
+UI IMPROVEMENTS:
+- Updated snackbar styling to match brand guidelines
+- Action button in snackbar now uses Baobab Gold color
+- Success dialog uses brand colors sparingly
+- Better visual hierarchy in all feedback components
 
-🐛 FIXES:
-• Fixed weight modifier issues in layouts
-• Fixed long press infinite increment issue
-• Improved time picker with AM/PM format
-• Fixed number picker validation
+BUG FIXES:
+- Fixed snackbar appearing behind TopBar
+- Fixed error messages being converted to generic messages
+- Fixed action button not showing in snackbar
+- Fixed snackbar positioning on tablets
+- Fixed duplicate LaunchedEffect causing issues
 
-📱 FEATURES OVERVIEW:
-• Post professional services
-• Dynamic pricing based on category
-• Set working hours per day
-• Location-based service offering
-• Dark/Light theme support
-• Tablet optimized
+TECHNICAL UPDATES:
+- Added resetSuccess() method to ViewModel
+- Improved error message extraction from backend
+- Better handling of 403 permission errors
+- Added proper z-index for overlay components
+
+PREVIOUS FEATURES (still available):
+- Post professional services with 5-step wizard
+- Dynamic pricing based on category
+- Set working hours per day
+- AM/PM time picker with manual input
+- Dark/Light theme support
+- Tablet optimized layout
                 """.trimIndent()
             }
         }
