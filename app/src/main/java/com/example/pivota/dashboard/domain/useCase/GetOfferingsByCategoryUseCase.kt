@@ -1,7 +1,7 @@
 package com.example.pivota.dashboard.domain.useCase
 
 import com.example.pivota.core.network.ApiResult
-
+import com.example.pivota.dashboard.domain.repository.CacheStatus
 import com.example.pivota.dashboard.domain.repository.ServiceOfferingsRepository
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOfferingsResponse
 import javax.inject.Inject
@@ -16,7 +16,8 @@ class GetOfferingsByCategoryUseCase @Inject constructor(
         offset: Int = 0,
         city: String? = null,
         minPrice: Double? = null,
-        maxPrice: Double? = null
+        maxPrice: Double? = null,
+        forceRefresh: Boolean = false
     ): ApiResult<ServiceOfferingsResponse> {
         return repository.getOfferingsByCategory(
             categoryId = categoryId,
@@ -24,7 +25,16 @@ class GetOfferingsByCategoryUseCase @Inject constructor(
             offset = offset,
             city = city,
             minPrice = minPrice,
-            maxPrice = maxPrice
+            maxPrice = maxPrice,
+            forceRefresh = forceRefresh
         )
+    }
+
+    suspend fun getCacheStatus(categoryId: String): CacheStatus {
+        return repository.getCacheStatus(categoryId)
+    }
+
+    suspend fun clearAllCache() {
+        repository.clearAllCache()
     }
 }

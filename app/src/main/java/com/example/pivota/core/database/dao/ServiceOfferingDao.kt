@@ -23,12 +23,30 @@ interface ServiceOfferingDao {
     @Query("SELECT * FROM service_offerings WHERE categoryId = :categoryId ORDER BY basePrice ASC")
     suspend fun getOfferingsByCategoryList(categoryId: String): List<ServiceOfferingEntity>
 
+    @Query("SELECT * FROM service_offerings WHERE id = :offeringId")
+    suspend fun getServiceOfferingById(offeringId: String): ServiceOfferingEntity?
+
     @Query("DELETE FROM service_offerings WHERE categoryId = :categoryId")
     suspend fun deleteOfferingsByCategory(categoryId: String)
+
+    @Query("DELETE FROM service_offerings")
+    suspend fun clearAllOfferings()
 
     @Query("SELECT * FROM service_offerings_cache_metadata WHERE categoryId = :categoryId")
     suspend fun getCacheMetadata(categoryId: String): ServiceOfferingsCacheMetadataEntity?
 
+    @Query("DELETE FROM service_offerings_cache_metadata WHERE categoryId = :categoryId")
+    suspend fun deleteCacheMetadata(categoryId: String)
+
+    @Query("DELETE FROM service_offerings_cache_metadata")
+    suspend fun clearAllCacheMetadata()
+
     @Query("DELETE FROM service_offerings WHERE lastUpdated < :timestamp")
     suspend fun deleteStaleOfferings(timestamp: Long)
+
+    @Query("SELECT COUNT(*) FROM service_offerings WHERE categoryId = :categoryId")
+    suspend fun getOfferingsCount(categoryId: String): Int
+
+    @Query("SELECT COUNT(*) FROM service_offerings_cache_metadata")
+    suspend fun getCacheMetadataCount(): Int
 }

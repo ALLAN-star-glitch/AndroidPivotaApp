@@ -13,7 +13,8 @@ interface ServiceOfferingsRepository {
         offset: Int = 0,
         city: String? = null,
         minPrice: Double? = null,
-        maxPrice: Double? = null
+        maxPrice: Double? = null,
+        forceRefresh: Boolean = false
     ): ApiResult<ServiceOfferingsResponse>
 
     fun getOfferingsByCategoryStream(
@@ -24,9 +25,24 @@ interface ServiceOfferingsRepository {
         request: CreateServiceOfferingRequestDto
     ): ApiResult<ServiceOfferingsResponse>
 
-    suspend fun refreshOfferingsByCategory(categoryId: String)
+    suspend fun refreshOfferingsByCategory(categoryId: String, force: Boolean = false)
 
     suspend fun clearOfferingsCache()
 
-    suspend fun getServiceOfferingById(serviceId: String): ApiResult<ServiceOffering>
+    suspend fun clearAllCache()
+
+    suspend fun getServiceOfferingById(
+        serviceId: String,
+        forceRefresh: Boolean = false
+    ): ApiResult<ServiceOffering>
+
+    suspend fun getCacheStatus(categoryId: String): CacheStatus
+}
+
+// Cache status sealed class
+sealed class CacheStatus {
+    object Empty : CacheStatus()
+    data class Fresh(val ageMs: Long) : CacheStatus()
+    data class Stale(val ageMs: Long) : CacheStatus()
+    data class Expired(val ageMs: Long) : CacheStatus()
 }

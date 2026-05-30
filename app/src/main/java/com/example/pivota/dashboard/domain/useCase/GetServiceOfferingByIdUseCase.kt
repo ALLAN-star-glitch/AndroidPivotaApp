@@ -8,7 +8,10 @@ import javax.inject.Inject
 class GetServiceOfferingByIdUseCase @Inject constructor(
     private val repository: ServiceOfferingsRepository
 ) {
-    suspend operator fun invoke(serviceId: String): ApiResult<ServiceOffering> {
-        return repository.getServiceOfferingById(serviceId)
+    suspend operator fun invoke(
+        serviceId: String,
+        forceRefresh: Boolean = false
+    ): ApiResult<ServiceOffering> {
+        return repository.getServiceOfferingById(serviceId, forceRefresh)
     }
 }

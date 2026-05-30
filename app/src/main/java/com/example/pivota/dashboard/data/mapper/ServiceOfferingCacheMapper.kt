@@ -1,6 +1,7 @@
 package com.example.pivota.dashboard.data.mapper
 
 import com.example.pivota.core.database.entity.ServiceOfferingEntity
+import com.example.pivota.dashboard.data.dto.CreatedServiceOfferingDataDto
 import com.example.pivota.dashboard.data.dto.DayAvailabilityDto
 import com.example.pivota.dashboard.data.dto.ServiceOfferingDto
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.DayAvailability
@@ -60,6 +61,57 @@ class ServiceOfferingCacheMapper @Inject constructor(
         // Convert DTO availability to domain model first, then serialize
         val availabilityJson = dto.availability?.let { availabilityDtoList ->
             val domainAvailabilityList = toDomainAvailabilityList(availabilityDtoList)
+            moshi.adapter<List<DayAvailability>>(DAY_AVAILABILITY_LIST_TYPE).toJson(domainAvailabilityList)
+        }
+
+        return ServiceOfferingEntity(
+            id = dto.id,
+            externalId = dto.externalId,
+            professionalName = dto.professionalName,
+            professionalAvatar = dto.professionalAvatar,
+            isVerified = dto.isVerified,
+            title = dto.title,
+            description = dto.description,
+            categoryId = categoryId,
+            categoryName = dto.categoryName,
+            basePrice = dto.basePrice,
+            priceUnit = dto.priceUnit,
+            currency = dto.currency,
+            locationCity = dto.locationCity,
+            locationNeighborhood = dto.locationNeighborhood,
+            availability = availabilityJson,
+            yearsExperience = dto.yearsExperience,
+            hourlyRate = dto.hourlyRate,
+            serviceAreas = serviceAreasJson,
+            status = dto.status,
+            averageRating = dto.averageRating,
+            reviewCount = dto.reviewCount,
+            createdAt = dto.createdAt,
+            updatedAt = dto.updatedAt,
+            lastUpdated = System.currentTimeMillis()
+        )
+    }
+
+    /**
+     * Convert from CreatedServiceOfferingDataDto to Entity for individual service offering (from detail endpoint)
+     * This is needed when fetching single offering details
+     */
+    fun toEntityFromDetail(
+        dto: CreatedServiceOfferingDataDto,
+        categoryId: String
+    ): ServiceOfferingEntity {
+        val serviceAreasJson = moshi.adapter<List<String>>(STRING_LIST_TYPE).toJson(dto.serviceAreas)
+
+        // Convert DTO availability to domain model first, then serialize
+        val availabilityJson = dto.availability?.let { availabilityDtoList ->
+            val domainAvailabilityList = availabilityDtoList.map { dayDto ->
+                DayAvailability(
+                    day = dayDto.day,
+                    open = dayDto.open,
+                    close = dayDto.close,
+                    isClosed = dayDto.isClosed
+                )
+            }
             moshi.adapter<List<DayAvailability>>(DAY_AVAILABILITY_LIST_TYPE).toJson(domainAvailabilityList)
         }
 
