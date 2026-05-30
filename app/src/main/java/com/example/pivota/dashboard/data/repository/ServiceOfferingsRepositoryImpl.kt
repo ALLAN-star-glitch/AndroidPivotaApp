@@ -246,4 +246,73 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
             ApiResult.Loading -> ApiResult.Loading
         }
     }
+
+    override suspend fun getServiceOfferingById(serviceId: String): ApiResult<ServiceOffering> {
+        println("🔍 ========== GET SERVICE OFFERING BY ID ==========")
+        println("🔍 Service ID: $serviceId")
+        println("🔍 ================================================")
+
+        val result = safeApiCall {
+            apiService.getServiceOfferingById(serviceId)
+        }
+
+        return when (result) {
+            is ApiResult.Success -> {
+                val response = result.data
+                println("🔍 GET SERVICE OFFERING BY ID RESPONSE: success=${response.success}, message=${response.message}")
+
+                if (response.success && response.data != null) {
+                    val offeringData = response.data
+                    val domainOffering = ServiceOffering(
+                        id = offeringData.id,
+                        externalId = offeringData.externalId,
+                        professionalName = offeringData.professionalName,
+                        professionalAvatar = offeringData.professionalAvatar,
+                        isVerified = offeringData.isVerified,
+                        title = offeringData.title,
+                        description = offeringData.description,
+                        categoryId = offeringData.categoryId,
+                        categoryName = offeringData.categoryName,
+                        basePrice = offeringData.basePrice,
+                        priceUnit = offeringData.priceUnit,
+                        currency = offeringData.currency,
+                        locationCity = offeringData.locationCity,
+                        locationNeighborhood = offeringData.locationNeighborhood,
+                        availability = offeringData.availability?.map { dayDto ->
+                            DayAvailability(
+                                day = dayDto.day,
+                                open = dayDto.open,
+                                close = dayDto.close,
+                                isClosed = dayDto.isClosed
+                            )
+                        } ?: emptyList(),
+                        yearsExperience = offeringData.yearsExperience,
+                        hourlyRate = offeringData.hourlyRate,
+                        serviceAreas = offeringData.serviceAreas,
+                        status = offeringData.status,
+                        averageRating = offeringData.averageRating,
+                        reviewCount = offeringData.reviewCount,
+                        createdAt = offeringData.createdAt,
+                        updatedAt = offeringData.updatedAt
+                    )
+                    ApiResult.Success(domainOffering)
+                } else {
+                    ApiResult.Error(
+                        networkError = NetworkError.Unknown(
+                            originalMessage = response.message
+                        ),
+                        technicalMessage = response.message
+                    )
+                }
+            }
+            is ApiResult.Error -> {
+                println("❌ GET SERVICE OFFERING BY ID ERROR: ${result.technicalMessage}")
+                ApiResult.Error(
+                    networkError = result.networkError,
+                    technicalMessage = result.technicalMessage
+                )
+            }
+            ApiResult.Loading -> ApiResult.Loading
+        }
+    }
 }

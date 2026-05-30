@@ -122,4 +122,51 @@ class ServiceOfferingsApiService @Inject constructor(
             throw e
         }
     }
+
+    /**
+     * Get a single service offering by ID
+     * @param serviceId - The ID of the service offering to retrieve
+     */
+    suspend fun getServiceOfferingById(
+        serviceId: String
+    ): CreateServiceOfferingResponseDto {
+        println("🔍 ========== GET SERVICE OFFERING BY ID REQUEST ==========")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/contractors-module/service-offerings/$serviceId")
+        println("🔍 SERVICE ID: $serviceId")
+        println("🔍 =======================================================")
+
+        return try {
+            val response: CreateServiceOfferingResponseDto = client.get("v1/contractors-module/service-offerings/$serviceId") {
+                contentType(ContentType.Application.Json)
+            }.body()
+
+            println("🔍 ========== GET SERVICE OFFERING BY ID RESPONSE ==========")
+            println("🔍 SUCCESS: ${response.success}")
+            println("🔍 MESSAGE: ${response.message}")
+            println("🔍 CODE: ${response.code}")
+            response.data?.let {
+                println("🔍 OFFERING ID: ${it.id}")
+                println("🔍 TITLE: ${it.title}")
+                println("🔍 CATEGORY: ${it.categoryName}")
+                println("🔍 PROFESSIONAL: ${it.professionalName}")
+                println("🔍 VERIFIED: ${it.isVerified}")
+                println("🔍 PRICE: ${it.basePrice} ${it.currency}")
+                println("🔍 STATUS: ${it.status}")
+            }
+            println("🔍 ========================================================")
+
+            response
+        } catch (e: ClientRequestException) {
+            println("❌ Get Service Offering By ID Client Error (${e.response.status.value}): ${e.message}")
+            val errorBody = try { e.response.bodyAsText() } catch (ex: Exception) { "Unable to read error body" }
+            println("❌ Error Body: $errorBody")
+            throw e
+        } catch (e: ServerResponseException) {
+            println("❌ Get Service Offering By ID Server Error (${e.response.status.value}): ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("❌ Get Service Offering By ID Failed: ${e.message}")
+            throw e
+        }
+    }
 }

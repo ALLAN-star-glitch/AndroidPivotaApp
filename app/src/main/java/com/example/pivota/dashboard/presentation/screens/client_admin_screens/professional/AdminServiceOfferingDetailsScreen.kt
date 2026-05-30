@@ -310,7 +310,7 @@ fun AdminServiceOfferingDetailsScreenContent(
                 isWide = isWide
             )
         },
-        containerColor = Color(0xFFFAFAFA)
+        containerColor = colorScheme.background
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -331,24 +331,7 @@ fun AdminServiceOfferingDetailsScreenContent(
                             .weight(1f)
                             .verticalScroll(rememberScrollState())
                     ) {
-                        Spacer(modifier = Modifier.height(16.dp))
 
-                        // Service Image
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(250.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Outlined.Work,
-                                contentDescription = null,
-                                modifier = Modifier.size(80.dp),
-                                tint = colorScheme.primary
-                            )
-                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
@@ -449,24 +432,8 @@ fun AdminServiceOfferingDetailsScreenContent(
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 16.dp)
                 ) {
-                    Spacer(modifier = Modifier.height(16.dp))
 
-                    // Service Image
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Outlined.Work,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = colorScheme.primary
-                        )
-                    }
+
 
                     Spacer(modifier = Modifier.height(16.dp))
 

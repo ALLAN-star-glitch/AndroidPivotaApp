@@ -2,6 +2,7 @@ package com.example.pivota.dashboard.presentation.screens.client_general_screens
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,11 +18,17 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -34,6 +41,7 @@ import com.example.pivota.dashboard.presentation.composables.listings_composable
 import com.example.pivota.dashboard.presentation.state.ServiceOfferingsUiState
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.ServiceOfferingsViewModel
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
 // Filter options for service offerings
 enum class ServiceOfferingFilter {
@@ -62,6 +70,70 @@ data class ServiceFilterState(
     val verifiedOnly: Boolean = false,
     val minRating: Int = 0
 )
+
+// Custom modifier for shimmer effect - MORE VISIBLE VERSION
+fun Modifier.shimmerEffect(): Modifier = composed {
+    var size by remember { mutableStateOf(0f) }
+    val density = LocalDensity.current
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val animationValue = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_animation"
+    )
+
+    // More visible shimmer with stronger contrast
+    val brush = Brush.linearGradient(
+        colors = listOf(
+            Color.Transparent,
+            Color.White.copy(alpha = 0.7f),  // Increased from 0.3 to 0.7
+            Color.White.copy(alpha = 0.3f),  // Added middle layer for smoother transition
+            Color.Transparent
+        ),
+        start = Offset(animationValue.value - size, 0f),
+        end = Offset(animationValue.value, size)
+    )
+
+    this
+        .onGloballyPositioned {
+            size = it.size.width.toFloat()
+        }
+        .background(brush)
+}
+
+// Alternative: Even more prominent shimmer with gradient colors
+fun Modifier.prominentShimmerEffect(): Modifier = composed {
+    var size by remember { mutableStateOf(0f) }
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val animationValue = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_animation"
+    )
+
+    val brush = Brush.linearGradient(
+        colors = listOf(
+            Color.Transparent,
+            Color(0xFFE0E0E0).copy(alpha = 0.8f),  // Light gray instead of white
+            Color(0xFFF5F5F5).copy(alpha = 0.5f),   // Even lighter gray
+            Color.Transparent
+        ),
+        start = Offset(animationValue.value - size, 0f),
+        end = Offset(animationValue.value + (size * 0.5f), size)
+    )
+
+    this
+        .onGloballyPositioned { size = it.size.width.toFloat() }
+        .background(brush)
+}
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,64 +186,65 @@ fun ServiceOfferingsScreen(
         activeFilterCount = count
     }
 
-    // Load more when scrolling near the end
-    LaunchedEffect(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index) {
-        val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-        val totalItems = (offeringsState as? ServiceOfferingsUiState.Success)?.offerings?.size ?: 0
+    // SAFE: Only calculate filtered offerings when state is Success
+    val filteredOfferings = remember(offeringsState, debouncedQuery.value, filterState) {
+        if (offeringsState is ServiceOfferingsUiState.Success) {
+            val offerings = (offeringsState as ServiceOfferingsUiState.Success).offerings
+            var filtered = offerings
 
-        if (lastVisibleIndex >= totalItems - 3 &&
-            offeringsState is ServiceOfferingsUiState.Success &&
-            (offeringsState as ServiceOfferingsUiState.Success).hasMore) {
-            viewModel.loadMore()
+            // Search filter
+            if (debouncedQuery.value.isNotEmpty()) {
+                filtered = filtered.filter {
+                    it.title.lowercase().contains(debouncedQuery.value) ||
+                            it.professionalName.lowercase().contains(debouncedQuery.value) ||
+                            it.categoryName.lowercase().contains(debouncedQuery.value)
+                }
+            }
+
+            // Price range filter
+            if (filterState.minPrice != null) {
+                filtered = filtered.filter { it.basePrice >= filterState.minPrice!! }
+            }
+            if (filterState.maxPrice != null) {
+                filtered = filtered.filter { it.basePrice <= filterState.maxPrice!! }
+            }
+
+            // Verified only filter
+            if (filterState.verifiedOnly) {
+                filtered = filtered.filter { it.isVerified }
+            }
+
+            // Rating filter
+            if (filterState.minRating > 0) {
+                filtered = filtered.filter { it.averageRating >= filterState.minRating }
+            }
+
+            // Sort
+            filtered = when (filterState.selectedSort) {
+                SortOption.RECENT -> filtered
+                SortOption.LOWEST_PRICE -> filtered.sortedBy { it.basePrice }
+                SortOption.HIGHEST_PRICE -> filtered.sortedByDescending { it.basePrice }
+                SortOption.HIGHEST_RATED -> filtered.sortedByDescending { it.averageRating }
+                SortOption.MOST_EXPERIENCED -> filtered.sortedByDescending { it.yearsExperience }
+            }
+
+            filtered
+        } else {
+            emptyList()
         }
     }
 
-    // Filter and sort offerings
-    val filteredOfferings = remember(offeringsState, debouncedQuery.value, filterState) {
-        when (offeringsState) {
-            is ServiceOfferingsUiState.Success -> {
-                val offerings = (offeringsState as ServiceOfferingsUiState.Success).offerings
-                var filtered = offerings
+    // SAFE: Get hasMore only when state is Success
+    val hasMoreData = offeringsState is ServiceOfferingsUiState.Success &&
+            (offeringsState as ServiceOfferingsUiState.Success).hasMore
 
-                // Search filter
-                if (debouncedQuery.value.isNotEmpty()) {
-                    filtered = filtered.filter {
-                        it.title.lowercase().contains(debouncedQuery.value) ||
-                                it.professionalName.lowercase().contains(debouncedQuery.value) ||
-                                it.categoryName.lowercase().contains(debouncedQuery.value)
-                    }
-                }
-
-                // Price range filter
-                if (filterState.minPrice != null) {
-                    filtered = filtered.filter { it.basePrice >= filterState.minPrice!! }
-                }
-                if (filterState.maxPrice != null) {
-                    filtered = filtered.filter { it.basePrice <= filterState.maxPrice!! }
-                }
-
-                // Verified only filter
-                if (filterState.verifiedOnly) {
-                    filtered = filtered.filter { it.isVerified }
-                }
-
-                // Rating filter
-                if (filterState.minRating > 0) {
-                    filtered = filtered.filter { it.averageRating >= filterState.minRating }
-                }
-
-                // Sort
-                filtered = when (filterState.selectedSort) {
-                    SortOption.RECENT -> filtered
-                    SortOption.LOWEST_PRICE -> filtered.sortedBy { it.basePrice }
-                    SortOption.HIGHEST_PRICE -> filtered.sortedByDescending { it.basePrice }
-                    SortOption.HIGHEST_RATED -> filtered.sortedByDescending { it.averageRating }
-                    SortOption.MOST_EXPERIENCED -> filtered.sortedByDescending { it.yearsExperience }
-                }
-
-                filtered
-            }
-            else -> emptyList()
+    // Load more when scrolling near the end
+    LaunchedEffect(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index) {
+        val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+        if (lastVisibleIndex >= filteredOfferings.size - 3 &&
+            filteredOfferings.isNotEmpty() &&
+            hasMoreData) {
+            viewModel.loadMore()
         }
     }
 
@@ -197,17 +270,11 @@ fun ServiceOfferingsScreen(
         ) {
             when (offeringsState) {
                 is ServiceOfferingsUiState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                    ServiceOfferingsLoadingSkeleton()
                 }
 
                 is ServiceOfferingsUiState.Success -> {
                     if (filteredOfferings.isEmpty()) {
-                        // Empty state
                         ServiceOfferingsEmptyState(
                             hasSearchOrFilter = searchQuery.isNotEmpty() || activeFilterCount > 0,
                             onClearFilters = {
@@ -227,15 +294,17 @@ fun ServiceOfferingsScreen(
                             ),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(filteredOfferings, key = { it.id }) { offering ->
+                            items(
+                                items = filteredOfferings,
+                                key = { it.id }
+                            ) { offering ->
                                 ServiceOfferingCard(
                                     offering = offering,
                                     onClick = { onOfferingClick(offering.id) }
                                 )
                             }
 
-                            // Loading more indicator
-                            if ((offeringsState as ServiceOfferingsUiState.Success).hasMore) {
+                            if (hasMoreData) {
                                 item {
                                     Box(
                                         modifier = Modifier
@@ -266,7 +335,6 @@ fun ServiceOfferingsScreen(
         }
     }
 
-    // Filter Bottom Sheet
     if (showFilterModal) {
         ServiceOfferingsFilterBottomSheet(
             filterState = filterState,
@@ -279,6 +347,150 @@ fun ServiceOfferingsScreen(
             },
             colorScheme = colorScheme
         )
+    }
+}
+
+@Composable
+private fun ServiceOfferingsLoadingSkeleton() {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            horizontal = 16.dp,
+            vertical = 12.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(5) {
+            ServiceOfferingCardSkeleton()
+        }
+    }
+}
+
+@Composable
+private fun ServiceOfferingCardSkeleton() {
+    val colorScheme = MaterialTheme.colorScheme
+    // Use the more prominent shimmer effect
+    val shimmerModifier = Modifier.prominentShimmerEffect()
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(160.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            // Avatar skeleton
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(colorScheme.surfaceVariant)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(shimmerModifier)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                // Title skeleton
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(colorScheme.surfaceVariant)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(shimmerModifier)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Category skeleton
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.5f)
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(colorScheme.surfaceVariant)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(shimmerModifier)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Price skeleton
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.4f)
+                        .height(24.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(colorScheme.surfaceVariant)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(shimmerModifier)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Rating skeleton
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(colorScheme.surfaceVariant)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(shimmerModifier)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.3f)
+                            .height(14.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(colorScheme.surfaceVariant)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(shimmerModifier)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -311,7 +523,6 @@ private fun ServiceOfferingsHeader(
                 .statusBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            // Top row with back button and title
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -366,7 +577,6 @@ private fun ServiceOfferingsHeader(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Search Bar with Filter
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -439,7 +649,6 @@ private fun ServiceOfferingsHeader(
 
                     Spacer(modifier = Modifier.width(4.dp))
 
-                    // Filter button with badge
                     BadgedBox(
                         badge = {
                             if (activeFilterCount > 0) {
@@ -521,7 +730,6 @@ private fun ServiceOfferingsFilterBottomSheet(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
         ) {
-            // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -558,7 +766,6 @@ private fun ServiceOfferingsFilterBottomSheet(
                 }
             }
 
-            // Sort By Section
             Text(
                 text = "Sort By",
                 fontSize = 15.sp,
@@ -599,7 +806,6 @@ private fun ServiceOfferingsFilterBottomSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Price Range Section
             Text(
                 text = "Price Range (KES)",
                 fontSize = 15.sp,
@@ -643,7 +849,6 @@ private fun ServiceOfferingsFilterBottomSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Verified Only
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -674,7 +879,6 @@ private fun ServiceOfferingsFilterBottomSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Minimum Rating
             Text(
                 text = "Minimum Rating",
                 fontSize = 15.sp,
@@ -716,7 +920,6 @@ private fun ServiceOfferingsFilterBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Filter summary
             val activeFilters = mutableListOf<String>()
             if (localFilterState.selectedSort != SortOption.RECENT) {
                 activeFilters.add(localFilterState.selectedSort.displayName)
@@ -752,7 +955,6 @@ private fun ServiceOfferingsFilterBottomSheet(
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // Action Buttons
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

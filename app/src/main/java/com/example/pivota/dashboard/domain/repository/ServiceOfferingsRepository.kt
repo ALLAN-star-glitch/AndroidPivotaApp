@@ -27,4 +27,6 @@ interface ServiceOfferingsRepository {
     suspend fun refreshOfferingsByCategory(categoryId: String)
 
     suspend fun clearOfferingsCache()
+
+    suspend fun getServiceOfferingById(serviceId: String): ApiResult<ServiceOffering>
 }

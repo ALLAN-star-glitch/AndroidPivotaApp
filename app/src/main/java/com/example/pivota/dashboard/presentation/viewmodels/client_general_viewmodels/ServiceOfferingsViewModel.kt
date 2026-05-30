@@ -3,7 +3,9 @@ package com.example.pivota.dashboard.presentation.viewmodels.client_general_view
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pivota.core.network.ApiResult
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
 import com.example.pivota.dashboard.domain.useCase.GetOfferingsByCategoryUseCase
+import com.example.pivota.dashboard.domain.useCase.GetServiceOfferingByIdUseCase
 import com.example.pivota.dashboard.presentation.state.ServiceOfferingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,11 +17,18 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ServiceOfferingsViewModel @Inject constructor(
-    private val getOfferingsByCategoryUseCase: GetOfferingsByCategoryUseCase
+    private val getOfferingsByCategoryUseCase: GetOfferingsByCategoryUseCase,
+    private val getServiceOfferingByIdUseCase: GetServiceOfferingByIdUseCase
 ) : ViewModel() {
 
     private val _offeringsState = MutableStateFlow<ServiceOfferingsUiState>(ServiceOfferingsUiState.Loading)
     val offeringsState: StateFlow<ServiceOfferingsUiState> = _offeringsState.asStateFlow()
+
+    private val _serviceDetailsState = MutableStateFlow<ServiceDetailsState>(ServiceDetailsState.Loading)
+    val serviceDetailsState: StateFlow<ServiceDetailsState> = _serviceDetailsState.asStateFlow()
+
+    // Cache for service offerings by ID
+    private val cachedOfferings = mutableMapOf<String, ServiceOffering>()
 
     private var currentCategoryId: String = ""
     private var currentLimit: Int = 20
@@ -74,6 +83,11 @@ class ServiceOfferingsViewModel @Inject constructor(
 
                     val allOfferings = existingOfferings + offerings
 
+                    // Cache individual offerings
+                    offerings.forEach { offering ->
+                        cachedOfferings[offering.id] = offering
+                    }
+
                     _offeringsState.update {
                         ServiceOfferingsUiState.Success(
                             offerings = allOfferings,
@@ -92,6 +106,44 @@ class ServiceOfferingsViewModel @Inject constructor(
                 }
                 ApiResult.Loading -> {
                     // Already handled above
+                }
+            }
+        }
+    }
+
+    fun loadServiceOffering(serviceId: String) {
+        // Check cache first
+        cachedOfferings[serviceId]?.let { cachedOffering ->
+            println("📦 [ViewModel] Using cached service offering: $serviceId")
+            _serviceDetailsState.update { ServiceDetailsState.Success(serviceOffering = cachedOffering) }
+            return
+        }
+
+        println("🌐 [ViewModel] Fetching service offering from network: $serviceId")
+
+        viewModelScope.launch {
+            _serviceDetailsState.update { ServiceDetailsState.Loading }
+
+            val result = getServiceOfferingByIdUseCase(serviceId)
+
+            when (result) {
+                is ApiResult.Success -> {
+                    // Cache the result
+                    cachedOfferings[serviceId] = result.data
+                    _serviceDetailsState.update {
+                        ServiceDetailsState.Success(serviceOffering = result.data)
+                    }
+                }
+                is ApiResult.Error -> {
+                    _serviceDetailsState.update {
+                        ServiceDetailsState.Error(
+                            message = result.networkError.userFriendlyMessage,
+                            technicalMessage = result.technicalMessage
+                        )
+                    }
+                }
+                ApiResult.Loading -> {
+                    // Already handled
                 }
             }
         }
@@ -132,4 +184,27 @@ class ServiceOfferingsViewModel @Inject constructor(
         currentOffset = 0
         hasMoreData = true
     }
+
+    fun clearServiceDetailsState() {
+        _serviceDetailsState.update { ServiceDetailsState.Loading }
+    }
+
+    fun clearCache() {
+        cachedOfferings.clear()
+        println("🗑️ [ViewModel] Cache cleared")
+    }
+
+
+    override fun onCleared() {
+        super.onCleared()
+        cachedOfferings.clear()
+        _offeringsState.update { ServiceOfferingsUiState.Loading }
+        _serviceDetailsState.update { ServiceDetailsState.Loading }
+    }
+}
+
+sealed class ServiceDetailsState {
+    object Loading : ServiceDetailsState()
+    data class Success(val serviceOffering: ServiceOffering) : ServiceDetailsState()
+    data class Error(val message: String, val technicalMessage: String? = null) : ServiceDetailsState()
 }

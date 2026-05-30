@@ -24,8 +24,12 @@ android {
         applicationId = "com.example.pivota"
         minSdk = 24
         targetSdk = 36
-        versionCode = 10
-        versionName = "1.1.0"
+
+        // Version Management - Increment for each release
+        // Version 1.1.0 - Build 11 - Shimmer Animation Enhancement
+        versionCode = 11
+        versionName = "1.1.1"
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -43,44 +47,56 @@ android {
 
             versionNameSuffix = "-staging"
 
+            // Firebase App Distribution Configuration
+            // Distribution Method: APK uploaded via Gradle task
+            // Command to distribute: ./gradlew assembleStaging appDistributionUploadStaging
             firebaseAppDistribution {
+                // Distribution group: Internal Testers
+                // All testers have been pre-added to Firebase Console
                 artifactType = "APK"
-                testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
-                releaseNotes = """
-PivotaConnect v1.1.0 (Build 10)
 
-NEW: POST SERVICE SUCCESS FLOW
-- Added elegant success dialog with Lottie animation after posting
-- Two clear options: View My Service or Post Another Service
-- Improved user experience with visual feedback
+                // Tester emails - Internal testing team
+                testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
+
+                // Release notes - Updated for version 1.1.1
+                releaseNotes = """
+PivotaConnect v1.1.1 (Build 11)
+
+NEW: ENHANCED SHIMMER ANIMATIONS
+- Added prominent shimmer effects to loading skeletons
+- Improved visibility of loading states across all screens
+- Implemented colored shimmer that matches category themes
+- Added shimmer effect to ServiceOfferingsScreen loading state
+- Added shimmer effect to SubcategoriesScreen loading state
+- Optimized animation timing for smoother visual feedback
 
 ENHANCEMENTS:
-- Redesigned PivotaSnackbar with proper theming
-- Success snackbar now uses brand green color
-- Error snackbar shows actual backend messages (no more generic errors)
-- Added action button to snackbar for permission errors
-- Snackbar now appears at top of screen with proper z-index
-- Added professional profile detection with helpful error messages
-- Improved error handling for permission-related issues
+- Shimmer now uses higher alpha values (0.8) for better visibility
+- Added colored shimmer for icon placeholders matching pillar colors
+- Implemented custom Modifier.shimmerEffect() for reusable animations
+- Grid skeletons now adapt to screen size (3-12 items based on columns)
+- Improved loading state UX with visual feedback
 
 UI IMPROVEMENTS:
-- Updated snackbar styling to match brand guidelines
-- Action button in snackbar now uses Baobab Gold color
-- Success dialog uses brand colors sparingly
-- Better visual hierarchy in all feedback components
-
-BUG FIXES:
-- Fixed snackbar appearing behind TopBar
-- Fixed error messages being converted to generic messages
-- Fixed action button not showing in snackbar
-- Fixed snackbar positioning on tablets
-- Fixed duplicate LaunchedEffect causing issues
+- Service offerings skeleton cards now show proper shimmer
+- Subcategories grid skeleton matches actual layout structure
+- Circle avatars in skeletons show colored shimmer
+- Text placeholders show neutral white/gray shimmer
+- Animation duration optimized to 1000ms for noticeable effect
 
 TECHNICAL UPDATES:
-- Added resetSuccess() method to ViewModel
-- Improved error message extraction from backend
-- Better handling of 403 permission errors
-- Added proper z-index for overlay components
+- Created prominentShimmerEffect() modifier function
+- Created coloredShimmerEffect() for themed animations
+- Implemented SubcategoriesLoadingSkeleton composable
+- Added ServiceOfferingsLoadingSkeleton with shimmer
+- Proper onGloballyPositioned usage for size-aware gradients
+- Optimized infiniteTransition for smooth animations
+
+BUG FIXES:
+- Fixed shimmer not being visible due to low alpha values
+- Fixed gradient not updating during animation
+- Fixed shimmer not covering entire element width
+- Fixed memory leaks in animation composition
 
 PREVIOUS FEATURES (still available):
 - Post professional services with 5-step wizard
@@ -89,6 +105,9 @@ PREVIOUS FEATURES (still available):
 - AM/PM time picker with manual input
 - Dark/Light theme support
 - Tablet optimized layout
+- Success dialog with Lottie animation
+- Professional profile detection
+- Enhanced snackbar with action buttons
                 """.trimIndent()
             }
         }

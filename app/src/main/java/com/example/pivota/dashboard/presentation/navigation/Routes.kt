@@ -57,6 +57,18 @@ data class ServiceOfferings(
     val categoryName: String
 )
 
+// Service Details Screen - Shows details of a specific service offering
+@Serializable
+data class ServiceDetails(
+    val serviceId: String
+)
+
+// Admin Service Details Screen - Admin view for managing a service offering
+@Serializable
+data class AdminServiceDetails(
+    val serviceId: String
+)
+
 // Category-filtered listing routes
 @Serializable
 data class HousingListingsWithCategory(

@@ -153,22 +153,6 @@ fun ServiceOfferingDetailsScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
-                // Service Image (placeholder)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Outlined.Work,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -374,22 +358,6 @@ private fun ServiceDetailsLeftPane(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Service Image
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(250.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Outlined.Work,
-                contentDescription = null,
-                modifier = Modifier.size(80.dp),
-                tint = colorScheme.primary
-            )
-        }
 
         // Price
         Column {

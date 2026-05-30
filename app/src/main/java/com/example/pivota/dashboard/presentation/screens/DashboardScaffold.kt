@@ -55,6 +55,8 @@ import java.util.Date
 import java.util.concurrent.TimeUnit
 import androidx.compose.material3.SheetState
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.zIndex
 import androidx.navigation.toRoute
 import com.example.pivota.core.presentations.composables.PivotaFullScreenLoading
@@ -62,6 +64,7 @@ import com.example.pivota.dashboard.presentation.composables.client_general_comp
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.PulsingPostFab
 import com.example.pivota.dashboard.presentation.navigation.AdminHouseDetails
 import com.example.pivota.dashboard.presentation.navigation.AdminJobDetails
+import com.example.pivota.dashboard.presentation.navigation.AdminServiceDetails
 import com.example.pivota.dashboard.presentation.navigation.AllServices
 import com.example.pivota.dashboard.presentation.navigation.BookViewing
 import com.example.pivota.dashboard.presentation.navigation.Connect
@@ -77,6 +80,7 @@ import com.example.pivota.dashboard.presentation.navigation.PostService
 import com.example.pivota.dashboard.presentation.navigation.PostSupport
 import com.example.pivota.dashboard.presentation.navigation.Professionals
 import com.example.pivota.dashboard.presentation.navigation.Profile
+import com.example.pivota.dashboard.presentation.navigation.ServiceDetails
 import com.example.pivota.dashboard.presentation.navigation.ServiceOfferings
 import com.example.pivota.dashboard.presentation.navigation.Subcategories
 import com.example.pivota.dashboard.presentation.navigation.TopLevelRoute
@@ -89,9 +93,13 @@ import com.example.pivota.dashboard.presentation.screens.client_general_screens.
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ProfessionalsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens.ProfileScreen
 import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.ApplicationFunnel
+import com.example.pivota.dashboard.presentation.screens.client_admin_screens.professional.AdminServiceOfferingDetailsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.AllServicesScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ServiceOfferingDetailsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ServiceOfferingsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.SubcategoriesScreen
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.ServiceDetailsState
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.ServiceOfferingsViewModel
 
 // Quick conversion functions (keep as is)
 private fun quickConvertToDetailsJob(dashboardJob: DashboardJobListingUiModel): DetailsJobListingUiModel {
@@ -1160,12 +1168,8 @@ private fun MobileNavHost(
                         navController.popBackStack()
                     },
                     onOfferingClick = { offeringId ->
-                        // For now, just navigate back or show a toast
-                        // You can add navigation later when you create the details screen
-                        println("Service offering clicked: $offeringId from category: $categoryName")
-                        // Optional: Show a snackbar or toast message
-                        // For now, just stay on the screen or navigate back
-                        // navController.popBackStack()
+                        // Navigate to service details screen
+                        navController.navigate(ServiceDetails(serviceId = offeringId))
                     }
                 )
             }
@@ -1191,6 +1195,88 @@ private fun MobileNavHost(
                     LaunchedEffect(Unit) {
                         navController.popBackStack()
                     }
+                }
+            }
+        }
+
+        // Client Service Details
+        composable<ServiceDetails> { backStackEntry ->
+            val serviceId = backStackEntry.toRoute<ServiceDetails>().serviceId
+            val viewModel: ServiceOfferingsViewModel = hiltViewModel()
+
+            // Snackbar state
+            var showErrorSnackbar by remember { mutableStateOf(false) }
+            var errorMessage by remember { mutableStateOf("") }
+
+            // Load service offering - ViewModel handles caching internally
+            LaunchedEffect(serviceId) {
+                viewModel.loadServiceOffering(serviceId)
+            }
+
+            // Observe error state
+            LaunchedEffect(viewModel.serviceDetailsState) {
+                val state = viewModel.serviceDetailsState.value
+                if (state is ServiceDetailsState.Error && !showErrorSnackbar) {
+                    errorMessage = state.message
+                    showErrorSnackbar = true
+                }
+            }
+
+            val serviceDetailsState by viewModel.serviceDetailsState.collectAsState()
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (serviceDetailsState) {
+                    is ServiceDetailsState.Loading -> {
+                        PivotaFullScreenLoading(
+                            message = "Loading service details..."
+                        )
+                    }
+                    is ServiceDetailsState.Success -> {
+                        val success = serviceDetailsState as ServiceDetailsState.Success
+                        ServiceOfferingDetailsScreen(
+                            serviceOffering = success.serviceOffering,
+                            onNavigateBack = { navController.popBackStack() },
+                            onContactProvider = { /* Handle contact - can navigate to chat */ },
+                            onBookService = { /* Handle booking - can navigate to booking flow */ }
+                        )
+                    }
+                    is ServiceDetailsState.Error -> {
+                        // Error is handled by snackbar, show nothing or retry button
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(
+                                    text = "Unable to load service",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Button(
+                                    onClick = { viewModel.loadServiceOffering(serviceId) }
+                                ) {
+                                    Text("Try Again")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Error Snackbar at top center
+                if (showErrorSnackbar && errorMessage.isNotBlank()) {
+                    PivotaSnackbar(
+                        message = errorMessage,
+                        type = SnackbarType.ERROR,
+                        duration = 5000,
+                        onDismiss = {
+                            showErrorSnackbar = false
+                            errorMessage = ""
+                        }
+                    )
                 }
             }
         }
@@ -1228,6 +1314,76 @@ private fun MobileNavHost(
                     LaunchedEffect(Unit) {
                         navController.popBackStack()
                     }
+                }
+            }
+        }
+
+        // Admin Service Details
+        composable<AdminServiceDetails> { backStackEntry ->
+            val serviceId = backStackEntry.toRoute<AdminServiceDetails>().serviceId
+            val viewModel: ServiceOfferingsViewModel = hiltViewModel()
+            val snackbarHostState = remember { SnackbarHostState() }
+
+            // Snackbar state
+            var showErrorSnackbar by remember { mutableStateOf(false) }
+            var errorMessage by remember { mutableStateOf("") }
+
+            LaunchedEffect(serviceId) {
+                viewModel.loadServiceOffering(serviceId)
+            }
+
+            // Observe error state
+            LaunchedEffect(viewModel.serviceDetailsState) {
+                val state = viewModel.serviceDetailsState.value
+                if (state is ServiceDetailsState.Error) {
+                    errorMessage = state.message
+                    showErrorSnackbar = true
+                }
+            }
+
+            val serviceDetailsState by viewModel.serviceDetailsState.collectAsState()
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                NoBottomNavScaffold {
+                    when {
+                        serviceDetailsState is ServiceDetailsState.Loading -> {
+                            PivotaFullScreenLoading(
+                                message = "Loading service details..."
+                            )
+                        }
+                        serviceDetailsState is ServiceDetailsState.Success -> {
+                            val success = serviceDetailsState as ServiceDetailsState.Success
+                            AdminServiceOfferingDetailsScreen(
+                                serviceOffering = success.serviceOffering,
+                                onNavigateBack = { navController.popBackStack() },
+                                onEditService = { id -> println("Edit service: $id") },
+                                onDuplicateService = { id -> println("Duplicate service: $id") },
+                                onArchiveService = { id -> println("Archive service: $id") },
+                                onDeleteService = { id -> println("Delete service: $id") },
+                                onPauseService = { id -> println("Pause service: $id") },
+                                onResumeService = { id -> println("Resume service: $id") },
+                                onMarkActive = { id -> println("Mark active: $id") },
+                                onViewInquiries = { id -> println("View inquiries: $id") },
+                                onShareService = { id -> println("Share service: $id") },
+                                onViewLogs = { id -> println("View logs: $id") },
+                                onCopyServiceLink = { id -> println("Copy link: $id") }
+                            )
+                        }
+                    }
+                }
+
+                // Error Snackbar at top center
+                if (showErrorSnackbar && errorMessage.isNotBlank()) {
+                    PivotaSnackbar(
+                        message = errorMessage,
+                        type = SnackbarType.ERROR,
+                        duration = 5000,
+                        onDismiss = {
+                            showErrorSnackbar = false
+                            errorMessage = ""
+                            viewModel.clearServiceDetailsState()
+                        }
+                    )
                 }
             }
         }
@@ -1359,7 +1515,12 @@ private fun MobileNavHost(
         // Post Service
         composable<PostService> {
             NoBottomNavScaffold {
-                PostServiceScreen(onBack = { navController.popBackStack() })
+                PostServiceScreen(
+                    onBack = { navController.popBackStack() },
+                    onNavigateToServiceDetails = { serviceId ->
+                        navController.navigate(AdminServiceDetails(serviceId = serviceId))
+                    }
+                )
             }
         }
 
@@ -1491,17 +1652,19 @@ private fun TabletNavHost(
             val categoryId = serviceOfferings.categoryId
             val categoryName = serviceOfferings.categoryName
 
-            ServiceOfferingsScreen(
-                categoryId = categoryId,
-                categoryName = categoryName,
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
-                onOfferingClick = { offeringId ->
-                    println("Service offering clicked: $offeringId from category: $categoryName")
-                    // For now, just stay on the screen
-                }
-            )
+            NoBottomNavScaffold {
+                ServiceOfferingsScreen(
+                    categoryId = categoryId,
+                    categoryName = categoryName,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onOfferingClick = { offeringId ->
+                        // Navigate to service details screen
+                        navController.navigate(ServiceDetails(serviceId = offeringId))
+                    }
+                )
+            }
         }
 
         // Connect (Discover)
@@ -1611,6 +1774,76 @@ private fun TabletNavHost(
             }
         }
 
+        // Admin Service Details
+        composable<AdminServiceDetails> { backStackEntry ->
+            val serviceId = backStackEntry.toRoute<AdminServiceDetails>().serviceId
+            val viewModel: ServiceOfferingsViewModel = hiltViewModel()
+            val snackbarHostState = remember { SnackbarHostState() }
+
+            // Snackbar state
+            var showErrorSnackbar by remember { mutableStateOf(false) }
+            var errorMessage by remember { mutableStateOf("") }
+
+            LaunchedEffect(serviceId) {
+                viewModel.loadServiceOffering(serviceId)
+            }
+
+            // Observe error state
+            LaunchedEffect(viewModel.serviceDetailsState) {
+                val state = viewModel.serviceDetailsState.value
+                if (state is ServiceDetailsState.Error) {
+                    errorMessage = state.message
+                    showErrorSnackbar = true
+                }
+            }
+
+            val serviceDetailsState by viewModel.serviceDetailsState.collectAsState()
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                NoBottomNavScaffold {
+                    when {
+                        serviceDetailsState is ServiceDetailsState.Loading -> {
+                            PivotaFullScreenLoading(
+                                message = "Loading service details..."
+                            )
+                        }
+                        serviceDetailsState is ServiceDetailsState.Success -> {
+                            val success = serviceDetailsState as ServiceDetailsState.Success
+                            AdminServiceOfferingDetailsScreen(
+                                serviceOffering = success.serviceOffering,
+                                onNavigateBack = { navController.popBackStack() },
+                                onEditService = { id -> println("Edit service: $id") },
+                                onDuplicateService = { id -> println("Duplicate service: $id") },
+                                onArchiveService = { id -> println("Archive service: $id") },
+                                onDeleteService = { id -> println("Delete service: $id") },
+                                onPauseService = { id -> println("Pause service: $id") },
+                                onResumeService = { id -> println("Resume service: $id") },
+                                onMarkActive = { id -> println("Mark active: $id") },
+                                onViewInquiries = { id -> println("View inquiries: $id") },
+                                onShareService = { id -> println("Share service: $id") },
+                                onViewLogs = { id -> println("View logs: $id") },
+                                onCopyServiceLink = { id -> println("Copy link: $id") }
+                            )
+                        }
+                    }
+                }
+
+                // Error Snackbar at top center
+                if (showErrorSnackbar && errorMessage.isNotBlank()) {
+                    PivotaSnackbar(
+                        message = errorMessage,
+                        type = SnackbarType.ERROR,
+                        duration = 5000,
+                        onDismiss = {
+                            showErrorSnackbar = false
+                            errorMessage = ""
+                            viewModel.clearServiceDetailsState()
+                        }
+                    )
+                }
+            }
+        }
+
         // Book Viewing
         composable<BookViewing> {
             selectedListingForBooking?.let { listing ->
@@ -1689,6 +1922,89 @@ private fun TabletNavHost(
             }
         }
 
+
+        // Client Service Details
+        composable<ServiceDetails> { backStackEntry ->
+            val serviceId = backStackEntry.toRoute<ServiceDetails>().serviceId
+            val viewModel: ServiceOfferingsViewModel = hiltViewModel()
+
+            // Snackbar state
+            var showErrorSnackbar by remember { mutableStateOf(false) }
+            var errorMessage by remember { mutableStateOf("") }
+
+            // Load service offering - ViewModel handles caching internally
+            LaunchedEffect(serviceId) {
+                viewModel.loadServiceOffering(serviceId)
+            }
+
+            // Observe error state
+            LaunchedEffect(viewModel.serviceDetailsState) {
+                val state = viewModel.serviceDetailsState.value
+                if (state is ServiceDetailsState.Error && !showErrorSnackbar) {
+                    errorMessage = state.message
+                    showErrorSnackbar = true
+                }
+            }
+
+            val serviceDetailsState by viewModel.serviceDetailsState.collectAsState()
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (serviceDetailsState) {
+                    is ServiceDetailsState.Loading -> {
+                        PivotaFullScreenLoading(
+                            message = "Loading service details..."
+                        )
+                    }
+                    is ServiceDetailsState.Success -> {
+                        val success = serviceDetailsState as ServiceDetailsState.Success
+                        ServiceOfferingDetailsScreen(
+                            serviceOffering = success.serviceOffering,
+                            onNavigateBack = { navController.popBackStack() },
+                            onContactProvider = { /* Handle contact - can navigate to chat */ },
+                            onBookService = { /* Handle booking - can navigate to booking flow */ }
+                        )
+                    }
+                    is ServiceDetailsState.Error -> {
+                        // Error is handled by snackbar, show nothing or retry button
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(
+                                    text = "Unable to load service",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Button(
+                                    onClick = { viewModel.loadServiceOffering(serviceId) }
+                                ) {
+                                    Text("Try Again")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Error Snackbar at top center
+                if (showErrorSnackbar && errorMessage.isNotBlank()) {
+                    PivotaSnackbar(
+                        message = errorMessage,
+                        type = SnackbarType.ERROR,
+                        duration = 5000,
+                        onDismiss = {
+                            showErrorSnackbar = false
+                            errorMessage = ""
+                        }
+                    )
+                }
+            }
+        }
+
         // Admin Job Details
         composable<AdminJobDetails> {
             val jobListing = selectedAdminJobForViewing
@@ -1723,9 +2039,15 @@ private fun TabletNavHost(
             JobPostScreen.Content(onBack = { navController.popBackStack() })
         }
 
+
         // Post Service
         composable<PostService> {
-            PostServiceScreen(onBack = { navController.popBackStack() })
+            PostServiceScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToServiceDetails = { serviceId ->
+                    navController.navigate(AdminServiceDetails(serviceId = serviceId))
+                }
+            )
         }
 
         // Post Housing
