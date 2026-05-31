@@ -389,6 +389,30 @@ class CategoriesRepositoryImpl @Inject constructor(
     private suspend fun getCachedCategories(cacheKey: String): ApiResult<List<Category>> {
         return try {
             val cached = categoryDao.getCategoriesListByCacheKey(cacheKey)
+
+            // DEBUG: Print detailed info
+            println("📋 ========== CACHE RETRIEVAL DEBUG ==========")
+            println("📋 Looking for cacheKey: $cacheKey")
+            println("📋 Total entities retrieved: ${cached.size}")
+
+            // Check what cacheKeys exist in the database
+            val allKeys = categoryDao.getAllDistinctCacheKeys()
+            println("📋 All distinct cacheKeys in database: $allKeys")
+
+            // Check total count in database
+            val totalCount = categoryDao.getCategoriesCount()
+            println("📋 Total categories in database: $totalCount")
+
+            // Check entities with parentId not null
+            val withParent = cached.count { it.parentId != null }
+            println("📋 Entities with parentId != null in result: $withParent")
+
+            // Print first 20 entities to see what was retrieved
+            cached.take(20).forEach { entity ->
+                println("   Retrieved: ${entity.name} (parentId: ${entity.parentId}, cacheKey: ${entity.cacheKey})")
+            }
+            println("📋 ===========================================")
+
             if (cached.isNotEmpty()) {
                 Log.d(TAG, "Found ${cached.size} cached categories for key: $cacheKey")
                 ApiResult.Success(mapper.toCategoryDomainListFromEntities(cached))
@@ -406,8 +430,94 @@ class CategoriesRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getCategoriesStream(
+        vertical: String?,
+        type: String?,
+        parentId: String?,
+        hasSubcategories: Boolean?,
+        hasParent: Boolean?,
+        search: String?,
+        includeNested: Boolean?
+    ): Flow<List<Category>> {
+        val cacheKey = generateCategoriesCacheKey(vertical, type, parentId, hasSubcategories, hasParent, search, includeNested)
+        return categoryDao.getCategoriesByCacheKey(cacheKey).map { entities ->
+            if (entities.isEmpty()) {
+                emptyList()
+            } else {
+                // Build hierarchy from flat list
+                val rootEntities = entities.filter { it.parentId == null }
+
+                fun buildCategory(entity: CategoryEntity): Category {
+                    val children = entities.filter { it.parentId == entity.id }
+                    return Category(
+                        id = entity.id,
+                        name = entity.name,
+                        slug = entity.slug,
+                        vertical = entity.vertical,
+                        type = entity.type,
+                        hasSubcategories = entity.hasSubcategories,
+                        description = null,
+                        parentId = entity.parentId,
+                        subcategoriesCount = children.size,
+                        jobPostsCount = 0,
+                        servicesCount = 0,
+                        supportCount = 0,
+                        createdAt = entity.createdAt,
+                        updatedAt = entity.updatedAt,
+                        subcategories = children.map { buildCategory(it) }
+                    )
+                }
+
+                rootEntities.map { buildCategory(it) }
+            }
+        }.catch { e ->
+            Log.e(TAG, "Error in categories stream", e)
+            emit(emptyList())
+        }.onStart {
+            CoroutineScope(Dispatchers.IO).launch {
+                refreshCategoriesInBackground(vertical, type, parentId, hasSubcategories, hasParent, search, includeNested, cacheKey)
+            }
+        }
+    }
+
     private fun generateDiscoveryCacheKey(vertical: String?, type: String?): String {
         return "discovery_${vertical ?: "all"}_${type ?: "all"}"
+    }
+
+    private suspend fun refreshCategoriesInBackground(
+        vertical: String?,
+        type: String?,
+        parentId: String?,
+        hasSubcategories: Boolean?,
+        hasParent: Boolean?,
+        search: String?,
+        includeNested: Boolean?,
+        cacheKey: String
+    ) {
+        try {
+            val networkResult = safeApiCall {
+                categoriesApiService.getCategories(
+                    vertical, type, parentId, hasSubcategories, hasParent, search, includeNested
+                )
+            }
+            if (networkResult is ApiResult.Success) {
+                val response = networkResult.data
+                if (response.success && response.data != null) {
+                    val entities = mapper.toCategoryEntityList(response.data, cacheKey)
+                    categoryDao.insertCategories(entities)
+                    categoryDao.upsertCategoriesCacheMetadata(
+                        CategoriesCacheMetadataEntity(
+                            cacheKey = cacheKey,
+                            lastUpdated = System.currentTimeMillis(),
+                            totalCount = entities.size
+                        )
+                    )
+                    Log.d(TAG, "Background refresh completed for categories")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Background refresh failed for categories", e)
+        }
     }
 
     private fun generateCategoriesCacheKey(

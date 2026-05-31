@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.ui.theme.PivotaConnectTheme
@@ -77,18 +79,20 @@ fun ModernProfessionalCardV2(
     val secondaryColor = colorScheme.secondary
     val tertiaryColor = colorScheme.tertiary
 
-    // Second badge properties based on professional type
-    val (secondBadgeIcon, secondBadgeText, secondBadgeColor) = when (professionalType) {
-        ProfessionalType.INDIVIDUAL -> Triple(
-            Icons.Filled.Person,
-            "Individual",
-            secondaryColor
-        )
-        ProfessionalType.ORGANIZATION -> Triple(
-            Icons.Filled.Business,
-            "Company",
-            primaryColor
-        )
+    // Memoize badge properties to prevent recalculation
+    val (secondBadgeIcon, secondBadgeText, secondBadgeColor) = remember(professionalType) {
+        when (professionalType) {
+            ProfessionalType.INDIVIDUAL -> Triple(
+                Icons.Filled.Person,
+                "Individual",
+                secondaryColor
+            )
+            ProfessionalType.ORGANIZATION -> Triple(
+                Icons.Filled.Business,
+                "Company",
+                primaryColor
+            )
+        }
     }
 
     Card(
@@ -183,45 +187,12 @@ fun ModernProfessionalCardV2(
                         shape = CircleShape,
                         color = primaryColor.copy(alpha = 0.1f)
                     ) {
-                        if (imageUrl != null) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(imageUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "$name profile",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                                error = painterResource(id = R.drawable.job_placeholder1)
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        brush = Brush.radialGradient(
-                                            colors = listOf(
-                                                primaryColor.copy(alpha = 0.2f),
-                                                primaryColor.copy(alpha = 0.05f)
-                                            )
-                                        )
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = name
-                                        .split(" ")
-                                        .take(2)
-                                        .map { it.firstOrNull()?.toString() ?: "" }
-                                        .joinToString("")
-                                        .uppercase()
-                                        .take(2),
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = primaryColor
-                                )
-                            }
-                        }
+                        // OPTIMIZED IMAGE LOADING
+                        OptimizedProfessionalImage(
+                            imageUrl = imageUrl,
+                            name = name,
+                            primaryColor = primaryColor
+                        )
                     }
                 }
 
@@ -422,6 +393,67 @@ fun ModernProfessionalCardV2(
                     }
                 }
             }
+        }
+    }
+}
+
+// OPTIMIZED IMAGE COMPOSABLE FOR PROFESSIONAL CARDS
+@Composable
+fun OptimizedProfessionalImage(
+    imageUrl: Any?,
+    name: String,
+    primaryColor: Color
+) {
+    val context = LocalContext.current
+
+    if (imageUrl != null && imageUrl.toString().isNotBlank()) {
+        // Cache the image request to prevent recreation
+        val imageRequest = remember(imageUrl) {
+            ImageRequest.Builder(context)
+                .data(imageUrl)
+                .crossfade(true)
+                .allowHardware(true) // Enable hardware bitmaps for better performance
+                .size(360, 360) // Limit size to reduce memory
+                .diskCacheKey(imageUrl.toString())
+                .memoryCacheKey(imageUrl.toString())
+                .build()
+        }
+
+        AsyncImage(
+            model = imageRequest,
+            contentDescription = "$name profile",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+            error = painterResource(id = R.drawable.job_placeholder1),
+            fallback = painterResource(id = R.drawable.job_placeholder1)
+        )
+    } else {
+        // Lightweight placeholder - text-based initials
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            primaryColor.copy(alpha = 0.2f),
+                            primaryColor.copy(alpha = 0.05f)
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = name
+                    .split(" ")
+                    .take(2)
+                    .map { it.firstOrNull()?.toString() ?: "" }
+                    .joinToString("")
+                    .uppercase()
+                    .take(2),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = primaryColor
+            )
         }
     }
 }

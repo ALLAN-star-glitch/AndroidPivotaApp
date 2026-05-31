@@ -20,6 +20,9 @@ interface CategoryDao {
     @Query("SELECT * FROM discovery_categories WHERE cacheKey = :cacheKey ORDER BY name ASC")
     fun getDiscoveryCategories(cacheKey: String): Flow<List<DiscoveryCategoryEntity>>
 
+    @Query("SELECT * FROM categories WHERE cacheKey = :cacheKey")
+    fun getCategoriesByCacheKey(cacheKey: String): Flow<List<CategoryEntity>>
+
     @Query("SELECT * FROM discovery_categories WHERE cacheKey = :cacheKey ORDER BY name ASC")
     suspend fun getDiscoveryCategoriesList(cacheKey: String): List<DiscoveryCategoryEntity>
 
@@ -83,4 +86,9 @@ interface CategoryDao {
 
     @Query("SELECT COUNT(*) FROM categories_cache_metadata")
     suspend fun getCacheMetadataCount(): Int
+
+    @Query("SELECT DISTINCT cacheKey FROM categories")
+    suspend fun getAllDistinctCacheKeys(): List<String?>
+
+
 }

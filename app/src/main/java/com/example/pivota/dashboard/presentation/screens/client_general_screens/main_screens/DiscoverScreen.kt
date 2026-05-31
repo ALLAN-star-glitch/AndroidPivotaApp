@@ -1,11 +1,11 @@
 package com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens
 
-import com.example.pivota.dashboard.presentation.composables.client_general_composables.profile_composables.ProfileMenuBottomSheet
 import android.annotation.SuppressLint
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,9 +22,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,12 +32,7 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.allowHardware
-import coil3.request.crossfade
 import com.example.pivota.R
-import com.example.pivota.auth.domain.model.User
 import com.example.pivota.dashboard.domain.model.listings_models.general.DiscoveryCategory
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.BannerType
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.MarketingCarouselBanner
@@ -70,7 +62,7 @@ fun DiscoverScreen(
     onNavigateToAllProviders: () -> Unit = {},
     onNavigateToAllServices: () -> Unit = {},
     onNavigateToAllSupport: () -> Unit = {},
-    onServiceClick: (String, String, String) -> Unit = { _, _, _ -> }, // id, name, vertical
+    onServiceClick: (String, String, String) -> Unit = { _, _, _ -> },
     onSubcategoriesClick: (String, String, String) -> Unit = { _, _, _ -> },
     isGuestMode: Boolean = false,
     sharedViewModel: DashboardSharedViewModel = hiltViewModel(),
@@ -80,59 +72,18 @@ fun DiscoverScreen(
     val headerState by sharedViewModel.headerState.collectAsState()
     val headerUser = (headerState as? HeaderState.Success)?.headerUser
 
-    // Collect Common Services state
     val commonServicesState by commonServicesViewModel.uiState.collectAsState()
 
     val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isExpanded = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
     val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
     val isTablet = isExpanded || isMedium
-    var lastTabletValue by remember { mutableStateOf(isTablet) }
-
-    LaunchedEffect(Unit) {
-        delay(100) // Wait for window size to be properly detected
-        println("📱 [DiscoverScreen] Initial load after delay - isTablet: $isTablet")
-        commonServicesViewModel.loadCommonServices(isTablet)
-    }
-
-    LaunchedEffect(isTablet) {
-        // Reload when tablet state changes
-        println("📱 [DiscoverScreen] isTablet changed to: $isTablet")
-        commonServicesViewModel.loadCommonServices(isTablet)
-    }
-
 
     // Adaptive grid columns based on screen size
-    val jobGridColumns = when {
-        isExpanded -> 2
-        isMedium -> 2
-        else -> 1
-    }
-
-    val housingGridColumns = when {
-        isExpanded -> 2
-        isMedium -> 2
-        else -> 1
-    }
-
-    val professionalGridColumns = when {
-        isExpanded -> 2
-        isMedium -> 2
-        else -> 1
-    }
-
+    val jobGridColumns = if (isExpanded || isMedium) 2 else 1
+    val housingGridColumns = if (isExpanded || isMedium) 2 else 1
+    val professionalGridColumns = if (isExpanded || isMedium) 2 else 1
     val serviceGridColumns = if (isTablet) 6 else 4
-
-    val primaryColor = colorScheme.primary
-    val secondaryColor = colorScheme.secondary
-    val tertiaryColor = colorScheme.tertiary
-    val softBackground = colorScheme.background
-
-    val listState = rememberLazyListState()
-
-    var searchQuery by remember { mutableStateOf("") }
-    var isRecording by remember { mutableStateOf(false) }
-    var selectedFilters by remember { mutableStateOf(setOf<String>()) }
 
     val horizontalPadding = when {
         isExpanded -> 24.dp
@@ -140,12 +91,31 @@ fun DiscoverScreen(
         else -> 16.dp
     }
 
-    // Track if search bar should be pinned
+    val listState = rememberLazyListState()
+    var searchQuery by remember { mutableStateOf("") }
+    var isRecording by remember { mutableStateOf(false) }
+    var selectedFilters by remember { mutableStateOf(setOf<String>()) }
+
     val isSearchBarPinned by remember {
         derivedStateOf {
             listState.firstVisibleItemIndex > 3 ||
                     (listState.firstVisibleItemIndex == 3 && listState.firstVisibleItemScrollOffset > 0)
         }
+    }
+
+    // Memoize sample data to prevent recomposition
+    val jobItemsMemo = remember { jobItems }
+    val housingItemsMemo = remember { housingItems }
+    val professionalItemsMemo = remember { professionalItems }
+    val supportItemsMemo = remember { supportItems }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        commonServicesViewModel.loadCommonServices(isTablet)
+    }
+
+    LaunchedEffect(isTablet) {
+        commonServicesViewModel.loadCommonServices(isTablet)
     }
 
     LaunchedEffect(selectedFilters) {
@@ -166,7 +136,7 @@ fun DiscoverScreen(
     }
 
     Scaffold(
-        containerColor = softBackground,
+        containerColor = colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Box(
@@ -180,8 +150,8 @@ fun DiscoverScreen(
                 contentPadding = PaddingValues(bottom = 100.dp),
                 horizontalAlignment = Alignment.Start
             ) {
-                // Reusable Header
-                item {
+                // Header
+                item(key = "header") {
                     ReusableHeader(
                         colorScheme = colorScheme,
                         pageTitle = "PivotaConnect",
@@ -197,7 +167,7 @@ fun DiscoverScreen(
                 }
 
                 // Marketing Carousel Banner
-                item {
+                item(key = "marketing_carousel") {
                     val displayName = remember(headerUser, isGuestMode) {
                         when {
                             isGuestMode -> "Guest"
@@ -229,12 +199,12 @@ fun DiscoverScreen(
                 }
 
                 // Spacer before search bar
-                item {
+                item(key = "spacer_1") {
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 // Search Bar + Pills
-                item {
+                item(key = "search_pills") {
                     SearchAndPillsSection(
                         searchQuery = searchQuery,
                         onSearchQueryChange = { searchQuery = it },
@@ -248,18 +218,16 @@ fun DiscoverScreen(
                                 selectedFilters + filter
                             }
                         },
-                        primaryColor = primaryColor,
-                        secondaryColor = secondaryColor,
+                        primaryColor = colorScheme.primary,
+                        secondaryColor = colorScheme.secondary,
                         colorScheme = colorScheme,
                         isTablet = isTablet,
                         horizontalPadding = horizontalPadding
                     )
                 }
 
-                // ============================================================
-                // COMMON SERVICES SECTION - NOW USING REAL DATA
-                // ============================================================
-                item {
+                // Common Services Section
+                item(key = "common_services_header") {
                     ModernSectionHeader(
                         title = "Common Services",
                         actionText = "Browse all →",
@@ -270,24 +238,20 @@ fun DiscoverScreen(
                 }
 
                 val currentState = commonServicesState
-
-                // Display Common Services based on state
                 when (currentState) {
                     is CommonServicesUiState.Loading -> {
-                        item {
+                        item(key = "common_services_loading") {
                             ServiceGridSkeleton(
-                            columnsPerRow = serviceGridColumns,
-                            rowsToShow = 2,
-                            horizontalPadding = horizontalPadding,
-                        )
-
+                                columnsPerRow = serviceGridColumns,
+                                rowsToShow = 2,
+                                horizontalPadding = horizontalPadding,
+                            )
                         }
                     }
-
                     is CommonServicesUiState.Success -> {
                         val services = currentState.services
                         if (services.isNotEmpty()) {
-                            item {
+                            item(key = "common_services_grid") {
                                 DynamicServiceGrid(
                                     services = services,
                                     colorScheme = colorScheme,
@@ -296,13 +260,13 @@ fun DiscoverScreen(
                                     onServiceClick = { category ->
                                         onServiceClick(category.id, category.name, category.vertical)
                                     },
-                                    onSubcategoriesClick = { category ->  // ADD THIS
+                                    onSubcategoriesClick = { category ->
                                         onSubcategoriesClick(category.id, category.name, category.vertical)
                                     }
                                 )
                             }
                         } else {
-                            item {
+                            item(key = "common_services_empty") {
                                 EmptyServicesState(
                                     colorScheme = colorScheme,
                                     horizontalPadding = horizontalPadding
@@ -310,9 +274,8 @@ fun DiscoverScreen(
                             }
                         }
                     }
-
                     is CommonServicesUiState.Error -> {
-                        item {
+                        item(key = "common_services_error") {
                             ErrorServicesState(
                                 message = currentState.message,
                                 colorScheme = colorScheme,
@@ -323,8 +286,8 @@ fun DiscoverScreen(
                     }
                 }
 
-                // Jobs Section (keep as is with sample data for now)
-                item {
+                // Jobs Section
+                item(key = "jobs_header") {
                     ModernSectionHeader(
                         title = "Jobs Near You",
                         actionText = "View all →",
@@ -333,47 +296,17 @@ fun DiscoverScreen(
                         colorScheme = colorScheme
                     )
                 }
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = horizontalPadding),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        val rows = jobItems.chunked(jobGridColumns)
-                        rows.forEach { rowItems ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                rowItems.forEach { item ->
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxWidth()
-                                    ) {
-                                        ModernJobCardV2(
-                                            imageUrl = item.imageUrl,
-                                            jobTitle = item.jobTitle,
-                                            companyName = item.companyName,
-                                            location = item.location,
-                                            postedTime = item.postedTime,
-                                            employmentType = item.employmentType,
-                                            jobType = item.jobType,
-                                            onViewDetailsClick = {}
-                                        )
-                                    }
-                                }
-                                repeat(jobGridColumns - rowItems.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    }
+
+                item(key = "jobs_content") {
+                    JobsContent(
+                        items = jobItemsMemo,
+                        gridColumns = jobGridColumns,
+                        horizontalPadding = horizontalPadding
+                    )
                 }
 
-                // Housing Section (keep as is with sample data for now)
-                item {
+                // Housing Section
+                item(key = "housing_header") {
                     ModernSectionHeader(
                         title = "Housing Opportunities",
                         actionText = "Browse all →",
@@ -382,51 +315,17 @@ fun DiscoverScreen(
                         colorScheme = colorScheme
                     )
                 }
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = horizontalPadding),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        val rows = housingItems.chunked(housingGridColumns)
-                        rows.forEach { rowItems ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                rowItems.forEach { item ->
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxWidth()
-                                    ) {
-                                        ModernHousingCardV2(
-                                            imageUrl = item.imageUrl,
-                                            title = item.title,
-                                            price = item.price,
-                                            location = item.location,
-                                            postedTime = item.postedTime,
-                                            propertyType = item.propertyType,
-                                            listingType = item.listingType,
-                                            bedrooms = item.bedrooms,
-                                            bathrooms = item.bathrooms,
-                                            squareMeters = item.squareMeters,
-                                            isVerified = item.isVerified,
-                                            onViewDetailsClick = {}
-                                        )
-                                    }
-                                }
-                                repeat(housingGridColumns - rowItems.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    }
+
+                item(key = "housing_content") {
+                    HousingContent(
+                        items = housingItemsMemo,
+                        gridColumns = housingGridColumns,
+                        horizontalPadding = horizontalPadding
+                    )
                 }
 
                 // Professionals Section
-                item {
+                item(key = "professionals_header") {
                     ModernSectionHeader(
                         title = "Trusted Professionals",
                         actionText = "See all →",
@@ -435,48 +334,17 @@ fun DiscoverScreen(
                         colorScheme = colorScheme
                     )
                 }
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = horizontalPadding),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        val rows = professionalItems.chunked(professionalGridColumns)
-                        rows.forEach { rowItems ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                rowItems.forEach { item ->
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxWidth()
-                                    ) {
-                                        ModernProfessionalCardV2(
-                                            imageUrl = item.imageUrl,
-                                            name = item.name,
-                                            profession = item.profession,
-                                            location = item.location,
-                                            postedTime = item.postedTime,
-                                            professionalType = item.professionalType,
-                                            rating = item.rating,
-                                            jobsCompleted = item.jobsCompleted,
-                                            onViewDetailsClick = {}
-                                        )
-                                    }
-                                }
-                                repeat(professionalGridColumns - rowItems.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    }
+
+                item(key = "professionals_content") {
+                    ProfessionalsContent(
+                        items = professionalItemsMemo,
+                        gridColumns = professionalGridColumns,
+                        horizontalPadding = horizontalPadding
+                    )
                 }
 
                 // Social Support Section
-                item {
+                item(key = "support_header") {
                     ModernSectionHeader(
                         title = "Social Support & Services",
                         actionText = "Get help →",
@@ -485,8 +353,12 @@ fun DiscoverScreen(
                         colorScheme = colorScheme
                     )
                 }
-                items(supportItems.size) { index ->
-                    val item = supportItems[index]
+
+                items(
+                    count = supportItemsMemo.size,
+                    key = { index -> "support_item_$index" }
+                ) { index ->
+                    val item = supportItemsMemo[index]
                     ModernSupportCard(
                         name = item.name,
                         service = item.service,
@@ -498,7 +370,7 @@ fun DiscoverScreen(
                 }
             }
 
-            // STICKY SEARCH + PILLS SECTION (unchanged)
+            // Sticky Search Bar
             if (isSearchBarPinned) {
                 Surface(
                     modifier = Modifier
@@ -507,7 +379,7 @@ fun DiscoverScreen(
                         .shadow(
                             elevation = 8.dp,
                             shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
-                            ambientColor = Color.Black.copy(0.08f)
+                            ambientColor = Color.Black.copy(alpha = 0.08f)
                         )
                         .zIndex(10f),
                     shape = RoundedCornerShape(
@@ -530,7 +402,7 @@ fun DiscoverScreen(
                             onQueryChange = { searchQuery = it },
                             onAudioClick = { isRecording = !isRecording },
                             isRecording = isRecording,
-                            primaryColor = primaryColor,
+                            primaryColor = colorScheme.primary,
                             colorScheme = colorScheme,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -546,7 +418,7 @@ fun DiscoverScreen(
                                     selectedFilters + filter
                                 }
                             },
-                            primaryColor = primaryColor,
+                            primaryColor = colorScheme.primary,
                             colorScheme = colorScheme,
                             isTablet = isTablet
                         )
@@ -557,6 +429,142 @@ fun DiscoverScreen(
     }
 }
 
+@Composable
+fun JobsContent(
+    items: List<JobItem>,
+    gridColumns: Int,
+    horizontalPadding: Dp
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = horizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        val rows = items.chunked(gridColumns)
+        rows.forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                rowItems.forEach { item ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        ModernJobCardV2(
+                            imageUrl = item.imageUrl,
+                            jobTitle = item.jobTitle,
+                            companyName = item.companyName,
+                            location = item.location,
+                            postedTime = item.postedTime,
+                            employmentType = item.employmentType,
+                            jobType = item.jobType,
+                            onViewDetailsClick = {}
+                        )
+                    }
+                }
+                repeat(gridColumns - rowItems.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HousingContent(
+    items: List<HousingItem>,
+    gridColumns: Int,
+    horizontalPadding: Dp
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = horizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        val rows = items.chunked(gridColumns)
+        rows.forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                rowItems.forEach { item ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        ModernHousingCardV2(
+                            imageUrl = item.imageUrl,
+                            title = item.title,
+                            price = item.price,
+                            location = item.location,
+                            postedTime = item.postedTime,
+                            propertyType = item.propertyType,
+                            listingType = item.listingType,
+                            bedrooms = item.bedrooms,
+                            bathrooms = item.bathrooms,
+                            squareMeters = item.squareMeters,
+                            isVerified = item.isVerified,
+                            onViewDetailsClick = {}
+                        )
+                    }
+                }
+                repeat(gridColumns - rowItems.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfessionalsContent(
+    items: List<ProfessionalItem>,
+    gridColumns: Int,
+    horizontalPadding: Dp
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = horizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        val rows = items.chunked(gridColumns)
+        rows.forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                rowItems.forEach { item ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        ModernProfessionalCardV2(
+                            imageUrl = item.imageUrl,
+                            name = item.name,
+                            profession = item.profession,
+                            location = item.location,
+                            postedTime = item.postedTime,
+                            professionalType = item.professionalType,
+                            rating = item.rating,
+                            jobsCompleted = item.jobsCompleted,
+                            onViewDetailsClick = {}
+                        )
+                    }
+                }
+                repeat(gridColumns - rowItems.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun DynamicServiceGrid(
@@ -565,28 +573,24 @@ fun DynamicServiceGrid(
     horizontalPadding: Dp,
     columnsPerRow: Int,
     onServiceClick: (DiscoveryCategory) -> Unit,
-    onSubcategoriesClick: (DiscoveryCategory) -> Unit  // ADD THIS
+    onSubcategoriesClick: (DiscoveryCategory) -> Unit
 ) {
-    val servicesWithIcons = services.mapIndexed { index, service ->
-        Triple(service, getIconForService(service.name, service.vertical), index)
-    }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = horizontalPadding)
     ) {
-        servicesWithIcons.chunked(columnsPerRow).forEach { rowItems ->
+        services.chunked(columnsPerRow).forEachIndexed { rowIndex, rowItems ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                rowItems.forEach { (service, icon, index) ->
+                rowItems.forEachIndexed { itemIndex, service ->
                     ServiceCardCircle(
                         service = service,
-                        icon = icon,
+                        icon = getIconForService(service.name, service.vertical), // ✅ Called directly in composable context
                         colorScheme = colorScheme,
                         onClick = {
                             if (service.hasSubcategories) {
@@ -596,7 +600,7 @@ fun DynamicServiceGrid(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        index = index
+                        index = itemIndex
                     )
                 }
                 repeat(columnsPerRow - rowItems.size) {
@@ -643,7 +647,6 @@ fun ServiceCardCircle(
             .padding(horizontal = 4.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Circular icon container with badge for subcategories
         Box(
             modifier = Modifier.size(56.dp),
             contentAlignment = Alignment.Center
@@ -663,7 +666,6 @@ fun ServiceCardCircle(
                 )
             }
 
-            // Show badge if has subcategories
             if (service.hasSubcategories) {
                 Box(
                     modifier = Modifier
@@ -696,7 +698,6 @@ fun ServiceCardCircle(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Show "Browse" text if has subcategories
         if (service.hasSubcategories) {
             Spacer(modifier = Modifier.height(2.dp))
             Text(
@@ -709,7 +710,7 @@ fun ServiceCardCircle(
     }
 }
 
-// Data classes for items (same as before)
+// Data classes for items
 data class JobItem(
     val imageUrl: Any?,
     val jobTitle: String,
@@ -786,7 +787,6 @@ private val supportItems = listOf(
     SupportItem("Food for All", "Community Food Programs", "Nairobi & Kiambu", false)
 )
 
-
 @Composable
 fun ProfileMenuItem(
     icon: ImageVector,
@@ -807,7 +807,6 @@ fun ProfileMenuItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Icon Container
         Box(
             modifier = Modifier
                 .size(48.dp)
@@ -826,7 +825,6 @@ fun ProfileMenuItem(
             )
         }
 
-        // Text Content
         Column(
             modifier = Modifier.weight(1f)
         ) {
@@ -844,7 +842,6 @@ fun ProfileMenuItem(
             )
         }
 
-        // Chevron Icon
         Icon(
             Icons.Outlined.ChevronRight,
             contentDescription = null,
@@ -876,7 +873,6 @@ fun HeaderIcon(
     }
 }
 
-// SEARCH AND PILLS SECTION
 @Composable
 fun SearchAndPillsSection(
     searchQuery: String,
@@ -918,7 +914,6 @@ fun SearchAndPillsSection(
     }
 }
 
-// NAVIGATION ROW - Simple navigation items without filtering/active states
 @Composable
 fun FilterPillsRow(
     selectedFilters: Set<String>,
@@ -967,7 +962,6 @@ fun FilterPillsRow(
     }
 }
 
-// SEARCH BAR WITH AUDIO - Fixed with proper width
 @Composable
 fun SearchBarWithAudio(
     query: String,
@@ -984,7 +978,7 @@ fun SearchBarWithAudio(
             .shadow(
                 elevation = 2.dp,
                 shape = RoundedCornerShape(16.dp),
-                ambientColor = Color.Black.copy(0.05f)
+                ambientColor = Color.Black.copy(alpha = 0.05f)
             ),
         shape = RoundedCornerShape(16.dp),
         color = colorScheme.surface,
@@ -998,7 +992,7 @@ fun SearchBarWithAudio(
             Icon(
                 Icons.Outlined.Search,
                 contentDescription = null,
-                tint = colorScheme.onSurfaceVariant.copy(0.6f),
+                tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -1012,7 +1006,7 @@ fun SearchBarWithAudio(
                         if (query.isEmpty()) {
                             Text(
                                 "Search...",
-                                color = colorScheme.onSurfaceVariant.copy(0.5f),
+                                color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                 fontSize = 14.sp
                             )
                         }
@@ -1033,7 +1027,7 @@ fun SearchBarWithAudio(
                     Icon(
                         Icons.Outlined.Close,
                         contentDescription = "Clear",
-                        tint = colorScheme.onSurfaceVariant.copy(0.6f),
+                        tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -1045,7 +1039,7 @@ fun SearchBarWithAudio(
                         .then(
                             if (isRecording) {
                                 Modifier.background(
-                                    color = primaryColor.copy(0.1f),
+                                    color = primaryColor.copy(alpha = 0.1f),
                                     shape = CircleShape
                                 )
                             } else {
@@ -1059,7 +1053,7 @@ fun SearchBarWithAudio(
                         else
                             Icons.Outlined.Mic,
                         contentDescription = if (isRecording) "Stop recording" else "Start voice search",
-                        tint = if (isRecording) primaryColor else colorScheme.onSurfaceVariant.copy(0.6f),
+                        tint = if (isRecording) primaryColor else colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -1080,7 +1074,6 @@ fun SearchBarWithAudio(
     }
 }
 
-// SECTION HEADER - Using brand colors
 @Composable
 fun ModernSectionHeader(
     title: String,
@@ -1107,7 +1100,7 @@ fun ModernSectionHeader(
         )
         Text(
             text = actionText,
-            color = colorScheme.tertiary,  // Baobab Gold for action text
+            color = colorScheme.tertiary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.clickable { onActionClick() }
@@ -1115,7 +1108,6 @@ fun ModernSectionHeader(
     }
 }
 
-// SUPPORT CARD
 @Composable
 fun ModernSupportCard(
     name: String,
@@ -1150,8 +1142,8 @@ fun ModernSupportCard(
                 modifier = Modifier
                     .size(48.dp)
                     .background(
-                        if (isUrgent) colorScheme.error.copy(0.1f) else primaryColor.copy(0.08f),
-                        CircleShape
+                        color = if (isUrgent) colorScheme.error.copy(alpha = 0.1f) else primaryColor.copy(alpha = 0.08f),
+                        shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -1187,13 +1179,13 @@ fun ModernSupportCard(
                     Icon(
                         Icons.Outlined.LocationOn,
                         contentDescription = null,
-                        tint = colorScheme.onSurfaceVariant.copy(0.5f),
+                        tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(12.dp)
                     )
                     Text(
                         text = location,
                         fontSize = 11.sp,
-                        color = colorScheme.onSurfaceVariant.copy(0.7f),
+                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         modifier = Modifier.padding(start = 2.dp)
                     )
                 }
@@ -1205,78 +1197,6 @@ fun ModernSupportCard(
                 fontWeight = FontWeight.Medium,
                 color = tertiaryColor
             )
-        }
-    }
-}
-
-// SERVICE GRID
-@Composable
-fun ModernServiceGrid(
-    colorScheme: ColorScheme,
-    horizontalPadding: Dp = 16.dp,
-    isTablet: Boolean = false
-) {
-    val services = listOf(
-        "Movers" to Icons.Outlined.LocalShipping,
-        "Plumbers" to Icons.Outlined.Plumbing,
-        "Electricians" to Icons.Outlined.Bolt,
-        "Cleaners" to Icons.Outlined.CleaningServices,
-        "Trainers" to Icons.Outlined.FitnessCenter,
-        "Counselors" to Icons.Outlined.Psychology,
-        "Security" to Icons.Outlined.Security,
-        "Painters" to Icons.Outlined.FormatPaint
-    )
-
-    val columnsPerRow = if (isTablet) 6 else 4
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = horizontalPadding)
-    ) {
-        services.chunked(columnsPerRow).forEach { rowItems ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                rowItems.forEach { (name, icon) ->
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { /* Navigate to service */ },
-                        shape = RoundedCornerShape(12.dp),
-                        color = colorScheme.surface,
-                        border = BorderStroke(1.dp, colorScheme.outlineVariant),
-                        shadowElevation = 0.dp
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                icon,
-                                contentDescription = null,
-                                tint = colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = name,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = colorScheme.onSurface
-                            )
-                        }
-                    }
-                }
-                repeat(columnsPerRow - rowItems.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
         }
     }
 }

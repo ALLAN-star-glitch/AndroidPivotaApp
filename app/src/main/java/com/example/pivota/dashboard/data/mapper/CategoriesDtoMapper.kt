@@ -106,7 +106,8 @@ class CategoriesDtoMapper @Inject constructor() {
             servicesCount = categoryDto.servicesCount,
             supportCount = categoryDto.supportCount,
             createdAt = categoryDto.createdAt,
-            updatedAt = categoryDto.updatedAt
+            updatedAt = categoryDto.updatedAt,
+            subcategories = categoryDto.subcategories?.map { toDomain(it) }
         )
     }
 
@@ -129,6 +130,7 @@ class CategoriesDtoMapper @Inject constructor() {
             slug = dto.slug,
             vertical = dto.vertical,
             type = dto.type,
+            parentId = dto.parentId,
             hasSubcategories = dto.hasSubcategories,
             createdAt = dto.createdAt,
             updatedAt = dto.updatedAt,
@@ -136,15 +138,41 @@ class CategoriesDtoMapper @Inject constructor() {
         )
     }
 
-    /**
-     * Convert list of CategoryDto to list of CategoryEntity
-     */
-    fun toCategoryEntityList(dtos: List<CategoryDto>, cacheKey: String): List<CategoryEntity> {
-        return dtos.map { toCategoryEntity(it, cacheKey) }
-    }
 
     /**
-     * Convert CategoryEntity to Category domain model
+     * Convert list of CategoryDto to list of CategoryEntity (flattening nested subcategories)
+     * This recursively flattens the category hierarchy into a flat list for Room storage
+     */
+    fun toCategoryEntityList(dtos: List<CategoryDto>, cacheKey: String): List<CategoryEntity> {
+        val entities = mutableListOf<CategoryEntity>()
+        var totalNestedCount = 0
+
+        fun flatten(category: CategoryDto) {
+            entities.add(toCategoryEntity(category, cacheKey))
+            val nestedCount = category.subcategories?.size ?: 0
+            if (nestedCount > 0) {
+                println("📋 Category '${category.name}' has $nestedCount subcategories")
+                totalNestedCount += nestedCount
+            }
+            category.subcategories?.forEach { subcategory ->
+                flatten(subcategory)
+            }
+        }
+
+        dtos.forEach { category ->
+            flatten(category)
+        }
+
+        println("📋 Total entities created: ${entities.size}")
+        println("📋 Total nested subcategories found: $totalNestedCount")
+
+        return entities
+    }
+
+
+    /**
+     * Convert single CategoryEntity to Category domain model (without children)
+     * For single category lookups where hierarchy is not needed
      */
     fun toCategoryDomainFromEntity(entity: CategoryEntity): Category {
         return Category(
@@ -154,22 +182,63 @@ class CategoriesDtoMapper @Inject constructor() {
             vertical = entity.vertical,
             type = entity.type,
             hasSubcategories = entity.hasSubcategories,
-            description = null,  // Not stored in entity, would need separate fetch
-            parentId = null,      // Not stored in entity, would need separate fetch
+            description = null,
+            parentId = entity.parentId,
             subcategoriesCount = 0,
             jobPostsCount = 0,
             servicesCount = 0,
             supportCount = 0,
             createdAt = entity.createdAt,
-            updatedAt = entity.updatedAt
+            updatedAt = entity.updatedAt,
+            subcategories = null
         )
     }
 
     /**
-     * Convert list of CategoryEntity to list of Category domain models
+     * Convert list of CategoryEntity to list of Category domain models with proper hierarchy
+     * This reconstructs the parent-child relationships from the flat list
      */
     fun toCategoryDomainListFromEntities(entities: List<CategoryEntity>): List<Category> {
-        return entities.map { toCategoryDomainFromEntity(it) }
+        if (entities.isEmpty()) return emptyList()
+
+        println("🔧 Building category hierarchy from ${entities.size} entities")
+
+        val rootEntities = entities.filter { it.parentId == null }
+        println("🔧 Root entities found: ${rootEntities.size}")
+
+        fun buildCategory(entity: CategoryEntity): Category {
+            val children = entities.filter { it.parentId == entity.id }
+            if (children.isNotEmpty()) {
+                println("🔧 Category '${entity.name}' has ${children.size} children")
+            }
+            return Category(
+                id = entity.id,
+                name = entity.name,
+                slug = entity.slug,
+                vertical = entity.vertical,
+                type = entity.type,
+                hasSubcategories = entity.hasSubcategories,
+                description = null,
+                parentId = entity.parentId,
+                subcategoriesCount = children.size,
+                jobPostsCount = 0,
+                servicesCount = 0,
+                supportCount = 0,
+                createdAt = entity.createdAt,
+                updatedAt = entity.updatedAt,
+                subcategories = children.map { buildCategory(it) }
+            )
+        }
+
+        val result = rootEntities.map { buildCategory(it) }
+        println("🔧 Built ${result.size} root categories with their subcategories")
+
+        // Print sample of Architects
+        result.find { it.name == "Architects" }?.let { arch ->
+            println("🔧 Architects has ${arch.subcategoriesCount} subcategories: ${arch.subcategories?.map { it.name }}")
+        }
+
+        return result
     }
 
     // ==================== SINGLE CATEGORY MAPPINGS ====================

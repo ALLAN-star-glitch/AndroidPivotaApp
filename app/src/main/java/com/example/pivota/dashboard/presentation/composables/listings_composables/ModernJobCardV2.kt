@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.ui.theme.PivotaConnectTheme
@@ -56,8 +58,8 @@ fun ModernJobCardV2(
     companyName: String,
     location: String,
     postedTime: String,
-    employmentType: String,  // e.g., "Formal" or "Informal"
-    jobType: String,         // e.g., "Remote", "Full-time", "Contract", "Gig", "Part-time", "Hybrid", "On-site"
+    employmentType: String,
+    jobType: String,
     onViewDetailsClick: () -> Unit = {},
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -73,7 +75,6 @@ fun ModernJobCardV2(
             .fillMaxWidth()
             .clickable { onViewDetailsClick() }
             .drawBehind {
-                // Subtle dotted border pattern
                 val strokeWidth = 1f
                 val pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
                 drawRoundRect(
@@ -161,45 +162,12 @@ fun ModernJobCardV2(
                         shape = RoundedCornerShape(10.dp),
                         color = primaryColor.copy(alpha = 0.1f)
                     ) {
-                        if (imageUrl != null) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(imageUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "$companyName logo",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                                error = painterResource(id = R.drawable.job_placeholder1)
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        brush = Brush.radialGradient(
-                                            colors = listOf(
-                                                primaryColor.copy(alpha = 0.2f),
-                                                primaryColor.copy(alpha = 0.05f)
-                                            )
-                                        )
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = companyName
-                                        .split(" ")
-                                        .take(2)
-                                        .map { it.firstOrNull()?.toString() ?: "" }
-                                        .joinToString("")
-                                        .uppercase()
-                                        .take(2),
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = primaryColor
-                                )
-                            }
-                        }
+                        // OPTIMIZED IMAGE LOADING
+                        OptimizedJobImage(
+                            imageUrl = imageUrl,
+                            companyName = companyName,
+                            primaryColor = primaryColor
+                        )
                     }
                 }
 
@@ -357,6 +325,67 @@ fun ModernJobCardV2(
                     }
                 }
             }
+        }
+    }
+}
+
+// OPTIMIZED IMAGE COMPOSABLE FOR JOB CARDS
+@Composable
+fun OptimizedJobImage(
+    imageUrl: Any?,
+    companyName: String,
+    primaryColor: Color
+) {
+    val context = LocalContext.current
+
+    if (imageUrl != null && imageUrl.toString().isNotBlank()) {
+        // Cache the image request to prevent recreation
+        val imageRequest = remember(imageUrl) {
+            ImageRequest.Builder(context)
+                .data(imageUrl)
+                .crossfade(true)
+                .allowHardware(true) // Enable hardware bitmaps for better performance
+                .size(360, 360) // Limit size to reduce memory
+                .diskCacheKey(imageUrl.toString())
+                .memoryCacheKey(imageUrl.toString())
+                .build()
+        }
+
+        AsyncImage(
+            model = imageRequest,
+            contentDescription = "$companyName logo",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+            error = painterResource(id = R.drawable.job_placeholder1),
+            fallback = painterResource(id = R.drawable.job_placeholder1)
+        )
+    } else {
+        // Lightweight placeholder - text-based initials
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            primaryColor.copy(alpha = 0.2f),
+                            primaryColor.copy(alpha = 0.05f)
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = companyName
+                    .split(" ")
+                    .take(2)
+                    .map { it.firstOrNull()?.toString() ?: "" }
+                    .joinToString("")
+                    .uppercase()
+                    .take(2),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = primaryColor
+            )
         }
     }
 }

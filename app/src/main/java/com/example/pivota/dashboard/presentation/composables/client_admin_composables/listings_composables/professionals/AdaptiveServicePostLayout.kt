@@ -372,8 +372,9 @@ fun ServicePostStepperContent(
     val categories = (categoriesState as? CategoriesState.Success)?.categories ?: emptyList()
     val topLevelCategories = categories.filter { it.parentId == null }
     val selectedParentCategory = topLevelCategories.find { it.name == uiState.category }
-    val subcategories = categories.filter { it.parentId == selectedParentCategory?.id }
-    val showSubcategoryField = selectedParentCategory?.hasSubcategories == true && subcategories.isNotEmpty()
+    val hasSubcategories = selectedParentCategory?.hasSubcategories == true
+    val showSubcategoryField = hasSubcategories && uiState.availableSubcategories.isNotEmpty()
+    val subcategories = emptyList<com.example.pivota.dashboard.domain.model.listings_models.general.Category>()
 
     // Check if category step is complete
     val isCategoryComplete = uiState.category.isNotBlank() &&
@@ -470,7 +471,6 @@ fun ServicePostStepperContent(
                         categoriesState = categoriesState,
                         topLevelCategories = topLevelCategories,
                         subcategories = subcategories,
-                        showSubcategoryField = showSubcategoryField,
                         colorScheme = colorScheme,
                         scrollState = scrollState,
                         onNext = {
@@ -628,7 +628,6 @@ fun ServiceCategoryStep(
     categoriesState: CategoriesState,
     topLevelCategories: List<com.example.pivota.dashboard.domain.model.listings_models.general.Category>,
     subcategories: List<com.example.pivota.dashboard.domain.model.listings_models.general.Category>,
-    showSubcategoryField: Boolean,
     colorScheme: ColorScheme,
     scrollState: androidx.compose.foundation.ScrollState,
     onNext: () -> Unit
@@ -658,16 +657,19 @@ fun ServiceCategoryStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         ServiceLabel("Category *")
+
+        // Category dropdown
         ServiceDropdown(
             value = uiState.category,
             onValueChange = { categoryName ->
                 val categoryId = uiState.categoryIdMap[categoryName] ?: ""
+                println("Category selected: $categoryName, ID: $categoryId")
                 viewModel.updateCategory(categoryName, categoryId)
             },
             options = topLevelCategories.map { it.name },
             placeholder = "Select Category",
             isLoading = isLoadingCategories,
-            enabled = !isLoadingCategories && categoriesError == null
+            enabled = !isLoadingCategories && categoriesError == null && uiState.availableCategories.isNotEmpty()
         )
 
         if (categoriesError != null) {
@@ -679,9 +681,16 @@ fun ServiceCategoryStep(
             )
         }
 
-        // Subcategory Field (Animated - appears only if parent has subcategories)
+        // Subcategory Field - Calculate visibility directly from UI state
+        val hasSubcategories = topLevelCategories.find { it.name == uiState.category }?.hasSubcategories == true
+        val availableSubs = uiState.availableSubcategories
+
+        println("🔍 ServiceCategoryStep - Category: ${uiState.category}")
+        println("🔍 hasSubcategories: $hasSubcategories")
+        println("🔍 availableSubcategories: $availableSubs")
+
         AnimatedVisibility(
-            visible = showSubcategoryField,
+            visible = hasSubcategories && availableSubs.isNotEmpty(),
             enter = fadeIn() + expandVertically(animationSpec = tween(300)),
             exit = fadeOut() + shrinkVertically(animationSpec = tween(200))
         ) {
@@ -692,13 +701,15 @@ fun ServiceCategoryStep(
                     value = uiState.subcategory,
                     onValueChange = { subcategoryName ->
                         val subcategoryId = uiState.subcategoryIdMap[subcategoryName] ?: ""
+                        println("Subcategory selected: $subcategoryName, ID: $subcategoryId")
                         viewModel.updateSubcategory(subcategoryName, subcategoryId)
                     },
-                    options = subcategories.map { it.name },
+                    options = availableSubs,
                     placeholder = "Select Subcategory",
                     isLoading = false,
-                    enabled = true
+                    enabled = availableSubs.isNotEmpty()
                 )
+
                 Text(
                     text = "Selecting a subcategory helps clients find you more easily",
                     style = MaterialTheme.typography.bodySmall,
@@ -715,7 +726,7 @@ fun ServiceCategoryStep(
             modifier = Modifier.fillMaxWidth().height(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary),
             shape = RoundedCornerShape(8.dp),
-            enabled = uiState.category.isNotBlank() && (!showSubcategoryField || uiState.subcategory.isNotBlank())
+            enabled = uiState.category.isNotBlank() && (!hasSubcategories || uiState.subcategory.isNotBlank())
         ) {
             Text("Continue", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }

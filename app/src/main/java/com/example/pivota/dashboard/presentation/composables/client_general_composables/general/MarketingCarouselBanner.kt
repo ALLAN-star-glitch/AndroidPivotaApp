@@ -79,7 +79,6 @@ fun MarketingCarouselBanner(
                 subtitle = { _ -> "Verified experts ready to help" },
                 ctaText = { _ -> "Find Professionals →" }
             ),
-            // ✅ NEW: Social Support Pillar (Fourth Banner)
             BannerItem(
                 type = BannerType.SOCIAL_SUPPORT,
                 imageRes = R.drawable.find_support,
@@ -97,15 +96,26 @@ fun MarketingCarouselBanner(
 
     val scope = rememberCoroutineScope()
 
-    // Safe auto-scroll (prevents runaway coroutine issues)
-    LaunchedEffect(pagerState) {
-        while (true) {
+    // Safe auto-scroll with lifecycle awareness
+    var isAutoScrollingEnabled by remember { mutableStateOf(true) }
+
+    LaunchedEffect(pagerState, isAutoScrollingEnabled) {
+        while (isAutoScrollingEnabled) {
             delay(5000)
-            val next = (pagerState.currentPage + 1) % banners.size
-            scope.launch {
-                pagerState.animateScrollToPage(next)
+            if (isAutoScrollingEnabled && pagerState.pageCount > 0) {
+                val next = (pagerState.currentPage + 1) % banners.size
+                scope.launch {
+                    pagerState.animateScrollToPage(next)
+                }
             }
         }
+    }
+
+    // Pause auto-scroll when user interacts
+    LaunchedEffect(pagerState.currentPage) {
+        isAutoScrollingEnabled = false
+        delay(10000) // Resume after 10 seconds of inactivity
+        isAutoScrollingEnabled = true
     }
 
     Column(
@@ -121,10 +131,21 @@ fun MarketingCarouselBanner(
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
-                pageSpacing = 12.dp
+                pageSpacing = 12.dp,
+                key = { page -> banners[page].type.name } // Add key for better recycling
             ) { page ->
-
                 val banner = banners[page]
+
+                // Memoize banner content to prevent recomposition
+                val bannerTitle = remember(banner.type, displayName, isGuestMode) {
+                    banner.title(displayName, isGuestMode)
+                }
+                val bannerSubtitle = remember(banner.type, isGuestMode) {
+                    banner.subtitle(isGuestMode)
+                }
+                val bannerCtaText = remember(banner.type, isGuestMode) {
+                    banner.ctaText(isGuestMode)
+                }
 
                 Card(
                     modifier = Modifier
@@ -134,19 +155,10 @@ fun MarketingCarouselBanner(
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Box(Modifier.fillMaxSize()) {
-
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(banner.imageRes)
-                                .size(800, 400)
-                                .allowHardware(false)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            alignment = Alignment.TopCenter,
-                            modifier = Modifier.fillMaxSize(),
-                            error = painterResource(R.drawable.property_placeholder1)
+                        // Optimized image loading
+                        OptimizedBannerImage(
+                            imageRes = banner.imageRes,
+                            context = context
                         )
 
                         // Gradient overlay
@@ -174,22 +186,24 @@ fun MarketingCarouselBanner(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-
                             Column(modifier = Modifier.weight(0.6f)) {
                                 Text(
-                                    text = banner.title(displayName, isGuestMode),
+                                    text = bannerTitle,
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = Color.White,
+                                    maxLines = 2,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
 
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Text(
-                                    text = banner.subtitle(isGuestMode),
+                                    text = bannerSubtitle,
                                     fontSize = 13.sp,
                                     color = Color.White.copy(alpha = 0.9f),
-                                    maxLines = 2
+                                    maxLines = 2,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
                             }
 
@@ -203,7 +217,7 @@ fun MarketingCarouselBanner(
                                 modifier = Modifier.height(40.dp)
                             ) {
                                 Text(
-                                    text = banner.ctaText(isGuestMode),
+                                    text = bannerCtaText,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -239,7 +253,10 @@ fun MarketingCarouselBanner(
                             )
                             .clickable {
                                 scope.launch {
+                                    isAutoScrollingEnabled = false
                                     pagerState.animateScrollToPage(index)
+                                    delay(10000)
+                                    isAutoScrollingEnabled = true
                                 }
                             }
                     )
@@ -247,6 +264,32 @@ fun MarketingCarouselBanner(
             }
         }
     }
+}
+
+// OPTIMIZED BANNER IMAGE COMPOSABLE
+@Composable
+fun OptimizedBannerImage(
+    imageRes: Int,
+    context: android.content.Context
+) {
+    val imageRequest = remember(imageRes) {
+        ImageRequest.Builder(context)
+            .data(imageRes)
+            .size(800, 400)
+            .allowHardware(true) // Enable hardware acceleration for banners
+            .crossfade(true)
+            .build()
+    }
+
+    AsyncImage(
+        model = imageRequest,
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        alignment = Alignment.TopCenter,
+        modifier = Modifier.fillMaxSize(),
+        error = painterResource(R.drawable.property_placeholder1),
+        fallback = painterResource(R.drawable.property_placeholder1)
+    )
 }
 
 // ---------------- DATA ----------------

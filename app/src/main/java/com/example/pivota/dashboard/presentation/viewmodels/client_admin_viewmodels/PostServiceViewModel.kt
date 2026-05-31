@@ -6,13 +6,11 @@ import com.example.pivota.core.network.ApiResult
 import com.example.pivota.dashboard.data.dto.CreateServiceOfferingRequestDto
 import com.example.pivota.dashboard.data.dto.DayAvailabilityDto
 import com.example.pivota.dashboard.domain.model.listings_models.general.Category
-import com.example.pivota.dashboard.domain.model.listings_models.general.DiscoveryCategory
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.DayAvailability
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.PricingUnitOption
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.PricingUnitsByCategory
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
 import com.example.pivota.dashboard.domain.useCase.CreateServiceOfferingUseCase
-import com.example.pivota.dashboard.domain.useCase.GetComplimentaryCategoriesUseCase
 import com.example.pivota.dashboard.domain.useCase.GetFullComplimentaryCategoriesUseCase
 import com.example.pivota.dashboard.domain.useCase.GetPricingUnitsByCategoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,6 +39,9 @@ class PostServiceViewModel @Inject constructor(
     private val _pricingUnitsState = MutableStateFlow<PricingUnitsState>(PricingUnitsState.Idle)
     val pricingUnitsState: StateFlow<PricingUnitsState> = _pricingUnitsState.asStateFlow()
 
+    // Flag to track if categories are fully loaded
+    private var areCategoriesLoaded = false
+
     init {
         loadCategories()
     }
@@ -55,23 +56,20 @@ class PostServiceViewModel @Inject constructor(
                 if (categories.isNotEmpty()) {
                     _categoriesState.value = CategoriesState.Success(categories)
 
-                    // Filter top-level categories (parentId == null)
-                    val topLevelCategories = categories.filter { it.parentId == null }
-                    val categoryNames = topLevelCategories.map { it.name }
-                    val categoryMap = topLevelCategories.associate { it.name to it.id }
+                    // categories here are top-level categories (parentId == null)
+                    val categoryNames = categories.map { it.name }
+                    val categoryMap = categories.associate { it.name to it.id }
 
-                    // Build subcategory maps for each parent category
+                    // Build subcategory maps from the NESTED structure
                     val subcategoryMap = mutableMapOf<String, List<Category>>()
                     val subcategoryIdMap = mutableMapOf<String, String>()
 
-                    categories.filter { it.parentId != null }.forEach { subcategory ->
-                        val parentId = subcategory.parentId
-                        if (parentId != null) {
-                            val parentCategory = categories.find { it.id == parentId }
-                            if (parentCategory != null) {
-                                val currentList = subcategoryMap[parentCategory.name] ?: emptyList()
-                                subcategoryMap[parentCategory.name] = currentList + subcategory
-                                subcategoryIdMap[subcategory.name] = subcategory.id
+                    categories.forEach { parentCategory ->
+                        val subcategories = parentCategory.subcategories ?: emptyList()
+                        if (subcategories.isNotEmpty()) {
+                            subcategoryMap[parentCategory.name] = subcategories
+                            subcategories.forEach { sub ->
+                                subcategoryIdMap[sub.name] = sub.id
                             }
                         }
                     }
@@ -81,8 +79,21 @@ class PostServiceViewModel @Inject constructor(
                             availableCategories = categoryNames,
                             categoryIdMap = categoryMap,
                             allCategories = categories,
-                            subcategoryIdMap = subcategoryIdMap
+                            subcategoryIdMap = subcategoryIdMap,
+                            subcategoryMap = subcategoryMap
                         )
+                    }
+
+                    // Mark categories as loaded ONLY after updating the UI state
+                    areCategoriesLoaded = true
+
+                    // Log subcategories for debugging
+                    println("📋 Subcategory map built. Size: ${subcategoryMap.size}")
+                    if (subcategoryMap.isEmpty()) {
+                        println("⚠️ No subcategories found! Check if the API is returning subcategories.")
+                    }
+                    subcategoryMap.forEach { (parent, subs) ->
+                        println("   $parent -> ${subs.map { it.name }}")
                     }
                 } else {
                     _categoriesState.value = CategoriesState.Error("No categories available")
@@ -96,16 +107,40 @@ class PostServiceViewModel @Inject constructor(
     }
 
     fun updateCategory(categoryName: String, categoryId: String) {
-        val categories = (_categoriesState.value as? CategoriesState.Success)?.categories ?: emptyList()
-        val subcategories = categories.filter { it.parentId == categoryId }.map { it.name }
+        // Check if categories are fully loaded
+        if (!areCategoriesLoaded) {
+            println("📋 [PostServiceViewModel] Categories still loading, please wait...")
+            return
+        }
+
+        val subcategoryMap = _uiState.value.subcategoryMap
+        println("📋 updateCategory - subcategoryMap keys: ${subcategoryMap.keys}")
+        println("📋 updateCategory - subcategoryMap size: ${subcategoryMap.size}")
+
+        // If subcategoryMap is empty, categories aren't ready yet - just return
+        if (subcategoryMap.isEmpty()) {
+            println("📋 [PostServiceViewModel] Subcategory map is empty, categories not ready. Ignoring selection.")
+            return
+        }
+
+        val subcategories = subcategoryMap[categoryName] ?: emptyList()
+        val subcategoryNames = subcategories.map { it.name }
+        val subcategoryIdMap = subcategories.associate { it.name to it.id }
+
+        println("📋 [PostServiceViewModel] Category selected: $categoryName")
+        println("📋 Subcategories available: ${subcategoryNames.size}")
+        if (subcategoryNames.isNotEmpty()) {
+            println("📋 Subcategory names: $subcategoryNames")
+        }
 
         _uiState.update {
             it.copy(
                 category = categoryName,
                 categoryId = categoryId,
-                subcategory = "",  // Clear subcategory when category changes
-                subcategoryId = "",  // Clear subcategory ID
-                availableSubcategories = subcategories
+                subcategory = "",
+                subcategoryId = "",
+                availableSubcategories = subcategoryNames,
+                subcategoryIdMap = subcategoryIdMap
             )
         }
 
@@ -116,6 +151,7 @@ class PostServiceViewModel @Inject constructor(
     }
 
     fun updateSubcategory(subcategoryName: String, subcategoryId: String) {
+        println("📋 [PostServiceViewModel] Subcategory selected: $subcategoryName, ID: $subcategoryId")
         _uiState.update {
             it.copy(
                 subcategory = subcategoryName,
@@ -130,7 +166,6 @@ class PostServiceViewModel @Inject constructor(
 
     fun updateBasePrice(price: String) {
         _uiState.update { it.copy(basePrice = price) }
-        // Validate price when it changes
         validatePriceAgainstSelectedUnit(_uiState.value.priceUnit)
     }
 
@@ -177,7 +212,6 @@ class PostServiceViewModel @Inject constructor(
 
                     _pricingUnitsState.value = PricingUnitsState.Success(pricingData)
 
-                    // Update available price units in UI state
                     val allowedUnitsList = pricingData.allowedUnits.map { it.unit }
                     _uiState.update {
                         it.copy(
@@ -186,7 +220,6 @@ class PostServiceViewModel @Inject constructor(
                         )
                     }
 
-                    // If current price unit is not allowed, reset to first allowed unit
                     val currentUnit = _uiState.value.priceUnit
                     if (allowedUnitsList.isNotEmpty() && currentUnit !in allowedUnitsList) {
                         updatePriceUnit(allowedUnitsList.first())
@@ -228,7 +261,6 @@ class PostServiceViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, isSuccess = false) }
 
-            // Validate required fields
             val validationError = validateForm()
             if (validationError != null) {
                 _uiState.update {
@@ -238,7 +270,6 @@ class PostServiceViewModel @Inject constructor(
                 return@launch
             }
 
-            // Validate price against rules
             val priceError = _uiState.value.priceValidationError
             if (priceError != null) {
                 _uiState.update {
@@ -248,7 +279,6 @@ class PostServiceViewModel @Inject constructor(
                 return@launch
             }
 
-            // Build the request
             val request = buildRequest()
 
             println("🔵 [PostServiceViewModel] Submitting service offering...")
@@ -274,14 +304,12 @@ class PostServiceViewModel @Inject constructor(
                     onSuccess()
                 }
                 is ApiResult.Error -> {
-                    // Get the original message from the backend
                     val originalMessage = result.networkError.originalMessage
                     val statusCode = result.networkError.statusCode
 
                     println("❌ [PostServiceViewModel] Status Code: $statusCode")
                     println("❌ [PostServiceViewModel] Original Message: $originalMessage")
 
-                    // Make the error message more user-friendly
                     val errorMessage = when {
                         originalMessage?.contains("professional-services.create.own") == true ->
                             "You don't have permission to post services. Please ensure you have a professional contractor account."
@@ -324,7 +352,6 @@ class PostServiceViewModel @Inject constructor(
     private fun buildRequest(): CreateServiceOfferingRequestDto {
         val state = _uiState.value
 
-        // Use subcategoryId if selected, otherwise use categoryId
         val finalCategoryId = if (state.subcategoryId.isNotBlank()) {
             state.subcategoryId
         } else {
@@ -345,7 +372,7 @@ class PostServiceViewModel @Inject constructor(
         return CreateServiceOfferingRequestDto(
             title = state.title,
             description = state.description,
-            categoryId = finalCategoryId,  // Use subcategory ID if available
+            categoryId = finalCategoryId,
             basePrice = state.basePrice.toDouble(),
             priceUnit = state.priceUnit,
             currency = state.currency,
@@ -360,7 +387,8 @@ class PostServiceViewModel @Inject constructor(
     fun resetState() {
         _uiState.value = PostServiceUiState()
         _pricingUnitsState.value = PricingUnitsState.Idle
-        loadCategories() // Reload categories when resetting
+        areCategoriesLoaded = false
+        loadCategories()
     }
 
     fun resetError() {
@@ -375,7 +403,7 @@ class PostServiceViewModel @Inject constructor(
 // Categories State
 sealed class CategoriesState {
     object Loading : CategoriesState()
-    data class Success(val categories: List<Category>) : CategoriesState()  // Changed to Category
+    data class Success(val categories: List<Category>) : CategoriesState()
     data class Error(val message: String) : CategoriesState()
 }
 
@@ -407,12 +435,14 @@ data class PostServiceUiState(
     val isSuccess: Boolean = false,
     val error: String? = null,
     val createdOffering: ServiceOffering? = null,
-    // New fields for categories and pricing rules
+    // Categories
     val availableCategories: List<String> = emptyList(),
     val categoryIdMap: Map<String, String> = emptyMap(),
     val availableSubcategories: List<String> = emptyList(),
     val subcategoryIdMap: Map<String, String> = emptyMap(),
-    val allCategories: List<Category> = emptyList(),  // ADD THIS for reference
+    val subcategoryMap: Map<String, List<Category>> = emptyMap(),
+    val allCategories: List<Category> = emptyList(),
+    // Pricing
     val allowedPriceUnits: List<String> = emptyList(),
     val pricingRules: List<PricingUnitOption> = emptyList(),
     val priceValidationError: String? = null

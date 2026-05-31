@@ -18,6 +18,16 @@ interface CategoriesRepository {
         type: String? = null
     ): Flow<List<DiscoveryCategory>>
 
+    fun getCategoriesStream(
+        vertical: String? = null,
+        type: String? = null,
+        parentId: String? = null,
+        hasSubcategories: Boolean? = null,
+        hasParent: Boolean? = null,
+        search: String? = null,
+        includeNested: Boolean? = null
+    ): Flow<List<Category>>
+
     suspend fun getCategories(
         vertical: String? = null,
         type: String? = null,

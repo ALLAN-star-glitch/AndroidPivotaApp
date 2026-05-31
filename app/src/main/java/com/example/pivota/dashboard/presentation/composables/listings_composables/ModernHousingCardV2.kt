@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import coil3.request.crossfade
 import coil3.size.Size
 import com.example.pivota.R
@@ -58,8 +60,8 @@ fun ModernHousingCardV2(
     price: String,
     location: String,
     postedTime: String,
-    propertyType: String,      // e.g., "Apartment", "House", "Bedsitter", "Room"
-    listingType: String,       // e.g., "For Rent" or "For Sale" only
+    propertyType: String,
+    listingType: String,
     bedrooms: Int,
     bathrooms: Int,
     squareMeters: Int,
@@ -80,7 +82,6 @@ fun ModernHousingCardV2(
             .fillMaxWidth()
             .clickable { onViewDetailsClick() }
             .drawBehind {
-                // Subtle dotted border pattern
                 val strokeWidth = 1f
                 val pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
                 drawRoundRect(
@@ -169,41 +170,12 @@ fun ModernHousingCardV2(
                             .clip(RoundedCornerShape(10.dp))
                             .background(MaterialTheme.colorScheme.primaryContainer)
                     ) {
-                        if (imageUrl != null && imageUrl.toString().isNotBlank()) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(imageUrl)
-                                    .crossfade(true)
-                                    .size(Size(360, 360))
-                                    .build(),
-                                contentDescription = "$title image",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                                error = painterResource(id = R.drawable.houses),
-                                fallback = painterResource(id = R.drawable.houses)
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        brush = Brush.radialGradient(
-                                            colors = listOf(
-                                                primaryColor.copy(alpha = 0.2f),
-                                                primaryColor.copy(alpha = 0.05f)
-                                            )
-                                        )
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.LocationOn,
-                                    contentDescription = null,
-                                    tint = primaryColor,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            }
-                        }
+                        // OPTIMIZED IMAGE LOADING
+                        OptimizedListingImage(
+                            imageUrl = imageUrl,
+                            title = title,
+                            primaryColor = primaryColor
+                        )
                     }
                 }
 
@@ -422,6 +394,61 @@ fun ModernHousingCardV2(
                     }
                 }
             }
+        }
+    }
+}
+
+// OPTIMIZED IMAGE COMPOSABLE - Fixed version
+@Composable
+fun OptimizedListingImage(
+    imageUrl: Any?,
+    title: String,
+    primaryColor: Color
+) {
+    val context = LocalContext.current // ✅ Get context at composable level
+
+    if (imageUrl != null && imageUrl.toString().isNotBlank()) {
+        // Cache the image request to prevent recreation
+        val imageRequest = remember(imageUrl) {
+            ImageRequest.Builder(context) // ✅ Use context from composable scope
+                .data(imageUrl)
+                .crossfade(true)
+                .allowHardware(true) // Enable hardware bitmaps for better performance
+                .size(360, 360) // Limit size to reduce memory
+                .diskCacheKey(imageUrl.toString())
+                .memoryCacheKey(imageUrl.toString())
+                .build()
+        }
+
+        AsyncImage(
+            model = imageRequest,
+            contentDescription = "$title image",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+            error = painterResource(id = R.drawable.houses),
+            fallback = painterResource(id = R.drawable.houses)
+        )
+    } else {
+        // Lightweight placeholder - no image loading overhead
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            primaryColor.copy(alpha = 0.2f),
+                            primaryColor.copy(alpha = 0.05f)
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.LocationOn,
+                contentDescription = null,
+                tint = primaryColor,
+                modifier = Modifier.size(32.dp)
+            )
         }
     }
 }

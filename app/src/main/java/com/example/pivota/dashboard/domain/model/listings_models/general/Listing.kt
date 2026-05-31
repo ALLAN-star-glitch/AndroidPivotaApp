@@ -22,6 +22,7 @@ data class Category(
     val vertical: String,      // HOUSING, JOBS, SOCIAL_SUPPORT
     val type: String,           // MAIN or COMPLIMENTARY
     val hasSubcategories: Boolean,
+    val subcategories: List<Category>? = null,
     val description: String? = null,
     val parentId: String? = null,
     val subcategoriesCount: Int = 0,
@@ -30,6 +31,7 @@ data class Category(
     val supportCount: Int = 0,
     val createdAt: String? = null,
     val updatedAt: String? = null
+
 )
 
 // For discovery metadata (lightweight version)
