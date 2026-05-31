@@ -25,9 +25,9 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.4.0 - Build 14 - Hybrid Offline Caching System
-        versionCode = 14
-        versionName = "1.4.0"
+        // Version 1.5.0 - Build 15 - Enhanced Category Search with Full-Screen Bottom Sheet
+        versionCode = 15
+        versionName = "1.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -54,158 +54,100 @@ android {
                 testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
 
                 releaseNotes = """
-PivotaConnect v1.4.0 (Build 14)
+PivotaConnect v1.5.0 (Build 15)
 
-MAJOR UPDATE: HYBRID OFFLINE CACHING SYSTEM
+ENHANCED CATEGORY SEARCH WITH FULL-SCREEN BOTTOM SHEET
 
-This release introduces a sophisticated offline-first caching architecture that dramatically improves performance, reduces data usage, and enables seamless offline browsing.
+This release significantly improves the category selection experience with a redesigned bottom sheet and powerful search functionality.
 
-CORE ARCHITECTURE UPGRADE:
+CATEGORY SELECTION IMPROVEMENTS:
 
-1. ROOM DATABASE PERSISTENT CACHE
-   - Added Room database for persistent storage across app restarts
-   - Data now survives device reboots and app kills
-   - Categories and service offerings are cached locally
-   - Reduced network calls by up to 80%
+1. FULL-SCREEN BOTTOM SHEET
+   - Bottom sheet now opens in full screen by default
+   - Provides more space to view and search categories
+   - Can still be pulled down to dismiss
+   - Drag handle remains for intuitive dismissal
 
-2. SMART CACHE EXPIRY STRATEGY
-   - Categories: 24-hour fresh cache, 7-day stale cache
-   - Service Offerings: 5-minute fresh cache, 30-minute stale cache
-   - Offline mode: Shows any cached data up to 30 days old
-   - Intelligent cache invalidation based on data type
+2. NATURAL LANGUAGE SEARCH
+   - Fuzzy matching - finds categories even with partial matches
+   - Example: "Arch" finds "Architects", "Commercial Architects", "Landscape Architects"
+   - Multiple word search (order doesn't matter)
+   - Intelligent word boundary detection
 
-3. SIX-STRATEGY HYBRID APPROACH
-   - Force Refresh: User pull-to-refresh bypasses cache
-   - Fresh Cache: Returns instantly (<100ms) with no network call
-   - Stale Cache: Shows data immediately, refreshes in background
-   - Network Fetch: Fetches fresh when no cache exists
-   - Offline Mode: Returns cached data with warning banner
-   - Complete Failure: Graceful error with retry option
+3. SEARCH ENHANCEMENTS
+   - Real-time filtering as you type
+   - Clear button to reset search
+   - "No matching categories found" message for empty results
+   - Relevance sorting (exact matches appear first)
 
-4. NETWORK DETECTION AND MONITORING
-   - Real-time network availability detection
-   - Automatic switch to offline mode when connection lost
-   - Seamless transition back to online mode
-   - Bandwidth awareness for metered connections
-
-5. CATEGORY HIERARCHY PRESERVATION
-   - Parent-child relationships properly saved to Room
-   - Subcategories load instantly from cache
-   - No separate network calls for subcategories
-   - 4x faster category loading
+4. USER EXPERIENCE IMPROVEMENTS
+   - Larger search bar with better visibility
+   - Improved visual hierarchy
+   - Faster category discovery
+   - Reduced cognitive load when selecting categories
 
 TECHNICAL IMPLEMENTATION:
 
-Database Layer:
-- CategoryEntity with parentId for hierarchy
-- DiscoveryCategoryEntity for lightweight categories
-- ServiceOfferingEntity for professional services
-- CategoriesCacheMetadataEntity for expiry tracking
-- ServiceOfferingsCacheMetadataEntity for offering cache
+- Fuzzy search algorithm with word prefix matching
+- Multi-word search support
+- Relevance-based sorting
+- Full-screen ModalBottomSheet configuration
+- Performance-optimized filtering with remember
 
-Repository Layer:
-- CategoriesRepositoryImpl: Full hybrid caching for categories
-- ServiceOfferingsRepositoryImpl: Smart caching with stale-while-revalidate
-- CacheStatus sealed class (Empty, Fresh, Stale, Expired)
-- NetworkMonitor for connectivity detection
+BEFORE (v1.4.0):
+- Bottom sheet showed only 3/4 of screen
+- Basic contains-only search
+- No relevance sorting
+- Limited visibility for long category lists
 
-PERFORMANCE IMPROVEMENTS:
+AFTER (v1.5.0):
+- Full-screen bottom sheet (100% height)
+- Natural language fuzzy search
+- Relevance-sorted results
+- Better category discovery experience
 
-Before (v1.3.0):
-- Every screen navigation = network call
-- 3-5 second load times on slow connections
-- No offline functionality
-- Categories had to be refetched after app restart
+USER BENEFITS:
 
-After (v1.4.0):
-- Screen loads <100ms from cache
-- Zero data usage for cached content
-- Full offline browsing capability
-- Categories persist across app restarts
-- Subcategories available instantly
-
-OFFLINE CAPABILITIES:
-
-What works without internet:
-- Browse all categories and subcategories
-- View cached service offerings
-- Access previously loaded professional profiles
-- Navigate between screens
-- Pull-to-refresh (shows offline warning)
-
-What requires internet:
-- Creating new service offerings
-- Booking professionals
-- Making payments
-- Submitting reviews
-- First-time app load
-
-USER VISUAL INDICATORS:
-
-Cache Status Indicators:
-- Fresh cache: No indicator (transparent)
-- Stale cache: Subtle "Updated X minutes ago" text
-- Offline mode: Yellow banner "You are offline. Showing cached data"
-- Expired cache: Orange banner with refresh suggestion
-
-BATTERY AND DATA OPTIMIZATION:
-
-- No background polling
-- Smart refresh only when cache is stale
-- Reduced network calls by 80%
-- Optimized database queries with proper indexing
-- Memory-efficient caching strategy
-
-DATABASE VERSION:
-- Upgraded to version 2
-- Added categories table with parentId for hierarchy
-- Added categories_cache_metadata table
-- Added proper indexes for performance
+- Find categories faster with flexible search
+- See more categories at once with full-screen view
+- Type naturally without worrying about exact wording
+- Reduced time to select a category
 
 BUG FIXES:
 
-- Fixed subcategories not showing after app restart
-- Fixed category hierarchy loss when killing the app
-- Fixed infinite retry loop in category selection
-- Fixed network detection on slow connections
-- Fixed cache invalidation timing issues
-
-KNOWN LIMITATIONS:
-
-- First-time load requires internet connection
-- Real-time features (chat, escrow, disputes) still require connectivity
-- Cache size limited to 500 service offerings per category
+- Fixed bottom sheet initial height issues
+- Improved search performance with large category lists
+- Fixed keyboard covering search results
+- Better handling of special characters in search
 
 TESTING INSTRUCTIONS:
 
-To test offline mode:
-1. Load categories with internet
-2. Enable airplane mode
-3. Navigate to Post Service screen (categories load instantly)
-4. Select a category with subcategories (dropdown appears)
-5. Observe offline banner
-6. Disable airplane mode (auto-refresh)
+To test enhanced category search:
+1. Go to Post Service screen
+2. Tap on Category dropdown
+3. Bottom sheet opens full screen
+4. Type partial category names (e.g., "arch")
+5. Observe fuzzy matching results
+6. Try multi-word searches (e.g., "repair air")
+7. Results are sorted by relevance
 
-To test cache persistence:
-1. Load categories with internet
-2. Kill the app completely
-3. Reopen app and go to Post Service
-4. Categories load from cache with subcategories intact
+PERFORMANCE IMPROVEMENTS:
+- Search filtering is memoized for performance
+- LazyColumn for efficient scrolling
+- Stable keys for list items
 
 MIGRATION NOTES:
+- No database migration required
+- No breaking changes
+- Fully backward compatible with v1.4.0
 
-Existing users will experience:
-- Automatic database migration to version 2
-- First load may be slower due to cache population
-- All existing preferences preserved
-- No data loss
+UPCOMING IN v1.6.0:
+- Category icons in dropdown
+- Recent categories section
+- Favorite/pinned categories
+- Category suggestions based on user history
 
-APP SIZE IMPACT:
-- Database size on first load: ~500KB
-- Expected database growth: ~2-3MB after 6 months
-- APK size unchanged from v1.3.0
-
-Thank you for testing PivotaConnect v1.4.0 with hybrid offline caching!
+Thank you for testing PivotaConnect v1.5.0 with enhanced category search!
                 """.trimIndent()
             }
         }

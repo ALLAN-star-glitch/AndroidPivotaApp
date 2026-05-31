@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Place
@@ -2000,26 +2002,89 @@ fun SuccessDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceDropdown(
-    value: String, onValueChange: (String) -> Unit, options: List<String>, placeholder: String,
-    isLoading: Boolean = false, enabled: Boolean = true
+    value: String,
+    onValueChange: (String) -> Unit,
+    options: List<String>,
+    placeholder: String,
+    isLoading: Boolean = false,
+    enabled: Boolean = true
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false, confirmValueChange = { true })
+    var searchQuery by remember { mutableStateOf("") }
+    // Set to false to skip partially expanded state, sheet will start fully expanded
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true, // Changed to true to skip partially expanded state
+        confirmValueChange = { true }
+    )
     val colorScheme = MaterialTheme.colorScheme
     val isInteractive = enabled && options.isNotEmpty() && !isLoading
 
+    // Natural language fuzzy search filter
+    val filteredOptions = remember(searchQuery, options) {
+        if (searchQuery.isBlank()) {
+            options
+        } else {
+            val searchLower = searchQuery.lowercase().trim()
+            val searchWords = searchLower.split(" ").filter { it.isNotBlank() }
+
+            options.filter { option ->
+                val optionLower = option.lowercase()
+
+                if (searchWords.size == 1) {
+                    // Single word search - fuzzy matching
+                    val searchTerm = searchWords[0]
+                    optionLower.contains(searchTerm) ||
+                            searchTerm.length > 2 && optionLower.split(" ").any { word ->
+                        word.startsWith(searchTerm) || word.contains(searchTerm)
+                    } ||
+                            optionLower.replace(" ", "").contains(searchTerm) ||
+                            searchTerm.length > 1 && optionLower.any { it.toString() == searchTerm.substring(0, 1) }
+                } else {
+                    // Multiple word search - all words must match (order doesn't matter)
+                    searchWords.all { searchWord ->
+                        optionLower.contains(searchWord)
+                    }
+                }
+            }.sortedWith(compareBy({
+                // Sort by relevance
+                val exactMatch = it.equals(searchQuery, ignoreCase = true)
+                val startsWith = it.lowercase().startsWith(searchQuery.lowercase())
+                when {
+                    exactMatch -> 0
+                    startsWith -> 1
+                    else -> 2
+                }
+            }, { it.length }))
+        }
+    }
+
     OutlinedTextField(
-        value = value, onValueChange = {}, readOnly = true, enabled = false,
-        placeholder = { when {
-            isLoading -> Text("Loading Categories...", color = colorScheme.onSurface.copy(alpha = 0.5f))
-            else -> Text(placeholder, color = colorScheme.onSurface.copy(alpha = 0.5f))
-        } },
-        modifier = Modifier.fillMaxWidth().clickable(enabled = isInteractive) { if (isInteractive) showBottomSheet = true },
+        value = value,
+        onValueChange = {},
+        readOnly = true,
+        enabled = false,
+        placeholder = {
+            when {
+                isLoading -> Text("Loading Categories...", color = colorScheme.onSurface.copy(alpha = 0.5f))
+                else -> Text(placeholder, color = colorScheme.onSurface.copy(alpha = 0.5f))
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = isInteractive) {
+                if (isInteractive) {
+                    searchQuery = ""
+                    showBottomSheet = true
+                }
+            },
         shape = RoundedCornerShape(8.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = colorScheme.outline, focusedBorderColor = colorScheme.outline,
-            focusedContainerColor = colorScheme.surface, unfocusedContainerColor = colorScheme.surface,
-            disabledBorderColor = colorScheme.outline, disabledTextColor = colorScheme.onSurface,
+            unfocusedBorderColor = colorScheme.outline,
+            focusedBorderColor = colorScheme.outline,
+            focusedContainerColor = colorScheme.surface,
+            unfocusedContainerColor = colorScheme.surface,
+            disabledBorderColor = colorScheme.outline,
+            disabledTextColor = colorScheme.onSurface,
             disabledPlaceholderColor = colorScheme.onSurface.copy(alpha = 0.5f)
         ),
         trailingIcon = {
@@ -2032,34 +2097,155 @@ fun ServiceDropdown(
 
     if (showBottomSheet && options.isNotEmpty()) {
         ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
+            onDismissRequest = {
+                showBottomSheet = false
+                searchQuery = ""
+            },
             sheetState = sheetState,
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
             containerColor = colorScheme.surface,
             dragHandle = {
                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-                    Surface(modifier = Modifier.width(40.dp).height(4.dp), shape = RoundedCornerShape(2.dp), color = colorScheme.onSurface.copy(alpha = 0.3f)) {}
+                    Surface(
+                        modifier = Modifier.width(40.dp).height(4.dp),
+                        shape = RoundedCornerShape(2.dp),
+                        color = colorScheme.onSurface.copy(alpha = 0.3f)
+                    ) {}
                 }
             },
-            tonalElevation = 0.dp
+            tonalElevation = 0.dp,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp).verticalScroll(rememberScrollState())) {
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(placeholder, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold), color = colorScheme.onSurface)
-                    IconButton(onClick = { showBottomSheet = false }) { Icon(Icons.Default.Close, contentDescription = "Close", tint = colorScheme.onSurfaceVariant) }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+            ) {
+                // Search Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        placeholder,
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                        color = colorScheme.onSurface
+                    )
+                    IconButton(onClick = {
+                        showBottomSheet = false
+                        searchQuery = ""
+                    }) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = colorScheme.onSurfaceVariant)
+                    }
                 }
+
+                // Search Bar
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search...", color = colorScheme.onSurface.copy(alpha = 0.5f)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = null, tint = colorScheme.onSurfaceVariant)
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear", tint = colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = colorScheme.outline,
+                        focusedBorderColor = colorScheme.primary,
+                        focusedContainerColor = colorScheme.surface,
+                        unfocusedContainerColor = colorScheme.surface
+                    ),
+                    singleLine = true
+                )
+
                 HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.2f))
-                options.forEachIndexed { index, option ->
-                    val isSelected = option == value
-                    Surface(modifier = Modifier.fillMaxWidth().clickable { onValueChange(option); showBottomSheet = false }, color = if (isSelected) colorScheme.primaryContainer else Color.Transparent, shape = RoundedCornerShape(0.dp)) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text(option, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal), color = if (isSelected) colorScheme.primary else colorScheme.onSurface)
-                            if (isSelected) Icon(Icons.Outlined.Check, contentDescription = "Selected", tint = colorScheme.primary, modifier = Modifier.size(20.dp))
+
+                // Options List - Takes remaining space
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    if (filteredOptions.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    if (searchQuery.isNotBlank()) "No matching categories found" else "No results found",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        items(
+                            count = filteredOptions.size,
+                            key = { index -> filteredOptions[index] }
+                        ) { index ->
+                            val option = filteredOptions[index]
+                            val isSelected = option == value
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onValueChange(option)
+                                        showBottomSheet = false
+                                        searchQuery = ""
+                                    },
+                                color = if (isSelected) colorScheme.primaryContainer else Color.Transparent,
+                                shape = RoundedCornerShape(0.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        option,
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+                                        ),
+                                        color = if (isSelected) colorScheme.primary else colorScheme.onSurface
+                                    )
+                                    if (isSelected) {
+                                        Icon(
+                                            Icons.Outlined.Check,
+                                            contentDescription = "Selected",
+                                            tint = colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                            if (index != filteredOptions.lastIndex) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    color = colorScheme.outline.copy(alpha = 0.1f)
+                                )
+                            }
                         }
                     }
-                    if (index != options.lastIndex) HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colorScheme.outline.copy(alpha = 0.1f))
                 }
-                Spacer(modifier = Modifier.height(32.dp))
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
