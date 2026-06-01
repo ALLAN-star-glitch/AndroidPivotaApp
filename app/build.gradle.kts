@@ -25,7 +25,7 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.7.0 - Build 17 - Post Options Bottom Sheet Improvements
+        // Version 1.7.0 - Build 17 - Post Options Bottom Sheet & UI Improvements
         versionCode = 17
         versionName = "1.7.0"
 
@@ -55,9 +55,9 @@ android {
                 releaseNotes = """
 PivotaConnect v1.7.0 (Build 17)
 
-POST OPTIONS BOTTOM SHEET IMPROVEMENTS
+POST OPTIONS BOTTOM SHEET & UI IMPROVEMENTS
 
-This release focuses on improving the Post Options bottom sheet for a better user experience when creating new listings.
+This release focuses on improving the Post Options bottom sheet and simplifying button text across the Post Service flow.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -79,7 +79,13 @@ IMPROVEMENTS:
    • Proper padding for system bars
    • Content uses screen real estate efficiently
 
-4. IMPROVED LAYOUT
+4. SIMPLIFIED BUTTON TEXT
+   • Changed "Continue to Pricing" → "Continue"
+   • Changed "Continue to Availability" → "Continue"
+   • Consistent button text across all form steps
+   • Cleaner, more intuitive user experience
+
+5. IMPROVED LAYOUT
    • FillMaxHeight for proper screen utilization
    • LazyColumn with weight(1f) for scrollable content
    • NavigationBarsPadding for system bar handling
@@ -93,7 +99,7 @@ TECHNICAL IMPLEMENTATION:
 • LazyColumn with weight(1f) for scrollable options
 • Fixed header with expand/collapse functionality
 • Proper padding configuration
-• Expand/collapse button for sheet state control
+• Simplified button text across all steps
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -101,12 +107,14 @@ BEFORE (v1.6.0):
 • Bottom sheet had extra empty space at the bottom
 • Content was not scrollable
 • Limited height for options on smaller screens
+• Button text varied: "Continue to Pricing", "Continue to Availability"
 • Poor user experience on compact devices
 
 AFTER (v1.7.0):
 • No extra empty space at the bottom
 • Fully scrollable content
 • Full-screen utilization
+• Consistent "Continue" button text across all steps
 • Smooth scrolling experience on all devices
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -125,8 +133,17 @@ USER BENEFITS:
 • Better visibility of all posting options
 • No wasted screen space
 • Smooth scrolling on smaller screens
+• Cleaner, more intuitive button text
 • Professional, polished experience
 • Faster access to posting features
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+AFFECTED SCREENS:
+
+• Dashboard Post Options Bottom Sheet
+• Post Service Form (Basic Info step)
+• Post Service Form (Pricing step)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -141,6 +158,12 @@ To test Post Options Bottom Sheet:
 6. Header stays fixed while scrolling
 7. Tap on any option to navigate to the appropriate post screen
 
+To test Button Text Changes:
+1. Go to Post Service screen
+2. Fill out Basic Info step - verify button shows "Continue"
+3. Go to Pricing step - verify button shows "Continue"
+4. Button text is consistent across steps
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 BUG FIXES:
@@ -149,6 +172,7 @@ BUG FIXES:
 • Made content scrollable on small screens
 • Fixed layout issues on different screen sizes
 • Improved sheet state management
+• Simplified button text for better UX
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

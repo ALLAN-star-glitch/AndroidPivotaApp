@@ -7,8 +7,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -61,10 +59,6 @@ import com.example.pivota.dashboard.presentation.viewmodels.client_admin_viewmod
 import com.example.pivota.dashboard.presentation.viewmodels.client_admin_viewmodels.PostServiceUiState
 import com.example.pivota.dashboard.presentation.viewmodels.client_admin_viewmodels.PostServiceViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_admin_viewmodels.PricingUnitsState
-import com.google.common.collect.Multimaps.index
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 import java.util.*
@@ -805,7 +799,7 @@ fun ServiceBasicInfoStep(
                 shape = RoundedCornerShape(8.dp),
                 enabled = uiState.title.isNotBlank() && uiState.description.isNotBlank()
             ) {
-                Text("Continue to Pricing", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Continue", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -952,7 +946,7 @@ fun ServicePricingStep(
                 shape = RoundedCornerShape(8.dp),
                 enabled = uiState.basePrice.isNotBlank() && uiState.basePrice.toDoubleOrNull() != null && uiState.priceValidationError == null
             ) {
-                Text("Continue to Availability", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Continue", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
