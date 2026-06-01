@@ -12,6 +12,7 @@ import androidx.compose.material.icons.rounded.HomeWork
 import androidx.compose.material.icons.rounded.Plumbing
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -19,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,6 +29,7 @@ fun PostOptionsBottomSheet(
     onDismiss: () -> Unit,
     onOptionSelected: (String) -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val colorScheme = MaterialTheme.colorScheme
 
     ModalBottomSheet(
@@ -36,32 +39,65 @@ fun PostOptionsBottomSheet(
         tonalElevation = 8.dp,
         dragHandle = {
             BottomSheetDefaults.DragHandle(color = colorScheme.primary.copy(alpha = 0.4f))
-        }
+        },
+        // Increase the sheet height by controlling the content window
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 500.dp, max = 700.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight()
                 .navigationBarsPadding()
                 .padding(bottom = 32.dp, start = 24.dp, end = 24.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            // Header
-            Text(
-                text = "Post a New Listing",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.5).sp,
-                    color = colorScheme.primary // Pivota Teal
-                )
-            )
-            Text(
-                text = "Select a category to connect with your audience",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = colorScheme.onSurfaceVariant,
-                    letterSpacing = 0.2.sp
-                ),
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
+            // Header with expand/collapse hint
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Post a New Listing",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = (-0.5).sp,
+                            color = colorScheme.primary
+                        )
+                    )
+                    Text(
+                        text = "Select a category to connect with your audience",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = colorScheme.onSurfaceVariant,
+                            letterSpacing = 0.2.sp
+                        ),
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
+
+                // Expand/Collapse button
+                IconButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            when (sheetState.currentValue) {
+                                SheetValue.Expanded -> sheetState.partialExpand()
+                                else -> sheetState.expand()
+                            }
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = if (sheetState.currentValue == SheetValue.Expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                        contentDescription = if (sheetState.currentValue == SheetValue.Expanded) "Collapse" else "Expand",
+                        tint = colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // MVP1 Pillar: Employment
             PostOptionItem(
@@ -98,6 +134,19 @@ fun PostOptionsBottomSheet(
                 onClick = { onOptionSelected("service") },
                 colorScheme = colorScheme
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Hint text at bottom
+            Text(
+                text = "Pull up to expand • Pull down to close",
+                style = MaterialTheme.typography.labelSmall,
+                color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
         }
     }
 }
@@ -113,10 +162,10 @@ private fun PostOptionItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
+            .padding(vertical = 8.dp)
             .clickable { onClick() },
         shape = MaterialTheme.shapes.large,
-        color = colorScheme.primary.copy(alpha = 0.05f), // Very light teal tint
+        color = colorScheme.primary.copy(alpha = 0.05f),
         border = null
     ) {
         Row(
@@ -124,7 +173,6 @@ private fun PostOptionItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Elegant Icon Container with Gradient
             Box(
                 modifier = Modifier
                     .size(52.dp)
@@ -132,7 +180,7 @@ private fun PostOptionItem(
                         brush = Brush.linearGradient(
                             colors = listOf(
                                 colorScheme.primary,
-                                colorScheme.primary.copy(alpha = 0.8f) // Slightly darker version
+                                colorScheme.primary.copy(alpha = 0.8f)
                             )
                         ),
                         shape = CircleShape
@@ -166,7 +214,6 @@ private fun PostOptionItem(
                 )
             }
 
-            // Subtle arrow to indicate action
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,

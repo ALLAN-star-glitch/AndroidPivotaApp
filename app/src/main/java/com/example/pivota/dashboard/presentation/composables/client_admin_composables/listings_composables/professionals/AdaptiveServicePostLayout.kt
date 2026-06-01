@@ -38,6 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -2011,50 +2013,19 @@ fun ServiceDropdown(
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    // Set to false to skip partially expanded state, sheet will start fully expanded
     val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true, // Changed to true to skip partially expanded state
+        skipPartiallyExpanded = true,
         confirmValueChange = { true }
     )
     val colorScheme = MaterialTheme.colorScheme
     val isInteractive = enabled && options.isNotEmpty() && !isLoading
 
-    // Natural language fuzzy search filter
+    // Simple contains search (case insensitive)
     val filteredOptions = remember(searchQuery, options) {
         if (searchQuery.isBlank()) {
             options
         } else {
-            val searchLower = searchQuery.lowercase().trim()
-            val searchWords = searchLower.split(" ").filter { it.isNotBlank() }
-
-            options.filter { option ->
-                val optionLower = option.lowercase()
-
-                if (searchWords.size == 1) {
-                    // Single word search - fuzzy matching
-                    val searchTerm = searchWords[0]
-                    optionLower.contains(searchTerm) ||
-                            searchTerm.length > 2 && optionLower.split(" ").any { word ->
-                        word.startsWith(searchTerm) || word.contains(searchTerm)
-                    } ||
-                            optionLower.replace(" ", "").contains(searchTerm) ||
-                            searchTerm.length > 1 && optionLower.any { it.toString() == searchTerm.substring(0, 1) }
-                } else {
-                    // Multiple word search - all words must match (order doesn't matter)
-                    searchWords.all { searchWord ->
-                        optionLower.contains(searchWord)
-                    }
-                }
-            }.sortedWith(compareBy({
-                // Sort by relevance
-                val exactMatch = it.equals(searchQuery, ignoreCase = true)
-                val startsWith = it.lowercase().startsWith(searchQuery.lowercase())
-                when {
-                    exactMatch -> 0
-                    startsWith -> 1
-                    else -> 2
-                }
-            }, { it.length }))
+            options.filter { it.contains(searchQuery, ignoreCase = true) }
         }
     }
 
@@ -2172,7 +2143,7 @@ fun ServiceDropdown(
 
                 HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.2f))
 
-                // Options List - Takes remaining space
+                // Options List
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2218,12 +2189,12 @@ fun ServiceDropdown(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        option,
-                                        style = MaterialTheme.typography.bodyLarge.copy(
-                                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
-                                        ),
-                                        color = if (isSelected) colorScheme.primary else colorScheme.onSurface
+                                    // Highlight matching text
+                                    HighlightedText(
+                                        text = option,
+                                        highlight = searchQuery,
+                                        isSelected = isSelected,
+                                        colorScheme = colorScheme
                                     )
                                     if (isSelected) {
                                         Icon(
@@ -2247,6 +2218,65 @@ fun ServiceDropdown(
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun HighlightedText(
+    text: String,
+    highlight: String,
+    isSelected: Boolean,
+    colorScheme: ColorScheme
+) {
+    if (highlight.isBlank()) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+            ),
+            color = if (isSelected) colorScheme.primary else colorScheme.onSurface
+        )
+    } else {
+        val lowerText = text.lowercase()
+        val lowerHighlight = highlight.lowercase()
+        val startIndex = lowerText.indexOf(lowerHighlight)
+
+        if (startIndex >= 0) {
+            val endIndex = startIndex + highlight.length
+
+            val annotatedString = buildAnnotatedString {
+                // Text before highlight
+                append(text.substring(0, startIndex))
+                // Highlighted text
+                pushStyle(
+                    SpanStyle(
+                        color = colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        background = colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    )
+                )
+                append(text.substring(startIndex, endIndex.coerceAtMost(text.length)))
+                pop()
+                // Text after highlight
+                append(text.substring(endIndex.coerceAtMost(text.length)))
+            }
+
+            Text(
+                text = annotatedString,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+                ),
+                color = if (isSelected) colorScheme.primary else colorScheme.onSurface
+            )
+        } else {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+                ),
+                color = if (isSelected) colorScheme.primary else colorScheme.onSurface
+            )
         }
     }
 }

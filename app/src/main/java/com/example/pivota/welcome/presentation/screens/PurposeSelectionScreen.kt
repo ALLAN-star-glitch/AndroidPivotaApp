@@ -6,6 +6,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.window.core.layout.WindowSizeClass
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -1022,18 +1025,40 @@ fun PurposeSelectionScreenContent(
     }
 
     if (uiState.showBottomSheet) {
+        val sheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = true, // Start fully expanded
+            confirmValueChange = { true }
+        )
+        var searchQuery by remember { mutableStateOf("") }
+
+        // Filter options based on search
+        val filteredOptions = remember(searchQuery, purposeOptions) {
+            if (searchQuery.isBlank()) {
+                purposeOptions
+            } else {
+                purposeOptions.filter {
+                    it.label.contains(searchQuery, ignoreCase = true) ||
+                            it.description.contains(searchQuery, ignoreCase = true)
+                }
+            }
+        }
+
         ModalBottomSheet(
             onDismissRequest = { viewModel.hideBottomSheet() },
+            sheetState = sheetState,
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             containerColor = colorScheme.surface,
             tonalElevation = 8.dp,
-            dragHandle = { BottomSheetDefaults.DragHandle(color = colorScheme.outlineVariant) }
+            dragHandle = { BottomSheetDefaults.DragHandle(color = colorScheme.outlineVariant) },
+            modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .fillMaxHeight() // Make it full screen
                     .padding(horizontal = 20.dp)
             ) {
+                // Header with close button
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1070,6 +1095,7 @@ fun PurposeSelectionScreenContent(
                     }
                 }
 
+                // Subtitle
                 Text(
                     text = "Choose the primary way you'll use Pivota",
                     style = MaterialTheme.typography.bodyMedium.copy(
@@ -1078,95 +1104,176 @@ fun PurposeSelectionScreenContent(
                     modifier = Modifier.padding(bottom = 20.dp)
                 )
 
-                purposeOptions.forEachIndexed { index, option ->
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(animationSpec = tween(400, delayMillis = index * 50, easing = FastOutSlowInEasing)) +
-                                slideInHorizontally(
-                                    initialOffsetX = { 100 },
-                                    animationSpec = tween(400, delayMillis = index * 50, easing = FastOutSlowInEasing)
+                // Search Bar
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search purpose...", color = colorScheme.onSurface.copy(alpha = 0.5f)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = null, tint = colorScheme.onSurfaceVariant)
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Clear",
+                                    tint = colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
                                 )
-                    ) {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.selectPurpose(option.label)
-                                }
-                                .padding(vertical = 4.dp),
-                            color = if (uiState.selectedPurpose == option.label)
-                                colorScheme.primary.copy(alpha = 0.08f)
-                            else
-                                Color.Transparent,
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Row(
+                            }
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = colorScheme.outline,
+                        focusedBorderColor = colorScheme.primary,
+                        focusedContainerColor = colorScheme.surface,
+                        unfocusedContainerColor = colorScheme.surface
+                    ),
+                    singleLine = true
+                )
+
+                // Options List - Takes remaining space
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    if (filteredOptions.isEmpty()) {
+                        item {
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(
-                                            if (uiState.selectedPurpose == option.label)
-                                                colorScheme.primary.copy(alpha = 0.15f)
-                                            else
-                                                colorScheme.surfaceVariant
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = option.icon,
-                                        contentDescription = null,
-                                        tint = if (uiState.selectedPurpose == option.label)
-                                            colorScheme.primary
-                                        else
-                                            colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-
-                                Column(
-                                    modifier = Modifier.weight(1f)
-                                ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
-                                        text = option.label,
-                                        style = MaterialTheme.typography.titleMedium.copy(
-                                            fontWeight = if (uiState.selectedPurpose == option.label)
-                                                FontWeight.Bold
-                                            else
-                                                FontWeight.SemiBold,
-                                            color = if (uiState.selectedPurpose == option.label)
-                                                colorScheme.primary
-                                            else
-                                                colorScheme.onSurface
+                                        if (searchQuery.isNotBlank()) "No matching purposes found" else "No options available",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = colorScheme.onSurfaceVariant
+                                    )
+                                    if (searchQuery.isNotBlank()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            "Try a different keyword",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colorScheme.onSurface.copy(alpha = 0.5f)
                                         )
-                                    )
-                                    Text(
-                                        text = option.description,
-                                        style = MaterialTheme.typography.bodySmall.copy(
-                                            color = colorScheme.onSurfaceVariant
-                                        ),
-                                        maxLines = 2
-                                    )
+                                    }
                                 }
-
-                                if (uiState.selectedPurpose == option.label) {
-                                    AnimatedVisibility(
-                                        visible = true,
-                                        enter = scaleIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) +
-                                                fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing))
+                            }
+                        }
+                    } else {
+                        items(filteredOptions.size, key = { filteredOptions[it].label }) { index ->
+                            val option = filteredOptions[index]
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.selectPurpose(option.label)
+                                    }
+                                    .padding(vertical = 4.dp),
+                                color = if (uiState.selectedPurpose == option.label)
+                                    colorScheme.primary.copy(alpha = 0.08f)
+                                else
+                                    Color.Transparent,
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(56.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(
+                                                if (uiState.selectedPurpose == option.label)
+                                                    colorScheme.primary.copy(alpha = 0.15f)
+                                                else
+                                                    colorScheme.surfaceVariant
+                                            ),
+                                        contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = "Selected",
-                                            tint = colorScheme.primary,
-                                            modifier = Modifier.size(24.dp)
+                                            imageVector = option.icon,
+                                            contentDescription = null,
+                                            tint = if (uiState.selectedPurpose == option.label)
+                                                colorScheme.primary
+                                            else
+                                                colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(28.dp)
                                         )
+                                    }
+
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        // Highlighted text for label
+                                        if (searchQuery.isNotBlank() && option.label.contains(searchQuery, ignoreCase = true)) {
+                                            HighlightedTextPurpose(
+                                                text = option.label,
+                                                highlight = searchQuery,
+                                                isSelected = uiState.selectedPurpose == option.label,
+                                                colorScheme = colorScheme
+                                            )
+                                        } else {
+                                            Text(
+                                                text = option.label,
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    fontWeight = if (uiState.selectedPurpose == option.label)
+                                                        FontWeight.Bold
+                                                    else
+                                                        FontWeight.SemiBold,
+                                                    color = if (uiState.selectedPurpose == option.label)
+                                                        colorScheme.primary
+                                                    else
+                                                        colorScheme.onSurface
+                                                )
+                                            )
+                                        }
+
+                                        // Highlighted text for description
+                                        if (searchQuery.isNotBlank() && option.description.contains(searchQuery, ignoreCase = true)) {
+                                            HighlightedTextPurpose(
+                                                text = option.description,
+                                                highlight = searchQuery,
+                                                isSelected = false,
+                                                colorScheme = colorScheme,
+                                                isDescription = true
+                                            )
+                                        } else {
+                                            Text(
+                                                text = option.description,
+                                                style = MaterialTheme.typography.bodySmall.copy(
+                                                    color = colorScheme.onSurfaceVariant
+                                                ),
+                                                maxLines = 2
+                                            )
+                                        }
+                                    }
+
+                                    if (uiState.selectedPurpose == option.label) {
+                                        AnimatedVisibility(
+                                            visible = true,
+                                            enter = scaleIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) +
+                                                    fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing))
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "Selected",
+                                                tint = colorScheme.primary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1178,6 +1285,11 @@ fun PurposeSelectionScreenContent(
             }
         }
     }
+
+
+
+
+
 }
 
 data class PurposeOption(
@@ -1186,6 +1298,75 @@ data class PurposeOption(
     val emoji: String,
     val description: String
 )
+
+
+// Helper composable for highlighted text
+@Composable
+fun HighlightedTextPurpose(
+    text: String,
+    highlight: String,
+    isSelected: Boolean,
+    colorScheme: ColorScheme,
+    isDescription: Boolean = false
+) {
+    if (highlight.isBlank()) {
+        Text(
+            text = text,
+            style = if (isDescription)
+                MaterialTheme.typography.bodySmall.copy(color = colorScheme.onSurfaceVariant)
+            else
+                MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                    color = if (isSelected) colorScheme.primary else colorScheme.onSurface
+                )
+        )
+    } else {
+        val lowerText = text.lowercase()
+        val lowerHighlight = highlight.lowercase()
+        val startIndex = lowerText.indexOf(lowerHighlight)
+
+        if (startIndex >= 0) {
+            val endIndex = startIndex + highlight.length
+
+            val annotatedString = buildAnnotatedString {
+                append(text.substring(0, startIndex))
+                pushStyle(
+                    SpanStyle(
+                        color = colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        background = colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    )
+                )
+                append(text.substring(startIndex, endIndex.coerceAtMost(text.length)))
+                pop()
+                append(text.substring(endIndex.coerceAtMost(text.length)))
+            }
+
+            Text(
+                text = annotatedString,
+                style = if (isDescription)
+                    MaterialTheme.typography.bodySmall
+                else
+                    MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
+                    ),
+                color = if (isDescription) colorScheme.onSurfaceVariant
+                else if (isSelected) colorScheme.primary else colorScheme.onSurface
+            )
+        } else {
+            Text(
+                text = text,
+                style = if (isDescription)
+                    MaterialTheme.typography.bodySmall.copy(color = colorScheme.onSurfaceVariant)
+                else
+                    MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                        color = if (isSelected) colorScheme.primary else colorScheme.onSurface
+                    )
+            )
+        }
+    }
+}
 
 @Composable
 fun JustExploringMessage() {
