@@ -3,6 +3,7 @@ package com.example.pivota.dashboard.presentation.composables.client_general_com
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -40,20 +41,17 @@ fun PostOptionsBottomSheet(
         dragHandle = {
             BottomSheetDefaults.DragHandle(color = colorScheme.primary.copy(alpha = 0.4f))
         },
-        // Increase the sheet height by controlling the content window
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 500.dp, max = 700.dp)
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight()
-                .navigationBarsPadding()
-                .padding(bottom = 32.dp, start = 24.dp, end = 24.dp),
+                .fillMaxHeight() // Fill the sheet height
+                .padding(horizontal = 20.dp)
+                .navigationBarsPadding(),
             horizontalAlignment = Alignment.Start
         ) {
-            // Header with expand/collapse hint
+            // Fixed Header (non-scrollable)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -99,54 +97,58 @@ fun PostOptionsBottomSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // MVP1 Pillar: Employment
-            PostOptionItem(
-                title = "Post a Job",
-                subtitle = "Find talent, interns, or offer training",
-                icon = Icons.Rounded.BusinessCenter,
-                onClick = { onOptionSelected("jobs") },
-                colorScheme = colorScheme
-            )
-
-            // MVP1 Pillar: Housing
-            PostOptionItem(
-                title = "Post a House",
-                subtitle = "List apartments, land plots, or rentals",
-                icon = Icons.Rounded.HomeWork,
-                onClick = { onOptionSelected("housing") },
-                colorScheme = colorScheme
-            )
-
-            // MVP1 Pillar: Help & Support
-            PostOptionItem(
-                title = "Post for Help",
-                subtitle = "Social services, NGO programs, or aid",
-                icon = Icons.Rounded.Handshake,
-                onClick = { onOptionSelected("support") },
-                colorScheme = colorScheme
-            )
-
-            // New: Service Offering (For Service Providers)
-            PostOptionItem(
-                title = "Post a Service",
-                subtitle = "Plumbing, moving, legal, or professional help",
-                icon = Icons.Rounded.Plumbing,
-                onClick = { onOptionSelected("service") },
-                colorScheme = colorScheme
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Hint text at bottom
-            Text(
-                text = "Pull up to expand • Pull down to close",
-                style = MaterialTheme.typography.labelSmall,
-                color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            // Scrollable Options
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                item {
+                    PostOptionItem(
+                        title = "Post a Job",
+                        subtitle = "Find talent, interns, or offer training",
+                        icon = Icons.Rounded.BusinessCenter,
+                        onClick = { onOptionSelected("jobs") },
+                        colorScheme = colorScheme
+                    )
+                }
+
+                item {
+                    PostOptionItem(
+                        title = "Post a House",
+                        subtitle = "List apartments, land plots, or rentals",
+                        icon = Icons.Rounded.HomeWork,
+                        onClick = { onOptionSelected("housing") },
+                        colorScheme = colorScheme
+                    )
+                }
+
+                item {
+                    PostOptionItem(
+                        title = "Post for Help",
+                        subtitle = "Social services, NGO programs, or aid",
+                        icon = Icons.Rounded.Handshake,
+                        onClick = { onOptionSelected("support") },
+                        colorScheme = colorScheme
+                    )
+                }
+
+                item {
+                    PostOptionItem(
+                        title = "Post a Service",
+                        subtitle = "Plumbing, moving, legal, or professional help",
+                        icon = Icons.Rounded.Plumbing,
+                        onClick = { onOptionSelected("service") },
+                        colorScheme = colorScheme
+                    )
+                }
+
+                // Add bottom padding as the last item
+                item {
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+            }
         }
     }
 }
@@ -162,7 +164,7 @@ private fun PostOptionItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = 6.dp)
             .clickable { onClick() },
         shape = MaterialTheme.shapes.large,
         color = colorScheme.primary.copy(alpha = 0.05f),
@@ -170,6 +172,7 @@ private fun PostOptionItem(
     ) {
         Row(
             modifier = Modifier
+                .fillMaxWidth()
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

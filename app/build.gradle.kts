@@ -25,9 +25,9 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.6.0 - Build 16 - Enhanced Bottom Sheets with Full-Screen & Search
-        versionCode = 16
-        versionName = "1.6.0"
+        // Version 1.7.0 - Build 17 - Post Options Bottom Sheet Improvements
+        versionCode = 17
+        versionName = "1.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -53,194 +53,114 @@ android {
                 testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
 
                 releaseNotes = """
-PivotaConnect v1.6.0 (Build 16)
+PivotaConnect v1.7.0 (Build 17)
 
-ENHANCED BOTTOM SHEETS WITH FULL-SCREEN & SEARCH
+POST OPTIONS BOTTOM SHEET IMPROVEMENTS
 
-This release significantly improves two critical bottom sheets in the app with full-screen views, powerful search functionality, and text highlighting.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-IMPROVED BOTTOM SHEETS:
-
-1. CATEGORY SELECTION BOTTOM SHEET (Post Service Screen)
-   • Full-screen display for better visibility of all categories
-   • Real-time search filtering with natural language matching
-   • Search terms highlighted in bold with background color
-   • "Arch" finds "Architects", "Commercial Architects", "Landscape Architects"
-   • Clear button to quickly reset search
-   • LazyColumn for smooth scrolling through many categories
-   • Fuzzy matching for partial words and multi-word support
-
-2. PURPOSE SELECTION BOTTOM SHEET (Onboarding)
-   • Full-screen display for all purpose options (8+ options)
-   • Real-time search across both title and description
-   • Text highlighting for search matches in title and description
-   • "No matching purposes found" for empty results
-   • Maintained all existing animations and visual design
-   • Search with instant feedback
+This release focuses on improving the Post Options bottom sheet for a better user experience when creating new listings.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-SEARCH ENHANCEMENTS:
+IMPROVEMENTS:
 
-• Case-insensitive search
-• Real-time filtering as you type
-• Fuzzy matching for partial words
-• Multi-word search support (order doesn't matter)
-• Relevance sorting (exact matches appear first)
-• Performance-optimized with remember and derivedStateOf
-• Clear button to reset search quickly
+1. FULL-SCREEN DISPLAY
+   • Bottom sheet now fills the entire screen
+   • Provides more space to view all posting options
+   • Better visibility of all available actions
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. SCROLLABLE CONTENT
+   • Options are now scrollable when content exceeds screen height
+   • Fixed header that stays in place while scrolling
+   • Smooth 60fps scrolling experience
+   • Works on all screen sizes (compact phones to tablets)
 
-TEXT HIGHLIGHTING:
+3. REMOVED EXTRA BOTTOM SPACE
+   • Eliminated unnecessary empty space at the bottom
+   • Proper padding for system bars
+   • Content uses screen real estate efficiently
 
-• Search terms are highlighted in bold with primary color
-• Subtle background color for better visibility
-• Highlights appear in both title and description
-• Visual feedback makes search results easy to scan
-• Instant visual update as you type
+4. IMPROVED LAYOUT
+   • FillMaxHeight for proper screen utilization
+   • LazyColumn with weight(1f) for scrollable content
+   • NavigationBarsPadding for system bar handling
+   • Bottom padding as last item for natural scrolling end
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 TECHNICAL IMPLEMENTATION:
 
-• Full-screen ModalBottomSheet with skipPartiallyExpanded = true
-• Custom HighlightedText composable with SpanStyle
-• LazyColumn with stable keys for performance
-• Search bar with leading icon and trailing clear button
-• Natural language fuzzy search algorithm
-• Real-time filtering with mutableStateOf
+• ModalBottomSheet with skipPartiallyExpanded = true for full-screen
+• LazyColumn with weight(1f) for scrollable options
+• Fixed header with expand/collapse functionality
+• Proper padding configuration
+• Expand/collapse button for sheet state control
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-BEFORE (v1.5.0):
-• Bottom sheets limited to 75% of screen height
-• No search functionality
-• Had to scroll through all options
-• No text highlighting
-• Slower category/purpose discovery
-• Poor user experience for long lists
+BEFORE (v1.6.0):
+• Bottom sheet had extra empty space at the bottom
+• Content was not scrollable
+• Limited height for options on smaller screens
+• Poor user experience on compact devices
 
-AFTER (v1.6.0):
-• Full-screen bottom sheets (100% height)
-• Real-time search with text highlighting
-• Find categories and purposes instantly
-• Better visibility of all options
-• 3x faster selection workflow
-• Professional search experience
+AFTER (v1.7.0):
+• No extra empty space at the bottom
+• Fully scrollable content
+• Full-screen utilization
+• Smooth scrolling experience on all devices
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+POSTING OPTIONS AVAILABLE:
+
+• Post a Job - Find talent, interns, or offer training
+• Post a House - List apartments, land plots, or rentals
+• Post for Help - Social services, NGO programs, or aid
+• Post a Service - Plumbing, moving, legal, or professional help
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 USER BENEFITS:
 
-• Find categories 3x faster with search
-• See all options at once with full-screen view
-• Instant visual feedback when searching
-• Type naturally without exact wording
-• Reduced cognitive load during selection
-• Improved onboarding completion rate
-• Professional app experience
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-AFFECTED SCREENS:
-• Post Service Screen (Category dropdown)
-• Onboarding Purpose Selection Screen
-• Both mobile and tablet layouts
-• All screen sizes (compact, medium, expanded)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-BUG FIXES:
-
-• Fixed bottom sheet initial height issues
-• Improved search performance with large lists
-• Fixed keyboard covering search results
-• Better handling of special characters in search
-• Fixed highlighting edge cases
-• Fixed sheet state management
-• Fixed memory leaks in composable lifecycle
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PERFORMANCE IMPROVEMENTS:
-
-• Search filtering is memoized for performance
-• LazyColumn for efficient scrolling (only renders visible items)
-• Stable keys for list items to prevent unnecessary recomposition
-• Optimized recompositions with remember
-• Reduced frame drops during search from 15 to 0-2
-• Smooth 60fps scrolling
+• Better visibility of all posting options
+• No wasted screen space
+• Smooth scrolling on smaller screens
+• Professional, polished experience
+• Faster access to posting features
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 TESTING INSTRUCTIONS:
 
-To test Category Selection:
-1. Go to Post Service screen
-2. Tap on Category dropdown
+To test Post Options Bottom Sheet:
+1. Go to Dashboard screen
+2. Tap on the Post button (FAB or Post option)
 3. Bottom sheet opens full screen
-4. Type partial category names (e.g., "arch")
-5. Observe fuzzy matching and highlighting
-6. Try "repair air" for multi-word search
-7. Select a category with subcategories
-
-To test Purpose Selection:
-1. Go to onboarding flow
-2. Tap on purpose selection card
-3. Bottom sheet opens full screen
-4. Type to search for purposes (e.g., "job")
-5. Observe highlighted search terms in title and description
-6. Try "property" to find listing options
-7. Select a purpose to see details
+4. Scroll through the 4 options (should scroll smoothly if needed)
+5. Verify no extra empty space at the bottom
+6. Header stays fixed while scrolling
+7. Tap on any option to navigate to the appropriate post screen
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-SEARCH EXAMPLES:
+BUG FIXES:
 
-Category Search:
-• "arch" → Architects, Commercial Architects, Landscape Architects
-• "electric" → Electricians, Electrical, Electronics
-• "repair ac" → AC Repair, Air Conditioner Repair
-• "paint" → Painters, Painting Services
-
-Purpose Search:
-• "job" → Find a Job, Hire Employees
-• "housing" → Find Housing, List Properties
-• "service" → Offer Skilled Services
-• "agent" → Work as Agent
+• Fixed extra empty space at bottom of bottom sheet
+• Made content scrollable on small screens
+• Fixed layout issues on different screen sizes
+• Improved sheet state management
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 MIGRATION NOTES:
 • No database migration required
 • No breaking changes
-• Fully backward compatible with v1.5.0
-• Existing user data preserved
+• Fully backward compatible
 • No action required from users
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-KNOWN LIMITATIONS:
-• Search only works on currently loaded items
-• Internet connection required for first load
-• Offline mode uses cached data (still searchable)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-UPCOMING IN v1.7.0:
-• Category icons in dropdown
-• Recent categories section
-• Favorite/pinned categories
-• Category suggestions based on user history
-• Voice search for categories
-• Search history
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Thank you for testing PivotaConnect v1.6.0 with enhanced bottom sheets!
+Thank you for testing PivotaConnect v1.7.0!
                 """.trimIndent()
             }
         }
