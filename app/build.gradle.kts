@@ -25,9 +25,9 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.7.0 - Build 17 - Post Options Bottom Sheet & UI Improvements
-        versionCode = 17
-        versionName = "1.7.0"
+        // Version 1.8.0 - Build 18 - Service Offerings UI Improvements
+        versionCode = 18
+        versionName = "1.8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -53,128 +53,179 @@ android {
                 testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
 
                 releaseNotes = """
-PivotaConnect v1.7.0 (Build 17)
+PivotaConnect v1.8.0 (Build 18)
 
-POST OPTIONS BOTTOM SHEET & UI IMPROVEMENTS
+SERVICE OFFERINGS UI IMPROVEMENTS
 
-This release focuses on improving the Post Options bottom sheet and simplifying button text across the Post Service flow.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This release focuses on improving the Service Offerings screens with better visual design, enhanced text visibility, and improved user experience.
 
 IMPROVEMENTS:
 
-1. FULL-SCREEN DISPLAY
-   • Bottom sheet now fills the entire screen
-   • Provides more space to view all posting options
-   • Better visibility of all available actions
+1. SERVICE OFFERING DETAILS SCREEN REDESIGN
+   • Completely redesigned layout with card-based design
+   • Improved text visibility with better contrast ratios
+   • Fixed font size issues throughout the screen
+   • Proper scrollable content on both mobile and tablet
+   • Two-pane layout for tablets with independent scrolling
+   • Enhanced readability with semantic color usage
 
-2. SCROLLABLE CONTENT
-   • Options are now scrollable when content exceeds screen height
-   • Fixed header that stays in place while scrolling
-   • Smooth 60fps scrolling experience
-   • Works on all screen sizes (compact phones to tablets)
+2. BOTTOM BAR OVERLAP FIX
+   • Added proper padding to prevent bottom bar overlap
+   • Bottom bar now has proper elevation and shadow
+   • Adjusted button heights for better touch targets
+   • Content no longer hides behind navigation buttons
 
-3. REMOVED EXTRA BOTTOM SPACE
-   • Eliminated unnecessary empty space at the bottom
-   • Proper padding for system bars
-   • Content uses screen real estate efficiently
+3. TEXT VISIBILITY ENHANCEMENTS
+   • All primary text now uses onSurface color for maximum contrast
+   • Labels use primary color for better emphasis
+   • Increased font sizes for critical information
+   • Added proper text overflow handling
+   • Improved color contrast throughout the screen
 
-4. SIMPLIFIED BUTTON TEXT
-   • Changed "Continue to Pricing" → "Continue"
-   • Changed "Continue to Availability" → "Continue"
-   • Consistent button text across all form steps
-   • Cleaner, more intuitive user experience
+4. CATEGORY AND LOCATION DISPLAY
+   • Now displayed in dedicated cards with solid backgrounds
+   • Added labels for better context
+   • Larger icons for better visibility
+   • Proper spacing and visual hierarchy
 
-5. IMPROVED LAYOUT
-   • FillMaxHeight for proper screen utilization
-   • LazyColumn with weight(1f) for scrollable content
-   • NavigationBarsPadding for system bar handling
-   • Bottom padding as last item for natural scrolling end
+5. SERVICE PROVIDER CARD IMPROVEMENTS
+   • Added proper avatar display with initials fallback
+   • Name capitalization for consistent formatting
+   • Clickable card with chevron indicator
+   • Combined experience and verification status
+   • Cleaner layout with better visual separation
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. LOADING STATES ENHANCEMENT
+   • More visible shimmer effect with stronger contrast
+   • Smooth 60fps skeleton loading animation
+   • Properly sized skeleton elements
+   • Better visual feedback during loading
+
+7. FILTER BOTTOM SHEET IMPROVEMENTS
+   • Better checkbox alignment and visibility
+   • Improved filter chip styling
+   • Clear visual feedback for active filters
+   • Proper spacing and layout
+
+8. SEARCH AND FILTER HEADER
+   • Redesigned header with better visual hierarchy
+   • Improved search field styling
+   • Active filter badge with count
+   • Better spacing and shadows
+
+9. EMPTY AND ERROR STATES
+   • Redesigned empty state with better iconography
+   • Clear action buttons
+   • Improved error state messaging
+   • Better visual feedback for users
 
 TECHNICAL IMPLEMENTATION:
 
-• ModalBottomSheet with skipPartiallyExpanded = true for full-screen
-• LazyColumn with weight(1f) for scrollable options
-• Fixed header with expand/collapse functionality
-• Proper padding configuration
-• Simplified button text across all steps
+• Card-based layout for all content sections
+• Proper Material 3 color scheme usage
+• Responsive design for mobile and tablet
+• Enhanced shimmer effect for loading states
+• Proper padding handling for system bars
+• Two-pane layout for tablet optimization
+• Independent scrolling for each pane
+• Improved color contrast throughout
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BEFORE (v1.7.0):
+• Font sizes were inconsistent
+• Some text was not visible due to low contrast
+• Bottom bar overlapped content
+• Category and location text hard to read
+• Provider card had unclear action
+• Loading shimmer was barely visible
+• Tablet layout was not optimized
 
-BEFORE (v1.6.0):
-• Bottom sheet had extra empty space at the bottom
-• Content was not scrollable
-• Limited height for options on smaller screens
-• Button text varied: "Continue to Pricing", "Continue to Availability"
-• Poor user experience on compact devices
-
-AFTER (v1.7.0):
-• No extra empty space at the bottom
-• Fully scrollable content
-• Full-screen utilization
-• Consistent "Continue" button text across all steps
-• Smooth scrolling experience on all devices
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-POSTING OPTIONS AVAILABLE:
-
-• Post a Job - Find talent, interns, or offer training
-• Post a House - List apartments, land plots, or rentals
-• Post for Help - Social services, NGO programs, or aid
-• Post a Service - Plumbing, moving, legal, or professional help
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-USER BENEFITS:
-
-• Better visibility of all posting options
-• No wasted screen space
-• Smooth scrolling on smaller screens
-• Cleaner, more intuitive button text
-• Professional, polished experience
-• Faster access to posting features
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AFTER (v1.8.0):
+• Consistent and readable font sizes
+• High contrast text throughout
+• Proper padding prevents bottom bar overlap
+• Clear category and location display
+• Clickable provider card with chevron
+• Highly visible shimmer loading effect
+• Optimized two-pane tablet layout
+• All text now properly visible
 
 AFFECTED SCREENS:
 
-• Dashboard Post Options Bottom Sheet
-• Post Service Form (Basic Info step)
-• Post Service Form (Pricing step)
+• Service Offerings List Screen
+• Service Offering Details Screen (Mobile)
+• Service Offering Details Screen (Tablet)
+• Service Provider Card Component
+• Filter Bottom Sheet
+• Search and Filter Header
+• Loading Skeleton States
+• Empty and Error States
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGES TO SERVICE OFFERING DETAILS SCREEN:
+
+Mobile Layout:
+• Price displayed in highlighted card at top
+• Key stats with circular icon backgrounds
+• Content grouped in themed cards
+• Subtle dividers with proper spacing
+• Bottom padding to prevent bar overlap
+• Smooth scrolling experience
+
+Tablet Layout:
+• Two-pane layout with left and right sections
+• Both panes independently scrollable
+• Left pane shows pricing, title, category, location, and quick info
+• Right pane shows description, service details, location, availability, and provider
+• Optimized spacing for larger screens
+
+CHANGES TO SERVICE PROVIDER CARD:
+• Avatar with initials fallback when image unavailable
+• Proper name capitalization (First Last)
+• Combined experience and verification display
+• Clickable entire card with chevron icon
+• Card lifts on press for visual feedback
 
 TESTING INSTRUCTIONS:
 
-To test Post Options Bottom Sheet:
-1. Go to Dashboard screen
-2. Tap on the Post button (FAB or Post option)
-3. Bottom sheet opens full screen
-4. Scroll through the 4 options (should scroll smoothly if needed)
-5. Verify no extra empty space at the bottom
-6. Header stays fixed while scrolling
-7. Tap on any option to navigate to the appropriate post screen
+To test Service Offering Details:
+1. Navigate to any category in the listings
+2. Tap on any service offering card
+3. Verify details screen opens with proper layout
+4. Check all text is clearly visible
+5. Scroll through content - no bottom bar overlap
+6. On tablet, verify two-pane layout works
+7. Both panes should scroll independently
+8. Provider card should be clickable with chevron
 
-To test Button Text Changes:
-1. Go to Post Service screen
-2. Fill out Basic Info step - verify button shows "Continue"
-3. Go to Pricing step - verify button shows "Continue"
-4. Button text is consistent across steps
+To test Loading States:
+1. Navigate to Service Offerings list
+2. Observe shimmer loading effect
+3. Verify skeleton elements are properly sized
+4. Shimmer should be clearly visible
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+To test Search and Filter:
+1. Use search field to find services
+2. Tap filter button to open bottom sheet
+3. Apply various filters
+4. Verify active filter badge shows count
+5. Clear filters and verify functionality
+
+To test Provider Card:
+1. Go to Service Offering Details
+2. Scroll to Service Provider section
+3. Card should show provider name, experience, verification
+4. Tap card - should be clickable
+5. Chevron icon indicates clickable action
 
 BUG FIXES:
 
-• Fixed extra empty space at bottom of bottom sheet
-• Made content scrollable on small screens
-• Fixed layout issues on different screen sizes
-• Improved sheet state management
-• Simplified button text for better UX
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Fixed text visibility issues throughout
+• Resolved bottom bar overlap problem
+• Fixed font size inconsistencies
+• Corrected color contrast issues
+• Fixed tablet layout scrolling
+• Resolved category text visibility
+• Fixed provider image display
+• Corrected shimmer effect visibility
 
 MIGRATION NOTES:
 • No database migration required
@@ -182,9 +233,7 @@ MIGRATION NOTES:
 • Fully backward compatible
 • No action required from users
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Thank you for testing PivotaConnect v1.7.0!
+Thank you for testing PivotaConnect v1.8.0!
                 """.trimIndent()
             }
         }

@@ -900,14 +900,14 @@ fun ServicePricingStep(
                 )
                 if (selectedUnitRule.experienceRequired) {
                     Text(
-                        text = "⚠️ Years of experience required",
+                        text = "Years of experience required",
                         style = MaterialTheme.typography.labelSmall,
                         color = colorScheme.error
                     )
                 }
                 if (selectedUnitRule.notesRequired) {
                     Text(
-                        text = "📝 Additional notes required",
+                        text = "Additional notes required",
                         style = MaterialTheme.typography.labelSmall,
                         color = colorScheme.primary
                     )

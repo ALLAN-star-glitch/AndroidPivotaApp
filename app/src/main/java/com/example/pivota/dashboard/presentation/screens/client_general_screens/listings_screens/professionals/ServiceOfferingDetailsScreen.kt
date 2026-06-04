@@ -3,6 +3,7 @@ package com.example.pivota.dashboard.presentation.screens.client_general_screens
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Help
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.ChatBubble
@@ -50,12 +52,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.window.core.layout.WindowSizeClass
+import coil3.compose.AsyncImage
 import com.example.pivota.core.presentations.composables.TopBar
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.DayAvailability
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
@@ -94,98 +100,146 @@ fun ServiceOfferingDetailsScreen(
         },
         bottomBar = {
             Surface(
-                color = MaterialTheme.colorScheme.surfaceContainer
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 8.dp,
+                tonalElevation = 3.dp
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 8.dp, top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = onContactProvider
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        onClick = onContactProvider,
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Contact")
+                        Icon(
+                            Icons.Outlined.ChatBubble,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Contact", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                     }
 
                     Button(
-                        modifier = Modifier.weight(1f),
-                        onClick = onBookService
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        onClick = onBookService,
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Book Service", color = MaterialTheme.colorScheme.onPrimary)
+                        Text("Book Service", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
         }
     ) { innerPadding ->
         if (isWide) {
-            // Two pane layout for tablets
+            // Two pane layout for tablets - BOTH panes scrollable
             Row(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                ServiceDetailsLeftPane(
-                    serviceOffering = serviceOffering,
-                    formattedPrice = formattedPrice,
-                    priceUnitLabel = priceUnitLabel,
-                    location = location,
+                // Left Pane - Scrollable
+                Column(
                     modifier = Modifier
                         .fillMaxHeight()
                         .weight(1f)
-                )
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    ServiceDetailsLeftPane(
+                        serviceOffering = serviceOffering,
+                        formattedPrice = formattedPrice,
+                        priceUnitLabel = priceUnitLabel,
+                        location = location,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
-                ServiceDetailsRightPane(
-                    serviceOffering = serviceOffering,
-                    location = location,
+                // Right Pane - Scrollable
+                Column(
                     modifier = Modifier
                         .fillMaxHeight()
                         .weight(1f)
-                )
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    ServiceDetailsRightPane(
+                        serviceOffering = serviceOffering,
+                        location = location,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         } else {
             // Single pane layout for mobile
             Column(
                 modifier = Modifier
                     .padding(innerPadding)
+                    .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 80.dp)
             ) {
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Price
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                // Price Section
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+                    ),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text(
-                        text = formattedPrice,
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = priceUnitLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
+                    Column(
+                        modifier = Modifier.padding(20.dp)
+                    ) {
+                        Text(
+                            text = "Starting Price",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 13.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            Text(
+                                text = formattedPrice,
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 32.sp
+                            )
+                            Text(
+                                text = priceUnitLabel,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                // Title
+                // Title and Category
                 Text(
                     text = serviceOffering.title,
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp,
+                    lineHeight = 32.sp
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Category
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -193,21 +247,20 @@ fun ServiceOfferingDetailsScreen(
                         imageVector = Icons.Outlined.Badge,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.outline
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = serviceOffering.categoryName,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.padding(start = 4.dp)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 6.dp),
+                        fontSize = 14.sp
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider()
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                // Key Info Row
+                // Stats Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -215,7 +268,7 @@ fun ServiceOfferingDetailsScreen(
                     ServiceInfoItem(
                         icon = Icons.Outlined.CurrencyExchange,
                         value = priceUnitLabel,
-                        label = "Pricing",
+                        label = "Pricing Model",
                         modifier = Modifier.weight(1f)
                     )
                     ServiceInfoItem(
@@ -232,115 +285,182 @@ fun ServiceOfferingDetailsScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 HorizontalDivider()
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Description
                 Text(
-                    text = "Description",
+                    text = "About This Service",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                Text(
-                    text = serviceOffering.description,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = serviceOffering.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(16.dp),
+                        fontSize = 14.sp,
+                        lineHeight = 22.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 HorizontalDivider()
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Service Details
                 Text(
                     text = "Service Details",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                DetailRow("Category", serviceOffering.categoryName)
-                DetailRow("Service Areas", serviceOffering.serviceAreas.joinToString(", "))
-                DetailRow("Status", serviceOffering.status)
-
                 Spacer(modifier = Modifier.height(16.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        DetailRow("Category", serviceOffering.categoryName)
+                        DetailRow("Service Areas", serviceOffering.serviceAreas.joinToString(", "))
+                        DetailRow("Status", serviceOffering.status)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
                 HorizontalDivider()
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Location
                 Text(
                     text = "Service Location",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Text(
-                    text = location,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.LocationOn,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = location,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 HorizontalDivider()
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Availability
                 Text(
-                    text = "Availability",
+                    text = "Weekly Availability",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 if (serviceOffering.availability.isNotEmpty()) {
-                    serviceOffering.availability.filter { !it.isClosed }.forEach { availability ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = availability.day,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = formatTimeTo12Hour(availability.open) + " - " + formatTimeTo12Hour(availability.close),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            serviceOffering.availability.filter { !it.isClosed }.forEach { availability ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = availability.day,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 14.sp
+                                    )
+                                    Text(
+                                        text = formatTimeTo12Hour(availability.open) + " - " + formatTimeTo12Hour(availability.close),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                                if (availability != serviceOffering.availability.filter { !it.isClosed }.last()) {
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                }
+                            }
                         }
                     }
                 } else {
                     Text(
                         text = "Contact provider for availability",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 14.sp
                     )
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                // Provider Section with Experience
+                // Provider Section
                 ServiceProviderCard(
                     name = serviceOffering.professionalName,
                     yearsExperience = serviceOffering.yearsExperience,
                     isVerified = serviceOffering.isVerified,
-                    onMessageClick = onContactProvider
+                    avatarUrl = serviceOffering.professionalAvatar,
+                    onClick = { },
+                    showTitle = true
                 )
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
 }
 
-// Two Pane Components
 @Composable
 private fun ServiceDetailsLeftPane(
     serviceOffering: ServiceOffering,
@@ -350,103 +470,158 @@ private fun ServiceDetailsLeftPane(
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val typography = MaterialTheme.typography
 
     Column(
         modifier = modifier
-            .fillMaxSize()
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-
-        // Price
-        Column {
-            Text(
-                text = "Pricing",
-                style = typography.labelLarge,
-                color = colorScheme.onSurfaceVariant
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        // Price Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = colorScheme.primaryContainer.copy(alpha = 0.15f)
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 Text(
-                    text = formattedPrice,
-                    color = colorScheme.primary,
-                    style = typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold
-                )
-                Text(
-                    text = priceUnitLabel,
-                    style = typography.bodyLarge,
+                    text = "Starting Price",
+                    style = MaterialTheme.typography.labelMedium,
                     color = colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp)
+                    fontSize = 13.sp
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text(
+                        text = formattedPrice,
+                        color = colorScheme.primary,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 36.sp
+                    )
+                    Text(
+                        text = priceUnitLabel,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+                        fontSize = 14.sp
+                    )
+                }
             }
         }
 
         // Title
         Text(
             text = serviceOffering.title,
-            style = typography.headlineMedium,
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = colorScheme.onSurface
+            color = colorScheme.onSurface,  // Changed for better visibility
+            fontSize = 28.sp,
+            lineHeight = 36.sp
         )
 
-        // Category
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Badge,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = serviceOffering.categoryName,
-                style = typography.bodyLarge,
-                color = colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-        }
+        // Category & Location - IMPROVED VISIBILITY
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            // Category row - Enhanced visibility
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = colorScheme.surfaceContainerHighest
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Badge,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = "CATEGORY",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorScheme.primary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = serviceOffering.categoryName,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colorScheme.onSurface,  // High contrast color
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
 
-        // Location
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Outlined.LocationOn,
-                contentDescription = null,
-                tint = colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
-            Text(
-                text = location,
-                style = typography.bodyLarge,
-                color = colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp),
-                maxLines = 2
-            )
+            // Location row - Enhanced visibility
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = colorScheme.surfaceContainerHighest
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.LocationOn,
+                        contentDescription = null,
+                        tint = colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = "SERVICE LOCATION",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorScheme.primary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = location,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colorScheme.onSurface,  // High contrast color
+                            fontSize = 15.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
         }
-
-        Spacer(modifier = Modifier.weight(1f))
 
         // Key Specs Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = colorScheme.surfaceContainer
+                containerColor = colorScheme.surfaceContainerHighest
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 Text(
-                    text = "Service Information",
-                    style = typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = colorScheme.onSurface
+                    text = "Quick Info",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface,  // Changed for better visibility
+                    fontSize = 16.sp
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -467,12 +642,14 @@ private fun ServiceDetailsLeftPane(
                     ServiceSpecItem(
                         icon = Icons.Outlined.Star,
                         value = String.format("%.1f", serviceOffering.averageRating),
-                        label = "Rating",
+                        label = "Rating (${serviceOffering.reviewCount})",
                         colorScheme = colorScheme
                     )
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -483,15 +660,12 @@ private fun ServiceDetailsRightPane(
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val typography = MaterialTheme.typography
 
     Column(
         modifier = modifier
-            .fillMaxSize()
             .background(colorScheme.surfaceVariant.copy(alpha = 0.3f))
-            .verticalScroll(rememberScrollState())
             .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Description Card
         Card(
@@ -499,21 +673,24 @@ private fun ServiceDetailsRightPane(
             colors = CardDefaults.cardColors(
                 containerColor = colorScheme.surface
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 Text(
                     text = "Description",
-                    style = typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = colorScheme.onSurface
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface,
+                    fontSize = 16.sp
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = serviceOffering.description,
-                    style = typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = colorScheme.onSurfaceVariant,
-                    lineHeight = 20.sp
+                    fontSize = 14.sp,
+                    lineHeight = 22.sp
                 )
             }
         }
@@ -524,43 +701,37 @@ private fun ServiceDetailsRightPane(
             colors = CardDefaults.cardColors(
                 containerColor = colorScheme.surface
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 Text(
                     text = "Service Details",
-                    style = typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = colorScheme.onSurface
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface,
+                    fontSize = 16.sp
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    DetailItem(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        DetailItem(
-                            modifier = Modifier.weight(1f),
-                            label = "Category",
-                            valueText = serviceOffering.categoryName,
-                            colorScheme = colorScheme,
-                            typography = typography
-                        )
-                        DetailItem(
-                            modifier = Modifier.weight(1f),
-                            label = "Status",
-                            valueText = serviceOffering.status,
-                            colorScheme = colorScheme,
-                            typography = typography
-                        )
-                    }
+                        label = "Category",
+                        valueText = serviceOffering.categoryName,
+                        colorScheme = colorScheme
+                    )
                     DetailItem(
                         modifier = Modifier.fillMaxWidth(),
                         label = "Service Areas",
                         valueText = serviceOffering.serviceAreas.joinToString(", "),
-                        colorScheme = colorScheme,
-                        typography = typography
+                        colorScheme = colorScheme
+                    )
+                    DetailItem(
+                        modifier = Modifier.fillMaxWidth(),
+                        label = "Status",
+                        valueText = serviceOffering.status,
+                        colorScheme = colorScheme
                     )
                 }
             }
@@ -572,16 +743,18 @@ private fun ServiceDetailsRightPane(
             colors = CardDefaults.cardColors(
                 containerColor = colorScheme.surface
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 Text(
                     text = "Service Location",
-                    style = typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = colorScheme.onSurface
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface,
+                    fontSize = 16.sp
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -589,13 +762,14 @@ private fun ServiceDetailsRightPane(
                         Icons.Outlined.LocationOn,
                         contentDescription = null,
                         tint = colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(20.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = location,
-                        style = typography.bodyLarge,
-                        color = colorScheme.onSurface
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colorScheme.onSurface,
+                        fontSize = 14.sp
                     )
                 }
             }
@@ -608,54 +782,62 @@ private fun ServiceDetailsRightPane(
                 colors = CardDefaults.cardColors(
                     containerColor = colorScheme.surface
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = "Availability",
-                        style = typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = colorScheme.onSurface
+                        text = "Weekly Availability",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface,
+                        fontSize = 16.sp
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     serviceOffering.availability.filter { !it.isClosed }.forEach { availability ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 6.dp),
+                                .padding(vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
                                 text = availability.day,
-                                style = typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium,
-                                color = colorScheme.onSurface
+                                color = colorScheme.onSurface,
+                                fontSize = 14.sp
                             )
                             Text(
                                 text = formatTimeTo12Hour(availability.open) + " - " + formatTimeTo12Hour(availability.close),
-                                style = typography.bodyMedium,
-                                color = colorScheme.onSurfaceVariant
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colorScheme.onSurfaceVariant,
+                                fontSize = 13.sp
                             )
+                        }
+                        if (availability != serviceOffering.availability.filter { !it.isClosed }.last()) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         }
                     }
                 }
             }
         }
 
-        // Provider Card with Experience
+        // Provider Card
         ServiceProviderCard(
             name = serviceOffering.professionalName,
             yearsExperience = serviceOffering.yearsExperience,
             isVerified = serviceOffering.isVerified,
-            onMessageClick = {}
+            avatarUrl = serviceOffering.professionalAvatar,
+            onClick = {},
+            showTitle = true
         )
 
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
-// Reusable Components
 @Composable
 fun ServiceInfoItem(
     icon: ImageVector,
@@ -668,22 +850,36 @@ fun ServiceInfoItem(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = value,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.outline,
+            fontSize = 11.sp
         )
     }
 }
@@ -704,117 +900,187 @@ fun ServiceSpecItem(
             tint = colorScheme.primary,
             modifier = Modifier.size(24.dp)
         )
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = value,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
-            color = colorScheme.onSurface
+            color = colorScheme.onSurface  // Changed from onSurface to onSurface for better contrast
         )
         Text(
             text = label,
-            fontSize = 11.sp,
-            color = colorScheme.onSurfaceVariant
+            fontSize = 12.sp,
+            color = colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
         )
     }
 }
+
+
+
 
 @Composable
 fun ServiceProviderCard(
     name: String,
     yearsExperience: Int,
     isVerified: Boolean,
-    onMessageClick: () -> Unit
+    onClick: () -> Unit,  // Changed from onMessageClick to onClick
+    avatarUrl: String? = null,
+    showTitle: Boolean = true
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val typography = MaterialTheme.typography
+    val formattedName = formatName(name)
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = colorScheme.surface
-        ),
-        shape = RoundedCornerShape(12.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        // Card Title
+        if (showTitle) {
+            Text(
+                text = "Professional/Contract",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.onSurface,
+                fontSize = 18.sp,
+                letterSpacing = 0.5.sp
+            )
+        }
+
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .clickable { onClick() },  // Make the entire card clickable
+            colors = CardDefaults.cardColors(
+                containerColor = colorScheme.surface
+            ),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 2.dp,
+                pressedElevation = 4.dp  // Lift effect when pressed
+            )
         ) {
-            Box(
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(20.dp)
             ) {
-                Icon(
-                    Icons.Outlined.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                    tint = colorScheme.primary
-                )
-            }
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = name,
-                    style = typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.onSurface
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 2.dp)
-                ) {
-                    Icon(
-                        Icons.Outlined.Work,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = colorScheme.onSurfaceVariant
+                // Provider Image/Avatar
+                if (avatarUrl != null && avatarUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = avatarUrl,
+                        contentDescription = "Provider avatar",
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape),
                     )
-                    Text(
-                        text = "$yearsExperience years experience",
-                        style = typography.bodySmall,
-                        color = colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                }
-                if (isVerified) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 2.dp)
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Outlined.Verified,
-                            tint = colorScheme.primary,
-                            modifier = Modifier.size(14.dp),
-                            contentDescription = null
-                        )
                         Text(
-                            "Verified Professional",
-                            color = colorScheme.primary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(start = 4.dp)
+                            text = getInitials(formattedName),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.primary
                         )
                     }
                 }
-            }
 
-            IconButton(
-                onClick = onMessageClick
-            ) {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = formattedName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface,
+                        fontSize = 16.sp
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Outlined.Work,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "$yearsExperience years",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 4.dp),
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        if (isVerified) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Verified,
+                                    tint = colorScheme.primary,
+                                    modifier = Modifier.size(14.dp),
+                                    contentDescription = null
+                                )
+                                Text(
+                                    "Verified",
+                                    color = colorScheme.primary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(start = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Chevron/Arrow icon to indicate clickable
                 Icon(
-                    Icons.Outlined.ChatBubble,
-                    contentDescription = "Message"
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "View Provider Details",
+                    modifier = Modifier.size(24.dp),
+                    tint = colorScheme.onSurfaceVariant
                 )
             }
         }
     }
+}
+
+
+
+// Helper function to capitalize names
+private fun formatName(name: String): String {
+    return name.split(" ")
+        .joinToString(" ") { part ->
+            if (part.isNotEmpty()) {
+                part.lowercase().replaceFirstChar { it.uppercase() }
+            } else {
+                part
+            }
+        }
+}
+
+// Helper function to get initials for avatar placeholder
+private fun getInitials(name: String): String {
+    return name.split(" ")
+        .mapNotNull { it.firstOrNull()?.toString() }
+        .take(2)
+        .joinToString("")
+        .uppercase()
 }
 
 @Composable
@@ -822,18 +1088,25 @@ fun DetailRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.outline
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,  // Changed to primary for better visibility
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface,  // Changed for better contrast
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 16.dp)
         )
     }
 }
@@ -843,21 +1116,23 @@ fun DetailItem(
     modifier: Modifier = Modifier,
     label: String,
     valueText: String,
-    colorScheme: ColorScheme,
-    typography: androidx.compose.material3.Typography
+    colorScheme: ColorScheme
 ) {
     Column(modifier = modifier) {
         Text(
-            text = label,
-            style = typography.labelMedium,
-            color = colorScheme.onSurfaceVariant
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = colorScheme.primary,  // Changed to primary for better visibility
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = valueText,
-            style = typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = colorScheme.onSurface
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = colorScheme.onSurface,  // Changed for better contrast
+            fontSize = 14.sp
         )
     }
 }
