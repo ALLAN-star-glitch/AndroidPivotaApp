@@ -3,6 +3,7 @@ package com.example.pivota.dashboard.presentation.viewmodels.client_admin_viewmo
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pivota.core.network.ApiResult
+import com.example.pivota.core.network.getUserFriendlyMessage
 import com.example.pivota.dashboard.data.dto.CreateServiceOfferingRequestDto
 import com.example.pivota.dashboard.data.dto.DayAvailabilityDto
 import com.example.pivota.dashboard.domain.model.listings_models.general.Category
@@ -56,7 +57,6 @@ class PostServiceViewModel @Inject constructor(
                 if (categories.isNotEmpty()) {
                     _categoriesState.value = CategoriesState.Success(categories)
 
-                    // categories here are top-level categories (parentId == null)
                     val categoryNames = categories.map { it.name }
                     val categoryMap = categories.associate { it.name to it.id }
 
@@ -84,10 +84,8 @@ class PostServiceViewModel @Inject constructor(
                         )
                     }
 
-                    // Mark categories as loaded ONLY after updating the UI state
                     areCategoriesLoaded = true
 
-                    // Log subcategories for debugging
                     println("📋 Subcategory map built. Size: ${subcategoryMap.size}")
                     if (subcategoryMap.isEmpty()) {
                         println("⚠️ No subcategories found! Check if the API is returning subcategories.")
@@ -107,7 +105,6 @@ class PostServiceViewModel @Inject constructor(
     }
 
     fun updateCategory(categoryName: String, categoryId: String) {
-        // Check if categories are fully loaded
         if (!areCategoriesLoaded) {
             println("📋 [PostServiceViewModel] Categories still loading, please wait...")
             return
@@ -117,7 +114,6 @@ class PostServiceViewModel @Inject constructor(
         println("📋 updateCategory - subcategoryMap keys: ${subcategoryMap.keys}")
         println("📋 updateCategory - subcategoryMap size: ${subcategoryMap.size}")
 
-        // If subcategoryMap is empty, categories aren't ready yet - just return
         if (subcategoryMap.isEmpty()) {
             println("📋 [PostServiceViewModel] Subcategory map is empty, categories not ready. Ignoring selection.")
             return
@@ -144,7 +140,6 @@ class PostServiceViewModel @Inject constructor(
             )
         }
 
-        // Fetch pricing units when category changes
         if (categoryId.isNotBlank()) {
             fetchPricingUnitsForCategory(categoryId)
         }
@@ -182,12 +177,9 @@ class PostServiceViewModel @Inject constructor(
         _uiState.update { it.copy(yearsExperience = experience) }
     }
 
-    fun updateLocationCity(city: String) {
-        _uiState.update { it.copy(locationCity = city) }
-    }
-
-    fun updateLocationNeighborhood(neighborhood: String) {
-        _uiState.update { it.copy(locationNeighborhood = neighborhood) }
+    // ✅ REPLACED locationCity and locationNeighborhood with coverageAreas
+    fun updateCoverageAreas(areas: List<String>) {
+        _uiState.update { it.copy(coverageAreas = areas) }
     }
 
     fun updateAdditionalNotes(notes: String) {
@@ -226,7 +218,7 @@ class PostServiceViewModel @Inject constructor(
                     }
                 }
                 is ApiResult.Error -> {
-                    val errorMessage = result.networkError.userFriendlyMessage
+                    val errorMessage = result.getUserFriendlyMessage()
                     println("❌ [PostServiceViewModel] Failed to load pricing units: $errorMessage")
                     _pricingUnitsState.value = PricingUnitsState.Error(errorMessage)
                 }
@@ -286,6 +278,7 @@ class PostServiceViewModel @Inject constructor(
             println("🔵 CategoryId: ${request.categoryId}")
             println("🔵 BasePrice: ${request.basePrice}")
             println("🔵 PriceUnit: ${request.priceUnit}")
+            println("🔵 CoverageAreas: ${request.coverageAreas}")  // ✅ Updated
 
             val result = createServiceOfferingUseCase(request)
 
@@ -304,25 +297,11 @@ class PostServiceViewModel @Inject constructor(
                     onSuccess()
                 }
                 is ApiResult.Error -> {
-                    val originalMessage = result.networkError.originalMessage
-                    val statusCode = result.networkError.statusCode
+                    val errorMessage = result.getUserFriendlyMessage()
 
-                    println("❌ [PostServiceViewModel] Status Code: $statusCode")
-                    println("❌ [PostServiceViewModel] Original Message: $originalMessage")
-
-                    val errorMessage = when {
-                        originalMessage?.contains("professional-services.create.own") == true ->
-                            "You don't have permission to post services. Please ensure you have a professional contractor account."
-                        originalMessage?.contains("PROFILE_NOT_FOUND") == true ->
-                            "Please create a professional profile first. Go to Profile → Become a Professional"
-                        originalMessage?.contains("Insufficient permissions") == true ->
-                            "You need professional status to post services. Please complete your professional profile."
-                        !originalMessage.isNullOrBlank() -> originalMessage
-                        statusCode == 403 -> "Access denied. You don't have permission to perform this action."
-                        else -> "An unexpected error occurred. Please try again."
-                    }
-
-                    println("❌ [PostServiceViewModel] Final Error: $errorMessage")
+                    println("❌ [PostServiceViewModel] Submission failed: $errorMessage")
+                    println("❌ Technical details: ${result.technicalMessage}")
+                    println("❌ Status code: ${result.networkError.statusCode}")
 
                     _uiState.update {
                         it.copy(isLoading = false, error = errorMessage, isSuccess = false)
@@ -344,7 +323,7 @@ class PostServiceViewModel @Inject constructor(
             state.description.isBlank() -> "Please enter a service description"
             state.basePrice.isBlank() -> "Please enter a base price"
             state.basePrice.toDoubleOrNull() == null -> "Please enter a valid price"
-            state.locationCity.isBlank() -> "Please enter a city/town"
+            state.coverageAreas.isEmpty() -> "Please select at least one service area"  // ✅ Updated validation
             else -> null
         }
     }
@@ -376,8 +355,7 @@ class PostServiceViewModel @Inject constructor(
             basePrice = state.basePrice.toDouble(),
             priceUnit = state.priceUnit,
             currency = state.currency,
-            locationCity = state.locationCity,
-            locationNeighborhood = state.locationNeighborhood.takeIf { it.isNotBlank() },
+            coverageAreas = state.coverageAreas,  // ✅ Updated (replaces locationCity/locationNeighborhood)
             yearsExperience = state.yearsExperience.toIntOrNull(),
             additionalNotes = state.additionalNotes.takeIf { it.isNotBlank() },
             availability = availability.takeIf { it.isNotEmpty() }
@@ -427,8 +405,9 @@ data class PostServiceUiState(
     val currency: String = "KES",
     val priceUnit: String = "PER_HOUR",
     val yearsExperience: String = "",
-    val locationCity: String = "",
-    val locationNeighborhood: String = "",
+    // ❌ REMOVED locationCity and locationNeighborhood
+    // ✅ ADDED coverageAreas
+    val coverageAreas: List<String> = emptyList(),
     val additionalNotes: String = "",
     val availability: List<DayAvailability> = emptyList(),
     val isLoading: Boolean = false,

@@ -104,8 +104,7 @@ data class AdminServiceOfferingUiModel(
     val basePrice: Double,
     val priceUnit: String,
     val currency: String,
-    val locationCity: String,
-    val locationNeighborhood: String?,
+    val coverageAreas: List<String>,
     val status: AdminServiceStatus,
     val postedDate: Date,
     val expiryDate: Date? = null,
@@ -114,7 +113,6 @@ data class AdminServiceOfferingUiModel(
     val bookings: Int = 0,
     val newInquiries: Int = 0,
     val yearsExperience: Int,
-    val serviceAreas: List<String>,
     val availability: List<DayAvailability>,
     val professionalName: String,
     val professionalAvatar: String?,
@@ -171,12 +169,10 @@ fun ServiceOffering.toAdminServiceOfferingUiModel(): AdminServiceOfferingUiModel
         basePrice = basePrice,
         priceUnit = priceUnit,
         currency = currency,
-        locationCity = locationCity,
-        locationNeighborhood = locationNeighborhood,
+        coverageAreas = coverageAreas,
         status = status,
         postedDate = try { dateFormat.parse(createdAt) } catch (e: Exception) { Date() },
-        yearsExperience = yearsExperience,
-        serviceAreas = serviceAreas,
+        yearsExperience = yearsExperience ?: 0,
         availability = availability,
         professionalName = professionalName,
         professionalAvatar = professionalAvatar,
@@ -259,10 +255,14 @@ fun AdminServiceOfferingDetailsScreenContent(
     var serviceStatus by remember { mutableStateOf(serviceOffering.status) }
 
     val formattedPrice = NumberFormat.getNumberInstance(Locale.US).format(serviceOffering.basePrice)
-    val location = if (serviceOffering.locationNeighborhood != null) {
-        "${serviceOffering.locationCity}, ${serviceOffering.locationNeighborhood}"
+    val location = if (serviceOffering.coverageAreas.isNotEmpty()) {
+        if (serviceOffering.coverageAreas.size == 1) {
+            serviceOffering.coverageAreas.first()
+        } else {
+            "${serviceOffering.coverageAreas.first()} +${serviceOffering.coverageAreas.size - 1}"
+        }
     } else {
-        serviceOffering.locationCity
+        "Location not specified"
     }
 
     val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.US)
@@ -331,8 +331,6 @@ fun AdminServiceOfferingDetailsScreenContent(
                             .weight(1f)
                             .verticalScroll(rememberScrollState())
                     ) {
-
-
                         Spacer(modifier = Modifier.height(16.dp))
 
                         AdminServiceOverviewCard(
@@ -370,7 +368,7 @@ fun AdminServiceOfferingDetailsScreenContent(
 
                         AdminServiceDescriptionCard(
                             description = serviceOffering.description,
-                            serviceAreas = serviceOffering.serviceAreas,
+                            coverageAreas = serviceOffering.coverageAreas,
                             availability = serviceOffering.availability,
                             yearsExperience = serviceOffering.yearsExperience,
                             professionalName = serviceOffering.professionalName,
@@ -432,9 +430,6 @@ fun AdminServiceOfferingDetailsScreenContent(
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 16.dp)
                 ) {
-
-
-
                     Spacer(modifier = Modifier.height(16.dp))
 
                     AdminServiceOverviewCard(
@@ -452,7 +447,7 @@ fun AdminServiceOfferingDetailsScreenContent(
 
                     AdminServiceDescriptionCard(
                         description = serviceOffering.description,
-                        serviceAreas = serviceOffering.serviceAreas,
+                        coverageAreas = serviceOffering.coverageAreas,
                         availability = serviceOffering.availability,
                         yearsExperience = serviceOffering.yearsExperience,
                         professionalName = serviceOffering.professionalName,
@@ -867,7 +862,7 @@ fun AdminServiceOverviewCard(
 @Composable
 fun AdminServiceDescriptionCard(
     description: String,
-    serviceAreas: List<String>,
+    coverageAreas: List<String>,
     availability: List<DayAvailability>,
     yearsExperience: Int,
     professionalName: String,
@@ -896,16 +891,16 @@ fun AdminServiceDescriptionCard(
                     Text(text = "Description", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = colorScheme.primary)
                     Text(text = description, style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurface, modifier = Modifier.padding(bottom = 16.dp))
 
-                    if (serviceAreas.isNotEmpty()) {
+                    if (coverageAreas.isNotEmpty()) {
                         Text(text = "Service Areas", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = colorScheme.primary)
-                        Text(text = serviceAreas.joinToString(", "), style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurface, modifier = Modifier.padding(bottom = 16.dp))
+                        Text(text = coverageAreas.joinToString(", "), style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurface, modifier = Modifier.padding(bottom = 16.dp))
                     }
 
                     Text(text = "Availability", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = colorScheme.primary)
-                    availability.filter { !it.isClosed }.forEach { availability ->
+                    availability.filter { !it.isClosed }.forEach { dayAvailability ->
                         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(text = availability.day, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                            Text(text = formatTimeTo12Hour(availability.open) + " - " + formatTimeTo12Hour(availability.close), style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurfaceVariant)
+                            Text(text = dayAvailability.day, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                            Text(text = formatTimeTo12Hour(dayAvailability.open) + " - " + formatTimeTo12Hour(dayAvailability.close), style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurfaceVariant)
                         }
                     }
 
@@ -1214,7 +1209,7 @@ fun AdminServiceOfferingDetailsPreview() {
     name = "Service Offering Details - Tablet",
     showBackground = true,
     backgroundColor = 0xFFF7F9FE,
-    device = "id:pixel_c"  // This forces tablet layout
+    device = "id:pixel_c"
 )
 @Composable
 fun AdminServiceOfferingDetailsTabletPreview() {
@@ -1281,12 +1276,10 @@ fun createSampleAdminServiceOffering(): AdminServiceOfferingUiModel {
         basePrice = 15000.0,
         priceUnit = "PER_DAY",
         currency = "KES",
-        locationCity = "Nairobi",
-        locationNeighborhood = "Westlands",
+        coverageAreas = listOf("Westlands", "Kilimani", "Lavington", "Karen"),
         status = AdminServiceStatus.ACTIVE,
         postedDate = postedDate,
         yearsExperience = 10,
-        serviceAreas = listOf("Westlands", "Kilimani", "Lavington", "Karen"),
         availability = listOf(
             DayAvailability("Monday", "09:00", "17:00", false),
             DayAvailability("Tuesday", "09:00", "17:00", false),

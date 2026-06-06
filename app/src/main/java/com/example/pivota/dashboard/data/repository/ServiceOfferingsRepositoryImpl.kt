@@ -309,6 +309,7 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
         println("🔍 Title: ${request.title}")
         println("🔍 CategoryId: ${request.categoryId}")
         println("🔍 BasePrice: ${request.basePrice}")
+        println("🔍 CoverageAreas: ${request.coverageAreas}")  // ✅ Updated
         println("🔍 =============================================")
 
         val result = safeApiCall {
@@ -321,7 +322,6 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                 println("🔍 CREATE SERVICE OFFERING RESPONSE: success=${response.success}, message=${response.message}")
 
                 if (response.success && response.data != null) {
-                    // Manually create ServiceOffering from the response data
                     val createdData = response.data
                     val domainOffering = ServiceOffering(
                         id = createdData.id,
@@ -336,8 +336,9 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                         basePrice = createdData.basePrice,
                         priceUnit = createdData.priceUnit,
                         currency = createdData.currency,
-                        locationCity = createdData.locationCity,
-                        locationNeighborhood = createdData.locationNeighborhood,
+                        // ❌ REMOVED locationCity and locationNeighborhood
+                        // ✅ ADDED coverageAreas (replaces serviceAreas)
+                        coverageAreas = createdData.coverageAreas,
                         availability = createdData.availability?.map { dayDto ->
                             DayAvailability(
                                 day = dayDto.day,
@@ -348,7 +349,6 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                         } ?: emptyList(),
                         yearsExperience = createdData.yearsExperience,
                         hourlyRate = createdData.hourlyRate,
-                        serviceAreas = createdData.serviceAreas,
                         status = createdData.status,
                         averageRating = createdData.averageRating,
                         reviewCount = createdData.reviewCount,
@@ -455,8 +455,9 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                         basePrice = offeringData.basePrice,
                         priceUnit = offeringData.priceUnit,
                         currency = offeringData.currency,
-                        locationCity = offeringData.locationCity,
-                        locationNeighborhood = offeringData.locationNeighborhood,
+                        // ❌ REMOVED locationCity and locationNeighborhood
+                        // ✅ ADDED coverageAreas (replaces serviceAreas)
+                        coverageAreas = offeringData.coverageAreas,
                         availability = offeringData.availability?.map { dayDto ->
                             DayAvailability(
                                 day = dayDto.day,
@@ -467,7 +468,6 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                         } ?: emptyList(),
                         yearsExperience = offeringData.yearsExperience,
                         hourlyRate = offeringData.hourlyRate,
-                        serviceAreas = offeringData.serviceAreas,
                         status = offeringData.status,
                         averageRating = offeringData.averageRating,
                         reviewCount = offeringData.reviewCount,

@@ -56,7 +56,8 @@ class ServiceOfferingCacheMapper @Inject constructor(
         categoryId: String
     ): ServiceOfferingEntity {
 
-        val serviceAreasJson = moshi.adapter<List<String>>(STRING_LIST_TYPE).toJson(dto.serviceAreas)
+        // ✅ Renamed serviceAreas to coverageAreas
+        val coverageAreasJson = moshi.adapter<List<String>>(STRING_LIST_TYPE).toJson(dto.coverageAreas)
 
         // Convert DTO availability to domain model first, then serialize
         val availabilityJson = dto.availability?.let { availabilityDtoList ->
@@ -77,12 +78,12 @@ class ServiceOfferingCacheMapper @Inject constructor(
             basePrice = dto.basePrice,
             priceUnit = dto.priceUnit,
             currency = dto.currency,
-            locationCity = dto.locationCity,
-            locationNeighborhood = dto.locationNeighborhood,
+            // ❌ REMOVED locationCity and locationNeighborhood
+            // ✅ ADDED coverageAreas (replaces serviceAreas)
+            coverageAreas = coverageAreasJson,
             availability = availabilityJson,
             yearsExperience = dto.yearsExperience,
             hourlyRate = dto.hourlyRate,
-            serviceAreas = serviceAreasJson,
             status = dto.status,
             averageRating = dto.averageRating,
             reviewCount = dto.reviewCount,
@@ -100,7 +101,8 @@ class ServiceOfferingCacheMapper @Inject constructor(
         dto: CreatedServiceOfferingDataDto,
         categoryId: String
     ): ServiceOfferingEntity {
-        val serviceAreasJson = moshi.adapter<List<String>>(STRING_LIST_TYPE).toJson(dto.serviceAreas)
+        // ✅ Renamed serviceAreas to coverageAreas
+        val coverageAreasJson = moshi.adapter<List<String>>(STRING_LIST_TYPE).toJson(dto.coverageAreas)
 
         // Convert DTO availability to domain model first, then serialize
         val availabilityJson = dto.availability?.let { availabilityDtoList ->
@@ -128,12 +130,12 @@ class ServiceOfferingCacheMapper @Inject constructor(
             basePrice = dto.basePrice,
             priceUnit = dto.priceUnit,
             currency = dto.currency,
-            locationCity = dto.locationCity,
-            locationNeighborhood = dto.locationNeighborhood,
+            // ❌ REMOVED locationCity and locationNeighborhood
+            // ✅ ADDED coverageAreas (replaces serviceAreas)
+            coverageAreas = coverageAreasJson,
             availability = availabilityJson,
             yearsExperience = dto.yearsExperience,
             hourlyRate = dto.hourlyRate,
-            serviceAreas = serviceAreasJson,
             status = dto.status,
             averageRating = dto.averageRating,
             reviewCount = dto.reviewCount,
@@ -144,9 +146,8 @@ class ServiceOfferingCacheMapper @Inject constructor(
     }
 
     fun toDomain(entity: ServiceOfferingEntity): ServiceOffering {
-        // Deserialize JSON strings back to lists
-
-        val serviceAreas = moshi.adapter<List<String>>(STRING_LIST_TYPE).fromJson(entity.serviceAreas) ?: emptyList()
+        // ✅ Renamed serviceAreas to coverageAreas
+        val coverageAreas = moshi.adapter<List<String>>(STRING_LIST_TYPE).fromJson(entity.coverageAreas) ?: emptyList()
 
         // Deserialize as domain model directly
         val availability = entity.availability?.let {
@@ -166,12 +167,12 @@ class ServiceOfferingCacheMapper @Inject constructor(
             basePrice = entity.basePrice,
             priceUnit = entity.priceUnit,
             currency = entity.currency,
-            locationCity = entity.locationCity,
-            locationNeighborhood = entity.locationNeighborhood,
+            // ❌ REMOVED locationCity and locationNeighborhood
+            // ✅ ADDED coverageAreas (replaces serviceAreas)
+            coverageAreas = coverageAreas,
             availability = availability,
             yearsExperience = entity.yearsExperience,
             hourlyRate = entity.hourlyRate,
-            serviceAreas = serviceAreas,
             status = entity.status,
             averageRating = entity.averageRating,
             reviewCount = entity.reviewCount,

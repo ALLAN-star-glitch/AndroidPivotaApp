@@ -45,10 +45,15 @@ suspend inline fun <reified T> safeApiCall(
     }
 }
 
-// Extension function to get user-friendly error message
+// ✅ FIXED: Prioritize originalMessage (backend's actual message) over userFriendlyMessage
 fun ApiResult<*>.getUserFriendlyMessage(): String {
     return when (this) {
-        is ApiResult.Error -> networkError.userFriendlyMessage
+        is ApiResult.Error -> {
+            // First try to use the backend's original message
+            // If not available, fall back to the user-friendly message
+            networkError.originalMessage?.takeIf { it.isNotBlank() }
+                ?: networkError.userFriendlyMessage
+        }
         else -> ""
     }
 }

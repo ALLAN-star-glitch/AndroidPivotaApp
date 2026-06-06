@@ -8,7 +8,6 @@ import com.example.pivota.auth.domain.useCase.AuthUseCases
 import com.example.pivota.auth.presentation.state.SignupUiState
 import com.example.pivota.core.database.dao.UserDao
 import com.example.pivota.core.network.ApiResult
-import com.example.pivota.core.network.NetworkError
 import com.example.pivota.core.network.getUserFriendlyMessage
 import com.example.pivota.core.preferences.PivotaDataStore
 import com.example.pivota.core.presentations.composables.SnackbarType
@@ -97,6 +96,10 @@ class SignupViewModel @Inject constructor(
     fun showDialogSnackbar(message: String, type: SnackbarType = SnackbarType.INFO) {
         _dialogSnackbarMessage.value = message
         _dialogSnackbarType.value = type
+        viewModelScope.launch {
+            delay(4000)
+            clearDialogSnackbar()
+        }
     }
 
     fun clearMainSnackbar() {
@@ -108,12 +111,7 @@ class SignupViewModel @Inject constructor(
     }
 
     fun showErrorMessage(message: String) {
-        _mainSnackbarMessage.value = message
-        _mainSnackbarType.value = SnackbarType.ERROR
-        viewModelScope.launch {
-            delay(4000)
-            clearMainSnackbar()
-        }
+        showMainSnackbar(message, SnackbarType.ERROR)
     }
 
     fun resetDialogCloseFlag() {
@@ -182,7 +180,6 @@ class SignupViewModel @Inject constructor(
     fun startSignup() {
         val form = _formState.value
 
-        // REMOVED phone validation - phone is optional
         val errorMessage = when {
             !form.agreeTerms -> "You must agree to the terms and conditions."
             !isPasswordValid(form.password) -> "Password must be at least 6 characters."
@@ -313,11 +310,9 @@ class SignupViewModel @Inject constructor(
         }
     }
 
-    // Updated: phone parameter is optional (can be null)
     fun requestSignupOtp(email: String, phone: String?) {
         println("🔍 STEP 1: requestSignupOtp called with email: $email, phone: $phone, purpose: EMAIL_VERIFICATION")
         _uiState.value = SignupUiState.Loading
-        // Reset dialog close flag before new request
         _shouldCloseDialog.value = false
 
         viewModelScope.launch {
@@ -337,12 +332,10 @@ class SignupViewModel @Inject constructor(
                 }
                 is ApiResult.Error -> {
                     println("🔍 STEP 2: OTP request FAILED: ${result.technicalMessage}")
-                    // Show error in main snackbar (not dialog)
+                    // ✅ FIXED: Use getUserFriendlyMessage() like LoginViewModel
                     val errorMessage = result.getUserFriendlyMessage()
+                    _uiState.value = SignupUiState.Error(errorMessage)
                     showMainSnackbar(errorMessage, SnackbarType.ERROR)
-                    // Reset to Idle to stop loading indicator
-                    _uiState.value = SignupUiState.Idle
-                    // Signal that dialog should close (in case it was trying to open)
                     _shouldCloseDialog.value = true
                 }
                 ApiResult.Loading -> {
@@ -352,7 +345,6 @@ class SignupViewModel @Inject constructor(
         }
     }
 
-    // Updated: Resend OTP with optional phone
     fun resendOtp() {
         val email = _formState.value.email
         val phone = _formState.value.phone.ifEmpty { null }
@@ -368,15 +360,13 @@ class SignupViewModel @Inject constructor(
             when (result) {
                 is ApiResult.Success -> {
                     showDialogSnackbar("New verification code sent!", SnackbarType.SUCCESS)
-                    // Reset OTP values when resending
                     _otpValues.value = List(6) { "" }
-                    // Reset dialog close flag
                     _shouldCloseDialog.value = false
                 }
                 is ApiResult.Error -> {
+                    // ✅ FIXED: Use getUserFriendlyMessage() like LoginViewModel
                     val errorMessage = result.getUserFriendlyMessage()
                     showDialogSnackbar(errorMessage, SnackbarType.ERROR)
-                    // Signal that dialog should close on resend error
                     _shouldCloseDialog.value = true
                 }
                 ApiResult.Loading -> {
@@ -500,6 +490,7 @@ class SignupViewModel @Inject constructor(
                 }
                 is ApiResult.Error -> {
                     println("🔍 SIGNUP ERROR: ${result.technicalMessage}")
+                    // ✅ FIXED: Use getUserFriendlyMessage() like LoginViewModel
                     val errorMessage = result.getUserFriendlyMessage()
                     _uiState.value = SignupUiState.Error(errorMessage)
                     showDialogSnackbar(errorMessage, SnackbarType.ERROR)
@@ -535,13 +526,10 @@ class SignupViewModel @Inject constructor(
         }
     }
 
-    // Add this method to SignupViewModel
-
     fun signUpWithGoogle(idToken: String) {
         viewModelScope.launch {
             _googleSignInState.value = GoogleSignInState.Loading
 
-            // Build onboarding data from DataStore (collected from purpose selection)
             val onboardingData = buildGoogleOnboardingData()
 
             val result = authUseCases.googleSignIn(idToken, onboardingData)
@@ -553,12 +541,10 @@ class SignupViewModel @Inject constructor(
                         is LoginResponse.Authenticated -> {
                             val user = loginResponse.user
 
-                            // Save user session
                             datastore.saveTokens(loginResponse.accessToken, loginResponse.refreshToken)
                             datastore.saveUserEmail(user.email)
                             datastore.markOnboardingComplete(true)
 
-                            // Save to local database
                             val userEntity = com.example.pivota.core.database.entity.UserEntity(
                                 uuid = user.uuid,
                                 email = user.email,
@@ -582,7 +568,6 @@ class SignupViewModel @Inject constructor(
                             )
                             userDao.insertUser(userEntity)
 
-                            // Clear onboarding data from DataStore
                             clearOnboardingData()
 
                             _googleSignInState.value = GoogleSignInState.Success(
@@ -592,7 +577,6 @@ class SignupViewModel @Inject constructor(
                             )
                         }
                         is LoginResponse.MfaRequired -> {
-                            // Handle MFA if needed (unlikely for Google sign-in)
                             _googleSignInState.value = GoogleSignInState.Error(
                                 "MFA verification required. Please check your email."
                             )
@@ -600,6 +584,7 @@ class SignupViewModel @Inject constructor(
                     }
                 }
                 is ApiResult.Error -> {
+                    // ✅ FIXED: Use getUserFriendlyMessage() like LoginViewModel
                     val errorMessage = result.getUserFriendlyMessage()
                     _googleSignInState.value = GoogleSignInState.Error(errorMessage)
                     showMainSnackbar(errorMessage, SnackbarType.ERROR)
@@ -611,8 +596,6 @@ class SignupViewModel @Inject constructor(
         }
     }
 
-    // Add this method to SignupViewModel (replacing the previous version)
-
     private suspend fun buildGoogleOnboardingData(): Map<String, Any?>? {
         val primaryPurpose = datastore.getPrimaryPurpose()
         if (primaryPurpose.isNullOrBlank()) return null
@@ -621,7 +604,6 @@ class SignupViewModel @Inject constructor(
             "primaryPurpose" to mapToApiPurpose(primaryPurpose)
         )
 
-        // Add purpose-specific data using DOMAIN MODELS (not DTOs)
         when (primaryPurpose) {
             "Find a Job" -> {
                 datastore.getJobSeekerData()?.let { data ->

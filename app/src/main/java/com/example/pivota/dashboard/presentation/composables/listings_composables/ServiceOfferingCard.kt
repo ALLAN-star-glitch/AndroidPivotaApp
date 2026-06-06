@@ -61,7 +61,6 @@ fun ServiceOfferingCard(
     modifier: Modifier = Modifier,
     offering: ServiceOffering,
     onClick: () -> Unit = {},
-
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val primaryColor = colorScheme.primary
@@ -76,7 +75,6 @@ fun ServiceOfferingCard(
             .fillMaxWidth()
             .clickable { onClick() }
             .drawBehind {
-                // Subtle dotted border pattern
                 val strokeWidth = 1f
                 val pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
                 drawRoundRect(
@@ -358,16 +356,28 @@ fun ServiceOfferingCard(
                                 modifier = Modifier.size(11.dp)
                             )
                             Text(
-                                text = offering.locationCity,
+                                text = if (offering.coverageAreas.isNotEmpty())
+                                    offering.coverageAreas.first()
+                                else
+                                    "Location not specified",
                                 fontSize = 11.sp,
                                 color = onSurfaceVariantColor,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+                            // Show badge for multiple areas
+                            if (offering.coverageAreas.size > 1) {
+                                Text(
+                                    text = "+${offering.coverageAreas.size - 1}",
+                                    fontSize = 10.sp,
+                                    color = onSurfaceVariantColor.copy(alpha = 0.6f),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
 
                         // Separator dot
-                        if (offering.yearsExperience > 0) {
+                        if (offering.yearsExperience != null && offering.yearsExperience > 0) {
                             Box(
                                 modifier = Modifier
                                     .size(3.dp)
@@ -379,7 +389,7 @@ fun ServiceOfferingCard(
                         }
 
                         // Experience
-                        if (offering.yearsExperience > 0) {
+                        if (offering.yearsExperience != null && offering.yearsExperience > 0) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(3.dp)
@@ -509,12 +519,10 @@ private fun PreviewServiceOfferingCard() {
                 basePrice = 800.0,
                 priceUnit = "PER_HOUR",
                 currency = "KES",
-                locationCity = "Nairobi",
-                locationNeighborhood = "Westlands",
+                coverageAreas = listOf("Nairobi CBD", "Westlands", "Kilimani"),
                 availability = emptyList(),
                 yearsExperience = 8,
                 hourlyRate = 800.0,
-                serviceAreas = listOf("Nairobi", "Kiambu"),
                 status = "ACTIVE",
                 averageRating = 4.8,
                 reviewCount = 24,
@@ -537,12 +545,10 @@ private fun PreviewServiceOfferingCard() {
                 basePrice = 5000.0,
                 priceUnit = "FIXED",
                 currency = "KES",
-                locationCity = "Kiambu",
-                locationNeighborhood = "Thika",
+                coverageAreas = listOf("Kiambu", "Thika", "Ruiru"),
                 availability = emptyList(),
                 yearsExperience = 5,
                 hourlyRate = 0.0,
-                serviceAreas = listOf("Kiambu", "Nairobi"),
                 status = "ACTIVE",
                 averageRating = 0.0,
                 reviewCount = 0,

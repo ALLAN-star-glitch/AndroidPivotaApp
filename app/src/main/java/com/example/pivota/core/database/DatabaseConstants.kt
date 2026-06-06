@@ -9,7 +9,7 @@ object DatabaseConstants {
 
     // --- Database Configuration ---
     const val DATABASE_NAME = "pivota_connect_db"
-    const val DATABASE_VERSION = 8
+    const val DATABASE_VERSION = 9
 
     // --- Table Names (Feature-Agnostic) ---
     // Note: Feature-specific table names should be defined here to prevent

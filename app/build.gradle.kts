@@ -25,9 +25,9 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.8.0 - Build 18 - Service Offerings UI Improvements
-        versionCode = 18
-        versionName = "1.8.0"
+        // Version 1.9.0 - Build 19 - Booking Bottom Sheet & Service Coverage Areas
+        versionCode = 19
+        versionName = "1.9.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -53,187 +53,176 @@ android {
                 testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
 
                 releaseNotes = """
-PivotaConnect v1.8.0 (Build 18)
+PivotaConnect v1.9.0 (Build 19)
 
-SERVICE OFFERINGS UI IMPROVEMENTS
+BOOKING BOTTOM SHEET & SERVICE COVERAGE AREAS
 
-This release focuses on improving the Service Offerings screens with better visual design, enhanced text visibility, and improved user experience.
+This release introduces a completely new booking flow with a modern bottom sheet design and enhances service offerings with multi-area coverage support.
 
-IMPROVEMENTS:
+NEW FEATURES:
 
-1. SERVICE OFFERING DETAILS SCREEN REDESIGN
-   • Completely redesigned layout with card-based design
-   • Improved text visibility with better contrast ratios
-   • Fixed font size issues throughout the screen
-   • Proper scrollable content on both mobile and tablet
-   • Two-pane layout for tablets with independent scrolling
-   • Enhanced readability with semantic color usage
+1. BOOKING BOTTOM SHEET
+   • Brand new booking interface that slides up from bottom
+   • Clean, modern design with smooth animations
+   • Real-time price calculation based on duration
+   • Responsive layout for both mobile and tablet
+   • Modal bottom sheet with drag-to-dismiss
+   • Price breakdown card showing calculation details
+   • Comprehensive validation before submission
 
-2. BOTTOM BAR OVERLAP FIX
-   • Added proper padding to prevent bottom bar overlap
-   • Bottom bar now has proper elevation and shadow
-   • Adjusted button heights for better touch targets
-   • Content no longer hides behind navigation buttons
+2. BOOKING FORM COMPONENTS
+   • Date picker with calendar icon and formatted display
+   • Dynamic duration fields (hours/days based on pricing unit)
+   • Location dropdown for multiple service areas
+   • Multi-line notes field for special requests
+   • Real-time total price updates as user enters duration
+   • Disabled submit button until required fields are filled
+   • Cancel and Confirm action buttons
 
-3. TEXT VISIBILITY ENHANCEMENTS
-   • All primary text now uses onSurface color for maximum contrast
-   • Labels use primary color for better emphasis
-   • Increased font sizes for critical information
-   • Added proper text overflow handling
-   • Improved color contrast throughout the screen
+3. SERVICE COVERAGE AREAS (Backend Integration)
+   • Services can now be offered in multiple locations
+   • Coverage areas displayed as list in service details
+   • First area shown with +X badge for additional areas
+   • Location dropdown in booking sheet for area selection
+   • Validation ensures selected location is within coverage
 
-4. CATEGORY AND LOCATION DISPLAY
-   • Now displayed in dedicated cards with solid backgrounds
-   • Added labels for better context
-   • Larger icons for better visibility
-   • Proper spacing and visual hierarchy
+4. SERVICE OFFERING DETAILS ENHANCEMENTS
+   • Display all coverage areas in Service Details section
+   • Location card shows primary area with badge
+   • Improved visual hierarchy for service areas
+   • Better handling of multiple locations
 
-5. SERVICE PROVIDER CARD IMPROVEMENTS
-   • Added proper avatar display with initials fallback
-   • Name capitalization for consistent formatting
-   • Clickable card with chevron indicator
-   • Combined experience and verification status
-   • Cleaner layout with better visual separation
+5. PRICE CALCULATION IMPROVEMENTS
+   • Automatic total price calculation based on duration
+   • Support for PER_HOUR and PER_DAY pricing units
+   • Price breakdown card shows calculation formula
+   • FIXED price services skip duration field
+   • Currency formatting with proper KES display
 
-6. LOADING STATES ENHANCEMENT
-   • More visible shimmer effect with stronger contrast
-   • Smooth 60fps skeleton loading animation
-   • Properly sized skeleton elements
-   • Better visual feedback during loading
+6. FORM VALIDATION
+   • Date selection required
+   • Duration required for hourly/daily services
+   • Real-time validation feedback
+   • Submit button enabled only when all required fields filled
+   • Clear error states and hints
 
-7. FILTER BOTTOM SHEET IMPROVEMENTS
-   • Better checkbox alignment and visibility
-   • Improved filter chip styling
-   • Clear visual feedback for active filters
-   • Proper spacing and layout
+7. UI/UX IMPROVEMENTS
+   • Drag handle at top for easy dismissal
+   • Rounded corners (12-16dp) throughout
+   • Subtle shadows for depth
+   • Proper spacing and padding
+   • Loading states for submission
+   • Success/error snackbar feedback
 
-8. SEARCH AND FILTER HEADER
-   • Redesigned header with better visual hierarchy
-   • Improved search field styling
-   • Active filter badge with count
-   • Better spacing and shadows
-
-9. EMPTY AND ERROR STATES
-   • Redesigned empty state with better iconography
-   • Clear action buttons
-   • Improved error state messaging
-   • Better visual feedback for users
+8. TABLET OPTIMIZATION
+   • Bottom sheet centered with max-width 600dp on tablets
+   • Properly scaled form fields
+   • Optimized layout for larger screens
+   • Consistent spacing across devices
 
 TECHNICAL IMPLEMENTATION:
 
-• Card-based layout for all content sections
-• Proper Material 3 color scheme usage
-• Responsive design for mobile and tablet
-• Enhanced shimmer effect for loading states
-• Proper padding handling for system bars
-• Two-pane layout for tablet optimization
-• Independent scrolling for each pane
-• Improved color contrast throughout
+• ModalBottomSheet with custom drag handle
+• State management for form fields
+• Real-time price calculation with derived state
+• Comprehensive input validation
+• Responsive design using WindowSizeClass
+• Proper keyboard handling
+• Scrollable content for smaller screens
 
-BEFORE (v1.7.0):
-• Font sizes were inconsistent
-• Some text was not visible due to low contrast
-• Bottom bar overlapped content
-• Category and location text hard to read
-• Provider card had unclear action
-• Loading shimmer was barely visible
-• Tablet layout was not optimized
+BOOKING FLOW:
 
-AFTER (v1.8.0):
-• Consistent and readable font sizes
-• High contrast text throughout
-• Proper padding prevents bottom bar overlap
-• Clear category and location display
-• Clickable provider card with chevron
-• Highly visible shimmer loading effect
-• Optimized two-pane tablet layout
-• All text now properly visible
+1. User taps "Book Service" button on service details screen
+2. Bottom sheet slides up with booking form
+3. User selects date and duration (if applicable)
+4. User optionally selects location (if multiple coverage areas)
+5. User adds optional notes
+6. User reviews price breakdown
+7. User taps "Confirm Booking" to submit
+8. Success/failure feedback shown via snackbar
 
-AFFECTED SCREENS:
+SERVICE COVERAGE AREAS:
 
-• Service Offerings List Screen
-• Service Offering Details Screen (Mobile)
-• Service Offering Details Screen (Tablet)
-• Service Provider Card Component
-• Filter Bottom Sheet
-• Search and Filter Header
-• Loading Skeleton States
-• Empty and Error States
+Services can now be offered in multiple cities/neighborhoods:
+• Coverage areas stored as JSON array in backend
+• Displayed in service details as comma-separated list
+• First area shown in location card with +X badge
+• Booking sheet validates selected location
+• Improves service discoverability by area
 
-CHANGES TO SERVICE OFFERING DETAILS SCREEN:
+BENEFITS:
 
-Mobile Layout:
-• Price displayed in highlighted card at top
-• Key stats with circular icon backgrounds
-• Content grouped in themed cards
-• Subtle dividers with proper spacing
-• Bottom padding to prevent bar overlap
-• Smooth scrolling experience
-
-Tablet Layout:
-• Two-pane layout with left and right sections
-• Both panes independently scrollable
-• Left pane shows pricing, title, category, location, and quick info
-• Right pane shows description, service details, location, availability, and provider
-• Optimized spacing for larger screens
-
-CHANGES TO SERVICE PROVIDER CARD:
-• Avatar with initials fallback when image unavailable
-• Proper name capitalization (First Last)
-• Combined experience and verification display
-• Clickable entire card with chevron icon
-• Card lifts on press for visual feedback
+• Faster booking process with inline form
+• Clear price transparency with breakdown
+• Reduced form abandonment with validation
+• Better tablet experience with centered sheet
+• Support for multi-location service providers
+• Improved conversion for hourly/daily services
 
 TESTING INSTRUCTIONS:
 
-To test Service Offering Details:
-1. Navigate to any category in the listings
-2. Tap on any service offering card
-3. Verify details screen opens with proper layout
-4. Check all text is clearly visible
-5. Scroll through content - no bottom bar overlap
-6. On tablet, verify two-pane layout works
-7. Both panes should scroll independently
-8. Provider card should be clickable with chevron
+To test Booking Bottom Sheet:
+1. Navigate to any service offering details
+2. Tap "Book Service" button at bottom
+3. Verify bottom sheet slides up smoothly
+4. Test date picker functionality
+5. For hourly services, enter hours and verify price updates
+6. For daily services, enter days and verify price updates
+7. Add notes in optional field
+8. Test submit button (enabled/disabled states)
+9. Cancel and verify sheet dismisses
 
-To test Loading States:
-1. Navigate to Service Offerings list
-2. Observe shimmer loading effect
-3. Verify skeleton elements are properly sized
-4. Shimmer should be clearly visible
+To test Coverage Areas:
+1. View service offering with multiple coverage areas
+2. Verify all areas listed in Service Details section
+3. Open booking bottom sheet
+4. Location dropdown should show all coverage areas
+5. Select different location and verify it's saved
 
-To test Search and Filter:
-1. Use search field to find services
-2. Tap filter button to open bottom sheet
-3. Apply various filters
-4. Verify active filter badge shows count
-5. Clear filters and verify functionality
+To test Price Calculation:
+1. Open booking sheet for hourly service
+2. Enter 2 hours → total price should be 2 × base price
+3. Enter 5 hours → total price updates automatically
+4. Price breakdown card shows calculation
+5. FIXED price services should show no duration field
 
-To test Provider Card:
-1. Go to Service Offering Details
-2. Scroll to Service Provider section
-3. Card should show provider name, experience, verification
-4. Tap card - should be clickable
-5. Chevron icon indicates clickable action
+To test Tablet Layout:
+1. Run on tablet or large-screen device
+2. Bottom sheet should be centered with max 600dp width
+3. All form fields properly sized
+4. Date picker and dropdowns work correctly
 
 BUG FIXES:
 
-• Fixed text visibility issues throughout
-• Resolved bottom bar overlap problem
-• Fixed font size inconsistencies
-• Corrected color contrast issues
-• Fixed tablet layout scrolling
-• Resolved category text visibility
-• Fixed provider image display
-• Corrected shimmer effect visibility
+• Fixed location display in service details
+• Improved text contrast in booking form
+• Fixed keyboard covering input fields
+• Corrected price formatting for KES
+• Fixed date picker timezone issues
+• Resolved bottom sheet animation glitches
+
+KNOWN ISSUES:
+
+• Escrow integration pending (Phase 2)
+• Payment processing not yet implemented
+• Booking confirmation screen coming in next release
+• Email/SMS notifications not yet active
 
 MIGRATION NOTES:
+• Existing services with single location will show coverageAreas as single-item list
+• Backward compatible with previous API versions
 • No database migration required
-• No breaking changes
-• Fully backward compatible
-• No action required from users
+• Users can update existing services to add multiple coverage areas
 
-Thank you for testing PivotaConnect v1.8.0!
+COMING IN V1.10.0:
+• Booking confirmation screen
+• My Bookings list
+• Booking status tracking
+• Push notifications for booking updates
+• Escrow payment integration
+• Provider availability calendar
+
+Thank you for testing PivotaConnect v1.9.0!
                 """.trimIndent()
             }
         }

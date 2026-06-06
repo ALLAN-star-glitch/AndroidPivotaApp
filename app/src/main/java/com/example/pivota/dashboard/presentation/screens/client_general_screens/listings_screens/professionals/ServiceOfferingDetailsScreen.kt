@@ -84,10 +84,15 @@ fun ServiceOfferingDetailsScreen(
 
     val formattedPrice = formatPrice(serviceOffering.basePrice, serviceOffering.currency)
     val priceUnitLabel = formatPriceUnitLabel(serviceOffering.priceUnit)
-    val location = if (serviceOffering.locationNeighborhood != null) {
-        "${serviceOffering.locationCity}, ${serviceOffering.locationNeighborhood}"
+    // ✅ Updated: Use coverageAreas instead of location fields
+    val location = if (serviceOffering.coverageAreas.isNotEmpty()) {
+        if (serviceOffering.coverageAreas.size == 1) {
+            serviceOffering.coverageAreas.first()
+        } else {
+            "${serviceOffering.coverageAreas.first()} +${serviceOffering.coverageAreas.size - 1}"
+        }
     } else {
-        serviceOffering.locationCity
+        "Location not specified"
     }
 
     Scaffold(
@@ -339,7 +344,8 @@ fun ServiceOfferingDetailsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         DetailRow("Category", serviceOffering.categoryName)
-                        DetailRow("Service Areas", serviceOffering.serviceAreas.joinToString(", "))
+                        // ✅ Updated: Use coverageAreas instead of serviceAreas
+                        DetailRow("Service Areas", serviceOffering.coverageAreas.joinToString(", "))
                         DetailRow("Status", serviceOffering.status)
                     }
                 }
@@ -448,7 +454,7 @@ fun ServiceOfferingDetailsScreen(
                 // Provider Section
                 ServiceProviderCard(
                     name = serviceOffering.professionalName,
-                    yearsExperience = serviceOffering.yearsExperience,
+                    yearsExperience = serviceOffering.yearsExperience ?: 0,
                     isVerified = serviceOffering.isVerified,
                     avatarUrl = serviceOffering.professionalAvatar,
                     onClick = { },
@@ -463,11 +469,11 @@ fun ServiceOfferingDetailsScreen(
 
 @Composable
 private fun ServiceDetailsLeftPane(
-    serviceOffering: ServiceOffering,
-    formattedPrice: String,
-    priceUnitLabel: String,
-    location: String,
-    modifier: Modifier = Modifier
+serviceOffering: ServiceOffering,
+formattedPrice: String,
+priceUnitLabel: String,
+location: String,
+modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -518,14 +524,14 @@ private fun ServiceDetailsLeftPane(
             text = serviceOffering.title,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = colorScheme.onSurface,  // Changed for better visibility
+            color = colorScheme.onSurface,
             fontSize = 28.sp,
             lineHeight = 36.sp
         )
 
         // Category & Location - IMPROVED VISIBILITY
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            // Category row - Enhanced visibility
+            // Category row
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -556,7 +562,7 @@ private fun ServiceDetailsLeftPane(
                         Text(
                             text = serviceOffering.categoryName,
                             style = MaterialTheme.typography.bodyLarge,
-                            color = colorScheme.onSurface,  // High contrast color
+                            color = colorScheme.onSurface,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -564,7 +570,7 @@ private fun ServiceDetailsLeftPane(
                 }
             }
 
-            // Location row - Enhanced visibility
+            // Location row
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -595,7 +601,7 @@ private fun ServiceDetailsLeftPane(
                         Text(
                             text = location,
                             style = MaterialTheme.typography.bodyLarge,
-                            color = colorScheme.onSurface,  // High contrast color
+                            color = colorScheme.onSurface,
                             fontSize = 15.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
@@ -618,7 +624,7 @@ private fun ServiceDetailsLeftPane(
                     text = "Quick Info",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.onSurface,  // Changed for better visibility
+                    color = colorScheme.onSurface,
                     fontSize = 16.sp
                 )
                 Spacer(modifier = Modifier.height(20.dp))
@@ -721,10 +727,11 @@ private fun ServiceDetailsRightPane(
                         valueText = serviceOffering.categoryName,
                         colorScheme = colorScheme
                     )
+                    // ✅ Updated: Use coverageAreas instead of serviceAreas
                     DetailItem(
                         modifier = Modifier.fillMaxWidth(),
                         label = "Service Areas",
-                        valueText = serviceOffering.serviceAreas.joinToString(", "),
+                        valueText = serviceOffering.coverageAreas.joinToString(", "),
                         colorScheme = colorScheme
                     )
                     DetailItem(
@@ -827,7 +834,7 @@ private fun ServiceDetailsRightPane(
         // Provider Card
         ServiceProviderCard(
             name = serviceOffering.professionalName,
-            yearsExperience = serviceOffering.yearsExperience,
+            yearsExperience = serviceOffering.yearsExperience ?: 0,
             isVerified = serviceOffering.isVerified,
             avatarUrl = serviceOffering.professionalAvatar,
             onClick = {},
@@ -905,7 +912,7 @@ fun ServiceSpecItem(
             text = value,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
-            color = colorScheme.onSurface  // Changed from onSurface to onSurface for better contrast
+            color = colorScheme.onSurface
         )
         Text(
             text = label,
@@ -916,15 +923,12 @@ fun ServiceSpecItem(
     }
 }
 
-
-
-
 @Composable
 fun ServiceProviderCard(
     name: String,
     yearsExperience: Int,
     isVerified: Boolean,
-    onClick: () -> Unit,  // Changed from onMessageClick to onClick
+    onClick: () -> Unit,
     avatarUrl: String? = null,
     showTitle: Boolean = true
 ) {
@@ -934,7 +938,6 @@ fun ServiceProviderCard(
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Card Title
         if (showTitle) {
             Text(
                 text = "Professional/Contract",
@@ -949,14 +952,14 @@ fun ServiceProviderCard(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onClick() },  // Make the entire card clickable
+                .clickable { onClick() },
             colors = CardDefaults.cardColors(
                 containerColor = colorScheme.surface
             ),
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(
                 defaultElevation = 2.dp,
-                pressedElevation = 4.dp  // Lift effect when pressed
+                pressedElevation = 4.dp
             )
         ) {
             Row(
@@ -966,7 +969,6 @@ fun ServiceProviderCard(
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Provider Image/Avatar
                 if (avatarUrl != null && avatarUrl.isNotEmpty()) {
                     AsyncImage(
                         model = avatarUrl,
@@ -1048,7 +1050,6 @@ fun ServiceProviderCard(
                     }
                 }
 
-                // Chevron/Arrow icon to indicate clickable
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = "View Provider Details",
@@ -1060,9 +1061,6 @@ fun ServiceProviderCard(
     }
 }
 
-
-
-// Helper function to capitalize names
 private fun formatName(name: String): String {
     return name.split(" ")
         .joinToString(" ") { part ->
@@ -1074,7 +1072,6 @@ private fun formatName(name: String): String {
         }
 }
 
-// Helper function to get initials for avatar placeholder
 private fun getInitials(name: String): String {
     return name.split(" ")
         .mapNotNull { it.firstOrNull()?.toString() }
@@ -1094,7 +1091,7 @@ fun DetailRow(label: String, value: String) {
         Text(
             text = label.uppercase(),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,  // Changed to primary for better visibility
+            color = MaterialTheme.colorScheme.primary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
@@ -1103,7 +1100,7 @@ fun DetailRow(label: String, value: String) {
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurface,  // Changed for better contrast
+            color = MaterialTheme.colorScheme.onSurface,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(start = 16.dp)
@@ -1122,7 +1119,7 @@ fun DetailItem(
         Text(
             text = label.uppercase(),
             style = MaterialTheme.typography.labelSmall,
-            color = colorScheme.primary,  // Changed to primary for better visibility
+            color = colorScheme.primary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
@@ -1131,13 +1128,12 @@ fun DetailItem(
             text = valueText,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            color = colorScheme.onSurface,  // Changed for better contrast
+            color = colorScheme.onSurface,
             fontSize = 14.sp
         )
     }
 }
 
-// Helper functions
 private fun formatPrice(price: Double, currency: String): String {
     val formatter = NumberFormat.getNumberInstance(Locale.US).apply {
         minimumFractionDigits = 0
@@ -1189,7 +1185,6 @@ private fun formatTimeTo12Hour(time24: String): String {
     return "$displayHour:$minute $ampm"
 }
 
-// Preview
 @RequiresApi(Build.VERSION_CODES.O)
 @Preview(
     name = "Service Offering Details - Mobile",
@@ -1229,7 +1224,6 @@ private fun PreviewServiceOfferingDetailsTablet() {
     }
 }
 
-// Sample data for preview
 private val sampleServiceOffering = ServiceOffering(
     id = "1",
     externalId = "EXT123",
@@ -1243,8 +1237,8 @@ private val sampleServiceOffering = ServiceOffering(
     basePrice = 15000.0,
     priceUnit = "PER_DAY",
     currency = "KES",
-    locationCity = "Nairobi",
-    locationNeighborhood = "Westlands",
+    // ✅ Updated: Use coverageAreas instead of location fields
+    coverageAreas = listOf("Westlands", "Kilimani", "Lavington", "Karen"),
     availability = listOf(
         DayAvailability("Monday", "09:00", "17:00", false),
         DayAvailability("Tuesday", "09:00", "17:00", false),
@@ -1256,7 +1250,6 @@ private val sampleServiceOffering = ServiceOffering(
     ),
     yearsExperience = 10,
     hourlyRate = 2000.0,
-    serviceAreas = listOf("Westlands", "Kilimani", "Lavington", "Karen"),
     status = "ACTIVE",
     averageRating = 4.8,
     reviewCount = 124,

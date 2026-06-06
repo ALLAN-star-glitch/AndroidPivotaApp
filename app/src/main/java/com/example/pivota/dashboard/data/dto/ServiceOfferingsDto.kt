@@ -31,12 +31,12 @@ data class ServiceOfferingDto(
     @SerialName("basePrice") val basePrice: Double,
     @SerialName("priceUnit") val priceUnit: String,
     @SerialName("currency") val currency: String,
-    @SerialName("locationCity") val locationCity: String,
-    @SerialName("locationNeighborhood") val locationNeighborhood: String? = null,
+    // ❌ REMOVED locationCity and locationNeighborhood
+    // ✅ ADDED coverageAreas (replaces serviceAreas)
+    @SerialName("coverageAreas") val coverageAreas: List<String> = emptyList(),
     @SerialName("availability") val availability: List<DayAvailabilityDto>? = null,
-    @SerialName("yearsExperience") val yearsExperience: Int,
-    @SerialName("hourlyRate") val hourlyRate: Double,
-    @SerialName("serviceAreas") val serviceAreas: List<String>,
+    @SerialName("yearsExperience") val yearsExperience: Int? = null,
+    @SerialName("hourlyRate") val hourlyRate: Double? = null,
     @SerialName("status") val status: String,
     @SerialName("averageRating") val averageRating: Double,
     @SerialName("reviewCount") val reviewCount: Int,
@@ -60,7 +60,6 @@ data class PaginationInfoDto(
     @SerialName("hasMore") val hasMore: Boolean
 )
 
-
 // ======================================================
 // SERVICE OFFERING REQUEST DTO
 // ======================================================
@@ -73,10 +72,25 @@ data class CreateServiceOfferingRequestDto(
     @SerialName("basePrice") val basePrice: Double,
     @SerialName("priceUnit") val priceUnit: String,
     @SerialName("currency") val currency: String = "KES",
-    @SerialName("locationCity") val locationCity: String,
-    @SerialName("locationNeighborhood") val locationNeighborhood: String? = null,
+    // ❌ REMOVED locationCity and locationNeighborhood
+    // ✅ ADDED coverageAreas (required)
+    @SerialName("coverageAreas") val coverageAreas: List<String>,
     @SerialName("yearsExperience") val yearsExperience: Int? = null,
     @SerialName("additionalNotes") val additionalNotes: String? = null,
+    @SerialName("availability") val availability: List<DayAvailabilityDto>? = null
+)
+
+// ======================================================
+// UPDATE SERVICE OFFERING REQUEST DTO
+// ======================================================
+
+@Serializable
+data class UpdateServiceOfferingRequestDto(
+    @SerialName("title") val title: String? = null,
+    @SerialName("description") val description: String? = null,
+    @SerialName("basePrice") val basePrice: Double? = null,
+    @SerialName("priceUnit") val priceUnit: String? = null,
+    @SerialName("coverageAreas") val coverageAreas: List<String>? = null,
     @SerialName("availability") val availability: List<DayAvailabilityDto>? = null
 )
 
@@ -107,15 +121,44 @@ data class CreatedServiceOfferingDataDto(
     @SerialName("basePrice") val basePrice: Double,
     @SerialName("priceUnit") val priceUnit: String,
     @SerialName("currency") val currency: String,
-    @SerialName("locationCity") val locationCity: String,
-    @SerialName("locationNeighborhood") val locationNeighborhood: String? = null,
+    @SerialName("coverageAreas") val coverageAreas: List<String> = emptyList(),
     @SerialName("availability") val availability: List<DayAvailabilityDto>? = null,
-    @SerialName("yearsExperience") val yearsExperience: Int,
-    @SerialName("hourlyRate") val hourlyRate: Double,
-    @SerialName("serviceAreas") val serviceAreas: List<String>,
+    @SerialName("yearsExperience") val yearsExperience: Int? = null,
+    @SerialName("hourlyRate") val hourlyRate: Double? = null,
     @SerialName("status") val status: String,
     @SerialName("averageRating") val averageRating: Double,
     @SerialName("reviewCount") val reviewCount: Int,
     @SerialName("createdAt") val createdAt: String,
     @SerialName("updatedAt") val updatedAt: String
 )
+
+// ======================================================
+// BOOKING STATUS DTOS (NEW)
+// ======================================================
+
+@Serializable
+data class BookingStatusDto(
+    @SerialName("value") val value: String,
+    @SerialName("label") val label: String,
+    @SerialName("description") val description: String,
+    @SerialName("badgeVariant") val badgeVariant: String,
+    @SerialName("order") val order: Int
+)
+
+@Serializable
+data class BookingStatusListResponseDto(
+    @SerialName("success") val success: Boolean,
+    @SerialName("message") val message: String,
+    @SerialName("code") val code: String,
+    @SerialName("data") val data: BookingStatusListDataDto? = null
+)
+
+@Serializable
+data class BookingStatusListDataDto(
+    @SerialName("statuses") val statuses: List<BookingStatusDto>
+)
+
+// ======================================================
+// ERROR DTO
+// ======================================================
+

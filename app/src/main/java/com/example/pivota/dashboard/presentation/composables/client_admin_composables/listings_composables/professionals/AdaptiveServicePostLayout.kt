@@ -3,6 +3,9 @@ package com.example.pivota.dashboard.presentation.composables.client_admin_compo
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,11 +13,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,10 +27,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.*
@@ -34,11 +41,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -64,6 +75,8 @@ import java.time.format.TextStyle
 import java.util.*
 import com.example.pivota.R
 import com.example.pivota.ui.theme.SuccessGreen
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 
 // Default price units (fallback when backend not available)
@@ -80,7 +93,7 @@ enum class FormStep(val title: String, val stepNumber: Int) {
     BASIC_INFO("Basic Info", 2),
     PRICING("Pricing", 3),
     AVAILABILITY("Availability", 4),
-    LOCATION("Location", 5)
+    COVERAGE_AREAS("Service Areas", 5)  // Changed from LOCATION
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -117,7 +130,7 @@ fun AdaptiveServicePostLayout(
             FormStep.BASIC_INFO -> currentStep = FormStep.CATEGORY
             FormStep.PRICING -> currentStep = FormStep.BASIC_INFO
             FormStep.AVAILABILITY -> currentStep = FormStep.PRICING
-            FormStep.LOCATION -> currentStep = FormStep.AVAILABILITY
+            FormStep.COVERAGE_AREAS -> currentStep = FormStep.AVAILABILITY  // Changed from LOCATION
         }
     }
 
@@ -205,9 +218,9 @@ fun AdaptiveServicePostLayout(
                                 price = uiState.basePrice.ifEmpty { "0.00" },
                                 currency = uiState.currency,
                                 priceUnit = uiState.priceUnit,
-                                location = if (uiState.locationCity.isNotEmpty())
-                                    "${uiState.locationCity}${uiState.locationNeighborhood?.let { ", $it" } ?: ""}"
-                                else "City, Neighborhood",
+                                location = if (uiState.coverageAreas.isNotEmpty())
+                                    uiState.coverageAreas.joinToString(", ")
+                                else "Service Areas",
                                 experience = uiState.yearsExperience.ifEmpty { "X" }
                             )
                         }
@@ -396,7 +409,7 @@ fun ServicePostStepperContent(
     val isAvailabilityComplete = hasConfirmedAvailability
 
     // Check if location is complete
-    val isLocationComplete = uiState.locationCity.isNotBlank()
+    val isCoverageAreasComplete = uiState.coverageAreas.isNotEmpty()
 
     // Auto-scroll to current step when it changes
     LaunchedEffect(currentStep) {
@@ -431,7 +444,7 @@ fun ServicePostStepperContent(
                     FormStep.BASIC_INFO -> isBasicInfoComplete
                     FormStep.PRICING -> isPricingComplete
                     FormStep.AVAILABILITY -> isAvailabilityComplete
-                    FormStep.LOCATION -> isLocationComplete
+                    FormStep.COVERAGE_AREAS -> isCoverageAreasComplete  // Changed from LOCATION
                 }
                 val isCurrent = step == currentStep
                 val isLast = index == FormStep.values().lastIndex
@@ -513,12 +526,12 @@ fun ServicePostStepperContent(
                         scrollState = scrollState,
                         onNext = {
                             hasConfirmedAvailability = true
-                            onStepChange(FormStep.LOCATION)
+                            onStepChange(FormStep.COVERAGE_AREAS)
                         },
                         onBack = { onStepChange(FormStep.PRICING) }
                     )
                 }
-                FormStep.LOCATION -> {
+                FormStep.COVERAGE_AREAS -> {  // Changed from LOCATION
                     ServiceLocationStep(
                         uiState = uiState,
                         viewModel = viewModel,
@@ -1636,6 +1649,50 @@ fun ServiceLocationStep(
     onBack: () -> Unit,
     isLoading: Boolean
 ) {
+    // State for coverage areas input
+    var currentAreaInput by remember { mutableStateOf("") }
+    var showDuplicateError by remember { mutableStateOf(false) }
+    var showAddHint by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Predefined common cities/areas in Kenya
+    val suggestedAreas = listOf(
+        "Nairobi CBD", "Westlands", "Kilimani", "Karen", "Runda",
+        "Mombasa CBD", "Nyali", "Bamburi", "Kisumu CBD", "Milimani",
+        "Nakuru CBD", "Eldoret CBD", "Thika", "Kiambu", "Ruaka"
+    )
+
+    // Get current coverage areas list
+    val coverageAreasList = remember(uiState.coverageAreas) {
+        uiState.coverageAreas.toMutableList()
+    }
+
+    fun addCoverageArea(input: String) {
+        val trimmed = input.trim()
+        if (trimmed.isNotEmpty() && !coverageAreasList.contains(trimmed)) {
+            val updated = coverageAreasList.toMutableList().apply { add(trimmed) }
+            viewModel.updateCoverageAreas(updated)
+            currentAreaInput = ""
+            showDuplicateError = false
+            showAddHint = false
+        } else if (trimmed.isNotEmpty()) {
+            showDuplicateError = true
+            coroutineScope.launch {
+                delay(1500)
+                showDuplicateError = false
+            }
+        }
+    }
+
+    fun removeCoverageArea(area: String) {
+        val updated = coverageAreasList.filter { it != area }
+        viewModel.updateCoverageAreas(updated)
+    }
+
+    fun clearAllAreas() {
+        viewModel.updateCoverageAreas(emptyList())
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1644,34 +1701,296 @@ fun ServiceLocationStep(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            "Where are you located?",
+            "Where do you provide your service?",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
             color = colorScheme.onSurface
         )
 
         Text(
-            "Tell clients where you provide your services",
+            "Tell clients which areas you serve",
             style = MaterialTheme.typography.bodyMedium,
             color = colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        ServiceLabel("City / Town *")
-        ServiceTextField(
-            value = uiState.locationCity,
-            onValueChange = viewModel::updateLocationCity,
-            placeholder = "e.g. Nairobi",
-            leadingIcon = Icons.Outlined.Place
-        )
+        // Coverage Areas Section
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Header with counter and clear button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Service Areas *",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 16.sp,
+                                color = colorScheme.onSurface
+                            )
+                        )
 
-        ServiceLabel("Neighborhood")
-        ServiceTextField(
-            value = uiState.locationNeighborhood,
-            onValueChange = viewModel::updateLocationNeighborhood,
-            placeholder = "e.g. Westlands"
-        )
+                        Text(
+                            text = "Add all areas where you offer this service",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 12.sp,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
 
+                    // Areas counter with clear button
+                    if (coverageAreasList.isNotEmpty()) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AnimatedContent(
+                                targetState = coverageAreasList.size,
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(200)) +
+                                            scaleIn(initialScale = 0.7f) togetherWith
+                                            fadeOut(animationSpec = tween(100)) +
+                                            scaleOut(targetScale = 0.7f)
+                                }
+                            ) { count ->
+                                Surface(
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = colorScheme.primaryContainer,
+                                    modifier = Modifier
+                                ) {
+                                    Text(
+                                        text = "$count",
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 13.sp,
+                                            color = colorScheme.onPrimaryContainer
+                                        )
+                                    )
+                                }
+                            }
+
+                            ClearButton(
+                                onClick = { clearAllAreas() }
+                            )
+                        }
+                    }
+                }
+
+                // Areas Pills Row
+                if (coverageAreasList.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(coverageAreasList) { area ->
+                            ElegantPillWithRemove(
+                                label = area,
+                                onRemove = { removeCoverageArea(area) },
+                                colorScheme = colorScheme
+                            )
+                        }
+                    }
+                }
+
+                // Add Area Section - With plus icon inside input field
+                var isFocused by remember { mutableStateOf(false) }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    BasicTextField(
+                        value = currentAreaInput,
+                        onValueChange = {
+                            currentAreaInput = it
+                            if (it.isNotBlank() && !showAddHint) {
+                                showAddHint = true
+                            } else if (it.isBlank() && showAddHint) {
+                                showAddHint = false
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .onFocusChanged { isFocused = it.isFocused },
+                        textStyle = LocalTextStyle.current.copy(
+                            fontSize = 14.sp,
+                            color = colorScheme.onSurface,
+                            lineHeight = 20.sp
+                        ),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                if (currentAreaInput.isNotBlank()) {
+                                    addCoverageArea(currentAreaInput)
+                                }
+                            }
+                        ),
+                        singleLine = true,
+                        cursorBrush = SolidColor(colorScheme.primary),
+                        decorationBox = { innerTextField ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    if (currentAreaInput.isEmpty()) {
+                                        Text(
+                                            text = if (coverageAreasList.isEmpty())
+                                                "Type an area (e.g., Nairobi CBD, Westlands)"
+                                            else
+                                                "Type another area",
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                fontSize = 14.sp,
+                                                color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                            )
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+
+                                AnimatedVisibility(
+                                    visible = currentAreaInput.isNotBlank(),
+                                    enter = scaleIn() + fadeIn(),
+                                    exit = scaleOut() + fadeOut()
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            if (currentAreaInput.isNotBlank()) {
+                                                addCoverageArea(currentAreaInput)
+                                            }
+                                        },
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "Add Area",
+                                            modifier = Modifier.size(24.dp),
+                                            tint = colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    )
+
+                    // Custom border for the input field
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(
+                                width = 1.dp,
+                                color = when {
+                                    showDuplicateError -> colorScheme.error
+                                    isFocused -> colorScheme.primary
+                                    else -> colorScheme.outline.copy(alpha = 0.2f)
+                                },
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                    )
+                }
+
+                // Error or hint message
+                if (showDuplicateError) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(start = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Error",
+                            modifier = Modifier.size(16.dp),
+                            tint = colorScheme.error
+                        )
+                        Text(
+                            text = "This area has already been added",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 12.sp,
+                                color = colorScheme.error
+                            )
+                        )
+                    }
+                } else if (showAddHint && currentAreaInput.isNotBlank()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(start = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Hint",
+                            modifier = Modifier.size(16.dp),
+                            tint = colorScheme.primary.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            text = "Press the + button or Done key to add",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 11.sp,
+                                color = colorScheme.primary.copy(alpha = 0.7f)
+                            )
+                        )
+                    }
+                }
+
+                // Suggested areas (quick-add chips)
+                if (suggestedAreas.isNotEmpty() && coverageAreasList.size < 20) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Popular areas",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 12.sp,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(suggestedAreas.filter { !coverageAreasList.contains(it) }.take(10)) { area ->
+                                SuggestionChip(
+                                    onClick = { addCoverageArea(area) },
+                                    label = { Text(area, fontSize = 12.sp) },
+                                    colors = SuggestionChipDefaults.suggestionChipColors(
+                                        containerColor = colorScheme.surfaceVariant,
+                                        labelColor = colorScheme.onSurfaceVariant
+                                    ),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Additional Notes (Optional)
         ServiceLabel("Additional Notes (Optional)")
         ServiceTextField(
             value = uiState.additionalNotes,
@@ -1688,7 +2007,7 @@ fun ServiceLocationStep(
                 onClick = onBack,
                 modifier = Modifier.weight(1f).height(50.dp),
                 shape = RoundedCornerShape(8.dp),
-                enabled = !isLoading  // Disable back button while loading
+                enabled = !isLoading
             ) {
                 Text("Back", fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
@@ -1698,10 +2017,120 @@ fun ServiceLocationStep(
                 modifier = Modifier.weight(2f).height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary),
                 shape = RoundedCornerShape(8.dp),
-                enabled = !isLoading && uiState.locationCity.isNotBlank()  // Disable while loading
+                enabled = !isLoading && coverageAreasList.isNotEmpty()
             ) {
-                // No loading indicator here - full screen loading will show instead
                 Text("Post Service", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun ClearButton(onClick: () -> Unit) {
+    var isPressed by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
+    Surface(
+        modifier = Modifier.scale(scale),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
+        onClick = {
+            coroutineScope.launch {
+                isPressed = true
+                onClick()
+                delay(80)
+                isPressed = false
+            }
+        }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Clear",
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onErrorContainer
+            )
+            Text(
+                text = "Clear",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            )
+        }
+    }
+}
+@Composable
+fun ElegantPillWithRemove(
+    label: String,
+    onRemove: () -> Unit,
+    colorScheme: ColorScheme
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "scale"
+    )
+
+    Surface(
+        modifier = Modifier.scale(scale),
+        shape = RoundedCornerShape(100.dp),
+        color = colorScheme.primaryContainer,
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = colorScheme.primary.copy(alpha = 0.2f)
+        ),
+        onClick = { }
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 13.sp,
+                    color = colorScheme.onPrimaryContainer
+                )
+            )
+
+            IconButton(
+                onClick = {
+                    coroutineScope.launch {
+                        isPressed = true
+                        onRemove()
+                        delay(80)
+                        isPressed = false
+                    }
+                },
+                modifier = Modifier.size(20.dp)
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Remove",
+                    modifier = Modifier.size(14.dp),
+                    tint = colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                )
             }
         }
     }
