@@ -81,10 +81,9 @@ import kotlinx.coroutines.launch
 
 // Default price units (fallback when backend not available)
 private val DEFAULT_PRICE_UNITS = listOf(
-    "PER_HOUR", "PER_DAY", "PER_WEEK", "PER_MONTH", "PER_YEAR", "FIXED",
-    "PER_VISIT", "PER_SESSION", "PER_UNIT", "PER_SQUARE_FOOT", "PER_SQUARE_METER",
-    "PER_TRIP", "PER_PAGE", "PER_TEST", "PER_COURSE", "PER_BOOTH", "PER_EVENT",
-    "PER_WATT", "PERCENTAGE", "PACKAGE"
+    "FIXED", "PER_HOUR", "PER_DAY", "PER_VISIT", "PER_SQFT", "PER_TRIP",
+    "PER_ITEM", "PER_PROJECT", "PER_PACKAGE", "PER_SESSION", "PER_PERSON",
+    "PER_KM", "PER_MONTH"
 )
 
 // Step definitions
@@ -221,7 +220,12 @@ fun AdaptiveServicePostLayout(
                                 location = if (uiState.coverageAreas.isNotEmpty())
                                     uiState.coverageAreas.joinToString(", ")
                                 else "Service Areas",
-                                experience = uiState.yearsExperience.ifEmpty { "X" }
+                                experience = uiState.yearsExperience.ifEmpty { "X" },
+                                isNegotiable = uiState.isNegotiable,
+                                minNegotiablePrice = uiState.minNegotiablePrice,
+                                maxNegotiablePrice = uiState.maxNegotiablePrice,
+                                hasBookingFee = uiState.useCustomBookingFee,
+                                bookingFeeAmount = uiState.customBookingFeeAmount
                             )
                         }
                     }
@@ -828,6 +832,15 @@ fun ServicePricingStep(
     onNext: () -> Unit,
     onBack: () -> Unit
 ) {
+
+    var isNegotiable by remember { mutableStateOf(uiState.isNegotiable) }
+    var minNegotiablePrice by remember { mutableStateOf(uiState.minNegotiablePrice) }
+    var maxNegotiablePrice by remember { mutableStateOf(uiState.maxNegotiablePrice) }
+    var useCustomBookingFee by remember { mutableStateOf(uiState.useCustomBookingFee) }
+    var customBookingFeeAmount by remember { mutableStateOf(uiState.customBookingFeeAmount) }
+    var customBookingFeeDescription by remember { mutableStateOf(uiState.customBookingFeeDescription) }
+    var customBookingFeeRefundable by remember { mutableStateOf(uiState.customBookingFeeRefundable) }
+
     val isLoadingPricing = pricingUnitsState is PricingUnitsState.Loading
     val availableUnits = if (uiState.allowedPriceUnits.isNotEmpty()) {
         uiState.allowedPriceUnits
@@ -835,12 +848,55 @@ fun ServicePricingStep(
         DEFAULT_PRICE_UNITS
     }
 
+    var negotiablePriceError by remember { mutableStateOf<String?>(null) }
+    var bookingFeeError by remember { mutableStateOf<String?>(null) }
+
+    val selectedUnitRule = uiState.pricingRules.find { it.unit == uiState.priceUnit }
+
+    fun validateNegotiablePrices() {
+        val min = minNegotiablePrice.toDoubleOrNull()
+        val max = maxNegotiablePrice.toDoubleOrNull()
+        val base = uiState.basePrice.toDoubleOrNull()
+
+        negotiablePriceError = when {
+            !isNegotiable -> null
+            min != null && max != null && min > max -> "Minimum price cannot be greater than maximum price"
+            min != null && base != null && min > base -> "Minimum price cannot be greater than your base price"
+            max != null && base != null && max < base -> "Maximum price cannot be less than your base price"
+            min != null && selectedUnitRule != null && min < selectedUnitRule.minPrice ->
+                "Minimum cannot be below ${selectedUnitRule.currency} ${selectedUnitRule.minPrice}"
+            max != null && selectedUnitRule != null && selectedUnitRule.maxPrice != null && max > selectedUnitRule.maxPrice ->
+                "Maximum cannot exceed ${selectedUnitRule.currency} ${selectedUnitRule.maxPrice}"
+            else -> null
+        }
+    }
+
+    fun validateBookingFee() {
+        val amount = customBookingFeeAmount.toDoubleOrNull()
+        bookingFeeError = when {
+            !useCustomBookingFee -> null
+            amount == null || amount <= 0 -> "Please enter a valid amount"
+            amount > 10000 -> "Booking fee cannot exceed 10,000 KES"
+            selectedUnitRule != null && selectedUnitRule.maxPrice != null && amount > selectedUnitRule.maxPrice * 0.5 ->
+                "Fee seems high relative to service price"
+            else -> null
+        }
+    }
+
+    LaunchedEffect(minNegotiablePrice, maxNegotiablePrice, uiState.basePrice, isNegotiable, selectedUnitRule) {
+        validateNegotiablePrices()
+    }
+
+    LaunchedEffect(customBookingFeeAmount, useCustomBookingFee) {
+        validateBookingFee()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
             "Set your pricing",
@@ -854,26 +910,7 @@ fun ServicePricingStep(
             color = colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(modifier = Modifier.weight(1f)) {
-                ServiceLabel("Base Price *")
-                ServiceTextField(
-                    value = uiState.basePrice,
-                    onValueChange = viewModel::updateBasePrice,
-                    placeholder = "0.00",
-                    keyboardType = KeyboardType.Number
-                )
-                uiState.priceValidationError?.let { error ->
-                    Text(
-                        text = error,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colorScheme.error,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
             Column(modifier = Modifier.weight(1f)) {
                 ServiceLabel("Currency *")
                 ServiceDropdown(
@@ -883,54 +920,39 @@ fun ServicePricingStep(
                     placeholder = "Select Currency"
                 )
             }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        ServiceLabel("Price Unit *")
-        ServiceDropdown(
-            value = uiState.priceUnit,
-            onValueChange = viewModel::updatePriceUnit,
-            options = availableUnits,
-            placeholder = "Select pricing unit",
-            isLoading = isLoadingPricing,
-            enabled = pricingUnitsState !is PricingUnitsState.Loading
-        )
-
-        val selectedUnitRule = uiState.pricingRules.find { it.unit == uiState.priceUnit }
-        if (selectedUnitRule != null) {
-            Column(modifier = Modifier.padding(top = 8.dp)) {
-                Text(
-                    text = selectedUnitRule.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colorScheme.onSurface.copy(alpha = 0.6f)
+            Column(modifier = Modifier.weight(1f)) {
+                ServiceLabel("Price Unit *")
+                ServiceDropdown(
+                    value = uiState.priceUnit,
+                    onValueChange = viewModel::updatePriceUnit,
+                    options = availableUnits,
+                    placeholder = "Select pricing unit",
+                    isLoading = isLoadingPricing,
+                    enabled = pricingUnitsState !is PricingUnitsState.Loading
                 )
-                Text(
-                    text = "Price range: ${selectedUnitRule.currency} ${selectedUnitRule.minPrice} - ${selectedUnitRule.maxPrice ?: "No max"}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colorScheme.primary.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-                if (selectedUnitRule.experienceRequired) {
-                    Text(
-                        text = "Years of experience required",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colorScheme.error
-                    )
-                }
-                if (selectedUnitRule.notesRequired) {
-                    Text(
-                        text = "Additional notes required",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colorScheme.primary
-                    )
-                }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        if (selectedUnitRule != null) {
+            Text(
+                text = "${selectedUnitRule.description} (${selectedUnitRule.currency} ${selectedUnitRule.minPrice} - ${selectedUnitRule.maxPrice ?: "No max"})",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onSurfaceVariant
+            )
+        }
 
-        ServiceLabel("Years of Experience")
+        ServiceLabel("Base Price *")
+        ServiceTextField(
+            value = uiState.basePrice,
+            onValueChange = viewModel::updateBasePrice,
+            placeholder = "0.00",
+            keyboardType = KeyboardType.Number
+        )
+        uiState.priceValidationError?.let { error ->
+            Text(text = error, style = MaterialTheme.typography.labelSmall, color = colorScheme.error, modifier = Modifier.padding(top = 2.dp))
+        }
+
+        ServiceLabel(if (selectedUnitRule?.experienceRequired == true) "Years of Experience *" else "Years of Experience (Optional)")
         ServiceTextField(
             value = uiState.yearsExperience,
             onValueChange = viewModel::updateYearsExperience,
@@ -938,28 +960,137 @@ fun ServicePricingStep(
             keyboardType = KeyboardType.Number
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        // Negotiable Pricing
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+            modifier = Modifier.fillMaxWidth()
         ) {
+            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Negotiable Pricing", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
+                    Switch(
+                        checked = isNegotiable,
+                        onCheckedChange = { isNegotiable = it; viewModel.updateIsNegotiable(it) },
+                        colors = SwitchDefaults.colors(checkedThumbColor = colorScheme.primary)
+                    )
+                }
+                Text("Allow customers to propose their price within your range", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
+
+                AnimatedVisibility(visible = isNegotiable) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                ServiceLabel("Min Price (Optional)")
+                                ServiceTextField(
+                                    value = minNegotiablePrice,
+                                    onValueChange = { minNegotiablePrice = it; viewModel.updateMinNegotiablePrice(it) },
+                                    placeholder = "Min amount",
+                                    keyboardType = KeyboardType.Number
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                ServiceLabel("Max Price (Optional)")
+                                ServiceTextField(
+                                    value = maxNegotiablePrice,
+                                    onValueChange = { maxNegotiablePrice = it; viewModel.updateMaxNegotiablePrice(it) },
+                                    placeholder = "Max amount",
+                                    keyboardType = KeyboardType.Number
+                                )
+                            }
+                        }
+                        if (negotiablePriceError != null) {
+                            Text(text = negotiablePriceError!!, style = MaterialTheme.typography.labelSmall, color = colorScheme.error)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Booking Fee
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Booking Fee (Call-out Fee)", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
+                    Switch(
+                        checked = useCustomBookingFee,
+                        onCheckedChange = { useCustomBookingFee = it; viewModel.updateUseCustomBookingFee(it) },
+                        colors = SwitchDefaults.colors(checkedThumbColor = colorScheme.primary)
+                    )
+                }
+                Text("Charge a fee to cover travel, consultation, or secure the booking", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
+
+                AnimatedVisibility(visible = useCustomBookingFee) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                        ServiceLabel("Booking Fee Amount *")
+                        ServiceTextField(
+                            value = customBookingFeeAmount,
+                            onValueChange = { customBookingFeeAmount = it; viewModel.updateCustomBookingFeeAmount(it) },
+                            placeholder = "e.g. 500",
+                            keyboardType = KeyboardType.Number
+                        )
+                        if (bookingFeeError != null) {
+                            Text(text = bookingFeeError!!, style = MaterialTheme.typography.labelSmall, color = colorScheme.error)
+                        }
+
+                        ServiceLabel("Description (Optional)")
+                        ServiceTextField(
+                            value = customBookingFeeDescription,
+                            onValueChange = { customBookingFeeDescription = it; viewModel.updateCustomBookingFeeDescription(it) },
+                            placeholder = "e.g. Covers travel to your location",
+                            singleLine = true
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Refundable on cancellation", style = MaterialTheme.typography.bodyMedium)
+                            Switch(
+                                checked = customBookingFeeRefundable,
+                                onCheckedChange = { customBookingFeeRefundable = it; viewModel.updateCustomBookingFeeRefundable(it) },
+                                colors = SwitchDefaults.colors(checkedThumbColor = colorScheme.primary)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(
                 onClick = onBack,
-                modifier = Modifier.weight(1f).height(50.dp),
+                modifier = Modifier.weight(1f).height(48.dp),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Back", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                Text("Back", fontSize = 15.sp, fontWeight = FontWeight.Medium)
             }
 
             Button(
                 onClick = onNext,
-                modifier = Modifier.weight(2f).height(50.dp),
+                modifier = Modifier.weight(2f).height(48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary),
                 shape = RoundedCornerShape(8.dp),
-                enabled = uiState.basePrice.isNotBlank() && uiState.basePrice.toDoubleOrNull() != null && uiState.priceValidationError == null
+                enabled = uiState.basePrice.isNotBlank() &&
+                        uiState.basePrice.toDoubleOrNull() != null &&
+                        uiState.priceValidationError == null &&
+                        negotiablePriceError == null &&
+                        (!useCustomBookingFee || (customBookingFeeAmount.toDoubleOrNull() != null && customBookingFeeAmount.toDoubleOrNull()!! > 0 && bookingFeeError == null))
             ) {
-                Text("Continue", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Continue", fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -2145,7 +2276,12 @@ fun ServiceLivePreview(
     currency: String = "KES",
     priceUnit: String = "PER_HOUR",
     location: String = "City, Neighborhood",
-    experience: String = "X"
+    experience: String = "X",
+    isNegotiable: Boolean = false,
+    minNegotiablePrice: String = "",
+    maxNegotiablePrice: String = "",
+    hasBookingFee: Boolean = false,
+    bookingFeeAmount: String = ""
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -2193,14 +2329,34 @@ fun ServiceLivePreview(
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.Place, contentDescription = null, modifier = Modifier.size(14.dp), tint = colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(location, style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
                 }
+
                 Spacer(modifier = Modifier.height(8.dp))
-                Surface(color = colorScheme.secondaryContainer, shape = RoundedCornerShape(4.dp)) {
-                    Text("$experience yrs exp", style = MaterialTheme.typography.labelSmall, color = colorScheme.onSecondaryContainer, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(color = colorScheme.secondaryContainer, shape = RoundedCornerShape(4.dp)) {
+                        Text("$experience yrs exp", style = MaterialTheme.typography.labelSmall, color = colorScheme.onSecondaryContainer, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                    }
+
+                    if (isNegotiable) {
+                        Surface(color = colorScheme.tertiaryContainer, shape = RoundedCornerShape(4.dp)) {
+                            Text("Negotiable", style = MaterialTheme.typography.labelSmall, color = colorScheme.onTertiaryContainer, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                        }
+                    }
+
+                    if (hasBookingFee && bookingFeeAmount.isNotBlank()) {
+                        Surface(color = colorScheme.errorContainer, shape = RoundedCornerShape(4.dp)) {
+                            Text("+$bookingFeeAmount fee", style = MaterialTheme.typography.labelSmall, color = colorScheme.onErrorContainer, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                        }
+                    }
                 }
             }
         }
@@ -2215,24 +2371,17 @@ private fun formatPrice(price: String): String = if (price.isNotEmpty()) {
 private fun formatPriceUnit(unit: String): String = when (unit) {
     "PER_HOUR" -> "/hour"
     "PER_DAY" -> "/day"
-    "PER_WEEK" -> "/week"
     "PER_MONTH" -> "/month"
-    "PER_YEAR" -> "/year"
     "PER_VISIT" -> "/visit"
     "PER_SESSION" -> "/session"
-    "PER_UNIT" -> "/unit"
-    "PER_SQUARE_FOOT" -> "/sq ft"
-    "PER_SQUARE_METER" -> "/sq m"
+    "PER_ITEM" -> "/item"
+    "PER_PROJECT" -> "/project"
+    "PER_PACKAGE" -> "/package"
+    "PER_PERSON" -> "/person"
+    "PER_KM" -> "/km"
+    "PER_SQFT" -> "/sq ft"
     "PER_TRIP" -> "/trip"
-    "PER_PAGE" -> "/page"
-    "PER_TEST" -> "/test"
-    "PER_COURSE" -> "/course"
-    "PER_BOOTH" -> "/booth"
-    "PER_EVENT" -> "/event"
-    "PER_WATT" -> "/watt"
-    "PERCENTAGE" -> "%"
     "FIXED" -> "fixed"
-    "PACKAGE" -> "package"
     else -> ""
 }
 

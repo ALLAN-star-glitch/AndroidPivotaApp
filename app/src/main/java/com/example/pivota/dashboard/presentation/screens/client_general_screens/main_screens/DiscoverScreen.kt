@@ -852,28 +852,6 @@ fun ProfileMenuItem(
 }
 
 @Composable
-fun HeaderIcon(
-    icon: ImageVector,
-    colorScheme: ColorScheme
-) {
-    Box(
-        modifier = Modifier
-            .size(38.dp)
-            .clip(CircleShape)
-            .background(colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .clickable { },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp)
-        )
-    }
-}
-
-@Composable
 fun SearchAndPillsSection(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,

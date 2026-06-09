@@ -56,10 +56,8 @@ class ServiceOfferingCacheMapper @Inject constructor(
         categoryId: String
     ): ServiceOfferingEntity {
 
-        // ✅ Renamed serviceAreas to coverageAreas
         val coverageAreasJson = moshi.adapter<List<String>>(STRING_LIST_TYPE).toJson(dto.coverageAreas)
 
-        // Convert DTO availability to domain model first, then serialize
         val availabilityJson = dto.availability?.let { availabilityDtoList ->
             val domainAvailabilityList = toDomainAvailabilityList(availabilityDtoList)
             moshi.adapter<List<DayAvailability>>(DAY_AVAILABILITY_LIST_TYPE).toJson(domainAvailabilityList)
@@ -78,8 +76,6 @@ class ServiceOfferingCacheMapper @Inject constructor(
             basePrice = dto.basePrice,
             priceUnit = dto.priceUnit,
             currency = dto.currency,
-            // ❌ REMOVED locationCity and locationNeighborhood
-            // ✅ ADDED coverageAreas (replaces serviceAreas)
             coverageAreas = coverageAreasJson,
             availability = availabilityJson,
             yearsExperience = dto.yearsExperience,
@@ -89,7 +85,18 @@ class ServiceOfferingCacheMapper @Inject constructor(
             reviewCount = dto.reviewCount,
             createdAt = dto.createdAt,
             updatedAt = dto.updatedAt,
-            lastUpdated = System.currentTimeMillis()
+            lastUpdated = System.currentTimeMillis(),
+            // ========== NEW: Negotiable Pricing Fields ==========
+            isNegotiable = dto.isNegotiable ?: true,
+            minNegotiablePrice = dto.minNegotiablePrice,
+            maxNegotiablePrice = dto.maxNegotiablePrice,
+            // ========== NEW: Booking Fee Override Fields ==========
+            useCustomBookingFee = dto.useCustomBookingFee ?: false,
+            customBookingFeeEnabled = dto.customBookingFeeEnabled,
+            customBookingFeeAmount = dto.customBookingFeeAmount,
+            customBookingFeeCurrency = dto.customBookingFeeCurrency,
+            customBookingFeeDescription = dto.customBookingFeeDescription,
+            customBookingFeeRefundable = dto.customBookingFeeRefundable
         )
     }
 
@@ -101,10 +108,8 @@ class ServiceOfferingCacheMapper @Inject constructor(
         dto: CreatedServiceOfferingDataDto,
         categoryId: String
     ): ServiceOfferingEntity {
-        // ✅ Renamed serviceAreas to coverageAreas
         val coverageAreasJson = moshi.adapter<List<String>>(STRING_LIST_TYPE).toJson(dto.coverageAreas)
 
-        // Convert DTO availability to domain model first, then serialize
         val availabilityJson = dto.availability?.let { availabilityDtoList ->
             val domainAvailabilityList = availabilityDtoList.map { dayDto ->
                 DayAvailability(
@@ -130,8 +135,6 @@ class ServiceOfferingCacheMapper @Inject constructor(
             basePrice = dto.basePrice,
             priceUnit = dto.priceUnit,
             currency = dto.currency,
-            // ❌ REMOVED locationCity and locationNeighborhood
-            // ✅ ADDED coverageAreas (replaces serviceAreas)
             coverageAreas = coverageAreasJson,
             availability = availabilityJson,
             yearsExperience = dto.yearsExperience,
@@ -141,15 +144,24 @@ class ServiceOfferingCacheMapper @Inject constructor(
             reviewCount = dto.reviewCount,
             createdAt = dto.createdAt,
             updatedAt = dto.updatedAt,
-            lastUpdated = System.currentTimeMillis()
+            lastUpdated = System.currentTimeMillis(),
+            // ========== NEW: Negotiable Pricing Fields ==========
+            isNegotiable = dto.isNegotiable ?: true,
+            minNegotiablePrice = dto.minNegotiablePrice,
+            maxNegotiablePrice = dto.maxNegotiablePrice,
+            // ========== NEW: Booking Fee Override Fields ==========
+            useCustomBookingFee = dto.useCustomBookingFee ?: false,
+            customBookingFeeEnabled = dto.customBookingFeeEnabled,
+            customBookingFeeAmount = dto.customBookingFeeAmount,
+            customBookingFeeCurrency = dto.customBookingFeeCurrency,
+            customBookingFeeDescription = dto.customBookingFeeDescription,
+            customBookingFeeRefundable = dto.customBookingFeeRefundable
         )
     }
 
     fun toDomain(entity: ServiceOfferingEntity): ServiceOffering {
-        // ✅ Renamed serviceAreas to coverageAreas
         val coverageAreas = moshi.adapter<List<String>>(STRING_LIST_TYPE).fromJson(entity.coverageAreas) ?: emptyList()
 
-        // Deserialize as domain model directly
         val availability = entity.availability?.let {
             moshi.adapter<List<DayAvailability>>(DAY_AVAILABILITY_LIST_TYPE).fromJson(it)
         } ?: emptyList()
@@ -167,8 +179,6 @@ class ServiceOfferingCacheMapper @Inject constructor(
             basePrice = entity.basePrice,
             priceUnit = entity.priceUnit,
             currency = entity.currency,
-            // ❌ REMOVED locationCity and locationNeighborhood
-            // ✅ ADDED coverageAreas (replaces serviceAreas)
             coverageAreas = coverageAreas,
             availability = availability,
             yearsExperience = entity.yearsExperience,
@@ -177,7 +187,18 @@ class ServiceOfferingCacheMapper @Inject constructor(
             averageRating = entity.averageRating,
             reviewCount = entity.reviewCount,
             createdAt = entity.createdAt,
-            updatedAt = entity.updatedAt
+            updatedAt = entity.updatedAt,
+            // ========== NEW: Negotiable Pricing Fields ==========
+            isNegotiable = entity.isNegotiable ?: true,
+            minNegotiablePrice = entity.minNegotiablePrice,
+            maxNegotiablePrice = entity.maxNegotiablePrice,
+            // ========== NEW: Booking Fee Override Fields ==========
+            useCustomBookingFee = entity.useCustomBookingFee ?: false,
+            customBookingFeeEnabled = entity.customBookingFeeEnabled,
+            customBookingFeeAmount = entity.customBookingFeeAmount,
+            customBookingFeeCurrency = entity.customBookingFeeCurrency,
+            customBookingFeeDescription = entity.customBookingFeeDescription,
+            customBookingFeeRefundable = entity.customBookingFeeRefundable
         )
     }
 

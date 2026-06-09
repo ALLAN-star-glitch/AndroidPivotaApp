@@ -315,6 +315,40 @@ class PostServiceViewModel @Inject constructor(
         }
     }
 
+
+    private fun validateNegotiablePriceRange() {
+        val minPrice = _uiState.value.minNegotiablePrice.toDoubleOrNull()
+        val maxPrice = _uiState.value.maxNegotiablePrice.toDoubleOrNull()
+        val basePrice = _uiState.value.basePrice.toDoubleOrNull()
+
+        val error = when {
+            minPrice != null && maxPrice != null && minPrice > maxPrice ->
+                "Minimum price cannot be greater than maximum price"
+            minPrice != null && basePrice != null && minPrice > basePrice ->
+                "Minimum price cannot be greater than your base price"
+            maxPrice != null && basePrice != null && maxPrice < basePrice ->
+                "Maximum price cannot be less than your base price"
+            else -> null
+        }
+
+        _uiState.update { it.copy(priceValidationError = error) }
+    }
+
+    private fun validateCustomBookingFee() {
+        val amount = _uiState.value.customBookingFeeAmount.toDoubleOrNull()
+        val isEnabled = _uiState.value.useCustomBookingFee
+
+        val error = when {
+            isEnabled && (amount == null || amount <= 0) ->
+                "Please enter a valid booking fee amount"
+            isEnabled && amount != null && amount > 10000 ->
+                "Booking fee cannot exceed 10,000 KES"
+            else -> null
+        }
+
+        _uiState.update { it.copy(bookingFeeValidationError = error) }
+    }
+
     private fun validateForm(): String? {
         val state = _uiState.value
         return when {
@@ -323,7 +357,10 @@ class PostServiceViewModel @Inject constructor(
             state.description.isBlank() -> "Please enter a service description"
             state.basePrice.isBlank() -> "Please enter a base price"
             state.basePrice.toDoubleOrNull() == null -> "Please enter a valid price"
-            state.coverageAreas.isEmpty() -> "Please select at least one service area"  // ✅ Updated validation
+            state.coverageAreas.isEmpty() -> "Please select at least one service area"
+            // ========== NEW validations ==========
+            state.useCustomBookingFee && state.customBookingFeeAmount.isBlank() -> "Please enter a booking fee amount"
+            state.useCustomBookingFee && state.customBookingFeeAmount.toDoubleOrNull() == null -> "Please enter a valid booking fee amount"
             else -> null
         }
     }
@@ -355,10 +392,21 @@ class PostServiceViewModel @Inject constructor(
             basePrice = state.basePrice.toDouble(),
             priceUnit = state.priceUnit,
             currency = state.currency,
-            coverageAreas = state.coverageAreas,  // ✅ Updated (replaces locationCity/locationNeighborhood)
+            coverageAreas = state.coverageAreas,
             yearsExperience = state.yearsExperience.toIntOrNull(),
             additionalNotes = state.additionalNotes.takeIf { it.isNotBlank() },
-            availability = availability.takeIf { it.isNotEmpty() }
+            availability = availability.takeIf { it.isNotEmpty() },
+            // ========== NEW: Negotiable Pricing Fields ==========
+            isNegotiable = state.isNegotiable,
+            minNegotiablePrice = state.minNegotiablePrice.toDoubleOrNull(),
+            maxNegotiablePrice = state.maxNegotiablePrice.toDoubleOrNull(),
+            // ========== NEW: Booking Fee Override Fields ==========
+            useCustomBookingFee = state.useCustomBookingFee,
+            customBookingFeeEnabled = state.useCustomBookingFee,
+            customBookingFeeAmount = state.customBookingFeeAmount.toDoubleOrNull(),
+            customBookingFeeCurrency = "KES",
+            customBookingFeeDescription = state.customBookingFeeDescription.takeIf { it.isNotBlank() },
+            customBookingFeeRefundable = state.customBookingFeeRefundable
         )
     }
 
@@ -375,6 +423,53 @@ class PostServiceViewModel @Inject constructor(
 
     fun resetSuccess() {
         _uiState.update { it.copy(isSuccess = false) }
+    }
+
+    // ========== NEW: Update functions for negotiable pricing ==========
+    fun updateIsNegotiable(isNegotiable: Boolean) {
+        _uiState.update { it.copy(isNegotiable = isNegotiable) }
+    }
+
+    fun updateMinNegotiablePrice(price: String) {
+        _uiState.update { it.copy(minNegotiablePrice = price) }
+        if (price.isNotBlank()) {
+            validateNegotiablePriceRange()
+        }
+    }
+
+    fun updateMaxNegotiablePrice(price: String) {
+        _uiState.update { it.copy(maxNegotiablePrice = price) }
+        if (price.isNotBlank()) {
+            validateNegotiablePriceRange()
+        }
+    }
+
+    // ========== NEW: Update functions for booking fee ==========
+    fun updateUseCustomBookingFee(useCustomFee: Boolean) {
+        _uiState.update { it.copy(useCustomBookingFee = useCustomFee) }
+        if (!useCustomFee) {
+            _uiState.update {
+                it.copy(
+                    customBookingFeeAmount = "",
+                    customBookingFeeDescription = "",
+                    customBookingFeeRefundable = false,
+                    bookingFeeValidationError = null
+                )
+            }
+        }
+    }
+
+    fun updateCustomBookingFeeAmount(amount: String) {
+        _uiState.update { it.copy(customBookingFeeAmount = amount) }
+        validateCustomBookingFee()
+    }
+
+    fun updateCustomBookingFeeDescription(description: String) {
+        _uiState.update { it.copy(customBookingFeeDescription = description) }
+    }
+
+    fun updateCustomBookingFeeRefundable(refundable: Boolean) {
+        _uiState.update { it.copy(customBookingFeeRefundable = refundable) }
     }
 }
 
@@ -405,24 +500,31 @@ data class PostServiceUiState(
     val currency: String = "KES",
     val priceUnit: String = "PER_HOUR",
     val yearsExperience: String = "",
-    // ❌ REMOVED locationCity and locationNeighborhood
-    // ✅ ADDED coverageAreas
     val coverageAreas: List<String> = emptyList(),
     val additionalNotes: String = "",
     val availability: List<DayAvailability> = emptyList(),
+    // ========== NEW: Negotiable Pricing Fields ==========
+    val isNegotiable: Boolean = true,
+    val minNegotiablePrice: String = "",
+    val maxNegotiablePrice: String = "",
+    // ========== NEW: Booking Fee Override Fields ==========
+    val useCustomBookingFee: Boolean = false,
+    val customBookingFeeAmount: String = "",
+    val customBookingFeeDescription: String = "",
+    val customBookingFeeRefundable: Boolean = false,
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
     val error: String? = null,
     val createdOffering: ServiceOffering? = null,
-    // Categories
     val availableCategories: List<String> = emptyList(),
     val categoryIdMap: Map<String, String> = emptyMap(),
     val availableSubcategories: List<String> = emptyList(),
     val subcategoryIdMap: Map<String, String> = emptyMap(),
     val subcategoryMap: Map<String, List<Category>> = emptyMap(),
     val allCategories: List<Category> = emptyList(),
-    // Pricing
     val allowedPriceUnits: List<String> = emptyList(),
     val pricingRules: List<PricingUnitOption> = emptyList(),
-    val priceValidationError: String? = null
+    val priceValidationError: String? = null,
+    // ========== NEW: Booking Fee Validation Error ==========
+    val bookingFeeValidationError: String? = null
 )

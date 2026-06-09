@@ -31,8 +31,6 @@ data class ServiceOfferingDto(
     @SerialName("basePrice") val basePrice: Double,
     @SerialName("priceUnit") val priceUnit: String,
     @SerialName("currency") val currency: String,
-    // ❌ REMOVED locationCity and locationNeighborhood
-    // ✅ ADDED coverageAreas (replaces serviceAreas)
     @SerialName("coverageAreas") val coverageAreas: List<String> = emptyList(),
     @SerialName("availability") val availability: List<DayAvailabilityDto>? = null,
     @SerialName("yearsExperience") val yearsExperience: Int? = null,
@@ -41,7 +39,18 @@ data class ServiceOfferingDto(
     @SerialName("averageRating") val averageRating: Double,
     @SerialName("reviewCount") val reviewCount: Int,
     @SerialName("createdAt") val createdAt: String,
-    @SerialName("updatedAt") val updatedAt: String
+    @SerialName("updatedAt") val updatedAt: String,
+    // ========== NEW: Negotiable Pricing Fields ==========
+    @SerialName("isNegotiable") val isNegotiable: Boolean? = true,
+    @SerialName("minNegotiablePrice") val minNegotiablePrice: Double? = null,
+    @SerialName("maxNegotiablePrice") val maxNegotiablePrice: Double? = null,
+    // ========== NEW: Booking Fee Override Fields ==========
+    @SerialName("useCustomBookingFee") val useCustomBookingFee: Boolean? = false,
+    @SerialName("customBookingFeeEnabled") val customBookingFeeEnabled: Boolean? = null,
+    @SerialName("customBookingFeeAmount") val customBookingFeeAmount: Double? = null,
+    @SerialName("customBookingFeeCurrency") val customBookingFeeCurrency: String? = null,
+    @SerialName("customBookingFeeDescription") val customBookingFeeDescription: String? = null,
+    @SerialName("customBookingFeeRefundable") val customBookingFeeRefundable: Boolean? = null
 )
 
 @Serializable
@@ -72,12 +81,21 @@ data class CreateServiceOfferingRequestDto(
     @SerialName("basePrice") val basePrice: Double,
     @SerialName("priceUnit") val priceUnit: String,
     @SerialName("currency") val currency: String = "KES",
-    // ❌ REMOVED locationCity and locationNeighborhood
-    // ✅ ADDED coverageAreas (required)
     @SerialName("coverageAreas") val coverageAreas: List<String>,
     @SerialName("yearsExperience") val yearsExperience: Int? = null,
     @SerialName("additionalNotes") val additionalNotes: String? = null,
-    @SerialName("availability") val availability: List<DayAvailabilityDto>? = null
+    @SerialName("availability") val availability: List<DayAvailabilityDto>? = null,
+    // ========== NEW: Negotiable Pricing Fields ==========
+    @SerialName("isNegotiable") val isNegotiable: Boolean? = true,
+    @SerialName("minNegotiablePrice") val minNegotiablePrice: Double? = null,
+    @SerialName("maxNegotiablePrice") val maxNegotiablePrice: Double? = null,
+    // ========== NEW: Booking Fee Override Fields ==========
+    @SerialName("useCustomBookingFee") val useCustomBookingFee: Boolean? = false,
+    @SerialName("customBookingFeeEnabled") val customBookingFeeEnabled: Boolean? = null,
+    @SerialName("customBookingFeeAmount") val customBookingFeeAmount: Double? = null,
+    @SerialName("customBookingFeeCurrency") val customBookingFeeCurrency: String? = null,
+    @SerialName("customBookingFeeDescription") val customBookingFeeDescription: String? = null,
+    @SerialName("customBookingFeeRefundable") val customBookingFeeRefundable: Boolean? = null
 )
 
 // ======================================================
@@ -91,7 +109,18 @@ data class UpdateServiceOfferingRequestDto(
     @SerialName("basePrice") val basePrice: Double? = null,
     @SerialName("priceUnit") val priceUnit: String? = null,
     @SerialName("coverageAreas") val coverageAreas: List<String>? = null,
-    @SerialName("availability") val availability: List<DayAvailabilityDto>? = null
+    @SerialName("availability") val availability: List<DayAvailabilityDto>? = null,
+    // ========== NEW: Negotiable Pricing Fields ==========
+    @SerialName("isNegotiable") val isNegotiable: Boolean? = null,
+    @SerialName("minNegotiablePrice") val minNegotiablePrice: Double? = null,
+    @SerialName("maxNegotiablePrice") val maxNegotiablePrice: Double? = null,
+    // ========== NEW: Booking Fee Override Fields ==========
+    @SerialName("useCustomBookingFee") val useCustomBookingFee: Boolean? = null,
+    @SerialName("customBookingFeeEnabled") val customBookingFeeEnabled: Boolean? = null,
+    @SerialName("customBookingFeeAmount") val customBookingFeeAmount: Double? = null,
+    @SerialName("customBookingFeeCurrency") val customBookingFeeCurrency: String? = null,
+    @SerialName("customBookingFeeDescription") val customBookingFeeDescription: String? = null,
+    @SerialName("customBookingFeeRefundable") val customBookingFeeRefundable: Boolean? = null
 )
 
 // ======================================================
@@ -129,11 +158,22 @@ data class CreatedServiceOfferingDataDto(
     @SerialName("averageRating") val averageRating: Double,
     @SerialName("reviewCount") val reviewCount: Int,
     @SerialName("createdAt") val createdAt: String,
-    @SerialName("updatedAt") val updatedAt: String
+    @SerialName("updatedAt") val updatedAt: String,
+    // ========== NEW: Negotiable Pricing Fields ==========
+    @SerialName("isNegotiable") val isNegotiable: Boolean? = true,
+    @SerialName("minNegotiablePrice") val minNegotiablePrice: Double? = null,
+    @SerialName("maxNegotiablePrice") val maxNegotiablePrice: Double? = null,
+    // ========== NEW: Booking Fee Override Fields ==========
+    @SerialName("useCustomBookingFee") val useCustomBookingFee: Boolean? = false,
+    @SerialName("customBookingFeeEnabled") val customBookingFeeEnabled: Boolean? = null,
+    @SerialName("customBookingFeeAmount") val customBookingFeeAmount: Double? = null,
+    @SerialName("customBookingFeeCurrency") val customBookingFeeCurrency: String? = null,
+    @SerialName("customBookingFeeDescription") val customBookingFeeDescription: String? = null,
+    @SerialName("customBookingFeeRefundable") val customBookingFeeRefundable: Boolean? = null
 )
 
 // ======================================================
-// BOOKING STATUS DTOS (NEW)
+// BOOKING STATUS DTOS
 // ======================================================
 
 @Serializable
@@ -159,6 +199,54 @@ data class BookingStatusListDataDto(
 )
 
 // ======================================================
-// ERROR DTO
+// CREATE BOOKING REQUEST DTO (NEW)
 // ======================================================
 
+@Serializable
+data class CreateBookingRequestDto(
+    @SerialName("serviceId") val serviceId: String,
+    @SerialName("contractorId") val contractorId: String,
+    @SerialName("scheduledDate") val scheduledDate: String,
+    @SerialName("locationCity") val locationCity: String,
+    @SerialName("durationHours") val durationHours: Int? = null,
+    @SerialName("durationDays") val durationDays: Int? = null,
+    @SerialName("durationWeeks") val durationWeeks: Int? = null,
+    @SerialName("durationMonths") val durationMonths: Int? = null,
+    @SerialName("customerNotes") val customerNotes: String? = null,
+    @SerialName("proposedPrice") val proposedPrice: Double? = null
+)
+
+// ======================================================
+// BOOKING RESPONSE DTO (NEW)
+// ======================================================
+
+@Serializable
+data class BookingResponseDto(
+    @SerialName("id") val id: String,
+    @SerialName("externalId") val externalId: String,
+    @SerialName("contractorId") val contractorId: String,
+    @SerialName("clientId") val clientId: String,
+    @SerialName("serviceId") val serviceId: String? = null,
+    @SerialName("service") val service: ServiceOfferingDto? = null,
+    @SerialName("contractorName") val contractorName: String? = null,
+    @SerialName("serviceTitle") val serviceTitle: String? = null,
+    @SerialName("status") val status: String,
+    @SerialName("serviceExecutionStatus") val serviceExecutionStatus: String? = null,
+    @SerialName("scheduledDate") val scheduledDate: String? = null,
+    @SerialName("locationCity") val locationCity: String? = null,
+    @SerialName("servicePrice") val servicePrice: Double? = null,
+    @SerialName("servicePriceUnit") val servicePriceUnit: String? = null,
+    @SerialName("serviceDuration") val serviceDuration: Int? = null,
+    @SerialName("currency") val currency: String,
+    @SerialName("customerNotes") val customerNotes: String? = null,
+    @SerialName("bookingFeeAmount") val bookingFeeAmount: Double? = null,
+    @SerialName("bookingFeeCurrency") val bookingFeeCurrency: String? = null,
+    @SerialName("bookingFeeRefundable") val bookingFeeRefundable: Boolean? = null,
+    @SerialName("totalAmount") val totalAmount: Double? = null,
+    @SerialName("confirmedAt") val confirmedAt: String? = null,
+    @SerialName("declinedAt") val declinedAt: String? = null,
+    @SerialName("cancelledAt") val cancelledAt: String? = null,
+    @SerialName("completedAt") val completedAt: String? = null,
+    @SerialName("createdAt") val createdAt: String,
+    @SerialName("updatedAt") val updatedAt: String
+)

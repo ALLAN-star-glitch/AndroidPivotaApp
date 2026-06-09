@@ -34,10 +34,9 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
     companion object {
         private const val TAG = "ServiceOfferingsRepo"
 
-        // Cache expiry strategy
-        private const val CACHE_EXPIRY_FRESH_MS = 5 * 60 * 1000L      // 5 minutes - fresh data
-        private const val CACHE_EXPIRY_STALE_MS = 30 * 60 * 1000L     // 30 minutes - stale but acceptable
-        private const val CACHE_EXPIRY_OFFLINE_MS = 24 * 60 * 60 * 1000L // 24 hours - offline fallback
+        private const val CACHE_EXPIRY_FRESH_MS = 5 * 60 * 1000L
+        private const val CACHE_EXPIRY_STALE_MS = 30 * 60 * 1000L
+        private const val CACHE_EXPIRY_OFFLINE_MS = 24 * 60 * 60 * 1000L
     }
 
     override suspend fun getOfferingsByCategory(
@@ -55,13 +54,11 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
 
         Log.d(TAG, "getOfferingsByCategory: categoryId=$categoryId, forceRefresh=$forceRefresh, isNetworkAvailable=$isNetworkAvailable")
 
-        // STRATEGY 1: Force refresh requested and network available
         if (forceRefresh && isNetworkAvailable) {
             Log.d(TAG, "Strategy 1: Force refresh - fetching from network")
             return fetchFromNetworkAndCache(categoryId, limit, offset, city, minPrice, maxPrice)
         }
 
-        // STRATEGY 2: Check if we have valid fresh cache
         val isCacheFresh = metadata != null &&
                 (now - metadata.lastUpdated) < CACHE_EXPIRY_FRESH_MS
 
@@ -73,7 +70,6 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
             }
         }
 
-        // STRATEGY 3: Cache is stale but network available - return stale + background refresh
         val isCacheStale = metadata != null &&
                 (now - metadata.lastUpdated) < CACHE_EXPIRY_STALE_MS
 
@@ -81,7 +77,6 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
             Log.d(TAG, "Strategy 3: Cache stale, returning stale data with background refresh")
             val staleResponse = getCachedOfferings(categoryId)
             if (staleResponse is ApiResult.Success && staleResponse.data.data.isNotEmpty()) {
-                // Trigger background refresh
                 CoroutineScope(Dispatchers.IO).launch {
                     Log.d(TAG, "Background refresh triggered for category: $categoryId")
                     fetchFromNetworkAndCache(categoryId, limit, offset, city, minPrice, maxPrice)
@@ -90,20 +85,17 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
             }
         }
 
-        // STRATEGY 4: No cache or cache expired, but we have network
         if (isNetworkAvailable) {
             Log.d(TAG, "Strategy 4: No valid cache, fetching from network")
             return fetchFromNetworkAndCache(categoryId, limit, offset, city, minPrice, maxPrice)
         }
 
-        // STRATEGY 5: No network - return any cached data (even if very stale)
         val anyCachedData = getCachedOfferings(categoryId)
         if (anyCachedData is ApiResult.Success && anyCachedData.data.data.isNotEmpty()) {
             Log.d(TAG, "Strategy 5: No network, returning stale cache with offline warning")
             return anyCachedData
         }
 
-        // STRATEGY 6: No network and no cache - return error
         Log.e(TAG, "Strategy 6: No network and no cache available")
         return ApiResult.Error(
             networkError = NetworkError.Unknown(
@@ -136,7 +128,6 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
         val now = System.currentTimeMillis()
         val isNetworkAvailable = networkMonitor.isNetworkAvailable()
 
-        // Only refresh if network available and (force refresh OR cache is stale)
         val shouldRefresh = force ||
                 metadata == null ||
                 (now - metadata.lastUpdated) > CACHE_EXPIRY_FRESH_MS
@@ -169,7 +160,6 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error refreshing offerings for category: $categoryId", e)
-                // Silent fail - cache remains valid
             }
         } else {
             Log.d(TAG, "Skipping refresh for category: $categoryId (shouldRefresh=$shouldRefresh, isNetworkAvailable=$isNetworkAvailable)")
@@ -178,7 +168,7 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
 
     override suspend fun clearOfferingsCache() {
         Log.d(TAG, "clearOfferingsCache: Clearing stale offerings")
-        val staleTime = System.currentTimeMillis() - (24 * 60 * 60 * 1000) // 24 hours
+        val staleTime = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
         offeringDao.deleteStaleOfferings(staleTime)
     }
 
@@ -235,13 +225,11 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                 if (response.success && response.data != null) {
                     Log.d(TAG, "Network fetch successful, caching ${response.data.size} offerings")
 
-                    // Cache to Room
                     val entities = response.data.map { dto ->
                         cacheMapper.toEntity(dto, categoryId)
                     }
                     offeringDao.insertOfferings(entities)
 
-                    // Save cache metadata
                     val metadata = ServiceOfferingsCacheMetadataEntity(
                         categoryId = categoryId,
                         lastUpdated = System.currentTimeMillis(),
@@ -309,7 +297,12 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
         println("🔍 Title: ${request.title}")
         println("🔍 CategoryId: ${request.categoryId}")
         println("🔍 BasePrice: ${request.basePrice}")
-        println("🔍 CoverageAreas: ${request.coverageAreas}")  // ✅ Updated
+        println("🔍 CoverageAreas: ${request.coverageAreas}")
+        println("🔍 IsNegotiable: ${request.isNegotiable}")
+        println("🔍 MinNegotiablePrice: ${request.minNegotiablePrice}")
+        println("🔍 MaxNegotiablePrice: ${request.maxNegotiablePrice}")
+        println("🔍 UseCustomBookingFee: ${request.useCustomBookingFee}")
+        println("🔍 CustomBookingFeeAmount: ${request.customBookingFeeAmount}")
         println("🔍 =============================================")
 
         val result = safeApiCall {
@@ -336,8 +329,6 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                         basePrice = createdData.basePrice,
                         priceUnit = createdData.priceUnit,
                         currency = createdData.currency,
-                        // ❌ REMOVED locationCity and locationNeighborhood
-                        // ✅ ADDED coverageAreas (replaces serviceAreas)
                         coverageAreas = createdData.coverageAreas,
                         availability = createdData.availability?.map { dayDto ->
                             DayAvailability(
@@ -353,10 +344,18 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                         averageRating = createdData.averageRating,
                         reviewCount = createdData.reviewCount,
                         createdAt = createdData.createdAt,
-                        updatedAt = createdData.updatedAt
+                        updatedAt = createdData.updatedAt,
+                        isNegotiable = createdData.isNegotiable ?: true,
+                        minNegotiablePrice = createdData.minNegotiablePrice,
+                        maxNegotiablePrice = createdData.maxNegotiablePrice,
+                        useCustomBookingFee = createdData.useCustomBookingFee ?: false,
+                        customBookingFeeEnabled = createdData.customBookingFeeEnabled,
+                        customBookingFeeAmount = createdData.customBookingFeeAmount,
+                        customBookingFeeCurrency = createdData.customBookingFeeCurrency,
+                        customBookingFeeDescription = createdData.customBookingFeeDescription,
+                        customBookingFeeRefundable = createdData.customBookingFeeRefundable
                     )
 
-                    // Invalidate cache for this category after creation
                     CoroutineScope(Dispatchers.IO).launch {
                         offeringDao.deleteCacheMetadata(createdData.categoryId)
                         Log.d(TAG, "Cache invalidated for category: ${createdData.categoryId} after creation")
@@ -401,7 +400,6 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
 
         val isNetworkAvailable = networkMonitor.isNetworkAvailable()
 
-        // Check cache first (unless force refresh requested)
         val cachedOffering = if (!forceRefresh) {
             offeringDao.getServiceOfferingById(serviceId)
         } else {
@@ -412,7 +410,6 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
             println("📦 Found cached service offering: $serviceId")
             val domainOffering = cacheMapper.toDomain(cachedOffering)
 
-            // If cache is fresh enough, return it
             val metadata = offeringDao.getCacheMetadata(cachedOffering.categoryId)
             val now = System.currentTimeMillis()
             val isCacheFresh = metadata != null &&
@@ -424,13 +421,11 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
             }
         }
 
-        // If force refresh requested but no network, return cache if available
         if (forceRefresh && !isNetworkAvailable && cachedOffering != null) {
             println("📦 Force refresh requested but offline, returning cached version")
             return ApiResult.Success(cacheMapper.toDomain(cachedOffering))
         }
 
-        // Fetch from network
         val result = safeApiCall {
             apiService.getServiceOfferingById(serviceId)
         }
@@ -455,8 +450,6 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                         basePrice = offeringData.basePrice,
                         priceUnit = offeringData.priceUnit,
                         currency = offeringData.currency,
-                        // ❌ REMOVED locationCity and locationNeighborhood
-                        // ✅ ADDED coverageAreas (replaces serviceAreas)
                         coverageAreas = offeringData.coverageAreas,
                         availability = offeringData.availability?.map { dayDto ->
                             DayAvailability(
@@ -472,17 +465,24 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                         averageRating = offeringData.averageRating,
                         reviewCount = offeringData.reviewCount,
                         createdAt = offeringData.createdAt,
-                        updatedAt = offeringData.updatedAt
+                        updatedAt = offeringData.updatedAt,
+                        isNegotiable = offeringData.isNegotiable ?: true,
+                        minNegotiablePrice = offeringData.minNegotiablePrice,
+                        maxNegotiablePrice = offeringData.maxNegotiablePrice,
+                        useCustomBookingFee = offeringData.useCustomBookingFee ?: false,
+                        customBookingFeeEnabled = offeringData.customBookingFeeEnabled,
+                        customBookingFeeAmount = offeringData.customBookingFeeAmount,
+                        customBookingFeeCurrency = offeringData.customBookingFeeCurrency,
+                        customBookingFeeDescription = offeringData.customBookingFeeDescription,
+                        customBookingFeeRefundable = offeringData.customBookingFeeRefundable
                     )
 
-                    // Cache the result
                     val entity = cacheMapper.toEntityFromDetail(offeringData, offeringData.categoryId)
                     offeringDao.insertOfferings(listOf(entity))
 
                     println("✅ Cached offering from network: $serviceId")
                     ApiResult.Success(domainOffering)
                 } else {
-                    // Return cached version if available
                     cachedOffering?.let {
                         println("📦 Returning cached version due to empty network response")
                         ApiResult.Success(cacheMapper.toDomain(it))
@@ -496,7 +496,6 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
             }
             is ApiResult.Error -> {
                 println("❌ GET SERVICE OFFERING BY ID ERROR: ${result.technicalMessage}")
-                // Return cached version if available
                 cachedOffering?.let {
                     println("📦 Returning cached version due to network error")
                     ApiResult.Success(cacheMapper.toDomain(it))

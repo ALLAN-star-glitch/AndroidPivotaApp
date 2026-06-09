@@ -43,8 +43,6 @@ class ServiceOfferingMapper @Inject constructor() {
             basePrice = dto.basePrice,
             priceUnit = dto.priceUnit,
             currency = dto.currency,
-            // ❌ REMOVED locationCity and locationNeighborhood
-            // ✅ ADDED coverageAreas (replaces serviceAreas)
             coverageAreas = dto.coverageAreas,
             availability = dto.availability?.map { toDayAvailability(it) } ?: emptyList(),
             yearsExperience = dto.yearsExperience,
@@ -53,7 +51,18 @@ class ServiceOfferingMapper @Inject constructor() {
             averageRating = dto.averageRating,
             reviewCount = dto.reviewCount,
             createdAt = dto.createdAt,
-            updatedAt = dto.updatedAt
+            updatedAt = dto.updatedAt,
+            // ========== NEW: Negotiable Pricing Fields ==========
+            isNegotiable = dto.isNegotiable ?: true,
+            minNegotiablePrice = dto.minNegotiablePrice,
+            maxNegotiablePrice = dto.maxNegotiablePrice,
+            // ========== NEW: Booking Fee Override Fields ==========
+            useCustomBookingFee = dto.useCustomBookingFee ?: false,
+            customBookingFeeEnabled = dto.customBookingFeeEnabled,
+            customBookingFeeAmount = dto.customBookingFeeAmount,
+            customBookingFeeCurrency = dto.customBookingFeeCurrency,
+            customBookingFeeDescription = dto.customBookingFeeDescription,
+            customBookingFeeRefundable = dto.customBookingFeeRefundable
         )
     }
 
@@ -76,7 +85,7 @@ class ServiceOfferingMapper @Inject constructor() {
     }
 
     // ======================================================
-    // BOOKING STATUS MAPPING (NEW)
+    // BOOKING STATUS MAPPING
     // ======================================================
 
     fun toBookingStatusListResponse(dto: BookingStatusListResponseDto): BookingStatusListResponse {

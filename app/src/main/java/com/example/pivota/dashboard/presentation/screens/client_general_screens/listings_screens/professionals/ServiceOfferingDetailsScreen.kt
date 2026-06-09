@@ -31,8 +31,10 @@ import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material3.Button
@@ -55,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -84,7 +87,6 @@ fun ServiceOfferingDetailsScreen(
 
     val formattedPrice = formatPrice(serviceOffering.basePrice, serviceOffering.currency)
     val priceUnitLabel = formatPriceUnitLabel(serviceOffering.priceUnit)
-    // ✅ Updated: Use coverageAreas instead of location fields
     val location = if (serviceOffering.coverageAreas.isNotEmpty()) {
         if (serviceOffering.coverageAreas.size == 1) {
             serviceOffering.coverageAreas.first()
@@ -147,13 +149,11 @@ fun ServiceOfferingDetailsScreen(
         }
     ) { innerPadding ->
         if (isWide) {
-            // Two pane layout for tablets - BOTH panes scrollable
             Row(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                // Left Pane - Scrollable
                 Column(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -169,7 +169,6 @@ fun ServiceOfferingDetailsScreen(
                     )
                 }
 
-                // Right Pane - Scrollable
                 Column(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -184,7 +183,6 @@ fun ServiceOfferingDetailsScreen(
                 }
             }
         } else {
-            // Single pane layout for mobile
             Column(
                 modifier = Modifier
                     .padding(innerPadding)
@@ -193,46 +191,23 @@ fun ServiceOfferingDetailsScreen(
                     .padding(horizontal = 20.dp)
                     .padding(bottom = 80.dp)
             ) {
-                // Price Section
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp)
-                    ) {
-                        Text(
-                            text = "Starting Price",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 13.sp
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Text(
-                                text = formattedPrice,
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 32.sp
-                            )
-                            Text(
-                                text = priceUnitLabel,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
-                }
+                // Price Section with Negotiable Badge and Booking Fee
+                PriceSection(
+                    serviceOffering = serviceOffering,
+                    formattedPrice = formattedPrice,
+                    priceUnitLabel = priceUnitLabel
+                )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Negotiable Pricing Range Card
+                if (serviceOffering.isNegotiable) {
+                    NegotiablePricingCard(
+                        serviceOffering = serviceOffering,
+                        priceUnitLabel = priceUnitLabel
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
 
                 // Title and Category
                 Text(
@@ -344,7 +319,6 @@ fun ServiceOfferingDetailsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         DetailRow("Category", serviceOffering.categoryName)
-                        // ✅ Updated: Use coverageAreas instead of serviceAreas
                         DetailRow("Service Areas", serviceOffering.coverageAreas.joinToString(", "))
                         DetailRow("Status", serviceOffering.status)
                     }
@@ -468,12 +442,195 @@ fun ServiceOfferingDetailsScreen(
 }
 
 @Composable
+private fun PriceSection(
+    serviceOffering: ServiceOffering,
+    formattedPrice: String,
+    priceUnitLabel: String
+) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = colorScheme.primaryContainer.copy(alpha = 0.1f)
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Starting Price",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colorScheme.onSurfaceVariant,
+                    fontSize = 13.sp
+                )
+                if (serviceOffering.isNegotiable) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Outlined.StarBorder,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = colorScheme.tertiary
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Negotiable",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = colorScheme.tertiary
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = formattedPrice,
+                color = colorScheme.primary,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                fontSize = 32.sp
+            )
+
+            Text(
+                text = priceUnitLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant,
+                fontSize = 14.sp
+            )
+
+            // Booking Fee Display
+            val hasBookingFee = serviceOffering.useCustomBookingFee &&
+                    serviceOffering.customBookingFeeEnabled == true &&
+                    serviceOffering.customBookingFeeAmount != null &&
+                    serviceOffering.customBookingFeeAmount > 0
+
+            if (hasBookingFee) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Outlined.Receipt,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = colorScheme.tertiary
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Booking fee: ${serviceOffering.customBookingFeeCurrency} ${serviceOffering.customBookingFeeAmount}",
+                        fontSize = 12.sp,
+                        color = colorScheme.tertiary
+                    )
+                    if (serviceOffering.customBookingFeeRefundable == true) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(2.dp),
+                            color = colorScheme.primaryContainer.copy(alpha = 0.5f)
+                        ) {
+                            Text(
+                                text = "Refundable",
+                                fontSize = 9.sp,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                color = colorScheme.primary
+                            )
+                        }
+                    }
+                }
+                if (serviceOffering.customBookingFeeDescription != null) {
+                    Text(
+                        text = serviceOffering.customBookingFeeDescription,
+                        fontSize = 11.sp,
+                        color = colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 20.dp, top = 2.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NegotiablePricingCard(
+    serviceOffering: ServiceOffering,
+    priceUnitLabel: String
+) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = colorScheme.tertiaryContainer.copy(alpha = 0.1f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Outlined.CurrencyExchange,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = colorScheme.tertiary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Price Negotiable",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = colorScheme.tertiary
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "The provider is open to negotiation. You can propose a fair price during booking.",
+                fontSize = 13.sp,
+                color = colorScheme.onSurfaceVariant
+            )
+            if (serviceOffering.minNegotiablePrice != null || serviceOffering.maxNegotiablePrice != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = buildAnnotatedString {
+                        append("Acceptable range: ")
+                        if (serviceOffering.minNegotiablePrice != null) {
+                            append("${serviceOffering.currency} ${serviceOffering.minNegotiablePrice}")
+                        }
+                        if (serviceOffering.minNegotiablePrice != null && serviceOffering.maxNegotiablePrice != null) {
+                            append(" - ")
+                        }
+                        if (serviceOffering.maxNegotiablePrice != null) {
+                            append("${serviceOffering.currency} ${serviceOffering.maxNegotiablePrice}")
+                        }
+                        append(priceUnitLabel)
+                    },
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ServiceDetailsLeftPane(
-serviceOffering: ServiceOffering,
-formattedPrice: String,
-priceUnitLabel: String,
-location: String,
-modifier: Modifier = Modifier
+    serviceOffering: ServiceOffering,
+    formattedPrice: String,
+    priceUnitLabel: String,
+    location: String,
+    modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -482,7 +639,7 @@ modifier: Modifier = Modifier
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Price Card
+        // Price Card with Negotiable Badge and Booking Fee
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -491,30 +648,84 @@ modifier: Modifier = Modifier
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = "Starting Price",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
                 Row(
-                    verticalAlignment = Alignment.Bottom
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = formattedPrice,
-                        color = colorScheme.primary,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 36.sp
-                    )
-                    Text(
-                        text = priceUnitLabel,
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = "Starting Price",
+                        style = MaterialTheme.typography.labelMedium,
                         color = colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
-                        fontSize = 14.sp
+                        fontSize = 13.sp
                     )
+                    if (serviceOffering.isNegotiable) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+                        ) {
+                            Text(
+                                text = "Negotiable",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = colorScheme.tertiary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = formattedPrice,
+                    color = colorScheme.primary,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 36.sp
+                )
+                Text(
+                    text = priceUnitLabel,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+                    fontSize = 14.sp
+                )
+
+                val hasBookingFee = serviceOffering.useCustomBookingFee &&
+                        serviceOffering.customBookingFeeEnabled == true &&
+                        serviceOffering.customBookingFeeAmount != null &&
+                        serviceOffering.customBookingFeeAmount > 0
+
+                if (hasBookingFee) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Outlined.Receipt,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = colorScheme.tertiary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Booking fee: ${serviceOffering.customBookingFeeCurrency} ${serviceOffering.customBookingFeeAmount}",
+                            fontSize = 12.sp,
+                            color = colorScheme.tertiary
+                        )
+                        if (serviceOffering.customBookingFeeRefundable == true) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(2.dp),
+                                color = colorScheme.primaryContainer.copy(alpha = 0.5f)
+                            ) {
+                                Text(
+                                    text = "Refundable",
+                                    fontSize = 9.sp,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                    color = colorScheme.primary
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -529,9 +740,8 @@ modifier: Modifier = Modifier
             lineHeight = 36.sp
         )
 
-        // Category & Location - IMPROVED VISIBILITY
+        // Category & Location
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            // Category row
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -570,7 +780,6 @@ modifier: Modifier = Modifier
                 }
             }
 
-            // Location row
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -655,6 +864,51 @@ modifier: Modifier = Modifier
             }
         }
 
+        // Negotiable Pricing Range in Left Pane
+        if (serviceOffering.isNegotiable && (serviceOffering.minNegotiablePrice != null || serviceOffering.maxNegotiablePrice != null)) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = colorScheme.tertiaryContainer.copy(alpha = 0.1f)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Outlined.CurrencyExchange,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = colorScheme.tertiary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Negotiable Range",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = colorScheme.tertiary
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = buildAnnotatedString {
+                            if (serviceOffering.minNegotiablePrice != null) {
+                                append("Min: ${serviceOffering.currency} ${serviceOffering.minNegotiablePrice}")
+                            }
+                            if (serviceOffering.minNegotiablePrice != null && serviceOffering.maxNegotiablePrice != null) {
+                                append(" • ")
+                            }
+                            if (serviceOffering.maxNegotiablePrice != null) {
+                                append("Max: ${serviceOffering.currency} ${serviceOffering.maxNegotiablePrice}")
+                            }
+                        },
+                        fontSize = 13.sp,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
@@ -701,6 +955,66 @@ private fun ServiceDetailsRightPane(
             }
         }
 
+        // Negotiable Pricing Card in Right Pane
+        if (serviceOffering.isNegotiable) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = colorScheme.surface
+                ),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Outlined.CurrencyExchange,
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                            tint = colorScheme.tertiary
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Negotiable Pricing",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.onSurface,
+                            fontSize = 16.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "The provider is open to negotiation on the price.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colorScheme.onSurfaceVariant,
+                        fontSize = 14.sp
+                    )
+                    if (serviceOffering.minNegotiablePrice != null || serviceOffering.maxNegotiablePrice != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = buildAnnotatedString {
+                                append("Price range: ")
+                                if (serviceOffering.minNegotiablePrice != null) {
+                                    append("${serviceOffering.currency} ${serviceOffering.minNegotiablePrice}")
+                                }
+                                if (serviceOffering.minNegotiablePrice != null && serviceOffering.maxNegotiablePrice != null) {
+                                    append(" - ")
+                                }
+                                if (serviceOffering.maxNegotiablePrice != null) {
+                                    append("${serviceOffering.currency} ${serviceOffering.maxNegotiablePrice}")
+                                }
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.primary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         // Service Details Card
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -727,7 +1041,6 @@ private fun ServiceDetailsRightPane(
                         valueText = serviceOffering.categoryName,
                         colorScheme = colorScheme
                     )
-                    // ✅ Updated: Use coverageAreas instead of serviceAreas
                     DetailItem(
                         modifier = Modifier.fillMaxWidth(),
                         label = "Service Areas",
@@ -1237,7 +1550,6 @@ private val sampleServiceOffering = ServiceOffering(
     basePrice = 15000.0,
     priceUnit = "PER_DAY",
     currency = "KES",
-    // ✅ Updated: Use coverageAreas instead of location fields
     coverageAreas = listOf("Westlands", "Kilimani", "Lavington", "Karen"),
     availability = listOf(
         DayAvailability("Monday", "09:00", "17:00", false),
@@ -1254,5 +1566,14 @@ private val sampleServiceOffering = ServiceOffering(
     averageRating = 4.8,
     reviewCount = 124,
     createdAt = "2024-01-01T00:00:00Z",
-    updatedAt = "2024-01-01T00:00:00Z"
+    updatedAt = "2024-01-01T00:00:00Z",
+    isNegotiable = true,
+    minNegotiablePrice = 12000.0,
+    maxNegotiablePrice = 18000.0,
+    useCustomBookingFee = true,
+    customBookingFeeEnabled = true,
+    customBookingFeeAmount = 500.0,
+    customBookingFeeCurrency = "KES",
+    customBookingFeeDescription = "Call-out fee for consultation",
+    customBookingFeeRefundable = false
 )

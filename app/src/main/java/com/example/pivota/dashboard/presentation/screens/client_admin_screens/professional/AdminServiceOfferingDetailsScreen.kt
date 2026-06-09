@@ -122,7 +122,15 @@ data class AdminServiceOfferingUiModel(
     val averageResponseTime: Double = 0.0,
     val viewsTrend: String = "+12%",
     val messagesTrend: String = "+8%",
-    val bookingsTrend: String = "+5%"
+    val bookingsTrend: String = "+5%",
+    // ========== NEW FIELDS ==========
+    val isNegotiable: Boolean = false,
+    val minNegotiablePrice: Double? = null,
+    val maxNegotiablePrice: Double? = null,
+    val bookingFeeAmount: Double? = null,
+    val bookingFeeCurrency: String = "KES",
+    val bookingFeeDescription: String? = null,
+    val bookingFeeRefundable: Boolean = false
 )
 
 // Helper functions
@@ -182,7 +190,15 @@ fun ServiceOffering.toAdminServiceOfferingUiModel(): AdminServiceOfferingUiModel
         views = 0,
         messages = 0,
         bookings = 0,
-        newInquiries = 0
+        newInquiries = 0,
+        // ========== NEW FIELDS ==========
+        isNegotiable = isNegotiable,
+        minNegotiablePrice = minNegotiablePrice,
+        maxNegotiablePrice = maxNegotiablePrice,
+        bookingFeeAmount = customBookingFeeAmount ?: (if (useCustomBookingFee && customBookingFeeEnabled == true) customBookingFeeAmount else null),
+        bookingFeeCurrency = customBookingFeeCurrency ?: "KES",
+        bookingFeeDescription = customBookingFeeDescription,
+        bookingFeeRefundable = customBookingFeeRefundable ?: false
     )
 }
 
@@ -812,6 +828,8 @@ fun AdminServiceOverviewCard(
                 Text(text = serviceOffering.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = colorScheme.primary)
                 Text(text = serviceOffering.categoryName, style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // Price row
                 Text(
                     text = buildAnnotatedString {
                         append("$formattedPrice")
@@ -821,12 +839,80 @@ fun AdminServiceOverviewCard(
                     fontWeight = FontWeight.Bold,
                     color = colorScheme.secondary
                 )
+
+                // Negotiable badge
+                if (serviceOffering.isNegotiable) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Outlined.StarBorder,
+                                contentDescription = null,
+                                tint = colorScheme.tertiary,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Negotiable",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = colorScheme.tertiary
+                            )
+                        }
+                    }
+                }
+
+                // Booking fee
+                if (serviceOffering.bookingFeeAmount != null && serviceOffering.bookingFeeAmount > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.Receipt,
+                            contentDescription = null,
+                            tint = colorScheme.tertiary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Booking fee: ${serviceOffering.bookingFeeCurrency} ${serviceOffering.bookingFeeAmount}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorScheme.tertiary
+                        )
+                        if (serviceOffering.bookingFeeRefundable) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Surface(
+                                shape = RoundedCornerShape(2.dp),
+                                color = colorScheme.primaryContainer.copy(alpha = 0.5f)
+                            ) {
+                                Text(
+                                    text = "Refundable",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 9.sp,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                    color = colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
+
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = colorScheme.secondary, modifier = Modifier.size(14.dp))
                     Text(text = location, style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 2.dp))
                 }
                 Spacer(modifier = Modifier.height(12.dp))
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Surface(shape = CircleShape, color = serviceStatus.color().copy(alpha = 0.1f)) {
                         Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -841,6 +927,7 @@ fun AdminServiceOverviewCard(
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.DateRange, contentDescription = null, tint = colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
@@ -1301,6 +1388,14 @@ fun createSampleAdminServiceOffering(): AdminServiceOfferingUiModel {
         averageResponseTime = 2.5,
         viewsTrend = "+18%",
         messagesTrend = "+12%",
-        bookingsTrend = "+8%"
+        bookingsTrend = "+8%",
+        // ========== NEW FIELDS ==========
+        isNegotiable = true,
+        minNegotiablePrice = 12000.0,
+        maxNegotiablePrice = 18000.0,
+        bookingFeeAmount = 500.0,
+        bookingFeeCurrency = "KES",
+        bookingFeeDescription = "Call-out fee for consultation",
+        bookingFeeRefundable = false
     )
 }
