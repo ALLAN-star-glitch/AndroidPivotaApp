@@ -22,6 +22,7 @@ data class ServiceOfferingDto(
     @SerialName("id") val id: String,
     @SerialName("externalId") val externalId: String,
     @SerialName("professionalName") val professionalName: String,
+    @SerialName("skilledProfessionalId") val skilledProfessionalId: String,
     @SerialName("professionalAvatar") val professionalAvatar: String? = null,
     @SerialName("isVerified") val isVerified: Boolean,
     @SerialName("title") val title: String,
@@ -140,6 +141,7 @@ data class CreateServiceOfferingResponseDto(
 data class CreatedServiceOfferingDataDto(
     @SerialName("id") val id: String,
     @SerialName("externalId") val externalId: String,
+    @SerialName("skilledProfessionalId") val skilledProfessionalId: String,
     @SerialName("professionalName") val professionalName: String,
     @SerialName("professionalAvatar") val professionalAvatar: String? = null,
     @SerialName("isVerified") val isVerified: Boolean,
@@ -172,81 +174,5 @@ data class CreatedServiceOfferingDataDto(
     @SerialName("customBookingFeeRefundable") val customBookingFeeRefundable: Boolean? = null
 )
 
-// ======================================================
-// BOOKING STATUS DTOS
-// ======================================================
 
-@Serializable
-data class BookingStatusDto(
-    @SerialName("value") val value: String,
-    @SerialName("label") val label: String,
-    @SerialName("description") val description: String,
-    @SerialName("badgeVariant") val badgeVariant: String,
-    @SerialName("order") val order: Int
-)
 
-@Serializable
-data class BookingStatusListResponseDto(
-    @SerialName("success") val success: Boolean,
-    @SerialName("message") val message: String,
-    @SerialName("code") val code: String,
-    @SerialName("data") val data: BookingStatusListDataDto? = null
-)
-
-@Serializable
-data class BookingStatusListDataDto(
-    @SerialName("statuses") val statuses: List<BookingStatusDto>
-)
-
-// ======================================================
-// CREATE BOOKING REQUEST DTO (NEW)
-// ======================================================
-
-@Serializable
-data class CreateBookingRequestDto(
-    @SerialName("serviceId") val serviceId: String,
-    @SerialName("contractorId") val contractorId: String,
-    @SerialName("scheduledDate") val scheduledDate: String,
-    @SerialName("locationCity") val locationCity: String,
-    @SerialName("durationHours") val durationHours: Int? = null,
-    @SerialName("durationDays") val durationDays: Int? = null,
-    @SerialName("durationWeeks") val durationWeeks: Int? = null,
-    @SerialName("durationMonths") val durationMonths: Int? = null,
-    @SerialName("customerNotes") val customerNotes: String? = null,
-    @SerialName("proposedPrice") val proposedPrice: Double? = null
-)
-
-// ======================================================
-// BOOKING RESPONSE DTO (NEW)
-// ======================================================
-
-@Serializable
-data class BookingResponseDto(
-    @SerialName("id") val id: String,
-    @SerialName("externalId") val externalId: String,
-    @SerialName("contractorId") val contractorId: String,
-    @SerialName("clientId") val clientId: String,
-    @SerialName("serviceId") val serviceId: String? = null,
-    @SerialName("service") val service: ServiceOfferingDto? = null,
-    @SerialName("contractorName") val contractorName: String? = null,
-    @SerialName("serviceTitle") val serviceTitle: String? = null,
-    @SerialName("status") val status: String,
-    @SerialName("serviceExecutionStatus") val serviceExecutionStatus: String? = null,
-    @SerialName("scheduledDate") val scheduledDate: String? = null,
-    @SerialName("locationCity") val locationCity: String? = null,
-    @SerialName("servicePrice") val servicePrice: Double? = null,
-    @SerialName("servicePriceUnit") val servicePriceUnit: String? = null,
-    @SerialName("serviceDuration") val serviceDuration: Int? = null,
-    @SerialName("currency") val currency: String,
-    @SerialName("customerNotes") val customerNotes: String? = null,
-    @SerialName("bookingFeeAmount") val bookingFeeAmount: Double? = null,
-    @SerialName("bookingFeeCurrency") val bookingFeeCurrency: String? = null,
-    @SerialName("bookingFeeRefundable") val bookingFeeRefundable: Boolean? = null,
-    @SerialName("totalAmount") val totalAmount: Double? = null,
-    @SerialName("confirmedAt") val confirmedAt: String? = null,
-    @SerialName("declinedAt") val declinedAt: String? = null,
-    @SerialName("cancelledAt") val cancelledAt: String? = null,
-    @SerialName("completedAt") val completedAt: String? = null,
-    @SerialName("createdAt") val createdAt: String,
-    @SerialName("updatedAt") val updatedAt: String
-)

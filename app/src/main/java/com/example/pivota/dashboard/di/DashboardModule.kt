@@ -1,14 +1,17 @@
 // dashboard/di/DashboardModule.kt
 package com.example.pivota.dashboard.di
 
+import com.example.pivota.dashboard.data.repository.BookingRepositoryImpl
 import com.example.pivota.dashboard.data.repository.CategoriesRepositoryImpl
 import com.example.pivota.dashboard.data.repository.PricingUnitsRepositoryImpl
 import com.example.pivota.dashboard.data.repository.ProfileRepositoryImpl
 import com.example.pivota.dashboard.data.repository.ServiceOfferingsRepositoryImpl
+import com.example.pivota.dashboard.domain.repository.BookingRepository
 import com.example.pivota.dashboard.domain.repository.CategoriesRepository
 import com.example.pivota.dashboard.domain.repository.PricingUnitsRepository
 import com.example.pivota.dashboard.domain.repository.ProfileRepository
 import com.example.pivota.dashboard.domain.repository.ServiceOfferingsRepository
+import com.example.pivota.dashboard.domain.useCase.CreateBookingUseCase
 import com.example.pivota.dashboard.domain.useCase.GetCommonServicesUseCase
 import com.example.pivota.dashboard.domain.useCase.GetComplimentaryCategoriesUseCase
 import com.example.pivota.dashboard.domain.useCase.GetFullComplimentaryCategoriesUseCase
@@ -41,6 +44,10 @@ abstract class DashboardModule {
     @Binds
     @Singleton
     abstract fun bindPricingUnitsRepository(impl: PricingUnitsRepositoryImpl): PricingUnitsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindBookingRepository(impl: BookingRepositoryImpl): BookingRepository  // Fixed: BookingRepositoryImpl -> BookingRepository
 
     companion object {
         @Provides
@@ -79,6 +86,14 @@ abstract class DashboardModule {
             repository: CategoriesRepository
         ): GetFullComplimentaryCategoriesUseCase {
             return GetFullComplimentaryCategoriesUseCase(repository)
+        }
+
+        @Provides
+        @Singleton
+        fun provideCreateBookingUseCase(
+            repository: BookingRepository
+        ): CreateBookingUseCase {
+            return CreateBookingUseCase(repository)
         }
     }
 }

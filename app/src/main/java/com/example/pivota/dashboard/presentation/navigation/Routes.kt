@@ -88,4 +88,9 @@ data class SupportListingsWithCategory(
     val categoryName: String
 )
 
-// Add more routes as needed
+// Professional Service Booking Screen
+@Serializable
+data class ProfessionalServiceBooking(
+    val serviceOfferingId: String,
+    val contractorId: String
+)

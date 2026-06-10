@@ -4,14 +4,12 @@ import com.example.pivota.dashboard.data.dto.ServiceOfferingsResponseDto
 import com.example.pivota.dashboard.data.dto.ServiceOfferingDto
 import com.example.pivota.dashboard.data.dto.DayAvailabilityDto
 import com.example.pivota.dashboard.data.dto.PaginationInfoDto
-import com.example.pivota.dashboard.data.dto.BookingStatusDto
-import com.example.pivota.dashboard.data.dto.BookingStatusListResponseDto
+
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.DayAvailability
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.PaginationInfo
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOfferingsResponse
-import com.example.pivota.dashboard.domain.model.listings_models.professionals.BookingStatus
-import com.example.pivota.dashboard.domain.model.listings_models.professionals.BookingStatusListResponse
+
 
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
@@ -34,6 +32,7 @@ class ServiceOfferingMapper @Inject constructor() {
             id = dto.id,
             externalId = dto.externalId,
             professionalName = dto.professionalName,
+            skilledProfessionalId = dto.skilledProfessionalId,
             professionalAvatar = dto.professionalAvatar,
             isVerified = dto.isVerified,
             title = dto.title,
@@ -84,26 +83,5 @@ class ServiceOfferingMapper @Inject constructor() {
         )
     }
 
-    // ======================================================
-    // BOOKING STATUS MAPPING
-    // ======================================================
 
-    fun toBookingStatusListResponse(dto: BookingStatusListResponseDto): BookingStatusListResponse {
-        return BookingStatusListResponse(
-            success = dto.success,
-            message = dto.message,
-            code = dto.code,
-            statuses = dto.data?.statuses?.map { toBookingStatus(it) } ?: emptyList()
-        )
-    }
-
-    private fun toBookingStatus(dto: BookingStatusDto): BookingStatus {
-        return BookingStatus(
-            value = dto.value,
-            label = dto.label,
-            description = dto.description,
-            badgeVariant = dto.badgeVariant,
-            order = dto.order
-        )
-    }
 }

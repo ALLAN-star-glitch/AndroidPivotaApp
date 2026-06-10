@@ -96,7 +96,8 @@ class ServiceOfferingCacheMapper @Inject constructor(
             customBookingFeeAmount = dto.customBookingFeeAmount,
             customBookingFeeCurrency = dto.customBookingFeeCurrency,
             customBookingFeeDescription = dto.customBookingFeeDescription,
-            customBookingFeeRefundable = dto.customBookingFeeRefundable
+            customBookingFeeRefundable = dto.customBookingFeeRefundable,
+            skilledProfessionalId = dto.skilledProfessionalId
         )
     }
 
@@ -155,7 +156,8 @@ class ServiceOfferingCacheMapper @Inject constructor(
             customBookingFeeAmount = dto.customBookingFeeAmount,
             customBookingFeeCurrency = dto.customBookingFeeCurrency,
             customBookingFeeDescription = dto.customBookingFeeDescription,
-            customBookingFeeRefundable = dto.customBookingFeeRefundable
+            customBookingFeeRefundable = dto.customBookingFeeRefundable,
+            skilledProfessionalId = dto.skilledProfessionalId
         )
     }
 
@@ -198,7 +200,8 @@ class ServiceOfferingCacheMapper @Inject constructor(
             customBookingFeeAmount = entity.customBookingFeeAmount,
             customBookingFeeCurrency = entity.customBookingFeeCurrency,
             customBookingFeeDescription = entity.customBookingFeeDescription,
-            customBookingFeeRefundable = entity.customBookingFeeRefundable
+            customBookingFeeRefundable = entity.customBookingFeeRefundable,
+            skilledProfessionalId = entity.skilledProfessionalId
         )
     }
 

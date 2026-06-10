@@ -1455,7 +1455,7 @@ private fun formatPrice(price: Double, currency: String): String {
     return "$currency ${formatter.format(price)}"
 }
 
-private fun formatPriceUnitLabel(unit: String): String {
+fun formatPriceUnitLabel(unit: String): String {
     return when (unit) {
         "PER_HOUR" -> "/hour"
         "PER_DAY" -> "/day"
@@ -1498,82 +1498,5 @@ private fun formatTimeTo12Hour(time24: String): String {
     return "$displayHour:$minute $ampm"
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
-@Preview(
-    name = "Service Offering Details - Mobile",
-    showBackground = true,
-    backgroundColor = 0xFFF7F9FE,
-    heightDp = 800,
-    widthDp = 400
-)
-@Composable
-private fun PreviewServiceOfferingDetailsMobile() {
-    PivotaConnectTheme(darkTheme = false) {
-        ServiceOfferingDetailsScreen(
-            serviceOffering = sampleServiceOffering,
-            onNavigateBack = {},
-            onContactProvider = {},
-            onBookService = {}
-        )
-    }
-}
 
-@RequiresApi(Build.VERSION_CODES.O)
-@Preview(
-    name = "Service Offering Details - Tablet",
-    device = "spec:width=800dp,height=1280dp,dpi=240",
-    showBackground = true,
-    backgroundColor = 0xFFF7F9FE
-)
-@Composable
-private fun PreviewServiceOfferingDetailsTablet() {
-    PivotaConnectTheme(darkTheme = false) {
-        ServiceOfferingDetailsScreen(
-            serviceOffering = sampleServiceOffering,
-            onNavigateBack = {},
-            onContactProvider = {},
-            onBookService = {}
-        )
-    }
-}
 
-private val sampleServiceOffering = ServiceOffering(
-    id = "1",
-    externalId = "EXT123",
-    professionalName = "John Doe",
-    professionalAvatar = null,
-    isVerified = true,
-    title = "Professional House Painting Service",
-    description = "Expert house painting services with high-quality materials. We offer interior and exterior painting for residential and commercial properties. 10+ years of experience with guaranteed satisfaction.",
-    categoryId = "cat123",
-    categoryName = "Painting",
-    basePrice = 15000.0,
-    priceUnit = "PER_DAY",
-    currency = "KES",
-    coverageAreas = listOf("Westlands", "Kilimani", "Lavington", "Karen"),
-    availability = listOf(
-        DayAvailability("Monday", "09:00", "17:00", false),
-        DayAvailability("Tuesday", "09:00", "17:00", false),
-        DayAvailability("Wednesday", "09:00", "17:00", false),
-        DayAvailability("Thursday", "09:00", "17:00", false),
-        DayAvailability("Friday", "09:00", "17:00", false),
-        DayAvailability("Saturday", "10:00", "14:00", false),
-        DayAvailability("Sunday", "00:00", "00:00", true)
-    ),
-    yearsExperience = 10,
-    hourlyRate = 2000.0,
-    status = "ACTIVE",
-    averageRating = 4.8,
-    reviewCount = 124,
-    createdAt = "2024-01-01T00:00:00Z",
-    updatedAt = "2024-01-01T00:00:00Z",
-    isNegotiable = true,
-    minNegotiablePrice = 12000.0,
-    maxNegotiablePrice = 18000.0,
-    useCustomBookingFee = true,
-    customBookingFeeEnabled = true,
-    customBookingFeeAmount = 500.0,
-    customBookingFeeCurrency = "KES",
-    customBookingFeeDescription = "Call-out fee for consultation",
-    customBookingFeeRefundable = false
-)

@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
@@ -60,6 +62,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.zIndex
 import androidx.navigation.toRoute
 import com.example.pivota.core.presentations.composables.PivotaFullScreenLoading
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.Booking
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.PostOptionsBottomSheet
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.PulsingPostFab
 import com.example.pivota.dashboard.presentation.navigation.AdminHouseDetails
@@ -78,6 +82,7 @@ import com.example.pivota.dashboard.presentation.navigation.PostHousing
 import com.example.pivota.dashboard.presentation.navigation.PostJob
 import com.example.pivota.dashboard.presentation.navigation.PostService
 import com.example.pivota.dashboard.presentation.navigation.PostSupport
+import com.example.pivota.dashboard.presentation.navigation.ProfessionalServiceBooking
 import com.example.pivota.dashboard.presentation.navigation.Professionals
 import com.example.pivota.dashboard.presentation.navigation.Profile
 import com.example.pivota.dashboard.presentation.navigation.ServiceDetails
@@ -95,6 +100,7 @@ import com.example.pivota.dashboard.presentation.screens.client_general_screens.
 import com.example.pivota.dashboard.presentation.screens.client_admin_screens.jobs.ApplicationFunnel
 import com.example.pivota.dashboard.presentation.screens.client_admin_screens.professional.AdminServiceOfferingDetailsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.AllServicesScreen
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ProfessionalServiceBookingScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ServiceOfferingDetailsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ServiceOfferingsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.SubcategoriesScreen
@@ -301,6 +307,8 @@ fun DashboardScaffold(
     var selectedListingForAdminView by remember { mutableStateOf<HousingListingUiModel?>(null) }
     var selectedJobForViewing by remember { mutableStateOf<DetailsJobListingUiModel?>(null) }
     var selectedAdminJobForViewing by remember { mutableStateOf<AdminJobListingUiModel?>(null) }
+    var selectedServiceForBooking by remember { mutableStateOf<ServiceOffering?>(null) }
+    var bookingContractorId by remember { mutableStateOf("") }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -411,6 +419,21 @@ fun DashboardScaffold(
                     onSnackbarDismiss = {
                         showWelcomeSnackbar = false
                         welcomeMessage = ""
+                    },
+                    selectedServiceForBooking = selectedServiceForBooking,
+                    bookingContractorId = bookingContractorId,
+                    onBookingComplete = { booking ->
+                        println("Booking completed: ${booking.id}")
+                        selectedServiceForBooking = null
+                        bookingContractorId = ""
+                    },
+                    onBookingNavigationBack = {
+                        selectedServiceForBooking = null
+                        bookingContractorId = ""
+                    },
+                    onUpdateServiceForBooking = { offering, contractorId ->
+                        selectedServiceForBooking = offering
+                        bookingContractorId = contractorId
                     }
                 )
             } else {
@@ -439,6 +462,21 @@ fun DashboardScaffold(
                     onSnackbarDismiss = {
                         showWelcomeSnackbar = false
                         welcomeMessage = ""
+                    },
+                    selectedServiceForBooking = selectedServiceForBooking,
+                    bookingContractorId = bookingContractorId,
+                    onBookingComplete = { booking ->
+                        println("Booking completed: ${booking.id}")
+                        selectedServiceForBooking = null
+                        bookingContractorId = ""
+                    },
+                    onBookingNavigationBack = {
+                        selectedServiceForBooking = null
+                        bookingContractorId = ""
+                    },
+                    onUpdateServiceForBooking = { offering, contractorId ->
+                        selectedServiceForBooking = offering
+                        bookingContractorId = contractorId
                     }
                 )
             }
@@ -501,7 +539,12 @@ private fun TabletDashboardContent(
     showWelcomeSnackbar: Boolean,
     welcomeMessage: String,
     snackbarType: SnackbarType,
-    onSnackbarDismiss: () -> Unit
+    onSnackbarDismiss: () -> Unit,
+    selectedServiceForBooking: ServiceOffering?,
+    bookingContractorId: String,
+    onBookingComplete: (Booking) -> Unit,
+    onBookingNavigationBack: () -> Unit,  // Add this parameter
+    onUpdateServiceForBooking: (ServiceOffering, String) -> Unit  // Add this parameter
 ) {
     Box(
         modifier = Modifier.fillMaxSize()
@@ -567,7 +610,12 @@ private fun TabletDashboardContent(
                     onViewingSelected = onViewingSelected,
                     onAdminViewSelected = onAdminViewSelected,
                     onJobViewingSelected = onJobViewingSelected,
-                    onAdminJobViewingSelected = onAdminJobViewingSelected
+                    onAdminJobViewingSelected = onAdminJobViewingSelected,
+                    selectedServiceForBooking = selectedServiceForBooking,
+                    bookingContractorId = bookingContractorId,
+                    onBookingComplete = onBookingComplete,
+                    onBookingNavigationBack = onBookingNavigationBack,  // Pass the callback
+                    onUpdateServiceForBooking = onUpdateServiceForBooking  // Pass the callback
                 )
             }
         }
@@ -592,14 +640,14 @@ private fun TabletDashboardContent(
 
         // Snackbar
         if (showWelcomeSnackbar && welcomeMessage.isNotBlank()) {
-            androidx.compose.animation.AnimatedVisibility(
+            AnimatedVisibility(
                 visible = true,
-                enter = androidx.compose.animation.slideInVertically(
+                enter = slideInVertically(
                     initialOffsetY = { -it }
-                ) + androidx.compose.animation.fadeIn(),
-                exit = androidx.compose.animation.slideOutVertically(
+                ) + fadeIn(),
+                exit = slideOutVertically(
                     targetOffsetY = { -it }
-                ) + androidx.compose.animation.fadeOut(),
+                ) + fadeOut(),
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 16.dp)
@@ -658,7 +706,12 @@ private fun MobileDashboardContent(
     showWelcomeSnackbar: Boolean,
     welcomeMessage: String,
     snackbarType: SnackbarType,
-    onSnackbarDismiss: () -> Unit
+    onSnackbarDismiss: () -> Unit,
+    selectedServiceForBooking: ServiceOffering?,
+    bookingContractorId: String,
+    onBookingComplete: (Booking) -> Unit,
+    onBookingNavigationBack: () -> Unit,  // Add this parameter
+    onUpdateServiceForBooking: (ServiceOffering, String) -> Unit  // Add this parameter
 ) {
     MobileNavHost(
         navController = navController,
@@ -683,7 +736,12 @@ private fun MobileDashboardContent(
         showWelcomeSnackbar = showWelcomeSnackbar,
         welcomeMessage = welcomeMessage,
         snackbarType = snackbarType,
-        onSnackbarDismiss = onSnackbarDismiss
+        onSnackbarDismiss = onSnackbarDismiss,
+        selectedServiceForBooking = selectedServiceForBooking,
+        bookingContractorId = bookingContractorId,
+        onBookingComplete = onBookingComplete,
+        onBookingNavigationBack = onBookingNavigationBack,
+        onUpdateServiceForBooking = onUpdateServiceForBooking
     )
 }
 
@@ -707,6 +765,10 @@ private fun GuestContent(
     var selectedJobForViewing by remember { mutableStateOf<DetailsJobListingUiModel?>(null) }
     var selectedAdminJobForViewing by remember { mutableStateOf<AdminJobListingUiModel?>(null) }
 
+    // Add these missing state variables for service booking
+    var selectedServiceForBooking by remember { mutableStateOf<ServiceOffering?>(null) }
+    var bookingContractorId by remember { mutableStateOf("") }
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
@@ -714,6 +776,9 @@ private fun GuestContent(
     val isTablet = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED ||
             windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
     val visibleRoutes = topLevelRoutes
+
+    // Create a sharedViewModel instance for guest mode
+    val sharedViewModel: DashboardSharedViewModel = hiltViewModel()
 
     if (isTablet) {
         Row(modifier = Modifier.fillMaxSize()) {
@@ -760,7 +825,7 @@ private fun GuestContent(
                     selectedJobForViewing = selectedJobForViewing,
                     selectedAdminJobForViewing = selectedAdminJobForViewing,
                     isGuestMode = true,
-                    sharedViewModel = hiltViewModel(),
+                    sharedViewModel = sharedViewModel,
                     accessToken = null,
                     showSheet = showSheet,
                     onShowSheetChange = onShowSheetChange,
@@ -769,7 +834,22 @@ private fun GuestContent(
                     onViewingSelected = { selectedListingForViewing = it },
                     onAdminViewSelected = { selectedListingForAdminView = it },
                     onJobViewingSelected = { selectedJobForViewing = it },
-                    onAdminJobViewingSelected = { selectedAdminJobForViewing = it }
+                    onAdminJobViewingSelected = { selectedAdminJobForViewing = it },
+                    selectedServiceForBooking = selectedServiceForBooking,
+                    bookingContractorId = bookingContractorId,
+                    onBookingComplete = { booking ->
+                        println("Guest booking completed: ${booking.id}")
+                        selectedServiceForBooking = null
+                        bookingContractorId = ""
+                    },
+                    onBookingNavigationBack = {
+                        selectedServiceForBooking = null
+                        bookingContractorId = ""
+                    },
+                    onUpdateServiceForBooking = { offering, contractorId ->
+                        selectedServiceForBooking = offering
+                        bookingContractorId = contractorId
+                    }
                 )
             }
         }
@@ -782,7 +862,7 @@ private fun GuestContent(
             selectedJobForViewing = selectedJobForViewing,
             selectedAdminJobForViewing = selectedAdminJobForViewing,
             isGuestMode = true,
-            sharedViewModel = hiltViewModel(),
+            sharedViewModel = sharedViewModel,
             accessToken = null,
             visibleRoutes = visibleRoutes,
             currentDestination = currentDestination,
@@ -797,140 +877,22 @@ private fun GuestContent(
             showWelcomeSnackbar = showWelcomeSnackbar,
             welcomeMessage = welcomeMessage,
             snackbarType = snackbarType,
-            onSnackbarDismiss = onSnackbarDismiss
-        )
-    }
-
-    if (showSheet) {
-        PostOptionsBottomSheet(
-            sheetState = sheetState,
-            onDismiss = { onShowSheetChange(false) },
-            onOptionSelected = { category ->
-                onShowSheetChange(false)
-                when (category) {
-                    "jobs" -> navController.navigate(PostJob)
-                    "housing" -> navController.navigate(PostHousing)
-                    "support" -> navController.navigate(PostSupport)
-                    "service" -> navController.navigate(PostService)
-                }
+            onSnackbarDismiss = onSnackbarDismiss,
+            selectedServiceForBooking = selectedServiceForBooking,
+            bookingContractorId = bookingContractorId,
+            onBookingComplete = { booking ->
+                println("Guest booking completed: ${booking.id}")
+                selectedServiceForBooking = null
+                bookingContractorId = ""
+            },
+            onBookingNavigationBack = {
+                selectedServiceForBooking = null
+                bookingContractorId = ""
+            },
+            onUpdateServiceForBooking = { offering, contractorId ->
+                selectedServiceForBooking = offering
+                bookingContractorId = contractorId
             }
-        )
-    }
-
-}
-
-@RequiresApi(Build.VERSION_CODES.O)
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AuthenticatedContent(
-    navController: NavHostController,
-    sheetState: SheetState,
-    showSheet: Boolean,
-    onShowSheetChange: (Boolean) -> Unit,
-    showWelcomeSnackbar: Boolean,
-    welcomeMessage: String,
-    snackbarType: SnackbarType,
-    onSnackbarDismiss: () -> Unit,
-    accessToken: String?,
-    sharedViewModel: DashboardSharedViewModel
-) {
-    var selectedListingForBooking by remember { mutableStateOf<HousingListingUiModel?>(null) }
-    var selectedListingForViewing by remember { mutableStateOf<HousingListingUiModel?>(null) }
-    var selectedListingForAdminView by remember { mutableStateOf<HousingListingUiModel?>(null) }
-    var selectedJobForViewing by remember { mutableStateOf<DetailsJobListingUiModel?>(null) }
-    var selectedAdminJobForViewing by remember { mutableStateOf<AdminJobListingUiModel?>(null) }
-
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
-
-    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
-    val isTablet = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED ||
-            windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
-    val visibleRoutes = topLevelRoutes
-
-    if (isTablet) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            NavigationRail(
-                modifier = Modifier.fillMaxHeight().navigationBarsPadding(),
-                containerColor = MaterialTheme.colorScheme.surface,
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxHeight(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    visibleRoutes.forEach { route ->
-                        val isSelected = currentDestination?.hierarchy?.any { it.route == route.route::class.qualifiedName } == true
-                        NavigationRailItem(
-                            icon = { Icon(route.icon, contentDescription = route.contentDescription, modifier = Modifier.size(24.dp)) },
-                            label = { Text(route.label, fontSize = 11.sp) },
-                            selected = isSelected,
-                            onClick = {
-                                if (currentDestination?.route != route.route) {
-                                    navController.navigate(route.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                }
-                            },
-                            colors = NavigationRailItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.tertiary,
-                                selectedTextColor = MaterialTheme.colorScheme.tertiary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        )
-                    }
-                }
-            }
-            Box(modifier = Modifier.fillMaxSize().padding(start = 8.dp)) {
-                TabletNavHost(
-                    navController = navController,
-                    selectedListingForBooking = selectedListingForBooking,
-                    selectedListingForViewing = selectedListingForViewing,
-                    selectedListingForAdminView = selectedListingForAdminView,
-                    selectedJobForViewing = selectedJobForViewing,
-                    selectedAdminJobForViewing = selectedAdminJobForViewing,
-                    isGuestMode = false,
-                    sharedViewModel = sharedViewModel,
-                    accessToken = accessToken,
-                    showSheet = showSheet,
-                    onShowSheetChange = onShowSheetChange,
-                    sheetState = sheetState,
-                    onBookingSelected = { selectedListingForBooking = it },
-                    onViewingSelected = { selectedListingForViewing = it },
-                    onAdminViewSelected = { selectedListingForAdminView = it },
-                    onJobViewingSelected = { selectedJobForViewing = it },
-                    onAdminJobViewingSelected = { selectedAdminJobForViewing = it }
-                )
-            }
-        }
-    } else {
-        MobileNavHost(
-            navController = navController,
-            selectedListingForBooking = selectedListingForBooking,
-            selectedListingForViewing = selectedListingForViewing,
-            selectedListingForAdminView = selectedListingForAdminView,
-            selectedJobForViewing = selectedJobForViewing,
-            selectedAdminJobForViewing = selectedAdminJobForViewing,
-            isGuestMode = false,
-            sharedViewModel = sharedViewModel,
-            accessToken = accessToken,
-            visibleRoutes = visibleRoutes,
-            currentDestination = currentDestination,
-            showSheet = showSheet,
-            onShowSheetChange = onShowSheetChange,
-            sheetState = sheetState,
-            onBookingSelected = { selectedListingForBooking = it },
-            onViewingSelected = { selectedListingForViewing = it },
-            onAdminViewSelected = { selectedListingForAdminView = it },
-            onJobViewingSelected = { selectedJobForViewing = it },
-            onAdminJobViewingSelected = { selectedAdminJobForViewing = it },
-            showWelcomeSnackbar = showWelcomeSnackbar,
-            welcomeMessage = welcomeMessage,
-            snackbarType = snackbarType,
-            onSnackbarDismiss = onSnackbarDismiss
         )
     }
 
@@ -950,6 +912,7 @@ private fun AuthenticatedContent(
         )
     }
 }
+
 
 // Mobile NavHost with proper bottom navigation
 @RequiresApi(Build.VERSION_CODES.O)
@@ -978,7 +941,12 @@ private fun MobileNavHost(
     showWelcomeSnackbar: Boolean,
     welcomeMessage: String,
     snackbarType: SnackbarType,
-    onSnackbarDismiss: () -> Unit
+    onSnackbarDismiss: () -> Unit,
+    selectedServiceForBooking: ServiceOffering?,
+    bookingContractorId: String,
+    onBookingComplete: (Booking) -> Unit,
+    onBookingNavigationBack: () -> Unit,
+    onUpdateServiceForBooking: (ServiceOffering, String) -> Unit
 ) {
     NavHost(
         navController = navController,
@@ -1011,6 +979,31 @@ private fun MobileNavHost(
                     accessToken = accessToken,
                     sharedViewModel = sharedViewModel
                 )
+            }
+        }
+
+        // Professional Service Booking Screen
+        composable<ProfessionalServiceBooking> { backStackEntry ->
+            val bookingParams = backStackEntry.toRoute<ProfessionalServiceBooking>()
+            val serviceOffering = selectedServiceForBooking
+
+            NoBottomNavScaffold {
+                if (serviceOffering != null) {
+                    ProfessionalServiceBookingScreen(
+                        serviceOffering = serviceOffering,
+                        contractorId = bookingParams.contractorId,
+                        clientId = sharedViewModel.getCurrentProfile()?.user?.id ?: "",
+                        onNavigateBack = {
+                            navController.popBackStack()
+                            onBookingNavigationBack()  // Use callback instead of direct reassignment
+                        },
+                        onBookingComplete = onBookingComplete
+                    )
+                } else {
+                    LaunchedEffect(Unit) {
+                        navController.popBackStack()
+                    }
+                }
             }
         }
 
@@ -1052,14 +1045,12 @@ private fun MobileNavHost(
                     },
                     onNavigateToAllSupport = {},
                     onServiceClick = { id, name, vertical ->
-                        // Direct navigation for categories WITHOUT subcategories
                         navController.navigate(ServiceOfferings(
                             categoryId = id,
                             categoryName = name
                         ))
                     },
                     onSubcategoriesClick = { id, name, vertical ->
-                        // Navigation for categories WITH subcategories
                         navController.navigate(Subcategories(
                             parentCategoryId = id,
                             parentCategoryName = name,
@@ -1107,14 +1098,12 @@ private fun MobileNavHost(
             NoBottomNavScaffold {
                 AllServicesScreen(
                     onServiceClick = { id, name, vertical ->
-                        // Navigate to service offerings for this category
                         navController.navigate(ServiceOfferings(
                             categoryId = id,
                             categoryName = name
                         ))
                     },
                     onSubcategoriesClick = { id, name, vertical ->
-                        // Navigate to Subcategories screen
                         navController.navigate(
                             Subcategories(
                                 parentCategoryId = id,
@@ -1127,8 +1116,6 @@ private fun MobileNavHost(
                         navController.popBackStack()
                     }
                 )
-
-
             }
         }
 
@@ -1140,7 +1127,6 @@ private fun MobileNavHost(
                     parentCategoryName = subcategories.parentCategoryName,
                     vertical = subcategories.vertical,
                     onSubcategoryClick = { subcategoryId, subcategoryName, vertical ->
-                        // Navigate to Service Offerings with the subcategory
                         navController.navigate(ServiceOfferings(
                             categoryId = subcategoryId,
                             categoryName = subcategoryName
@@ -1152,8 +1138,6 @@ private fun MobileNavHost(
                 )
             }
         }
-
-
 
         composable<ServiceOfferings> { backStackEntry ->
             val serviceOfferings = backStackEntry.toRoute<ServiceOfferings>()
@@ -1168,7 +1152,6 @@ private fun MobileNavHost(
                         navController.popBackStack()
                     },
                     onOfferingClick = { offeringId ->
-                        // Navigate to service details screen
                         navController.navigate(ServiceDetails(serviceId = offeringId))
                     }
                 )
@@ -1204,16 +1187,13 @@ private fun MobileNavHost(
             val serviceId = backStackEntry.toRoute<ServiceDetails>().serviceId
             val viewModel: ServiceOfferingsViewModel = hiltViewModel()
 
-            // Snackbar state
             var showErrorSnackbar by remember { mutableStateOf(false) }
             var errorMessage by remember { mutableStateOf("") }
 
-            // Load service offering - ViewModel handles caching internally
             LaunchedEffect(serviceId) {
                 viewModel.loadServiceOffering(serviceId)
             }
 
-            // Observe error state
             LaunchedEffect(viewModel.serviceDetailsState) {
                 val state = viewModel.serviceDetailsState.value
                 if (state is ServiceDetailsState.Error && !showErrorSnackbar) {
@@ -1227,21 +1207,28 @@ private fun MobileNavHost(
             Box(modifier = Modifier.fillMaxSize()) {
                 when (serviceDetailsState) {
                     is ServiceDetailsState.Loading -> {
-                        PivotaFullScreenLoading(
-                            message = "Loading service details..."
-                        )
+                        PivotaFullScreenLoading(message = "Loading service details...")
                     }
                     is ServiceDetailsState.Success -> {
                         val success = serviceDetailsState as ServiceDetailsState.Success
+                        val offering = success.serviceOffering
                         ServiceOfferingDetailsScreen(
-                            serviceOffering = success.serviceOffering,
+                            serviceOffering = offering,
                             onNavigateBack = { navController.popBackStack() },
-                            onContactProvider = { /* Handle contact - can navigate to chat */ },
-                            onBookService = { /* Handle booking - can navigate to booking flow */ }
+                            onContactProvider = { /* Handle contact */ },
+                            onBookService = {
+                                // Use the callback to update the parent state
+                                onUpdateServiceForBooking(offering, offering.skilledProfessionalId)
+                                navController.navigate(
+                                    ProfessionalServiceBooking(
+                                        serviceOfferingId = offering.id,
+                                        contractorId = offering.skilledProfessionalId
+                                    )
+                                )
+                            }
                         )
                     }
                     is ServiceDetailsState.Error -> {
-                        // Error is handled by snackbar, show nothing or retry button
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
@@ -1266,7 +1253,6 @@ private fun MobileNavHost(
                     }
                 }
 
-                // Error Snackbar at top center
                 if (showErrorSnackbar && errorMessage.isNotBlank()) {
                     PivotaSnackbar(
                         message = errorMessage,
@@ -1322,9 +1308,7 @@ private fun MobileNavHost(
         composable<AdminServiceDetails> { backStackEntry ->
             val serviceId = backStackEntry.toRoute<AdminServiceDetails>().serviceId
             val viewModel: ServiceOfferingsViewModel = hiltViewModel()
-            val snackbarHostState = remember { SnackbarHostState() }
 
-            // Snackbar state
             var showErrorSnackbar by remember { mutableStateOf(false) }
             var errorMessage by remember { mutableStateOf("") }
 
@@ -1332,7 +1316,6 @@ private fun MobileNavHost(
                 viewModel.loadServiceOffering(serviceId)
             }
 
-            // Observe error state
             LaunchedEffect(viewModel.serviceDetailsState) {
                 val state = viewModel.serviceDetailsState.value
                 if (state is ServiceDetailsState.Error) {
@@ -1347,9 +1330,7 @@ private fun MobileNavHost(
                 NoBottomNavScaffold {
                     when {
                         serviceDetailsState is ServiceDetailsState.Loading -> {
-                            PivotaFullScreenLoading(
-                                message = "Loading service details..."
-                            )
+                            PivotaFullScreenLoading(message = "Loading service details...")
                         }
                         serviceDetailsState is ServiceDetailsState.Success -> {
                             val success = serviceDetailsState as ServiceDetailsState.Success
@@ -1372,7 +1353,6 @@ private fun MobileNavHost(
                     }
                 }
 
-                // Error Snackbar at top center
                 if (showErrorSnackbar && errorMessage.isNotBlank()) {
                     PivotaSnackbar(
                         message = errorMessage,
@@ -1581,7 +1561,12 @@ private fun TabletNavHost(
     onViewingSelected: (HousingListingUiModel?) -> Unit,
     onAdminViewSelected: (HousingListingUiModel?) -> Unit,
     onJobViewingSelected: (DetailsJobListingUiModel?) -> Unit,
-    onAdminJobViewingSelected: (AdminJobListingUiModel?) -> Unit
+    onAdminJobViewingSelected: (AdminJobListingUiModel?) -> Unit,
+    selectedServiceForBooking: ServiceOffering?,
+    bookingContractorId: String,
+    onBookingComplete: (Booking) -> Unit,
+    onBookingNavigationBack: () -> Unit,  // Add this
+    onUpdateServiceForBooking: (ServiceOffering, String) -> Unit  // Add this
 ) {
     NavHost(
         navController = navController,
@@ -1605,17 +1590,40 @@ private fun TabletNavHost(
             ProfessionalsScreen()
         }
 
+        // Professional Service Booking Screen
+        composable<ProfessionalServiceBooking> { backStackEntry ->
+            val bookingParams = backStackEntry.toRoute<ProfessionalServiceBooking>()
+            val serviceOffering = selectedServiceForBooking
+
+            NoBottomNavScaffold {
+                if (serviceOffering != null) {
+                    ProfessionalServiceBookingScreen(
+                        serviceOffering = serviceOffering,
+                        contractorId = bookingParams.contractorId,
+                        clientId = sharedViewModel.getCurrentProfile()?.user?.id ?: "",
+                        onNavigateBack = {
+                            navController.popBackStack()
+                            // Just navigate back, don't call onBookingComplete
+                        },
+                        onBookingComplete = onBookingComplete
+                    )
+                } else {
+                    LaunchedEffect(Unit) {
+                        navController.popBackStack()
+                    }
+                }
+            }
+        }
+
         composable<AllServices> {
             AllServicesScreen(
                 onServiceClick = { id, name, vertical ->
-                    // Navigate to service offerings for this category
                     navController.navigate(ServiceOfferings(
                         categoryId = id,
                         categoryName = name
                     ))
                 },
                 onSubcategoriesClick = { id, name, vertical ->
-                    // Navigate to Subcategories screen
                     navController.navigate(Subcategories(
                         parentCategoryId = id,
                         parentCategoryName = name,
@@ -1635,7 +1643,6 @@ private fun TabletNavHost(
                 parentCategoryName = subcategories.parentCategoryName,
                 vertical = subcategories.vertical,
                 onSubcategoryClick = { subcategoryId, subcategoryName, vertical ->
-                    // Navigate to Service Offerings with the subcategory
                     navController.navigate(ServiceOfferings(
                         categoryId = subcategoryId,
                         categoryName = subcategoryName
@@ -1660,7 +1667,6 @@ private fun TabletNavHost(
                         navController.popBackStack()
                     },
                     onOfferingClick = { offeringId ->
-                        // Navigate to service details screen
                         navController.navigate(ServiceDetails(serviceId = offeringId))
                     }
                 )
@@ -1690,14 +1696,12 @@ private fun TabletNavHost(
                 },
                 onNavigateToAllSupport = {},
                 onServiceClick = { id, name, vertical ->
-                    // Direct navigation for categories WITHOUT subcategories
                     navController.navigate(ServiceOfferings(
                         categoryId = id,
                         categoryName = name
                     ))
                 },
                 onSubcategoriesClick = { id, name, vertical ->
-                    // Navigation for categories WITH subcategories
                     navController.navigate(Subcategories(
                         parentCategoryId = id,
                         parentCategoryName = name,
@@ -1778,9 +1782,7 @@ private fun TabletNavHost(
         composable<AdminServiceDetails> { backStackEntry ->
             val serviceId = backStackEntry.toRoute<AdminServiceDetails>().serviceId
             val viewModel: ServiceOfferingsViewModel = hiltViewModel()
-            val snackbarHostState = remember { SnackbarHostState() }
 
-            // Snackbar state
             var showErrorSnackbar by remember { mutableStateOf(false) }
             var errorMessage by remember { mutableStateOf("") }
 
@@ -1788,7 +1790,6 @@ private fun TabletNavHost(
                 viewModel.loadServiceOffering(serviceId)
             }
 
-            // Observe error state
             LaunchedEffect(viewModel.serviceDetailsState) {
                 val state = viewModel.serviceDetailsState.value
                 if (state is ServiceDetailsState.Error) {
@@ -1803,9 +1804,7 @@ private fun TabletNavHost(
                 NoBottomNavScaffold {
                     when {
                         serviceDetailsState is ServiceDetailsState.Loading -> {
-                            PivotaFullScreenLoading(
-                                message = "Loading service details..."
-                            )
+                            PivotaFullScreenLoading(message = "Loading service details...")
                         }
                         serviceDetailsState is ServiceDetailsState.Success -> {
                             val success = serviceDetailsState as ServiceDetailsState.Success
@@ -1828,7 +1827,6 @@ private fun TabletNavHost(
                     }
                 }
 
-                // Error Snackbar at top center
                 if (showErrorSnackbar && errorMessage.isNotBlank()) {
                     PivotaSnackbar(
                         message = errorMessage,
@@ -1922,22 +1920,17 @@ private fun TabletNavHost(
             }
         }
 
-
-        // Client Service Details
         composable<ServiceDetails> { backStackEntry ->
             val serviceId = backStackEntry.toRoute<ServiceDetails>().serviceId
             val viewModel: ServiceOfferingsViewModel = hiltViewModel()
 
-            // Snackbar state
             var showErrorSnackbar by remember { mutableStateOf(false) }
             var errorMessage by remember { mutableStateOf("") }
 
-            // Load service offering - ViewModel handles caching internally
             LaunchedEffect(serviceId) {
                 viewModel.loadServiceOffering(serviceId)
             }
 
-            // Observe error state
             LaunchedEffect(viewModel.serviceDetailsState) {
                 val state = viewModel.serviceDetailsState.value
                 if (state is ServiceDetailsState.Error && !showErrorSnackbar) {
@@ -1951,21 +1944,28 @@ private fun TabletNavHost(
             Box(modifier = Modifier.fillMaxSize()) {
                 when (serviceDetailsState) {
                     is ServiceDetailsState.Loading -> {
-                        PivotaFullScreenLoading(
-                            message = "Loading service details..."
-                        )
+                        PivotaFullScreenLoading(message = "Loading service details...")
                     }
                     is ServiceDetailsState.Success -> {
                         val success = serviceDetailsState as ServiceDetailsState.Success
+                        val offering = success.serviceOffering
                         ServiceOfferingDetailsScreen(
-                            serviceOffering = success.serviceOffering,
+                            serviceOffering = offering,
                             onNavigateBack = { navController.popBackStack() },
-                            onContactProvider = { /* Handle contact - can navigate to chat */ },
-                            onBookService = { /* Handle booking - can navigate to booking flow */ }
+                            onContactProvider = { /* Handle contact */ },
+                            onBookService = {
+                                // Use callback to update parent state
+                                onUpdateServiceForBooking(offering, offering.skilledProfessionalId)
+                                navController.navigate(
+                                    ProfessionalServiceBooking(
+                                        serviceOfferingId = offering.id,
+                                        contractorId = offering.skilledProfessionalId
+                                    )
+                                )
+                            }
                         )
                     }
                     is ServiceDetailsState.Error -> {
-                        // Error is handled by snackbar, show nothing or retry button
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
@@ -1990,7 +1990,6 @@ private fun TabletNavHost(
                     }
                 }
 
-                // Error Snackbar at top center
                 if (showErrorSnackbar && errorMessage.isNotBlank()) {
                     PivotaSnackbar(
                         message = errorMessage,
@@ -2004,6 +2003,7 @@ private fun TabletNavHost(
                 }
             }
         }
+
 
         // Admin Job Details
         composable<AdminJobDetails> {
@@ -2038,7 +2038,6 @@ private fun TabletNavHost(
         composable<PostJob> {
             JobPostScreen.Content(onBack = { navController.popBackStack() })
         }
-
 
         // Post Service
         composable<PostService> {
@@ -2167,14 +2166,14 @@ fun MainScreenScaffold(
 
             // Snackbar positioned at bottom with small padding - using normal Box with Z-index
             if (showWelcomeSnackbar && welcomeMessage.isNotBlank()) {
-                androidx.compose.animation.AnimatedVisibility(
+                AnimatedVisibility(
                     visible = true,
-                    enter = androidx.compose.animation.slideInVertically(
+                    enter = slideInVertically(
                         initialOffsetY = { it }
-                    ) + androidx.compose.animation.fadeIn(),
-                    exit = androidx.compose.animation.slideOutVertically(
+                    ) + fadeIn(),
+                    exit = slideOutVertically(
                         targetOffsetY = { it }
-                    ) + androidx.compose.animation.fadeOut(),
+                    ) + fadeOut(),
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(bottom = 16.dp)

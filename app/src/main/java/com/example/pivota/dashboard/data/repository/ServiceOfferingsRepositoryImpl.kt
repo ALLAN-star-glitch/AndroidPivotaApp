@@ -353,7 +353,8 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                         customBookingFeeAmount = createdData.customBookingFeeAmount,
                         customBookingFeeCurrency = createdData.customBookingFeeCurrency,
                         customBookingFeeDescription = createdData.customBookingFeeDescription,
-                        customBookingFeeRefundable = createdData.customBookingFeeRefundable
+                        customBookingFeeRefundable = createdData.customBookingFeeRefundable,
+                        skilledProfessionalId = createdData.skilledProfessionalId
                     )
 
                     CoroutineScope(Dispatchers.IO).launch {
@@ -474,7 +475,8 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                         customBookingFeeAmount = offeringData.customBookingFeeAmount,
                         customBookingFeeCurrency = offeringData.customBookingFeeCurrency,
                         customBookingFeeDescription = offeringData.customBookingFeeDescription,
-                        customBookingFeeRefundable = offeringData.customBookingFeeRefundable
+                        customBookingFeeRefundable = offeringData.customBookingFeeRefundable,
+                        skilledProfessionalId = offeringData.skilledProfessionalId
                     )
 
                     val entity = cacheMapper.toEntityFromDetail(offeringData, offeringData.categoryId)

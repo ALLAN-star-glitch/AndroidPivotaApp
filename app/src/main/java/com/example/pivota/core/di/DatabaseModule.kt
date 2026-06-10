@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.example.pivota.core.database.DatabaseConstants
 import com.example.pivota.core.database.PivotaDatabase
+import com.example.pivota.core.database.dao.BookingDao
 import com.example.pivota.core.database.dao.CategoryDao
 import com.example.pivota.core.database.dao.ServiceOfferingDao
 import dagger.Module
@@ -47,5 +48,11 @@ object DatabaseModule {
     @Singleton
     fun provideServiceOfferingDao(database: PivotaDatabase): ServiceOfferingDao {
         return database.serviceOfferingDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideBookingDao(database: PivotaDatabase): BookingDao {
+        return database.bookingDao()
     }
 }

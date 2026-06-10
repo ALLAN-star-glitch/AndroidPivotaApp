@@ -9,6 +9,7 @@ data class ServiceOfferingEntity(
     val id: String,
     val externalId: String,
     val professionalName: String,
+    val skilledProfessionalId: String,
     val professionalAvatar: String?,
     val isVerified: Boolean,
     val title: String,

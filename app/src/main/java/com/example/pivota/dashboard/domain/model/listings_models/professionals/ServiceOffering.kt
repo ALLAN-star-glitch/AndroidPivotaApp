@@ -1,10 +1,10 @@
 package com.example.pivota.dashboard.domain.model.listings_models.professionals
 
-// com.example.pivota.dashboard.domain.model.listings_models.professionals/ServiceOffering.kt
 
 data class ServiceOffering(
     val id: String,
     val externalId: String,
+    val skilledProfessionalId: String,
     val professionalName: String,
     val professionalAvatar: String?,
     val isVerified: Boolean,
@@ -15,8 +15,6 @@ data class ServiceOffering(
     val basePrice: Double,
     val priceUnit: String,
     val currency: String,
-    // ❌ REMOVED locationCity and locationNeighborhood
-    // ✅ ADDED coverageAreas (replaces serviceAreas)
     val coverageAreas: List<String>,
     val availability: List<DayAvailability>,
     val yearsExperience: Int?,
@@ -26,11 +24,12 @@ data class ServiceOffering(
     val reviewCount: Int,
     val createdAt: String,
     val updatedAt: String,
-    // ========== NEW: Negotiable Pricing Fields ==========
+    val vertical: String? = null,  // Add vertical field
+    // Negotiable Pricing Fields
     val isNegotiable: Boolean = true,
     val minNegotiablePrice: Double? = null,
     val maxNegotiablePrice: Double? = null,
-    // ========== NEW: Booking Fee Override Fields ==========
+    // Booking Fee Override Fields
     val useCustomBookingFee: Boolean = false,
     val customBookingFeeEnabled: Boolean? = null,
     val customBookingFeeAmount: Double? = null,
@@ -141,14 +140,6 @@ data class BookingStatus(
         }
 }
 
-
-data class BookingStatusListResponse(
-    val success: Boolean,
-    val message: String,
-    val code: String,
-    val statuses: List<BookingStatus>
-)
-
 // ======================================================
 // SERVICE EXECUTION STATUS MODELS (NEW)
 // ======================================================
@@ -173,70 +164,3 @@ enum class ServiceExecutionStatus(val value: String) {
         }
 }
 
-// ======================================================
-// CREATE BOOKING REQUEST (UPDATED)
-// ======================================================
-
-data class CreateBookingRequest(
-    val serviceId: String,
-    val contractorId: String,
-    val scheduledDate: String,  // ISO format
-    val locationCity: String,
-    val durationHours: Int? = null,
-    val durationDays: Int? = null,
-    val durationWeeks: Int? = null,
-    val durationMonths: Int? = null,
-    val customerNotes: String? = null,
-    val proposedPrice: Double? = null  // NEW: For negotiation
-)
-
-// ======================================================
-// BOOKING RESPONSE (UPDATED)
-// ======================================================
-
-data class BookingResponse(
-    val id: String,
-    val externalId: String,
-    val contractorId: String,
-    val clientId: String,
-    val serviceId: String?,
-    val service: ServiceOffering?,
-    val contractorName: String?,
-    val serviceTitle: String?,
-    val status: String,  // BookingStatus value
-    val serviceExecutionStatus: String? = null,  // ServiceExecutionStatus value
-    val scheduledDate: String?,
-    val locationCity: String?,
-    val servicePrice: Double?,  // Base service price (priceUnit * duration)
-    val servicePriceUnit: String?,
-    val serviceDuration: Int?,
-    val currency: String,
-    val customerNotes: String?,
-    val bookingFeeAmount: Double?,
-    val bookingFeeCurrency: String?,
-    val bookingFeeRefundable: Boolean?,
-    val totalAmount: Double?,
-    val confirmedAt: String?,
-    val declinedAt: String?,
-    val cancelledAt: String?,
-    val completedAt: String?,
-    val createdAt: String,
-    val updatedAt: String,
-    // Helper properties
-    val isNegotiated: Boolean = false
-) {
-    // Helper properties for UI
-    val isPending: Boolean get() = status == "PENDING"
-    val isConfirmed: Boolean get() = status == "CONFIRMED"
-    val isCancelled: Boolean get() = status == "CANCELLED"
-    val isDeclined: Boolean get() = status == "DECLINED"
-
-    val isServiceStarted: Boolean get() = serviceExecutionStatus == "IN_PROGRESS"
-    val isServiceCompleted: Boolean get() = serviceExecutionStatus == "COMPLETED"
-
-    val displayPrice: String get() = "$currency ${servicePrice ?: 0}"
-    val displayTotal: String get() = "$currency ${totalAmount ?: servicePrice ?: 0}"
-    val displayBookingFee: String?
-        get() = if (bookingFeeAmount != null && bookingFeeAmount > 0)
-        "$currency $bookingFeeAmount" else null
-}

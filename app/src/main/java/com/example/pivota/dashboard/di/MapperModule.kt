@@ -1,5 +1,7 @@
 package com.example.pivota.dashboard.di
 
+import com.example.pivota.dashboard.data.mapper.BookingCacheMapper
+import com.example.pivota.dashboard.data.mapper.BookingMapper
 import com.example.pivota.dashboard.data.mapper.ServiceOfferingCacheMapper
 import com.example.pivota.dashboard.data.mapper.ServiceOfferingMapper
 import com.squareup.moshi.Moshi
@@ -32,5 +34,17 @@ object MapperModule {
     @Singleton
     fun provideServiceOfferingCacheMapper(moshi: Moshi): ServiceOfferingCacheMapper {
         return ServiceOfferingCacheMapper(moshi)
+    }
+
+    @Provides
+    @Singleton
+    fun provideBookingMapper(): BookingMapper {
+        return BookingMapper()
+    }
+
+    @Provides
+    @Singleton
+    fun provideBookingCacheMapper(moshi: Moshi): BookingCacheMapper {
+        return BookingCacheMapper(moshi)
     }
 }
