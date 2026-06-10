@@ -25,10 +25,10 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.10.0 - Build 20 - Professional Service Booking System
+        // Version 1.11.0 - Build 21 - Professional Service Booking System
         // Added: Complete booking flow with date/time picker, negotiation, and booking fees
-        versionCode = 20
-        versionName = "1.10.0"
+        versionCode = 21
+        versionName = "1.11.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -65,21 +65,21 @@ android {
                 testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
 
                 releaseNotes = """
-═══════════════════════════════════════════════════════════
-          PIVOTACONNECT v1.10.0 - PROFESSIONAL SERVICE BOOKING
-═══════════════════════════════════════════════════════════
+================================================================
+          PIVOTACONNECT v1.11.0 - PROFESSIONAL SERVICE BOOKING
+================================================================
 
-🎉 NEW FEATURE: COMPLETE BOOKING SYSTEM 🎉
+NEW FEATURE: COMPLETE BOOKING SYSTEM
 
 This major release introduces a comprehensive booking system 
 that allows customers to book professional services directly 
 through the app.
 
-═══════════════════════════════════════════════════════════
-📅 BOOKING FLOW
-═══════════════════════════════════════════════════════════
+================================================================
+BOOKING FLOW
+================================================================
 
-• Professional Service Booking Screen
+- Professional Service Booking Screen
   - Clean two-step booking process
   - Date & Time selection with calendar picker
   - Smart duration selection (hours/days/weeks/months)
@@ -87,7 +87,7 @@ through the app.
   - Optional price negotiation
   - Additional notes for special requests
 
-• Review & Payment Step
+- Review & Payment Step
   - Complete booking summary
   - Price breakdown with all charges
   - Service total calculation
@@ -95,181 +95,181 @@ through the app.
   - Grand total calculation
   - Booking protection information
 
-• Responsive Layout
+- Responsive Layout
   - Adaptive design for phones and tablets
   - Wide layout with side-by-side form and summary
   - Narrow layout with step-by-step stepper
   - Smooth animations throughout
 
-═══════════════════════════════════════════════════════════
-💳 PRICE NEGOTIATION SYSTEM
-═══════════════════════════════════════════════════════════
+================================================================
+PRICE NEGOTIATION SYSTEM
+================================================================
 
-• Customers can propose custom prices
-• Real-time validation against professional's range
-• Automatic total recalculation
-• Negotiated price reflected in all summaries
-• Clear indication when price is negotiated
-• Original price shown with strikethrough
+- Customers can propose custom prices
+- Real-time validation against professional's range
+- Automatic total recalculation
+- Negotiated price reflected in all summaries
+- Clear indication when price is negotiated
+- Original price shown with strikethrough
 
-═══════════════════════════════════════════════════════════
-💰 BOOKING FEE MANAGEMENT
-═══════════════════════════════════════════════════════════
+================================================================
+BOOKING FEE MANAGEMENT
+================================================================
 
-• Booking fees automatically calculated
-• Displayed separately in price breakdown
-• Refundable status clearly indicated
-• Added to grand total
-• Shown in booking confirmation
-• Consistent across all screens
+- Booking fees automatically calculated
+- Displayed separately in price breakdown
+- Refundable status clearly indicated
+- Added to grand total
+- Shown in booking confirmation
+- Consistent across all screens
 
-═══════════════════════════════════════════════════════════
-🎨 UI/UX ENHANCEMENTS
-═══════════════════════════════════════════════════════════
+================================================================
+UI/UX ENHANCEMENTS
+================================================================
 
-• Theme-aware date and time picker
+- Theme-aware date and time picker
   - Uses Material 3 theme colors
   - Separate date and time selection
   - Number picker for hours/minutes
   - Visual feedback on selection
 
-• Enhanced Form Fields
+- Enhanced Form Fields
   - Animated form sections with expand/collapse
   - Real-time validation with error messages
   - Clear visual indicators for required fields
   - Smooth transitions between steps
 
-• Professional Service Card
+- Professional Service Card
   - Hero card with service details
   - Price per unit display
   - Professional verification badge
   - Rating and review count
   - Years of experience
 
-• Booking Summary Panel (Tablet)
+- Booking Summary Panel (Tablet)
   - Right-side preview panel
   - Real-time price calculations
   - Service total breakdown
   - Booking fee display
   - Location and date summary
 
-═══════════════════════════════════════════════════════════
-⚡ PERFORMANCE IMPROVEMENTS
-═══════════════════════════════════════════════════════════
+================================================================
+PERFORMANCE IMPROVEMENTS
+================================================================
 
-• Cached booking data for offline access
-• Optimized network requests
-• Reduced API calls with smart caching
-• Smooth animations with Compose
-• Fast date picker responses
+- Cached booking data for offline access
+- Optimized network requests
+- Reduced API calls with smart caching
+- Smooth animations with Compose
+- Fast date picker responses
 
-═══════════════════════════════════════════════════════════
-🛡️ ERROR HANDLING
-═══════════════════════════════════════════════════════════
+================================================================
+ERROR HANDLING
+================================================================
 
-• Graceful error messages
-• Network error recovery
-• Form validation with helpful hints
-• Conflict detection for booked slots
-• Clear guidance for fixing errors
+- Graceful error messages
+- Network error recovery
+- Form validation with helpful hints
+- Conflict detection for booked slots
+- Clear guidance for fixing errors
 
-═══════════════════════════════════════════════════════════
-📱 DEVICE SUPPORT
-═══════════════════════════════════════════════════════════
+================================================================
+DEVICE SUPPORT
+================================================================
 
-• Phones (portrait and landscape)
-• Tablets (adaptive layouts)
-• Dark mode support
-• All screen sizes supported
-• Responsive typography
+- Phones (portrait and landscape)
+- Tablets (adaptive layouts)
+- Dark mode support
+- All screen sizes supported
+- Responsive typography
 
-═══════════════════════════════════════════════════════════
-🐛 BUG FIXES
-═══════════════════════════════════════════════════════════
+================================================================
+BUG FIXES
+================================================================
 
-• Fixed date picker crash on older devices
-• Corrected currency formatting for KES
-• Fixed keyboard covering input fields
-• Resolved conflict detection logic
-• Fixed booking fee calculation errors
-• Corrected total price display
-• Fixed navigation back stack issues
-• Resolved permission validation
+- Fixed date picker crash on older devices
+- Corrected currency formatting for KES
+- Fixed keyboard covering input fields
+- Resolved conflict detection logic
+- Fixed booking fee calculation errors
+- Corrected total price display
+- Fixed navigation back stack issues
+- Resolved permission validation
 
-═══════════════════════════════════════════════════════════
-🏗️ TECHNICAL IMPROVEMENTS
-═══════════════════════════════════════════════════════════
+================================================================
+TECHNICAL IMPROVEMENTS
+================================================================
 
-• Complete booking repository implementation
-• Room database with caching
-• Real-time booking status updates
-• Optimized SQL queries
-• Improved state management with Compose
-• Better error logging for debugging
+- Complete booking repository implementation
+- Room database with caching
+- Real-time booking status updates
+- Optimized SQL queries
+- Improved state management with Compose
+- Better error logging for debugging
 
-═══════════════════════════════════════════════════════════
-📋 HOW TO TEST
-═══════════════════════════════════════════════════════════
+================================================================
+HOW TO TEST
+================================================================
 
 1. CREATE A SERVICE OFFERING
-   • Navigate to Post a Service
-   • Fill in service details
-   • Set pricing (PER_HOUR, PER_DAY, etc.)
-   • Define coverage areas
-   • Set availability hours
+   - Navigate to Post a Service
+   - Fill in service details
+   - Set pricing (PER_HOUR, PER_DAY, etc.)
+   - Define coverage areas
+   - Set availability hours
 
 2. BOOK A SERVICE
-   • Browse available services
-   • Tap on a service to view details
-   • Click "Book Service"
-   • Select date and time
-   • Enter duration
-   • Choose location
-   • Review summary
-   • Confirm booking
+   - Browse available services
+   - Tap on a service to view details
+   - Click "Book Service"
+   - Select date and time
+   - Enter duration
+   - Choose location
+   - Review summary
+   - Confirm booking
 
 3. TEST NEGOTIATION
-   • Enable negotiation when creating service
-   • Set min/max price range
-   • Customer proposes custom price
-   • System validates automatically
+   - Enable negotiation when creating service
+   - Set min/max price range
+   - Customer proposes custom price
+   - System validates automatically
 
 4. TEST BOOKING FEE
-   • Enable booking fee when creating service
-   • Set fee amount
-   • Choose refundable option
-   • Fee appears in customer's total
+   - Enable booking fee when creating service
+   - Set fee amount
+   - Choose refundable option
+   - Fee appears in customer's total
 
-═══════════════════════════════════════════════════════════
-⚠️ KNOWN ISSUES
-═══════════════════════════════════════════════════════════
+================================================================
+KNOWN ISSUES
+================================================================
 
-• Payment processing not implemented (coming in v1.11.0)
-• Email notifications pending integration
-• Contractor availability calendar enhancement pending
-• Push notifications for booking updates coming soon
+- Payment processing not implemented (coming in v1.12.0)
+- Email notifications pending integration
+- Contractor availability calendar enhancement pending
+- Push notifications for booking updates coming soon
 
-═══════════════════════════════════════════════════════════
-🔜 COMING IN V1.11.0
-═══════════════════════════════════════════════════════════
+================================================================
+COMING IN V1.12.0
+================================================================
 
-• Escrow payment integration
-• Professional counter-offer system
-• Booking confirmation screen
-• My Bookings management
-• Push notifications
-• Availability calendar enhancements
-• SMS notifications
+- Escrow payment integration
+- Professional counter-offer system
+- Booking confirmation screen
+- My Bookings management
+- Push notifications
+- Availability calendar enhancements
+- SMS notifications
 
-═══════════════════════════════════════════════════════════
-📞 SUPPORT
-═══════════════════════════════════════════════════════════
+================================================================
+SUPPORT
+================================================================
 
 For issues or feedback, contact:
 allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.10.0!
-═══════════════════════════════════════════════════════════
+Thank you for testing PivotaConnect v1.11.0!
+================================================================
                 """.trimIndent()
             }
         }
