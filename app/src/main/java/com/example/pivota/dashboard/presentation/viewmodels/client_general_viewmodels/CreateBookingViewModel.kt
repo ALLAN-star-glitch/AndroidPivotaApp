@@ -33,6 +33,7 @@ class CreateBookingViewModel @Inject constructor(
 
     /**
      * Create a booking from the screen inputs
+     * durationHours is Int? because backend accepts integers for hours
      */
     fun createBooking(
         serviceOffering: ServiceOffering,
@@ -110,7 +111,7 @@ class CreateBookingViewModel @Inject constructor(
 
     /**
      * Create booking using DurationType enum (convenience method)
-     * Fixed: Using simple if statements instead of destructuring
+     * durationValue is Int because backend accepts integers for all duration types
      */
     fun createBooking(
         serviceOffering: ServiceOffering,
@@ -123,7 +124,7 @@ class CreateBookingViewModel @Inject constructor(
         customerNotes: String,
         proposedPrice: Double?
     ) {
-        // Set the appropriate duration field based on type - using simple if statements
+        // Set the appropriate duration field based on type
         val durationHours: Int? = if (durationType == DurationType.HOURS) durationValue else null
         val durationDays: Int? = if (durationType == DurationType.DAYS) durationValue else null
         val durationWeeks: Int? = if (durationType == DurationType.WEEKS) durationValue else null
@@ -138,6 +139,33 @@ class CreateBookingViewModel @Inject constructor(
             durationDays = durationDays,
             durationWeeks = durationWeeks,
             durationMonths = durationMonths,
+            selectedLocation = selectedLocation,
+            customerNotes = customerNotes,
+            proposedPrice = proposedPrice
+        )
+    }
+
+    /**
+     * Convenience method for FIXED price services (no duration needed)
+     */
+    fun createFixedPriceBooking(
+        serviceOffering: ServiceOffering,
+        contractorId: String,
+        clientId: String,
+        selectedDate: Date,
+        selectedLocation: String,
+        customerNotes: String,
+        proposedPrice: Double?
+    ) {
+        createBooking(
+            serviceOffering = serviceOffering,
+            contractorId = contractorId,
+            clientId = clientId,
+            selectedDate = selectedDate,
+            durationHours = null,
+            durationDays = null,
+            durationWeeks = null,
+            durationMonths = null,
             selectedLocation = selectedLocation,
             customerNotes = customerNotes,
             proposedPrice = proposedPrice

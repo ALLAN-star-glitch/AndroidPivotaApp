@@ -25,10 +25,10 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.11.0 - Build 21 - Professional Service Booking System
-        // Added: Complete booking flow with date/time picker, negotiation, and booking fees
-        versionCode = 21
-        versionName = "1.11.0"
+        // Version 1.12.0 - Build 22 - Enhanced Booking System & UI Improvements
+        // Added: Fixed price booking, search functionality, sticky filters, UI enhancements
+        versionCode = 22
+        versionName = "1.12.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -66,209 +66,218 @@ android {
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.11.0 - PROFESSIONAL SERVICE BOOKING
+          PIVOTACONNECT v1.12.0 - ENHANCED BOOKING SYSTEM
 ================================================================
 
-NEW FEATURE: COMPLETE BOOKING SYSTEM
-
-This major release introduces a comprehensive booking system 
-that allows customers to book professional services directly 
-through the app.
+This release completes the booking system with FIXED price 
+support, adds search functionality, and improves the UI with 
+sticky filters and better navigation.
 
 ================================================================
-BOOKING FLOW
+BOOKING SYSTEM ENHANCEMENTS
 ================================================================
 
-- Professional Service Booking Screen
-  - Clean two-step booking process
-  - Date & Time selection with calendar picker
-  - Smart duration selection (hours/days/weeks/months)
-  - Location selection from service coverage areas
-  - Optional price negotiation
-  - Additional notes for special requests
+FIXED PRICE BOOKING SUPPORT
+- Added proper handling for FIXED and PER_SESSION price units
+- Fixed duration field validation for non-hourly services
+- Corrected API request format for FIXED price bookings
+- Duration fields now sent as null for FIXED price services
+- Eliminated "durationHours must not be less than 0.5" error
 
-- Review & Payment Step
-  - Complete booking summary
-  - Price breakdown with all charges
-  - Service total calculation
-  - Booking fee display
-  - Grand total calculation
-  - Booking protection information
+PER_HOUR BOOKING IMPROVEMENTS
+- Minimum duration validation (0.5 hours)
+- Support for half-hour increments
+- Proper Int type conversion for backend API
+- Real-time price calculation for hourly services
 
-- Responsive Layout
-  - Adaptive design for phones and tablets
-  - Wide layout with side-by-side form and summary
-  - Narrow layout with step-by-step stepper
-  - Smooth animations throughout
-
-================================================================
-PRICE NEGOTIATION SYSTEM
-================================================================
-
-- Customers can propose custom prices
-- Real-time validation against professional's range
-- Automatic total recalculation
-- Negotiated price reflected in all summaries
-- Clear indication when price is negotiated
-- Original price shown with strikethrough
-
-================================================================
 BOOKING FEE MANAGEMENT
-================================================================
+- Booking fees correctly applied to all booking types
+- Refundable status displayed prominently
+- Separate line item in price breakdown
+- Accurate grand total calculation
 
-- Booking fees automatically calculated
-- Displayed separately in price breakdown
-- Refundable status clearly indicated
-- Added to grand total
-- Shown in booking confirmation
-- Consistent across all screens
-
-================================================================
-UI/UX ENHANCEMENTS
-================================================================
-
-- Theme-aware date and time picker
-  - Uses Material 3 theme colors
-  - Separate date and time selection
-  - Number picker for hours/minutes
-  - Visual feedback on selection
-
-- Enhanced Form Fields
-  - Animated form sections with expand/collapse
-  - Real-time validation with error messages
-  - Clear visual indicators for required fields
-  - Smooth transitions between steps
-
-- Professional Service Card
-  - Hero card with service details
-  - Price per unit display
-  - Professional verification badge
-  - Rating and review count
-  - Years of experience
-
-- Booking Summary Panel (Tablet)
-  - Right-side preview panel
-  - Real-time price calculations
-  - Service total breakdown
-  - Booking fee display
-  - Location and date summary
+PRICE NEGOTIATION
+- Fixed negotiation flow for FIXED price services
+- Real-time validation against professional's range
+- Original price shown with strikethrough when negotiated
+- Automatic total recalculation
 
 ================================================================
-PERFORMANCE IMPROVEMENTS
+UI/UX IMPROVEMENTS
 ================================================================
 
-- Cached booking data for offline access
-- Optimized network requests
-- Reduced API calls with smart caching
-- Smooth animations with Compose
-- Fast date picker responses
+SEARCH FUNCTIONALITY
+- Added search icon to main header
+- Sticky search bar appears when scrolling
+- Voice search support (microphone icon)
+- Real-time search filtering
+- Clear search button for easy reset
+
+STICKY FILTERS
+- Category pills now stick to top when scrolling
+- Enhanced visual design with improved shadows
+- Smooth transition animations
+- Better color contrast and selection states
+- Close icon on selected filters for quick removal
+
+FILTER PILL ENHANCEMENTS
+- Rounded pill design with icons
+- Selected state shows filled color with white text
+- Hover and click animations
+- Shadow elevation on selection
+- Border stroke for unselected state
+
+HEADER IMPROVEMENTS
+- Added search icon alongside theme toggle
+- Combined notification badge with message count
+- Improved profile menu animation
+- Better responsive layout for different screen sizes
+- Smooth sticky header behavior
 
 ================================================================
-ERROR HANDLING
+SCREEN ENHANCEMENTS
 ================================================================
 
-- Graceful error messages
-- Network error recovery
-- Form validation with helpful hints
-- Conflict detection for booked slots
-- Clear guidance for fixing errors
+DISCOVER SCREEN
+- Sticky filter section with search bar
+- Improved scroll performance
+- Dynamic service grid with 4-6 columns based on screen size
+- Better loading states and error handling
+- Animated content transitions
 
-================================================================
-DEVICE SUPPORT
-================================================================
-
-- Phones (portrait and landscape)
-- Tablets (adaptive layouts)
-- Dark mode support
-- All screen sizes supported
-- Responsive typography
+PROFESSIONAL SERVICE BOOKING SCREEN
+- Fixed validation logic for FIXED price services
+- Improved error messages for duration fields
+- Better handling of null duration values
+- Enhanced form state management
+- Smooth step transitions
 
 ================================================================
 BUG FIXES
 ================================================================
 
-- Fixed date picker crash on older devices
-- Corrected currency formatting for KES
-- Fixed keyboard covering input fields
-- Resolved conflict detection logic
+CRITICAL FIXES
+- Fixed FIXED price booking error (durationHours validation)
+- Corrected duration field types (Int vs Double)
+- Fixed price calculation for non-hourly services
+- Resolved negotiation price validation issues
 - Fixed booking fee calculation errors
-- Corrected total price display
-- Fixed navigation back stack issues
-- Resolved permission validation
+
+UI FIXES
+- Fixed keyboard covering input fields
+- Resolved scroll conflicts in booking form
+- Corrected date picker display on older devices
+- Fixed theme switching animation glitches
+- Resolved navigation bar overlapping content
+
+PERFORMANCE FIXES
+- Reduced recompositions in booking flow
+- Optimized image loading in grids
+- Improved LazyColumn scrolling performance
+- Fixed memory leaks in date picker
+- Optimized network requests
 
 ================================================================
-TECHNICAL IMPROVEMENTS
+CODE IMPROVEMENTS
 ================================================================
 
-- Complete booking repository implementation
-- Room database with caching
-- Real-time booking status updates
-- Optimized SQL queries
-- Improved state management with Compose
-- Better error logging for debugging
+TYPE SAFETY
+- Changed durationHours from Double? to Int? for API compatibility
+- Added proper null handling for duration fields
+- Improved type conversions in ViewModel
+- Enhanced data class definitions
+
+STATE MANAGEMENT
+- Better handling of loading states
+- Improved error state recovery
+- Optimized UI state updates
+- Reduced unnecessary recompositions
+
+NETWORK LAYER
+- Improved request/response logging
+- Better error message parsing
+- Enhanced token refresh handling
+- Optimized retry logic
 
 ================================================================
-HOW TO TEST
+TESTING & VALIDATION
 ================================================================
 
-1. CREATE A SERVICE OFFERING
-   - Navigate to Post a Service
-   - Fill in service details
-   - Set pricing (PER_HOUR, PER_DAY, etc.)
-   - Define coverage areas
-   - Set availability hours
+BOOKING SCENARIOS TESTED
+- FIXED price booking (Tire Change & Wheel Alignment)
+- PER_HOUR booking with 0.5 hour minimum
+- PER_DAY booking with daily rates
+- Negotiated price booking
+- Booking fee scenarios
 
-2. BOOK A SERVICE
-   - Browse available services
-   - Tap on a service to view details
-   - Click "Book Service"
-   - Select date and time
-   - Enter duration
-   - Choose location
-   - Review summary
-   - Confirm booking
-
-3. TEST NEGOTIATION
-   - Enable negotiation when creating service
-   - Set min/max price range
-   - Customer proposes custom price
-   - System validates automatically
-
-4. TEST BOOKING FEE
-   - Enable booking fee when creating service
-   - Set fee amount
-   - Choose refundable option
-   - Fee appears in customer's total
+EDGE CASES
+- Empty duration fields
+- Invalid date selection
+- Network failures during booking
+- Token expiration handling
+- Concurrent booking attempts
 
 ================================================================
 KNOWN ISSUES
 ================================================================
 
-- Payment processing not implemented (coming in v1.12.0)
-- Email notifications pending integration
-- Contractor availability calendar enhancement pending
-- Push notifications for booking updates coming soon
+- Payment processing not yet implemented (v1.13.0)
+- Push notifications for booking updates pending
+- Email confirmation system in progress
+- Professional availability calendar enhancement pending
+- Booking cancellation flow coming soon
 
 ================================================================
-COMING IN V1.12.0
+COMING IN V1.13.0
 ================================================================
 
 - Escrow payment integration
 - Professional counter-offer system
-- Booking confirmation screen
-- My Bookings management
-- Push notifications
+- Booking confirmation with payment
+- My Bookings management screen
+- Push notifications for all booking events
+- SMS notifications for critical updates
 - Availability calendar enhancements
-- SMS notifications
+- Booking history and receipts
 
 ================================================================
-SUPPORT
+HOW TO TEST UPDATES
 ================================================================
 
-For issues or feedback, contact:
-allanmathenge22@gmail.com
+1. TEST FIXED PRICE BOOKING
+   - Find a FIXED price service (e.g., Tire Change)
+   - Complete booking without entering duration
+   - Verify no "durationHours" error appears
+   - Check booking is created successfully
 
-Thank you for testing PivotaConnect v1.11.0!
+2. TEST SEARCH FUNCTIONALITY
+   - Scroll down on Discover screen
+   - Sticky search bar should appear
+   - Type to filter services
+   - Use microphone for voice search
+
+3. TEST STICKY FILTERS
+   - Scroll through Discover screen
+   - Category pills should stick to top
+   - Tap filters to see selection states
+   - Clear filters with close icon
+
+4. TEST BOOKING VALIDATION
+   - Try booking with invalid duration (0 hours)
+   - Should show validation error
+   - Try booking without date selection
+   - Should prompt for required fields
+
+================================================================
+SUPPORT & FEEDBACK
+================================================================
+
+For issues, bug reports, or feature requests:
+Email: allanmathenge22@gmail.com
+
+Thank you for testing PivotaConnect v1.12.0!
+We appreciate your feedback and continued support.
+
 ================================================================
                 """.trimIndent()
             }

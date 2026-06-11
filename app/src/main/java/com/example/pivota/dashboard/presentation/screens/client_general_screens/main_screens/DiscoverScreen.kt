@@ -1,6 +1,7 @@
 package com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +14,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
@@ -20,8 +22,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,6 +41,9 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.dashboard.domain.model.listings_models.general.DiscoveryCategory
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.BannerType
@@ -49,10 +61,24 @@ import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewm
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardSharedViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HeaderState
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.getIconForService
+import com.example.pivota.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+// Filter categories using theme colors
+@Composable
+private fun getFilterCategories(colorScheme: ColorScheme): List<FilterCategory> {
+    return listOf(
+        FilterCategory("Jobs", Icons.Rounded.Work, colorScheme.primary),
+        FilterCategory("Properties", Icons.Rounded.Home, colorScheme.secondary),
+        FilterCategory("Professionals", Icons.Rounded.Build, colorScheme.tertiary),
+        FilterCategory("Social Support", Icons.Rounded.VolunteerActivism, PurpleAccent),
+        FilterCategory("Verified", Icons.Rounded.Verified, InfoBlue)
+    )
+}
 
 @SuppressLint("FrequentlyChangingValue")
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DiscoverScreen(
     onNavigateToHouseListings: () -> Unit = {},
@@ -64,6 +90,7 @@ fun DiscoverScreen(
     onNavigateToAllSupport: () -> Unit = {},
     onServiceClick: (String, String, String) -> Unit = { _, _, _ -> },
     onSubcategoriesClick: (String, String, String) -> Unit = { _, _, _ -> },
+    onSearchClick: () -> Unit = {},
     isGuestMode: Boolean = false,
     sharedViewModel: DashboardSharedViewModel = hiltViewModel(),
     commonServicesViewModel: CommonServicesViewModel = hiltViewModel()
@@ -71,6 +98,9 @@ fun DiscoverScreen(
     val colorScheme = MaterialTheme.colorScheme
     val headerState by sharedViewModel.headerState.collectAsState()
     val headerUser = (headerState as? HeaderState.Success)?.headerUser
+    val scope = rememberCoroutineScope()
+
+    var stickySearchQuery by remember { mutableStateOf("") }
 
     val commonServicesState by commonServicesViewModel.uiState.collectAsState()
 
@@ -79,7 +109,8 @@ fun DiscoverScreen(
     val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
     val isTablet = isExpanded || isMedium
 
-    // Adaptive grid columns based on screen size
+    val filterCategories = getFilterCategories(colorScheme)
+
     val jobGridColumns = if (isExpanded || isMedium) 2 else 1
     val housingGridColumns = if (isExpanded || isMedium) 2 else 1
     val professionalGridColumns = if (isExpanded || isMedium) 2 else 1
@@ -92,18 +123,31 @@ fun DiscoverScreen(
     }
 
     val listState = rememberLazyListState()
-    var searchQuery by remember { mutableStateOf("") }
-    var isRecording by remember { mutableStateOf(false) }
-    var selectedFilters by remember { mutableStateOf(setOf<String>()) }
+    var selectedFilter by remember { mutableStateOf<String?>(null) }
 
-    val isSearchBarPinned by remember {
+    val scrollOffset by remember {
         derivedStateOf {
-            listState.firstVisibleItemIndex > 3 ||
-                    (listState.firstVisibleItemIndex == 3 && listState.firstVisibleItemScrollOffset > 0)
+            if (listState.firstVisibleItemIndex == 0) {
+                listState.firstVisibleItemScrollOffset.toFloat()
+            } else {
+                Float.MAX_VALUE
+            }
         }
     }
 
-    // Memoize sample data to prevent recomposition
+    // Track if the filter section should be sticky
+    val isFilterSectionVisible by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex >= 1
+        }
+    }
+
+    LaunchedEffect(selectedFilter) {
+        scope.launch {
+            listState.animateScrollToItem(0)
+        }
+    }
+
     val jobItemsMemo = remember { jobItems }
     val housingItemsMemo = remember { housingItems }
     val professionalItemsMemo = remember { professionalItems }
@@ -118,19 +162,19 @@ fun DiscoverScreen(
         commonServicesViewModel.loadCommonServices(isTablet)
     }
 
-    LaunchedEffect(selectedFilters) {
-        when {
-            selectedFilters.contains("Properties") -> {
-                onNavigateToHouseListings()
-                selectedFilters = selectedFilters - "Properties"
-            }
-            selectedFilters.contains("Jobs") -> {
+    LaunchedEffect(selectedFilter) {
+        when (selectedFilter) {
+            "Jobs" -> {
                 onNavigateToJobListings()
-                selectedFilters = selectedFilters - "Jobs"
+                selectedFilter = null
             }
-            selectedFilters.contains("Professionals") -> {
+            "Properties" -> {
+                onNavigateToHouseListings()
+                selectedFilter = null
+            }
+            "Professionals" -> {
                 onNavigateToAllProviders()
-                selectedFilters = selectedFilters - "Professionals"
+                selectedFilter = null
             }
         }
     }
@@ -150,7 +194,6 @@ fun DiscoverScreen(
                 contentPadding = PaddingValues(bottom = 100.dp),
                 horizontalAlignment = Alignment.Start
             ) {
-                // Header
                 item(key = "header") {
                     ReusableHeader(
                         colorScheme = colorScheme,
@@ -159,6 +202,9 @@ fun DiscoverScreen(
                         isGuestMode = isGuestMode,
                         isSticky = false,
                         sharedViewModel = sharedViewModel,
+                        showSearchIcon = true,
+                        onSearchClick = onSearchClick,
+                        scrollOffset = scrollOffset,
                         modifier = Modifier
                             .fillMaxWidth()
                             .statusBarsPadding()
@@ -166,7 +212,6 @@ fun DiscoverScreen(
                     )
                 }
 
-                // Marketing Carousel Banner
                 item(key = "marketing_carousel") {
                     val displayName = remember(headerUser, isGuestMode) {
                         when {
@@ -198,31 +243,23 @@ fun DiscoverScreen(
                     )
                 }
 
-                // Spacer before search bar
-                item(key = "spacer_1") {
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                // Search Bar + Pills
-                item(key = "search_pills") {
-                    SearchAndPillsSection(
-                        searchQuery = searchQuery,
-                        onSearchQueryChange = { searchQuery = it },
-                        isRecording = isRecording,
-                        onAudioClick = { isRecording = !isRecording },
-                        selectedFilters = selectedFilters,
+                // Sticky filter section
+                stickyHeader(key = "filter_section") {
+                    StickyFilterSection(
+                        selectedFilter = selectedFilter,
                         onFilterSelected = { filter ->
-                            selectedFilters = if (selectedFilters.contains(filter)) {
-                                selectedFilters - filter
-                            } else {
-                                selectedFilters + filter
-                            }
+                            selectedFilter = if (selectedFilter == filter) null else filter
                         },
-                        primaryColor = colorScheme.primary,
-                        secondaryColor = colorScheme.secondary,
                         colorScheme = colorScheme,
+                        filterCategories = filterCategories,
+                        horizontalPadding = horizontalPadding,
                         isTablet = isTablet,
-                        horizontalPadding = horizontalPadding
+                        searchQuery = stickySearchQuery,
+                        onSearchQueryChanged = { query ->
+                            stickySearchQuery = query
+                            // Handle search logic here - filter results, call API, etc.
+                        },
+                        isSticky = isFilterSectionVisible
                     )
                 }
 
@@ -286,7 +323,6 @@ fun DiscoverScreen(
                     }
                 }
 
-                // Jobs Section
                 item(key = "jobs_header") {
                     ModernSectionHeader(
                         title = "Jobs Near You",
@@ -305,7 +341,6 @@ fun DiscoverScreen(
                     )
                 }
 
-                // Housing Section
                 item(key = "housing_header") {
                     ModernSectionHeader(
                         title = "Housing Opportunities",
@@ -324,7 +359,6 @@ fun DiscoverScreen(
                     )
                 }
 
-                // Professionals Section
                 item(key = "professionals_header") {
                     ModernSectionHeader(
                         title = "Trusted Professionals",
@@ -343,7 +377,6 @@ fun DiscoverScreen(
                     )
                 }
 
-                // Social Support Section
                 item(key = "support_header") {
                     ModernSectionHeader(
                         title = "Social Support & Services",
@@ -369,65 +402,238 @@ fun DiscoverScreen(
                     )
                 }
             }
+        }
+    }
+}
 
-            // Sticky Search Bar
-            if (isSearchBarPinned) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.TopCenter)
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
-                            ambientColor = Color.Black.copy(alpha = 0.08f)
-                        )
-                        .zIndex(10f),
-                    shape = RoundedCornerShape(
-                        topStart = 0.dp,
-                        topEnd = 0.dp,
-                        bottomStart = 20.dp,
-                        bottomEnd = 20.dp
+@Composable
+fun StickyFilterSection(
+    selectedFilter: String?,
+    onFilterSelected: (String) -> Unit,
+    colorScheme: ColorScheme,
+    filterCategories: List<FilterCategory>,
+    horizontalPadding: Dp,
+    isTablet: Boolean,
+    isSticky: Boolean,
+    onSearchQueryChanged: (String) -> Unit = {},
+    searchQuery: String = ""
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .zIndex(10f),
+        color = colorScheme.background,
+        shadowElevation = if (isSticky) 4.dp else 0.dp,
+        tonalElevation = if (isSticky) 1.dp else 0.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = horizontalPadding)
+                .padding(
+                    top = if (isSticky) 48.dp else 0.dp,
+                    bottom = if (isSticky) 16.dp else 12.dp
+                )
+        ) {
+            // Show search bar only when sticky
+            if (isSticky) {
+                StickySearchBar(
+                    searchQuery = searchQuery,
+                    onSearchQueryChanged = onSearchQueryChanged,
+                    colorScheme = colorScheme
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            // Only show the text when NOT sticky
+            if (!isSticky) {
+                Text(
+                    text = "Explore by Category",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        color = colorScheme.onSurface
                     ),
-                    color = colorScheme.surface,
-                    tonalElevation = 4.dp
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .statusBarsPadding()
-                            .padding(horizontal = horizontalPadding, vertical = 12.dp)
-                    ) {
-                        SearchBarWithAudio(
-                            query = searchQuery,
-                            onQueryChange = { searchQuery = it },
-                            onAudioClick = { isRecording = !isRecording },
-                            isRecording = isRecording,
-                            primaryColor = colorScheme.primary,
-                            colorScheme = colorScheme,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    start = 0.dp,
+                    end = 0.dp
+                )
+            ) {
+                items(filterCategories.size) { index ->
+                    val category = filterCategories[index]
+                    val isSelected = selectedFilter == category.name
 
-                        FilterPillsRow(
-                            selectedFilters = selectedFilters,
-                            onFilterSelected = { filter ->
-                                selectedFilters = if (selectedFilters.contains(filter)) {
-                                    selectedFilters - filter
-                                } else {
-                                    selectedFilters + filter
-                                }
-                            },
-                            primaryColor = colorScheme.primary,
-                            colorScheme = colorScheme,
-                            isTablet = isTablet
-                        )
-                    }
+                    FilterPillEnhanced(
+                        category = category,
+                        isSelected = isSelected,
+                        onClick = { onFilterSelected(category.name) },
+                        colorScheme = colorScheme
+                    )
                 }
             }
         }
     }
 }
+
+@Composable
+fun StickySearchBar(
+    searchQuery: String,
+    onSearchQueryChanged: (String) -> Unit,
+    colorScheme: ColorScheme
+) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(12.dp),
+                ambientColor = Color.Black.copy(alpha = 0.05f)
+            ),
+        shape = RoundedCornerShape(12.dp),
+        color = colorScheme.surfaceContainerHighest,
+        tonalElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                Icons.Outlined.Search,
+                contentDescription = "Search",
+                tint = colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+
+            BasicTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChanged,
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester),
+                decorationBox = { innerTextField ->
+                    Box {
+                        if (searchQuery.isEmpty()) {
+                            Text(
+                                "Search services, jobs, housing...",
+                                color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                fontSize = 14.sp
+                            )
+                        }
+                        innerTextField()
+                    }
+                },
+                textStyle = LocalTextStyle.current.copy(
+                    fontSize = 14.sp,
+                    color = colorScheme.onSurface
+                ),
+                singleLine = true
+            )
+
+            if (searchQuery.isNotEmpty()) {
+                IconButton(
+                    onClick = { onSearchQueryChanged("") },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.Close,
+                        contentDescription = "Clear",
+                        tint = colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            } else {
+                IconButton(
+                    onClick = {
+                        // For voice search - you can implement this later
+                    },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.Mic,
+                        contentDescription = "Voice search",
+                        tint = colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    // Auto-focus when the search bar becomes visible (optional)
+    LaunchedEffect(Unit) {
+        delay(100) // Small delay to ensure the UI is ready
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+}
+
+@Composable
+fun FilterPillEnhanced(
+    category: FilterCategory,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    colorScheme: ColorScheme
+) {
+    Surface(
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .animateContentSize(),
+        shape = RoundedCornerShape(40.dp),
+        color = if (isSelected) {
+            category.color
+        } else {
+            colorScheme.surfaceContainerLow  // Very light background from theme
+        },
+        shadowElevation = if (isSelected) 4.dp else 1.dp,
+        border = if (isSelected) null else BorderStroke(1.dp, category.color.copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = category.icon,
+                contentDescription = category.name,
+                tint = if (isSelected) Color.White else category.color,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = category.name,
+                fontSize = 14.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) Color.White else colorScheme.onSurface
+            )
+            if (isSelected) {
+                Icon(
+                    Icons.Rounded.Close,
+                    contentDescription = "Clear",
+                    tint = Color.White.copy(alpha = 0.9f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+data class FilterCategory(
+    val name: String,
+    val icon: ImageVector,
+    val color: Color
+)
 
 @Composable
 fun JobsContent(
@@ -590,7 +796,7 @@ fun DynamicServiceGrid(
                 rowItems.forEachIndexed { itemIndex, service ->
                     ServiceCardCircle(
                         service = service,
-                        icon = getIconForService(service.name, service.vertical), // ✅ Called directly in composable context
+                        icon = getIconForService(service.name, service.vertical),
                         colorScheme = colorScheme,
                         onClick = {
                             if (service.hasSubcategories) {
@@ -710,7 +916,131 @@ fun ServiceCardCircle(
     }
 }
 
-// Data classes for items
+@Composable
+fun ModernSectionHeader(
+    title: String,
+    actionText: String,
+    onActionClick: () -> Unit = {},
+    horizontalPadding: Dp = 16.dp,
+    colorScheme: ColorScheme
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = horizontalPadding, end = horizontalPadding, top = 24.dp, bottom = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.onSurface,
+                fontSize = 18.sp,
+                letterSpacing = 0.5.sp
+            )
+        )
+        Text(
+            text = actionText,
+            color = colorScheme.tertiary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.clickable { onActionClick() }
+        )
+    }
+}
+
+@Composable
+fun ModernSupportCard(
+    name: String,
+    service: String,
+    location: String,
+    isUrgent: Boolean,
+    colorScheme: ColorScheme,
+    horizontalPadding: Dp = 16.dp
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = horizontalPadding, vertical = 6.dp)
+            .clickable { /* View details */ },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 2.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        color = if (isUrgent) colorScheme.error.copy(alpha = 0.1f) else colorScheme.primary.copy(alpha = 0.08f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isUrgent) Icons.Outlined.Emergency else Icons.Outlined.VolunteerActivism,
+                    contentDescription = null,
+                    tint = if (isUrgent) colorScheme.error else colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = name,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    text = service,
+                    fontSize = 13.sp,
+                    color = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.LocationOn,
+                        contentDescription = null,
+                        tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Text(
+                        text = location,
+                        fontSize = 11.sp,
+                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(start = 2.dp)
+                    )
+                }
+            }
+
+            Text(
+                text = "View →",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = colorScheme.tertiary
+            )
+        }
+    }
+}
+
+// Data classes
 data class JobItem(
     val imageUrl: Any?,
     val jobTitle: String,
@@ -1052,129 +1382,6 @@ fun SearchBarWithAudio(
     }
 }
 
-@Composable
-fun ModernSectionHeader(
-    title: String,
-    actionText: String,
-    onActionClick: () -> Unit = {},
-    horizontalPadding: Dp = 16.dp,
-    colorScheme: ColorScheme
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = horizontalPadding, end = horizontalPadding, top = 24.dp, bottom = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.SemiBold,
-                color = colorScheme.onSurface,
-                fontSize = 18.sp,
-                letterSpacing = 0.5.sp
-            )
-        )
-        Text(
-            text = actionText,
-            color = colorScheme.tertiary,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.clickable { onActionClick() }
-        )
-    }
-}
 
-@Composable
-fun ModernSupportCard(
-    name: String,
-    service: String,
-    location: String,
-    isUrgent: Boolean,
-    colorScheme: ColorScheme,
-    horizontalPadding: Dp = 16.dp
-) {
-    val primaryColor = colorScheme.primary
-    val tertiaryColor = colorScheme.tertiary
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = horizontalPadding, vertical = 6.dp)
-            .clickable { /* View details */ },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 2.dp
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = if (isUrgent) colorScheme.error.copy(alpha = 0.1f) else primaryColor.copy(alpha = 0.08f),
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isUrgent) Icons.Outlined.Emergency else Icons.Outlined.VolunteerActivism,
-                    contentDescription = null,
-                    tint = if (isUrgent) colorScheme.error else primaryColor,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
 
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = name,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp,
-                    color = colorScheme.onSurface
-                )
-                Text(
-                    text = service,
-                    fontSize = 13.sp,
-                    color = colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Icon(
-                        Icons.Outlined.LocationOn,
-                        contentDescription = null,
-                        tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(12.dp)
-                    )
-                    Text(
-                        text = location,
-                        fontSize = 11.sp,
-                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(start = 2.dp)
-                    )
-                }
-            }
-
-            Text(
-                text = "View →",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = tertiaryColor
-            )
-        }
-    }
-}

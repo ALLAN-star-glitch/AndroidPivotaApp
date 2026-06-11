@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -91,6 +92,8 @@ fun ReusableHeader(
     pageSubtitle: String? = null,
     scrollOffset: Float = 0f,
     sharedViewModel: DashboardSharedViewModel,
+    showSearchIcon: Boolean = false,
+    onSearchClick: () -> Unit = {},
     messageCount: Int = 0,
     notificationCount: Int = 0,
     onLogoutComplete: () -> Unit = {},
@@ -394,19 +397,28 @@ fun ReusableHeader(
                     }
                 }
 
-                // Header Action Icons - Only 2 icons: Theme + Notifications/Messages combined
+                // Header Action Icons - Now 3 icons: Search, Theme, Notifications
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Icon 1: Theme Toggle
+                    // Icon 1: Search (conditionally shown)
+                    if (showSearchIcon) {
+                        HeaderActionIcon(
+                            icon = Icons.Rounded.Search,
+                            colorScheme = colorScheme,
+                            onClick = onSearchClick
+                        )
+                    }
+
+                    // Icon 2: Theme Toggle
                     HeaderActionIcon(
                         icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
                         colorScheme = colorScheme,
                         onClick = { themeViewModel.toggleTheme() }
                     )
 
-                    // Icon 2: Combined Notifications & Messages with Badge
+                    // Icon 3: Combined Notifications & Messages with Badge
                     Box {
                         HeaderActionIcon(
                             icon = Icons.Outlined.NotificationsActive,
