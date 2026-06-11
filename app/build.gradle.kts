@@ -25,10 +25,10 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.14.0 - Build 24 - Adaptive Grid Layout & Search Improvements
-        // Added: Adaptive grid layout for tablets, removed autofocus from search
-        versionCode = 24
-        versionName = "1.14.0"
+        // Version 1.15.0 - Build 25 - ClassCastException Fix
+        // Fixed: Integer cannot be cast to Double error in booking flow
+        versionCode = 25
+        versionName = "1.15.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -66,227 +66,104 @@ android {
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.14.0 - ADAPTIVE GRID LAYOUT
+          PIVOTACONNECT v1.15.0 - BOOKING CRASH FIX
 ================================================================
 
-This release introduces adaptive grid layouts for tablets and 
-large screens, plus search bar improvements for better UX.
+This release fixes a critical crash that occurred when customers
+attempted to book services.
 
 ================================================================
-ADAPTIVE GRID LAYOUTS
+CRITICAL BUG FIX
 ================================================================
 
-SERVICE OFFERINGS SCREEN
-- Phones: Single column list (optimal for small screens)
-- Medium Tablets: 2-column grid (perfect for iPad Mini)
-- Large Tablets/Desktop: 3-column grid (maximizes space)
-- Automatic detection using window size classes
-- Smooth transitions between layouts
-
-BENEFITS
-- See more offerings at once on tablets
-- Better use of screen real estate
-- Reduced scrolling on large displays
-- Consistent card sizes across all devices
-- Professional staggered grid presentation
+CLASS CAST EXCEPTION FIX
+- Fixed "java.lang.Integer cannot be cast to java.lang.Double" error
+- Proper type handling for duration values in booking creation
+- Removed unsafe double casting that caused app crashes
+- Ensured all duration values are sent as Int (not Double)
+- Booking flow now stable for all price unit types
+  (PER_HOUR, PER_DAY, PER_WEEK, PER_MONTH, FIXED, PER_SESSION)
 
 ================================================================
-SEARCH BAR IMPROVEMENTS
+FIX DETAILS
 ================================================================
 
-REMOVED AUTOFOCUS BEHAVIOR
-- Search bar no longer auto-focuses on scroll
-- Keyboard doesn't automatically appear
-- Less intrusive user experience
-- Users control when to search
-- Cleaner scroll behavior
+PROBLEM
+- The app crashed when clicking confirm on the booking screen
+- Error: Integer cannot be cast to Double at line 379
 
-ENHANCED SEARCH INTERACTION
-- Tap to focus and type
-- Clear button hides keyboard
-- Voice search still available
-- Real-time filtering
-- Debounced search for performance
+ROOT CAUSE
+- Unsafe type casting from Int to Double and back to Int
+- Incorrect handling of duration values in onConfirm lambda
 
-================================================================
-VISUAL ENHANCEMENTS
-================================================================
-
-GRID CARD DESIGN
-- Cards maintain consistent sizing
-- Proper spacing between grid items (12dp)
-- Responsive padding based on screen size
-- Smooth animations when loading
-- Professional card elevation
-
-SKELETON LOADING
-- Adaptive skeleton based on grid columns
-- 2 rows of skeletons for tablets
-- 5 skeletons for phones
-- Prominent shimmer effect
-- Smooth loading transitions
+SOLUTION
+- Removed unnecessary double casting
+- Proper Int type handling for all duration fields
+- Clean conditional logic for duration values
 
 ================================================================
-PERFORMANCE OPTIMIZATIONS
+AFFECTED SCREENS
 ================================================================
 
-RENDERING IMPROVEMENTS
-- LazyVerticalGrid for efficient recycling
-- Proper key handling for items
-- Optimized recompositions
-- Reduced overdraw on tablets
-- Faster scrolling on large lists
-
-MEMORY MANAGEMENT
-- Efficient grid item recycling
-- Proper state management
-- Cached item keys
-- Smooth infinite scroll
-- Optimized filter operations
-
-================================================================
-SCREEN SIZE ADAPTATION
-================================================================
-
-WINDOW SIZE CLASSES
-- COMPACT: Phones (1 column)
-- MEDIUM: Small tablets (2 columns)
-- EXPANDED: Large tablets/Desktop (3 columns)
-- Automatic detection with adaptive info
-- No manual configuration needed
-
-RESPONSIVE PADDING
-- Horizontal padding scales with screen size
-- 16dp for phones
-- 20dp for medium tablets
-- 24dp for large tablets
-- Consistent visual spacing
-
-================================================================
-CODE IMPROVEMENTS
-================================================================
-
-ARCHITECTURE
-- Extracted grid column logic
-- Reusable skeleton components
-- Clean state management
-- Proper error handling
-- Efficient filter debouncing
-
-TYPE SAFETY
-- Strong typing for window classes
-- Null-safe grid calculations
-- Proper state propagation
-- Safe viewModel usage
-
-================================================================
-BUG FIXES
-================================================================
-
-- Fixed search bar autofocus on scroll
-- Corrected grid alignment on tablets
-- Fixed card width issues on large screens
-- Resolved keyboard showing unexpectedly
-- Fixed scroll position reset on filter
-- Corrected skeleton loading for grids
+ProfessionalServiceBookingScreen.kt
+- Updated onConfirm lambda to use proper Int types
+- Removed unsafe casting: (as Double? as Int?)
+- Clean conditional logic for duration fields
 
 ================================================================
 TESTING SCENARIOS
 ================================================================
 
-1. TEST TABLET LAYOUT
-   - Run on medium tablet (iPad Mini size)
-   - Verify 2-column grid appears
-   - Check card sizes and spacing
-   - Scroll to test performance
-   - Rotate device to test responsiveness
+1. TEST PER_HOUR BOOKING
+   - Select a service with PER_HOUR pricing
+   - Enter duration (e.g., 2 hours)
+   - Click Confirm Booking
+   - Verify no crash occurs
 
-2. TEST LARGE SCREEN
-   - Run on large tablet or desktop
-   - Verify 3-column grid appears
-   - Check content density
-   - Test landscape orientation
-   - Verify no layout breaks
+2. TEST FIXED PRICE BOOKING
+   - Select a service with FIXED pricing
+   - No duration field should appear
+   - Click Confirm Booking
+   - Verify no crash occurs
 
-3. TEST SEARCH BEHAVIOR
-   - Scroll to sticky search bar
-   - Verify no auto-focus occurs
-   - Tap search to type
-   - Clear search hides keyboard
-   - Test voice search button
+3. TEST PER_DAY BOOKING
+   - Select a service with PER_DAY pricing
+   - Enter duration (e.g., 3 days)
+   - Click Confirm Booking
+   - Verify no crash occurs
 
-4. TEST FILTERING
-   - Open filter bottom sheet
-   - Apply price range filter
-   - Sort by different options
-   - Verify grid updates correctly
-   - Clear filters to reset
-
-================================================================
-DEVICE SUPPORT
-================================================================
-
-SUPPORTED SCREEN SIZES
-- Phones (5-7 inches): 1 column
-- Small tablets (7-9 inches): 2 columns
-- Large tablets (10-13 inches): 3 columns
-- Desktop/Chrome OS: 3 columns
-- Foldables: Adaptive based on state
-
-ORIENTATION SUPPORT
-- Portrait and landscape modes
-- Dynamic column adjustment
-- Preserves scroll position
-- Smooth transitions
-- No layout shifts
+4. TEST NEGOTIATED PRICE BOOKING
+   - Select a negotiable service
+   - Propose a different price
+   - Click Confirm Booking
+   - Verify no crash occurs
 
 ================================================================
 KNOWN ISSUES
 ================================================================
 
-- Payment processing not implemented (v1.15.0)
+- Payment processing not implemented (v1.16.0)
 - Push notifications pending integration
-- Booking cancellation flow in progress
-- Professional calendar view coming soon
-- In-app messaging system planned
+- Booking cancellation flow enhancements in progress
 
 ================================================================
-COMING IN V1.15.0
+COMING IN V1.16.0
 ================================================================
 
 - Escrow payment integration
 - Professional counter-offer system
 - My Bookings management screen
-- Push notifications for all events
-- SMS notifications for updates
-- Booking history and receipts
-- Professional availability calendar
-- In-app chat system
+- Push notifications for booking updates
 
 ================================================================
 HOW TO TEST THIS RELEASE
 ================================================================
 
-1. TABLET TESTING
-   - Install on Android tablet
-   - Navigate to Service Offerings
-   - Verify grid layout (2 columns on medium, 3 on large)
-   - Scroll and load more items
-   - Test filter and sort
-
-2. PHONE TESTING
-   - Install on phone
-   - Verify single column list
-   - Search bar behavior
-   - Filter functionality
-   - Smooth scrolling
-
-3. SEARCH TESTING
-   - Scroll down to sticky search
-   - Verify no keyboard popup
-   - Tap to search and type
-   - Clear button functionality
-   - Voice search button
+1. Clean install the app
+2. Navigate to any service offering
+3. Fill in booking details
+4. Click Confirm Booking
+5. Verify booking is created successfully without crash
 
 ================================================================
 SUPPORT & FEEDBACK
@@ -295,7 +172,7 @@ SUPPORT & FEEDBACK
 For issues, bug reports, or feature requests:
 Email: allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.14.0!
+Thank you for testing PivotaConnect v1.15.0!
 Your feedback helps us create a better experience.
 
 ================================================================

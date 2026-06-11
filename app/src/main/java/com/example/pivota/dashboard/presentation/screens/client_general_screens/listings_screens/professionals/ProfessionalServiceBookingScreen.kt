@@ -370,17 +370,28 @@ fun ProfessionalServiceBookingScreen(
                                 onBack = { currentStep = BookingStep.DETAILS },
                                 onConfirm = {
                                     selectedDate?.let { date ->
+                                        val priceUnit = serviceOffering.priceUnit
+                                        val isFixedOrSession = priceUnit == "FIXED" || priceUnit == "PER_SESSION"
+
                                         viewModel.createBooking(
                                             serviceOffering = serviceOffering,
                                             contractorId = contractorId,
                                             clientId = clientId,
                                             selectedDate = date,
-                                            // For HOURS: keep as Double (supports 0.5, 1.5, etc.)
-                                            durationHours = (if (serviceOffering.priceUnit == "PER_HOUR") currentDurationValue else null) as Double? as Int?,
-                                            // For DAYS/WEEKS/MONTHS: convert to Int (whole numbers only)
-                                            durationDays = if (serviceOffering.priceUnit == "PER_DAY") currentDurationValue.toInt() else null,
-                                            durationWeeks = if (serviceOffering.priceUnit == "PER_WEEK") currentDurationValue.toInt() else null,
-                                            durationMonths = if (serviceOffering.priceUnit == "PER_MONTH") currentDurationValue.toInt() else null,
+                                            // For HOURS: convert to Int (API expects Int)
+                                            durationHours = if (!isFixedOrSession && priceUnit == "PER_HOUR" && currentDurationValue > 0) {
+                                                currentDurationValue  // This is already Int from toIntOrNull()
+                                            } else null,
+                                            // For DAYS/WEEKS/MONTHS: already Int
+                                            durationDays = if (!isFixedOrSession && priceUnit == "PER_DAY" && currentDurationValue > 0) {
+                                                currentDurationValue
+                                            } else null,
+                                            durationWeeks = if (!isFixedOrSession && priceUnit == "PER_WEEK" && currentDurationValue > 0) {
+                                                currentDurationValue
+                                            } else null,
+                                            durationMonths = if (!isFixedOrSession && priceUnit == "PER_MONTH" && currentDurationValue > 0) {
+                                                currentDurationValue
+                                            } else null,
                                             selectedLocation = selectedLocation,
                                             customerNotes = customerNotes,
                                             proposedPrice = proposedPrice.toDoubleOrNull()
