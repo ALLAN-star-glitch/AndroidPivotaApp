@@ -22,8 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -488,7 +486,7 @@ fun StickySearchBar(
     onSearchQueryChanged: (String) -> Unit,
     colorScheme: ColorScheme
 ) {
-    val focusRequester = remember { FocusRequester() }
+    // Removed FocusRequester and keyboardController - no more autofocus
     val keyboardController = LocalSoftwareKeyboardController.current
 
     Surface(
@@ -520,9 +518,7 @@ fun StickySearchBar(
             BasicTextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChanged,
-                modifier = Modifier
-                    .weight(1f)
-                    .focusRequester(focusRequester),
+                modifier = Modifier.weight(1f),  // Removed .focusRequester(focusRequester)
                 decorationBox = { innerTextField ->
                     Box {
                         if (searchQuery.isEmpty()) {
@@ -544,7 +540,10 @@ fun StickySearchBar(
 
             if (searchQuery.isNotEmpty()) {
                 IconButton(
-                    onClick = { onSearchQueryChanged("") },
+                    onClick = {
+                        onSearchQueryChanged("")
+                        keyboardController?.hide()
+                    },
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
@@ -572,12 +571,7 @@ fun StickySearchBar(
         }
     }
 
-    // Auto-focus when the search bar becomes visible (optional)
-    LaunchedEffect(Unit) {
-        delay(100) // Small delay to ensure the UI is ready
-        focusRequester.requestFocus()
-        keyboardController?.show()
-    }
+    // REMOVED: Auto-focus LaunchedEffect block
 }
 
 @Composable
@@ -595,7 +589,7 @@ fun FilterPillEnhanced(
         color = if (isSelected) {
             category.color
         } else {
-            colorScheme.surfaceContainerLow  // Very light background from theme
+            colorScheme.surfaceContainerLow
         },
         shadowElevation = if (isSelected) 4.dp else 1.dp,
         border = if (isSelected) null else BorderStroke(1.dp, category.color.copy(alpha = 0.3f))
@@ -1381,7 +1375,3 @@ fun SearchBarWithAudio(
         }
     }
 }
-
-
-
-

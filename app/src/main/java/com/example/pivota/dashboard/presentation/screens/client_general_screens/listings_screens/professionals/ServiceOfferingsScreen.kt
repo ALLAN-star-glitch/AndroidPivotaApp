@@ -8,8 +8,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -18,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,11 +41,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.window.core.layout.WindowSizeClass
+import androidx.window.core.layout.WindowWidthSizeClass
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ServiceOfferingCard
 import com.example.pivota.dashboard.presentation.state.ServiceOfferingsUiState
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.ServiceOfferingsViewModel
 import kotlinx.coroutines.delay
-import kotlin.math.roundToInt
 
 // Filter options for service offerings
 enum class ServiceOfferingFilter {
@@ -71,7 +76,7 @@ data class ServiceFilterState(
     val minRating: Int = 0
 )
 
-// Custom modifier for shimmer effect - MORE VISIBLE VERSION
+// Custom modifier for shimmer effect
 fun Modifier.shimmerEffect(): Modifier = composed {
     var size by remember { mutableStateOf(0f) }
     val density = LocalDensity.current
@@ -86,12 +91,11 @@ fun Modifier.shimmerEffect(): Modifier = composed {
         label = "shimmer_animation"
     )
 
-    // More visible shimmer with stronger contrast
     val brush = Brush.linearGradient(
         colors = listOf(
             Color.Transparent,
-            Color.White.copy(alpha = 0.7f),  // Increased from 0.3 to 0.7
-            Color.White.copy(alpha = 0.3f),  // Added middle layer for smoother transition
+            Color.White.copy(alpha = 0.7f),
+            Color.White.copy(alpha = 0.3f),
             Color.Transparent
         ),
         start = Offset(animationValue.value - size, 0f),
@@ -105,7 +109,6 @@ fun Modifier.shimmerEffect(): Modifier = composed {
         .background(brush)
 }
 
-// Alternative: Even more prominent shimmer with gradient colors
 fun Modifier.prominentShimmerEffect(): Modifier = composed {
     var size by remember { mutableStateOf(0f) }
     val transition = rememberInfiniteTransition(label = "shimmer")
@@ -122,8 +125,8 @@ fun Modifier.prominentShimmerEffect(): Modifier = composed {
     val brush = Brush.linearGradient(
         colors = listOf(
             Color.Transparent,
-            Color(0xFFE0E0E0).copy(alpha = 0.8f),  // Light gray instead of white
-            Color(0xFFF5F5F5).copy(alpha = 0.5f),   // Even lighter gray
+            Color(0xFFE0E0E0).copy(alpha = 0.8f),
+            Color(0xFFF5F5F5).copy(alpha = 0.5f),
             Color.Transparent
         ),
         start = Offset(animationValue.value - size, 0f),
@@ -147,7 +150,22 @@ fun ServiceOfferingsScreen(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val offeringsState by viewModel.offeringsState.collectAsStateWithLifecycle()
-    val listState = rememberLazyListState()
+
+    // Get window size for adaptive layout
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isExpanded = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val isTablet = isExpanded || isMedium
+
+    // Determine grid columns based on screen size
+    // Phone: 1 column, Tablet: 2 columns, Large Tablet/Desktop: 3 columns
+    val gridColumns = when {
+        isExpanded -> 3  // Large tablets / Desktop
+        isMedium -> 2    // Medium tablets (2 per row)
+        else -> 1        // Phones
+    }
+
+    val listState = rememberLazyGridState()
 
     // Search and filter state
     var searchQuery by remember { mutableStateOf("") }
@@ -186,13 +204,12 @@ fun ServiceOfferingsScreen(
         activeFilterCount = count
     }
 
-    // SAFE: Only calculate filtered offerings when state is Success
+    // Filter and sort offerings
     val filteredOfferings = remember(offeringsState, debouncedQuery.value, filterState) {
         if (offeringsState is ServiceOfferingsUiState.Success) {
             val offerings = (offeringsState as ServiceOfferingsUiState.Success).offerings
             var filtered = offerings
 
-            // Search filter
             if (debouncedQuery.value.isNotEmpty()) {
                 filtered = filtered.filter {
                     it.title.lowercase().contains(debouncedQuery.value) ||
@@ -201,25 +218,19 @@ fun ServiceOfferingsScreen(
                 }
             }
 
-            // Price range filter
             if (filterState.minPrice != null) {
                 filtered = filtered.filter { it.basePrice >= filterState.minPrice!! }
             }
             if (filterState.maxPrice != null) {
                 filtered = filtered.filter { it.basePrice <= filterState.maxPrice!! }
             }
-
-            // Verified only filter
             if (filterState.verifiedOnly) {
                 filtered = filtered.filter { it.isVerified }
             }
-
-            // Rating filter
             if (filterState.minRating > 0) {
                 filtered = filtered.filter { it.averageRating >= filterState.minRating }
             }
 
-            // Sort
             filtered = when (filterState.selectedSort) {
                 SortOption.RECENT -> filtered
                 SortOption.LOWEST_PRICE -> filtered.sortedBy { it.basePrice }
@@ -234,7 +245,6 @@ fun ServiceOfferingsScreen(
         }
     }
 
-    // SAFE: Get hasMore only when state is Success
     val hasMoreData = offeringsState is ServiceOfferingsUiState.Success &&
             (offeringsState as ServiceOfferingsUiState.Success).hasMore
 
@@ -270,7 +280,7 @@ fun ServiceOfferingsScreen(
         ) {
             when (offeringsState) {
                 is ServiceOfferingsUiState.Loading -> {
-                    ServiceOfferingsLoadingSkeleton()
+                    ServiceOfferingsLoadingSkeleton(gridColumns = gridColumns)
                 }
 
                 is ServiceOfferingsUiState.Success -> {
@@ -285,37 +295,79 @@ fun ServiceOfferingsScreen(
                             colorScheme = colorScheme
                         )
                     } else {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                horizontal = 16.dp,
-                                vertical = 12.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(
-                                items = filteredOfferings,
-                                key = { it.id }
-                            ) { offering ->
-                                ServiceOfferingCard(
-                                    offering = offering,
-                                    onClick = { onOfferingClick(offering.id) }
-                                )
-                            }
+                        if (gridColumns == 1) {
+                            // Phone layout - single column (list)
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    horizontal = 16.dp,
+                                    vertical = 12.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(
+                                    items = filteredOfferings,
+                                    key = { it.id }
+                                ) { offering ->
+                                    ServiceOfferingCard(
+                                        offering = offering,
+                                        onClick = { onOfferingClick(offering.id) }
+                                    )
+                                }
 
-                            if (hasMoreData) {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(32.dp),
-                                            strokeWidth = 2.dp
-                                        )
+                                if (hasMoreData) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(32.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            // Tablet/Desktop layout - grid with 2 or 3 columns
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(gridColumns),
+                                state = listState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    horizontal = 16.dp,
+                                    vertical = 12.dp
+                                ),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(
+                                    items = filteredOfferings,
+                                    key = { it.id }
+                                ) { offering ->
+                                    ServiceOfferingCard(
+                                        offering = offering,
+                                        onClick = { onOfferingClick(offering.id) },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+
+                                if (hasMoreData) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(32.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -351,17 +403,37 @@ fun ServiceOfferingsScreen(
 }
 
 @Composable
-private fun ServiceOfferingsLoadingSkeleton() {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            horizontal = 16.dp,
-            vertical = 12.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(5) {
-            ServiceOfferingCardSkeleton()
+private fun ServiceOfferingsLoadingSkeleton(gridColumns: Int) {
+    if (gridColumns == 1) {
+        // Phone layout - single column
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                horizontal = 16.dp,
+                vertical = 12.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(5) {
+                ServiceOfferingCardSkeleton()
+            }
+        }
+    } else {
+        // Tablet/Desktop layout - grid
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(gridColumns),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                horizontal = 16.dp,
+                vertical = 12.dp
+            ),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Show 6 skeletons for grid (2 rows of 3 or 3 rows of 2)
+            items(gridColumns * 2) {
+                ServiceOfferingCardSkeleton()
+            }
         }
     }
 }
@@ -369,7 +441,6 @@ private fun ServiceOfferingsLoadingSkeleton() {
 @Composable
 private fun ServiceOfferingCardSkeleton() {
     val colorScheme = MaterialTheme.colorScheme
-    // Use the more prominent shimmer effect
     val shimmerModifier = Modifier.prominentShimmerEffect()
 
     Card(

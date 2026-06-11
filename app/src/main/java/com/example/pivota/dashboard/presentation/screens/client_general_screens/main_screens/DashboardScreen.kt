@@ -157,6 +157,7 @@ fun DashboardScreen(
     userType: UserType = UserType.BOTH,
     isGuestMode: Boolean = false,
     accessToken: String? = null,
+    onSearchClick: () -> Unit = {},
     sharedViewModel: DashboardSharedViewModel = hiltViewModel()
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -383,8 +384,10 @@ fun DashboardScreen(
                 colorScheme = colorScheme,
                 isGuestMode = isGuestMode,
                 isSticky = true,
+                showSearchIcon = true,
                 sharedViewModel = sharedViewModel,
                 scrollOffset = scrollOffset,
+                onSearchClick = onSearchClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()

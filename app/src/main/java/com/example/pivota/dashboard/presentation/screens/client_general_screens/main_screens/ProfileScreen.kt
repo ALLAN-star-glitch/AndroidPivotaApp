@@ -88,6 +88,7 @@ fun ProfileScreen(
     onNavigateToBillingHistory: () -> Unit = {},
     onSignOut: () -> Unit = {},
     isGuestMode: Boolean = false,
+    onSearchClick: () -> Unit = {},
     sharedViewModel: DashboardSharedViewModel = hiltViewModel()
 ) {
 
@@ -106,7 +107,9 @@ fun ProfileScreen(
             onNavigateToBillingHistory = onNavigateToBillingHistory,
             onSignOut = onSignOut,
             colorScheme = colorScheme,
-            sharedViewModel = sharedViewModel
+            sharedViewModel = sharedViewModel,
+            onSearchClick = onSearchClick
+
         )
         return
     }
@@ -164,7 +167,8 @@ fun ProfileScreen(
                 onNavigateToBillingHistory = onNavigateToBillingHistory,
                 onSignOut = onSignOut,
                 colorScheme = colorScheme,
-                sharedViewModel = sharedViewModel
+                sharedViewModel = sharedViewModel,
+                onSearchClick = onSearchClick
             )
         }
 
@@ -188,6 +192,7 @@ fun GuestProfileScreenContent(
     onNavigateToHelpCenter: () -> Unit,
     onNavigateToTeamManagement: () -> Unit,
     onNavigateToVerification: () -> Unit,
+    onSearchClick: () -> Unit,
     onNavigateToSubscription: () -> Unit,
     onNavigateToPaymentMethods: () -> Unit,
     onNavigateToBillingHistory: () -> Unit,
@@ -234,6 +239,8 @@ fun GuestProfileScreenContent(
                         pageSubtitle = "Sign in to access your account",
                         isGuestMode = true,
                         isSticky = false,
+                        showSearchIcon = true,
+                        onSearchClick = onSearchClick,
                         sharedViewModel = sharedViewModel,
                         scrollOffset = scrollOffset,
                         modifier = Modifier
@@ -514,6 +521,7 @@ fun AuthenticatedProfileContent(
     onNavigateToSettings: () -> Unit,
     onNavigateToHelpCenter: () -> Unit,
     onNavigateToTeamManagement: () -> Unit,
+    onSearchClick: () -> Unit,
     onNavigateToVerification: () -> Unit,
     onNavigateToSubscription: () -> Unit,
     onNavigateToPaymentMethods: () -> Unit,
@@ -577,6 +585,8 @@ fun AuthenticatedProfileContent(
                         pageSubtitle = "Manage your identity",
                         isGuestMode = false,
                         isSticky = false,
+                        showSearchIcon = true,
+                        onSearchClick = onSearchClick,
                         sharedViewModel = sharedViewModel,
                         scrollOffset = scrollOffset,
                         modifier = Modifier

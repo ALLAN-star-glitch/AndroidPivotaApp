@@ -25,10 +25,10 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.13.0 - Build 23 - Professional Header UI Enhancements
-        // Added: Curved header design, dynamic elevation, text truncation
-        versionCode = 23
-        versionName = "1.13.0"
+        // Version 1.14.0 - Build 24 - Adaptive Grid Layout & Search Improvements
+        // Added: Adaptive grid layout for tablets, removed autofocus from search
+        versionCode = 24
+        versionName = "1.14.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -66,190 +66,192 @@ android {
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.13.0 - PROFESSIONAL HEADER DESIGN
+          PIVOTACONNECT v1.14.0 - ADAPTIVE GRID LAYOUT
 ================================================================
 
-This release enhances the app header with a modern, premium 
-design featuring curved edges, dynamic shadows, and professional 
-text handling.
+This release introduces adaptive grid layouts for tablets and 
+large screens, plus search bar improvements for better UX.
 
 ================================================================
-HEADER UI ENHANCEMENTS
+ADAPTIVE GRID LAYOUTS
 ================================================================
 
-CURVED HEADER DESIGN
-- Modern bottom-curved header (28dp rounded corners)
-- Professional gradient backgrounds
-- Smooth dynamic elevation based on scroll position
-- Elegant shadow effects with ambient and spot lighting
-- Subtle bottom separator line for visual hierarchy
+SERVICE OFFERINGS SCREEN
+- Phones: Single column list (optimal for small screens)
+- Medium Tablets: 2-column grid (perfect for iPad Mini)
+- Large Tablets/Desktop: 3-column grid (maximizes space)
+- Automatic detection using window size classes
+- Smooth transitions between layouts
 
-DYNAMIC ELEVATION SYSTEM
-- 4dp elevation at rest for subtle depth
-- 8dp elevation when partially scrolled
-- 12dp elevation when sticky/full scrolled
-- Smooth animated transitions between states
-- Proper shadow casting for premium feel
+BENEFITS
+- See more offerings at once on tablets
+- Better use of screen real estate
+- Reduced scrolling on large displays
+- Consistent card sizes across all devices
+- Professional staggered grid presentation
 
-TEXT TRUNCATION IMPROVEMENTS
-- First names truncated to 15 characters
-- Role names truncated to 12 characters
-- Plan names truncated to 10 characters
-- Professional "..." ellipsis for overflow
-- Smart truncation preserving context
+================================================================
+SEARCH BAR IMPROVEMENTS
+================================================================
+
+REMOVED AUTOFOCUS BEHAVIOR
+- Search bar no longer auto-focuses on scroll
+- Keyboard doesn't automatically appear
+- Less intrusive user experience
+- Users control when to search
+- Cleaner scroll behavior
+
+ENHANCED SEARCH INTERACTION
+- Tap to focus and type
+- Clear button hides keyboard
+- Voice search still available
+- Real-time filtering
+- Debounced search for performance
 
 ================================================================
 VISUAL ENHANCEMENTS
 ================================================================
 
-PROFILE AVATAR UPGRADES
-- Added shadow to avatar for depth
-- Gradient background for guest mode
-- Enhanced verified badge with thicker border
-- Professional loading states
-- Smooth image loading with crossfade
+GRID CARD DESIGN
+- Cards maintain consistent sizing
+- Proper spacing between grid items (12dp)
+- Responsive padding based on screen size
+- Smooth animations when loading
+- Professional card elevation
 
-ACTION ICONS REFINEMENT
-- Press animation with scale effect (0.92x)
-- Gradient backgrounds for modern look
-- Dynamic shadows on interaction
-- Smooth 100ms feedback animations
-- Consistent 38dp sizing
-
-NOTIFICATION BADGE
-- Gradient background (Red to Red-80%)
-- Improved positioning with offset
-- Better text scaling for numbers
-- "99+" handling for large counts
-- Rounded pill design
+SKELETON LOADING
+- Adaptive skeleton based on grid columns
+- 2 rows of skeletons for tablets
+- 5 skeletons for phones
+- Prominent shimmer effect
+- Smooth loading transitions
 
 ================================================================
-USER INFO DISPLAY
+PERFORMANCE OPTIMIZATIONS
 ================================================================
 
-PROFESSIONAL PILL DESIGN
-- Rounded corners (20dp) for modern look
-- Semi-transparent backgrounds (12% opacity)
-- Icon + text combination
-- Color-coded by plan type
-- Proper spacing and padding
+RENDERING IMPROVEMENTS
+- LazyVerticalGrid for efficient recycling
+- Proper key handling for items
+- Optimized recompositions
+- Reduced overdraw on tablets
+- Faster scrolling on large lists
 
-ROLE BADGES
-- System admin role with shield icon
-- Business plan pills with plan icons
-- Consistent styling across scopes
-- Proper truncation for long names
-- Hover and click states
-
-================================================================
-ANIMATION IMPROVEMENTS
-================================================================
-
-SMOOTH TRANSITIONS
-- Fade + slide for page title visibility
-- 300ms entrance animations
-- 200ms exit animations
-- Rotating dropdown arrow (180deg)
-- Icon scale feedback on press
-
-SCROLL BEHAVIOR
-- Page title hides on scroll
-- Header elevation increases with scroll
-- Smooth alpha transitions
-- Performance-optimized animations
-- No jank or stuttering
+MEMORY MANAGEMENT
+- Efficient grid item recycling
+- Proper state management
+- Cached item keys
+- Smooth infinite scroll
+- Optimized filter operations
 
 ================================================================
-RESPONSIVE DESIGN
-================================================================
-
 SCREEN SIZE ADAPTATION
-- Proper truncation on all screen sizes
-- No text overflow on small screens
-- Maintains visual hierarchy on tablets
-- Consistent padding across devices
-- Adaptive icon sizing
+================================================================
 
-DARK MODE SUPPORT
-- Fully compatible with dark theme
-- Proper color inversions
-- Shadows visible in both modes
-- Gradient adaptations
-- Verified badge color consistency
+WINDOW SIZE CLASSES
+- COMPACT: Phones (1 column)
+- MEDIUM: Small tablets (2 columns)
+- EXPANDED: Large tablets/Desktop (3 columns)
+- Automatic detection with adaptive info
+- No manual configuration needed
+
+RESPONSIVE PADDING
+- Horizontal padding scales with screen size
+- 16dp for phones
+- 20dp for medium tablets
+- 24dp for large tablets
+- Consistent visual spacing
 
 ================================================================
 CODE IMPROVEMENTS
 ================================================================
 
-PERFORMANCE
-- Optimized recompositions
-- Efficient truncation logic
-- Cached user data for smooth scrolling
-- Reduced unnecessary redraws
-- Memory-efficient animations
+ARCHITECTURE
+- Extracted grid column logic
+- Reusable skeleton components
+- Clean state management
+- Proper error handling
+- Efficient filter debouncing
 
-STATE MANAGEMENT
-- Proper elevation state handling
-- Smooth scroll offset tracking
-- Efficient animation triggers
-- Clean LaunchedEffect usage
-- No state leaks
+TYPE SAFETY
+- Strong typing for window classes
+- Null-safe grid calculations
+- Proper state propagation
+- Safe viewModel usage
 
 ================================================================
 BUG FIXES
 ================================================================
 
-- Fixed header text overflow on long names
-- Resolved shadow clipping on curved edges
-- Fixed badge positioning on different DPIs
-- Corrected animation timing inconsistencies
-- Fixed theme switching color updates
-- Resolved profile image border rendering
+- Fixed search bar autofocus on scroll
+- Corrected grid alignment on tablets
+- Fixed card width issues on large screens
+- Resolved keyboard showing unexpectedly
+- Fixed scroll position reset on filter
+- Corrected skeleton loading for grids
 
 ================================================================
 TESTING SCENARIOS
 ================================================================
 
-1. TEST HEADER VISUALS
-   - Launch app on different screen sizes
-   - Verify curved bottom corners
-   - Check shadow depth and direction
-   - Test light and dark themes
-   - Verify proper truncation
+1. TEST TABLET LAYOUT
+   - Run on medium tablet (iPad Mini size)
+   - Verify 2-column grid appears
+   - Check card sizes and spacing
+   - Scroll to test performance
+   - Rotate device to test responsiveness
 
-2. TEST SCROLL BEHAVIOR
-   - Scroll slowly through content
-   - Verify elevation increases
-   - Check title fade animations
-   - Test sticky header behavior
-   - Verify smooth transitions
+2. TEST LARGE SCREEN
+   - Run on large tablet or desktop
+   - Verify 3-column grid appears
+   - Check content density
+   - Test landscape orientation
+   - Verify no layout breaks
 
-3. TEST LONG NAMES
-   - Use account with long name (25+ chars)
-   - Verify truncation with "..."
-   - Check tooltip or full name on click
-   - Test role name truncation
-   - Verify no layout breaking
+3. TEST SEARCH BEHAVIOR
+   - Scroll to sticky search bar
+   - Verify no auto-focus occurs
+   - Tap search to type
+   - Clear search hides keyboard
+   - Test voice search button
 
-4. TEST INTERACTIONS
-   - Press action icons for scale animation
-   - Tap avatar to open menu
-   - Scroll header to see elevation changes
-   - Toggle theme to verify colors
-   - Click notification badge
+4. TEST FILTERING
+   - Open filter bottom sheet
+   - Apply price range filter
+   - Sort by different options
+   - Verify grid updates correctly
+   - Clear filters to reset
+
+================================================================
+DEVICE SUPPORT
+================================================================
+
+SUPPORTED SCREEN SIZES
+- Phones (5-7 inches): 1 column
+- Small tablets (7-9 inches): 2 columns
+- Large tablets (10-13 inches): 3 columns
+- Desktop/Chrome OS: 3 columns
+- Foldables: Adaptive based on state
+
+ORIENTATION SUPPORT
+- Portrait and landscape modes
+- Dynamic column adjustment
+- Preserves scroll position
+- Smooth transitions
+- No layout shifts
 
 ================================================================
 KNOWN ISSUES
 ================================================================
 
-- Payment processing not implemented (v1.14.0)
+- Payment processing not implemented (v1.15.0)
 - Push notifications pending integration
 - Booking cancellation flow in progress
 - Professional calendar view coming soon
 - In-app messaging system planned
 
 ================================================================
-COMING IN V1.14.0
+COMING IN V1.15.0
 ================================================================
 
 - Escrow payment integration
@@ -265,23 +267,26 @@ COMING IN V1.14.0
 HOW TO TEST THIS RELEASE
 ================================================================
 
-1. VISUAL TESTING
-   - Check header curvature on different devices
-   - Verify shadows and elevation
-   - Test dark mode appearance
-   - Check text truncation with long names
+1. TABLET TESTING
+   - Install on Android tablet
+   - Navigate to Service Offerings
+   - Verify grid layout (2 columns on medium, 3 on large)
+   - Scroll and load more items
+   - Test filter and sort
 
-2. PERFORMANCE TESTING
-   - Scroll rapidly to check frame drops
-   - Test on older devices (API 24+)
-   - Verify memory usage
-   - Check animation smoothness
+2. PHONE TESTING
+   - Install on phone
+   - Verify single column list
+   - Search bar behavior
+   - Filter functionality
+   - Smooth scrolling
 
-3. USABILITY TESTING
-   - Navigate through all screens
-   - Test all header interactions
-   - Verify badge updates correctly
-   - Check tooltip accessibility
+3. SEARCH TESTING
+   - Scroll down to sticky search
+   - Verify no keyboard popup
+   - Tap to search and type
+   - Clear button functionality
+   - Voice search button
 
 ================================================================
 SUPPORT & FEEDBACK
@@ -290,7 +295,7 @@ SUPPORT & FEEDBACK
 For issues, bug reports, or feature requests:
 Email: allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.13.0!
+Thank you for testing PivotaConnect v1.14.0!
 Your feedback helps us create a better experience.
 
 ================================================================
