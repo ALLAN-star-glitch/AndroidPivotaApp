@@ -33,7 +33,7 @@ object KtorClientFactory {
     private var cachedUnauthClient: HttpClient? = null
 
     @Volatile
-    private var tokenProvider: TokenProvider? = null  // Fixed: changed to tokenProvider
+    private var tokenProvider: TokenProvider? = null
 
     fun init(context: Context) {
         if (!isInitialized.get()) {
@@ -170,6 +170,9 @@ object KtorClientFactory {
                     connectTimeoutMillis = NetworkConstants.CONNECT_TIMEOUT_MILLIS
                     socketTimeoutMillis = NetworkConstants.SOCKET_TIMEOUT_MILLIS
                 }
+
+
+
 
                 install(ContentNegotiation) {
                     json(Json {

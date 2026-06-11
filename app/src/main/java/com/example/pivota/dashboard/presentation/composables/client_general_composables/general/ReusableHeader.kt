@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -39,6 +40,7 @@ import com.example.pivota.core.presentations.viewmodel.ThemeViewModel
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.profile_composables.LogoutConfirmationDialog
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardSharedViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HeaderState
+import kotlinx.coroutines.delay
 
 // Plan configuration data class
 data class PlanConfig(
@@ -53,35 +55,44 @@ val getPlanConfig: @Composable (String?) -> PlanConfig = { planName ->
 
     when (planName) {
         "Free Forever" -> PlanConfig(
-            name = "Free Plan",
+            name = "Free",
             icon = Icons.Outlined.EmojiEvents,
             color = colorScheme.tertiary
         )
         "Starter" -> PlanConfig(
-            name = "Starter Plan",
+            name = "Starter",
             icon = Icons.Outlined.Whatshot,
             color = colorScheme.secondary
         )
         "Pro" -> PlanConfig(
-            name = "Pro Plan",
+            name = "Pro",
             icon = Icons.Outlined.WorkspacePremium,
             color = colorScheme.primary
         )
         "Enterprise" -> PlanConfig(
-            name = "Enterprise Plan",
+            name = "Enterprise",
             icon = Icons.Outlined.Business,
             color = colorScheme.primary.copy(alpha = 0.8f)
         )
         else -> PlanConfig(
-            name = "Member Plan",
+            name = "Member",
             icon = Icons.Outlined.Person,
             color = colorScheme.onSurfaceVariant
         )
     }
 }
 
+// Helper function to truncate text professionally
+private fun truncateText(text: String, maxLength: Int = 20): String {
+    return if (text.length > maxLength) {
+        text.substring(0, maxLength - 3) + "..."
+    } else {
+        text
+    }
+}
+
 @SuppressLint("Range")
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun ReusableHeader(
     modifier: Modifier = Modifier,
@@ -103,6 +114,17 @@ fun ReusableHeader(
     val context = LocalContext.current
     var showMenuBottomSheet by remember { mutableStateOf(false) }
     val showLogoutDialog by sharedViewModel.showLogoutDialog.collectAsState()
+
+    // Animation state for elevation
+    var targetElevation by remember { mutableStateOf(4.dp) }
+
+    LaunchedEffect(isSticky, scrollOffset) {
+        targetElevation = when {
+            isSticky -> 12.dp
+            scrollOffset > 10f -> 8.dp
+            else -> 4.dp
+        }
+    }
 
     val headerState by sharedViewModel.headerState.collectAsState()
 
@@ -137,17 +159,19 @@ fun ReusableHeader(
     val isDarkTheme by themeViewModel.isDarkTheme
     val isScrolled = scrollOffset > 20f
 
-    // Get user data
-    val firstName = when {
+    // Get user data with truncation
+    val fullFirstName = when {
         isGuestMode -> "Guest"
         headerUser != null -> headerUser.shortName
         else -> "User"
     }
+    val firstName = truncateText(fullFirstName, 15)
 
-    // Determine display text based on scope
+    // Determine display text based on scope with truncation
     val userScope = headerUser?.scope ?: "BUSINESS"
     val planName = headerUser?.planName
     val userRole = headerUser?.role ?: "Member"
+    val truncatedRole = truncateText(userRole, 12)
 
     // Scope-specific display logic
     val isSystemScope = userScope == "SYSTEM"
@@ -155,18 +179,14 @@ fun ReusableHeader(
 
     // Get plan config with theme awareness
     val planConfig = if (isBusinessScope) getPlanConfig(planName) else null
+    val truncatedPlanName = truncateText(planConfig?.name ?: "Member", 10)
 
-    // Display text format:
-    // - SYSTEM scope: Just the role name (e.g., "PlatformSystemAdmin")
-    // - BUSINESS scope: "Plan Name | Role Name" (e.g., "Free | Individual")
+    // Display text format with truncation
     val displayText = when {
         isGuestMode -> "Guest"
-        isSystemScope -> userRole
-        isBusinessScope -> {
-            val planDisplayName = planConfig?.name ?: "Member"
-            planDisplayName
-        }
-        else -> userRole
+        isSystemScope -> truncatedRole
+        isBusinessScope -> truncatedPlanName
+        else -> truncatedRole
     }
 
     val profileImageUrl = when {
@@ -184,305 +204,379 @@ fun ReusableHeader(
     Column(
         modifier = modifier
     ) {
+        // Professional Curved Header Surface with Dynamic Elevation
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = if (isSticky) 8.dp else 4.dp,
-                    shape = RoundedCornerShape(24.dp),
-                    ambientColor = Color.Black.copy(alpha = 0.08f),
-                    spotColor = Color.Black.copy(alpha = 0.06f)
+                    elevation = targetElevation,
+                    shape = RoundedCornerShape(
+                        topStart = 0.dp,
+                        topEnd = 0.dp,
+                        bottomStart = 28.dp,
+                        bottomEnd = 28.dp
+                    ),
+                    ambientColor = Color.Black.copy(alpha = 0.12f),
+                    spotColor = Color.Black.copy(alpha = 0.08f)
                 ),
-            shape = RoundedCornerShape(24.dp),
-            color = Color.Transparent,
-            tonalElevation = 0.dp
+            shape = RoundedCornerShape(
+                topStart = 0.dp,
+                topEnd = 0.dp,
+                bottomStart = 28.dp,
+                bottomEnd = 28.dp
+            ),
+            color = colorScheme.surface,
+            tonalElevation = if (isSticky || isScrolled) 3.dp else 1.dp
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Column {
+                // Main Header Row
                 Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Profile Avatar
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .clickable { showMenuBottomSheet = true },
-                        contentAlignment = Alignment.Center
+                    // Left Section - Profile & User Info
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        when {
-                            isGuestMode -> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(
-                                            color = colorScheme.primary.copy(alpha = 0.1f),
-                                            shape = CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.AccountCircle,
-                                        contentDescription = "Profile",
-                                        tint = colorScheme.primary,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                            }
-                            isLoading && headerUser == null -> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(
-                                            color = colorScheme.surfaceVariant,
-                                            shape = CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.AccountCircle,
-                                        contentDescription = "Profile",
-                                        tint = colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                            }
-                            else -> {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(context)
-                                        .data(profileImageUrl)
-                                        .size(128)
-                                        .crossfade(true)
-                                        .build(),
-                                    contentDescription = "Profile",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape)
-                                        .border(
-                                            if (isVerified) 2.dp else 0.dp,
-                                            if (isVerified) colorScheme.tertiary else Color.Transparent,
-                                            CircleShape
-                                        ),
-                                    placeholder = painterResource(R.drawable.job_placeholder3),
-                                    error = painterResource(R.drawable.job_placeholder3)
-                                )
-                            }
-                        }
-                    }
-
-                    Column(
-                        modifier = Modifier
-                            .clickable { showMenuBottomSheet = true }
-                            .weight(1f)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.fillMaxWidth()
+                        // Profile Avatar with Professional Border
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .clickable { showMenuBottomSheet = true }
+                                .shadow(
+                                    elevation = 2.dp,
+                                    shape = CircleShape,
+                                    ambientColor = Color.Black.copy(alpha = 0.15f),
+                                    spotColor = Color.Black.copy(alpha = 0.1f)
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-
-                            Text(
-                                text = "Hi, $firstName",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = colorScheme.onSurface,
-                                letterSpacing = 0.2.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false),
-                                softWrap = false
-                            )
-
-                            if (isVerified && !isGuestMode) {
-                                Icon(
-                                    Icons.Outlined.Verified,
-                                    contentDescription = "Verified",
-                                    tint = colorScheme.tertiary,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-
-                            Icon(
-                                Icons.Outlined.KeyboardArrowDown,
-                                contentDescription = "Menu",
-                                tint = colorScheme.onSurfaceVariant,
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .graphicsLayer {
-                                        rotationZ = rotateAngle
-                                    }
-                            )
-                        }
-
-                        // Display text (Plan | Role for business, Role for system)
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            if (isBusinessScope && planConfig != null) {
-                                // Business scope: Show pill with Plan | Role
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = Color.Transparent,
-                                    modifier = Modifier
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            when {
+                                isGuestMode -> {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                brush = Brush.linearGradient(
+                                                    colors = listOf(
+                                                        colorScheme.primary.copy(alpha = 0.15f),
+                                                        colorScheme.primary.copy(alpha = 0.05f)
+                                                    )
+                                                ),
+                                                shape = CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            planConfig.icon,
-                                            contentDescription = null,
-                                            tint = planConfig.color,
-                                            modifier = Modifier.size(12.dp)
-                                        )
-                                        Text(
-                                            text = displayText,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = planConfig.color,
-                                            letterSpacing = 0.2.sp
-                                        )
-                                    }
-                                }
-                            } else if (isSystemScope) {
-                                // System scope: Show role pill
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = Color.Transparent,
-                                    modifier = Modifier
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Outlined.AdminPanelSettings,
-                                            contentDescription = null,
+                                            Icons.Outlined.AccountCircle,
+                                            contentDescription = "Profile",
                                             tint = colorScheme.primary,
-                                            modifier = Modifier.size(12.dp)
-                                        )
-                                        Text(
-                                            text = displayText,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = colorScheme.primary,
-                                            letterSpacing = 0.2.sp
+                                            modifier = Modifier.size(28.dp)
                                         )
                                     }
                                 }
-                            } else {
-                                // Fallback
-                                Text(
-                                    text = displayText,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = colorScheme.onSurfaceVariant,
-                                    letterSpacing = 0.1.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                isLoading && headerUser == null -> {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                color = colorScheme.surfaceVariant,
+                                                shape = CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.AccountCircle,
+                                            contentDescription = "Profile",
+                                            tint = colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                }
+                                else -> {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(profileImageUrl)
+                                            .size(128)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Profile",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape)
+                                            .border(
+                                                width = if (isVerified) 2.5.dp else 0.dp,
+                                                color = if (isVerified) colorScheme.tertiary else Color.Transparent,
+                                                shape = CircleShape
+                                            ),
+                                        placeholder = painterResource(R.drawable.job_placeholder3),
+                                        error = painterResource(R.drawable.job_placeholder3)
+                                    )
+                                }
                             }
                         }
-                    }
-                }
 
-                // Header Action Icons - Now 3 icons: Search, Theme, Notifications
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Icon 1: Search (conditionally shown)
-                    if (showSearchIcon) {
-                        HeaderActionIcon(
-                            icon = Icons.Rounded.Search,
-                            colorScheme = colorScheme,
-                            onClick = onSearchClick
-                        )
-                    }
-
-                    // Icon 2: Theme Toggle
-                    HeaderActionIcon(
-                        icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
-                        colorScheme = colorScheme,
-                        onClick = { themeViewModel.toggleTheme() }
-                    )
-
-                    // Icon 3: Combined Notifications & Messages with Badge
-                    Box {
-                        HeaderActionIcon(
-                            icon = Icons.Outlined.NotificationsActive,
-                            colorScheme = colorScheme,
-                            onClick = {
-                                // Open notifications/messages center
-                                onNotificationClick()
-                                onMessageClick()
-                            }
-                        )
-                        if (totalUnread > 0) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = 4.dp, y = 4.dp)
-                                    .background(Color.Red, CircleShape)
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
-                                    .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp),
-                                contentAlignment = Alignment.Center
+                        // User Info Column
+                        Column(
+                            modifier = Modifier
+                                .clickable { showMenuBottomSheet = true }
+                                .weight(1f)
+                        ) {
+                            // Name Row with Verified Badge
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = if (totalUnread > 99) "99+" else totalUnread.toString(),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    text = "Hi, $firstName",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colorScheme.onSurface,
+                                    letterSpacing = 0.2.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false),
+                                    softWrap = false
+                                )
+
+                                if (isVerified && !isGuestMode) {
+                                    Icon(
+                                        Icons.Outlined.Verified,
+                                        contentDescription = "Verified",
+                                        tint = colorScheme.tertiary,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+
+                                Icon(
+                                    Icons.Outlined.KeyboardArrowDown,
+                                    contentDescription = "Menu",
+                                    tint = colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .graphicsLayer {
+                                            rotationZ = rotateAngle
+                                        }
                                 )
                             }
+
+                            // Display Role/Plan with Professional Styling
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.padding(top = 2.dp)
+                            ) {
+                                when {
+                                    isBusinessScope && planConfig != null -> {
+                                        // Business scope: Show pill with Plan
+                                        Surface(
+                                            shape = RoundedCornerShape(20.dp),
+                                            color = planConfig.color.copy(alpha = 0.12f),
+                                            modifier = Modifier
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                            ) {
+                                                Icon(
+                                                    planConfig.icon,
+                                                    contentDescription = null,
+                                                    tint = planConfig.color,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                                Text(
+                                                    text = displayText,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = planConfig.color,
+                                                    letterSpacing = 0.2.sp,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
+                                    isSystemScope -> {
+                                        // System scope: Show role pill
+                                        Surface(
+                                            shape = RoundedCornerShape(20.dp),
+                                            color = colorScheme.primary.copy(alpha = 0.12f),
+                                            modifier = Modifier
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Outlined.AdminPanelSettings,
+                                                    contentDescription = null,
+                                                    tint = colorScheme.primary,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                                Text(
+                                                    text = displayText,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = colorScheme.primary,
+                                                    letterSpacing = 0.2.sp,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
+                                    else -> {
+                                        // Fallback - just text
+                                        Text(
+                                            text = displayText,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = colorScheme.onSurfaceVariant,
+                                            letterSpacing = 0.1.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Right Section - Action Icons
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Search Icon (conditionally shown)
+                        if (showSearchIcon) {
+                            HeaderActionIcon(
+                                icon = Icons.Rounded.Search,
+                                colorScheme = colorScheme,
+                                onClick = onSearchClick
+                            )
+                        }
+
+                        // Theme Toggle Icon
+                        HeaderActionIcon(
+                            icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                            colorScheme = colorScheme,
+                            onClick = { themeViewModel.toggleTheme() }
+                        )
+
+                        // Notifications Icon with Badge
+                        Box {
+                            HeaderActionIcon(
+                                icon = Icons.Outlined.NotificationsActive,
+                                colorScheme = colorScheme,
+                                onClick = {
+                                    onNotificationClick()
+                                    onMessageClick()
+                                }
+                            )
+                            if (totalUnread > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = 2.dp, y = 2.dp)
+                                        .background(
+                                            brush = Brush.linearGradient(
+                                                colors = listOf(
+                                                    Color.Red,
+                                                    Color.Red.copy(alpha = 0.8f)
+                                                )
+                                            ),
+                                            shape = CircleShape
+                                        )
+                                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                                        .defaultMinSize(minWidth = 18.dp, minHeight = 18.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (totalUnread > 99) "99+" else totalUnread.toString(),
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Animated Page Title Section
+                AnimatedVisibility(
+                    visible = !isScrolled,
+                    enter = fadeIn(animationSpec = tween(300)) +
+                            slideInVertically(initialOffsetY = { -it / 2 }, animationSpec = tween(300)),
+                    exit = fadeOut(animationSpec = tween(200)) +
+                            slideOutVertically(targetOffsetY = { -it / 2 }, animationSpec = tween(200))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = 20.dp)
+                    ) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = pageTitle,
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.onSurface,
+                                letterSpacing = (-0.5).sp,
+                                fontSize = 28.sp
+                            ),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (pageSubtitle != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = pageSubtitle,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    fontSize = 14.sp
+                                ),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
             }
         }
 
-        AnimatedVisibility(
-            visible = !isScrolled,
-            enter = fadeIn() + slideInVertically(),
-            exit = fadeOut() + slideOutVertically()
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 8.dp)) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = pageTitle,
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = colorScheme.onSurface,
-                        letterSpacing = (-0.5).sp,
-                        fontSize = 28.sp
-                    )
-                )
-                if (pageSubtitle != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = pageSubtitle,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            fontSize = 14.sp
+        // Bottom shadow line for professional separation
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            colorScheme.outline.copy(alpha = 0.15f),
+                            colorScheme.outline.copy(alpha = 0.15f),
+                            Color.Transparent
                         )
                     )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
+                )
+        )
     }
 
+    // Bottom Sheet for Profile Menu
     if (showMenuBottomSheet) {
         ProfileMenuBottomSheet(
             onDismiss = { showMenuBottomSheet = false },
@@ -498,6 +592,7 @@ fun ReusableHeader(
         )
     }
 
+    // Logout Confirmation Dialog
     if (showLogoutDialog) {
         LogoutConfirmationDialog(
             onConfirm = {
@@ -515,15 +610,43 @@ fun HeaderActionIcon(
     colorScheme: ColorScheme,
     onClick: () -> Unit = {}
 ) {
+    var isPressed by remember { mutableStateOf(false) }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = tween(durationMillis = 100),
+        label = "icon_scale"
+    )
+
     Box(
         modifier = Modifier
             .size(38.dp)
             .clip(CircleShape)
+            .shadow(
+                elevation = if (isPressed) 0.dp else 2.dp,
+                shape = CircleShape,
+                ambientColor = Color.Black.copy(alpha = 0.1f),
+                spotColor = Color.Black.copy(alpha = 0.08f)
+            )
             .background(
-                color = colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                        colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    )
+                ),
                 shape = CircleShape
             )
-            .clickable(onClick = onClick),
+            .clickable(
+                onClick = {
+                    isPressed = true
+                    onClick()
+                }
+            )
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -532,5 +655,12 @@ fun HeaderActionIcon(
             tint = colorScheme.primary,
             modifier = Modifier.size(20.dp)
         )
+    }
+
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            delay(100)
+            isPressed = false
+        }
     }
 }

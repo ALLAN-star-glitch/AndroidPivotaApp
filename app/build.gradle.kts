@@ -25,10 +25,10 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.12.0 - Build 22 - Enhanced Booking System & UI Improvements
-        // Added: Fixed price booking, search functionality, sticky filters, UI enhancements
-        versionCode = 22
-        versionName = "1.12.0"
+        // Version 1.13.0 - Build 23 - Professional Header UI Enhancements
+        // Added: Curved header design, dynamic elevation, text truncation
+        versionCode = 23
+        versionName = "1.13.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -66,207 +66,222 @@ android {
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.12.0 - ENHANCED BOOKING SYSTEM
+          PIVOTACONNECT v1.13.0 - PROFESSIONAL HEADER DESIGN
 ================================================================
 
-This release completes the booking system with FIXED price 
-support, adds search functionality, and improves the UI with 
-sticky filters and better navigation.
+This release enhances the app header with a modern, premium 
+design featuring curved edges, dynamic shadows, and professional 
+text handling.
 
 ================================================================
-BOOKING SYSTEM ENHANCEMENTS
+HEADER UI ENHANCEMENTS
 ================================================================
 
-FIXED PRICE BOOKING SUPPORT
-- Added proper handling for FIXED and PER_SESSION price units
-- Fixed duration field validation for non-hourly services
-- Corrected API request format for FIXED price bookings
-- Duration fields now sent as null for FIXED price services
-- Eliminated "durationHours must not be less than 0.5" error
+CURVED HEADER DESIGN
+- Modern bottom-curved header (28dp rounded corners)
+- Professional gradient backgrounds
+- Smooth dynamic elevation based on scroll position
+- Elegant shadow effects with ambient and spot lighting
+- Subtle bottom separator line for visual hierarchy
 
-PER_HOUR BOOKING IMPROVEMENTS
-- Minimum duration validation (0.5 hours)
-- Support for half-hour increments
-- Proper Int type conversion for backend API
-- Real-time price calculation for hourly services
+DYNAMIC ELEVATION SYSTEM
+- 4dp elevation at rest for subtle depth
+- 8dp elevation when partially scrolled
+- 12dp elevation when sticky/full scrolled
+- Smooth animated transitions between states
+- Proper shadow casting for premium feel
 
-BOOKING FEE MANAGEMENT
-- Booking fees correctly applied to all booking types
-- Refundable status displayed prominently
-- Separate line item in price breakdown
-- Accurate grand total calculation
-
-PRICE NEGOTIATION
-- Fixed negotiation flow for FIXED price services
-- Real-time validation against professional's range
-- Original price shown with strikethrough when negotiated
-- Automatic total recalculation
+TEXT TRUNCATION IMPROVEMENTS
+- First names truncated to 15 characters
+- Role names truncated to 12 characters
+- Plan names truncated to 10 characters
+- Professional "..." ellipsis for overflow
+- Smart truncation preserving context
 
 ================================================================
-UI/UX IMPROVEMENTS
+VISUAL ENHANCEMENTS
 ================================================================
 
-SEARCH FUNCTIONALITY
-- Added search icon to main header
-- Sticky search bar appears when scrolling
-- Voice search support (microphone icon)
-- Real-time search filtering
-- Clear search button for easy reset
+PROFILE AVATAR UPGRADES
+- Added shadow to avatar for depth
+- Gradient background for guest mode
+- Enhanced verified badge with thicker border
+- Professional loading states
+- Smooth image loading with crossfade
 
-STICKY FILTERS
-- Category pills now stick to top when scrolling
-- Enhanced visual design with improved shadows
-- Smooth transition animations
-- Better color contrast and selection states
-- Close icon on selected filters for quick removal
+ACTION ICONS REFINEMENT
+- Press animation with scale effect (0.92x)
+- Gradient backgrounds for modern look
+- Dynamic shadows on interaction
+- Smooth 100ms feedback animations
+- Consistent 38dp sizing
 
-FILTER PILL ENHANCEMENTS
-- Rounded pill design with icons
-- Selected state shows filled color with white text
-- Hover and click animations
-- Shadow elevation on selection
-- Border stroke for unselected state
-
-HEADER IMPROVEMENTS
-- Added search icon alongside theme toggle
-- Combined notification badge with message count
-- Improved profile menu animation
-- Better responsive layout for different screen sizes
-- Smooth sticky header behavior
+NOTIFICATION BADGE
+- Gradient background (Red to Red-80%)
+- Improved positioning with offset
+- Better text scaling for numbers
+- "99+" handling for large counts
+- Rounded pill design
 
 ================================================================
-SCREEN ENHANCEMENTS
+USER INFO DISPLAY
 ================================================================
 
-DISCOVER SCREEN
-- Sticky filter section with search bar
-- Improved scroll performance
-- Dynamic service grid with 4-6 columns based on screen size
-- Better loading states and error handling
-- Animated content transitions
+PROFESSIONAL PILL DESIGN
+- Rounded corners (20dp) for modern look
+- Semi-transparent backgrounds (12% opacity)
+- Icon + text combination
+- Color-coded by plan type
+- Proper spacing and padding
 
-PROFESSIONAL SERVICE BOOKING SCREEN
-- Fixed validation logic for FIXED price services
-- Improved error messages for duration fields
-- Better handling of null duration values
-- Enhanced form state management
-- Smooth step transitions
+ROLE BADGES
+- System admin role with shield icon
+- Business plan pills with plan icons
+- Consistent styling across scopes
+- Proper truncation for long names
+- Hover and click states
 
 ================================================================
-BUG FIXES
+ANIMATION IMPROVEMENTS
 ================================================================
 
-CRITICAL FIXES
-- Fixed FIXED price booking error (durationHours validation)
-- Corrected duration field types (Int vs Double)
-- Fixed price calculation for non-hourly services
-- Resolved negotiation price validation issues
-- Fixed booking fee calculation errors
+SMOOTH TRANSITIONS
+- Fade + slide for page title visibility
+- 300ms entrance animations
+- 200ms exit animations
+- Rotating dropdown arrow (180deg)
+- Icon scale feedback on press
 
-UI FIXES
-- Fixed keyboard covering input fields
-- Resolved scroll conflicts in booking form
-- Corrected date picker display on older devices
-- Fixed theme switching animation glitches
-- Resolved navigation bar overlapping content
+SCROLL BEHAVIOR
+- Page title hides on scroll
+- Header elevation increases with scroll
+- Smooth alpha transitions
+- Performance-optimized animations
+- No jank or stuttering
 
-PERFORMANCE FIXES
-- Reduced recompositions in booking flow
-- Optimized image loading in grids
-- Improved LazyColumn scrolling performance
-- Fixed memory leaks in date picker
-- Optimized network requests
+================================================================
+RESPONSIVE DESIGN
+================================================================
+
+SCREEN SIZE ADAPTATION
+- Proper truncation on all screen sizes
+- No text overflow on small screens
+- Maintains visual hierarchy on tablets
+- Consistent padding across devices
+- Adaptive icon sizing
+
+DARK MODE SUPPORT
+- Fully compatible with dark theme
+- Proper color inversions
+- Shadows visible in both modes
+- Gradient adaptations
+- Verified badge color consistency
 
 ================================================================
 CODE IMPROVEMENTS
 ================================================================
 
-TYPE SAFETY
-- Changed durationHours from Double? to Int? for API compatibility
-- Added proper null handling for duration fields
-- Improved type conversions in ViewModel
-- Enhanced data class definitions
+PERFORMANCE
+- Optimized recompositions
+- Efficient truncation logic
+- Cached user data for smooth scrolling
+- Reduced unnecessary redraws
+- Memory-efficient animations
 
 STATE MANAGEMENT
-- Better handling of loading states
-- Improved error state recovery
-- Optimized UI state updates
-- Reduced unnecessary recompositions
-
-NETWORK LAYER
-- Improved request/response logging
-- Better error message parsing
-- Enhanced token refresh handling
-- Optimized retry logic
+- Proper elevation state handling
+- Smooth scroll offset tracking
+- Efficient animation triggers
+- Clean LaunchedEffect usage
+- No state leaks
 
 ================================================================
-TESTING & VALIDATION
+BUG FIXES
 ================================================================
 
-BOOKING SCENARIOS TESTED
-- FIXED price booking (Tire Change & Wheel Alignment)
-- PER_HOUR booking with 0.5 hour minimum
-- PER_DAY booking with daily rates
-- Negotiated price booking
-- Booking fee scenarios
+- Fixed header text overflow on long names
+- Resolved shadow clipping on curved edges
+- Fixed badge positioning on different DPIs
+- Corrected animation timing inconsistencies
+- Fixed theme switching color updates
+- Resolved profile image border rendering
 
-EDGE CASES
-- Empty duration fields
-- Invalid date selection
-- Network failures during booking
-- Token expiration handling
-- Concurrent booking attempts
+================================================================
+TESTING SCENARIOS
+================================================================
+
+1. TEST HEADER VISUALS
+   - Launch app on different screen sizes
+   - Verify curved bottom corners
+   - Check shadow depth and direction
+   - Test light and dark themes
+   - Verify proper truncation
+
+2. TEST SCROLL BEHAVIOR
+   - Scroll slowly through content
+   - Verify elevation increases
+   - Check title fade animations
+   - Test sticky header behavior
+   - Verify smooth transitions
+
+3. TEST LONG NAMES
+   - Use account with long name (25+ chars)
+   - Verify truncation with "..."
+   - Check tooltip or full name on click
+   - Test role name truncation
+   - Verify no layout breaking
+
+4. TEST INTERACTIONS
+   - Press action icons for scale animation
+   - Tap avatar to open menu
+   - Scroll header to see elevation changes
+   - Toggle theme to verify colors
+   - Click notification badge
 
 ================================================================
 KNOWN ISSUES
 ================================================================
 
-- Payment processing not yet implemented (v1.13.0)
-- Push notifications for booking updates pending
-- Email confirmation system in progress
-- Professional availability calendar enhancement pending
-- Booking cancellation flow coming soon
+- Payment processing not implemented (v1.14.0)
+- Push notifications pending integration
+- Booking cancellation flow in progress
+- Professional calendar view coming soon
+- In-app messaging system planned
 
 ================================================================
-COMING IN V1.13.0
+COMING IN V1.14.0
 ================================================================
 
 - Escrow payment integration
 - Professional counter-offer system
-- Booking confirmation with payment
 - My Bookings management screen
-- Push notifications for all booking events
-- SMS notifications for critical updates
-- Availability calendar enhancements
+- Push notifications for all events
+- SMS notifications for updates
 - Booking history and receipts
+- Professional availability calendar
+- In-app chat system
 
 ================================================================
-HOW TO TEST UPDATES
+HOW TO TEST THIS RELEASE
 ================================================================
 
-1. TEST FIXED PRICE BOOKING
-   - Find a FIXED price service (e.g., Tire Change)
-   - Complete booking without entering duration
-   - Verify no "durationHours" error appears
-   - Check booking is created successfully
+1. VISUAL TESTING
+   - Check header curvature on different devices
+   - Verify shadows and elevation
+   - Test dark mode appearance
+   - Check text truncation with long names
 
-2. TEST SEARCH FUNCTIONALITY
-   - Scroll down on Discover screen
-   - Sticky search bar should appear
-   - Type to filter services
-   - Use microphone for voice search
+2. PERFORMANCE TESTING
+   - Scroll rapidly to check frame drops
+   - Test on older devices (API 24+)
+   - Verify memory usage
+   - Check animation smoothness
 
-3. TEST STICKY FILTERS
-   - Scroll through Discover screen
-   - Category pills should stick to top
-   - Tap filters to see selection states
-   - Clear filters with close icon
-
-4. TEST BOOKING VALIDATION
-   - Try booking with invalid duration (0 hours)
-   - Should show validation error
-   - Try booking without date selection
-   - Should prompt for required fields
+3. USABILITY TESTING
+   - Navigate through all screens
+   - Test all header interactions
+   - Verify badge updates correctly
+   - Check tooltip accessibility
 
 ================================================================
 SUPPORT & FEEDBACK
@@ -275,8 +290,8 @@ SUPPORT & FEEDBACK
 For issues, bug reports, or feature requests:
 Email: allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.12.0!
-We appreciate your feedback and continued support.
+Thank you for testing PivotaConnect v1.13.0!
+Your feedback helps us create a better experience.
 
 ================================================================
                 """.trimIndent()
