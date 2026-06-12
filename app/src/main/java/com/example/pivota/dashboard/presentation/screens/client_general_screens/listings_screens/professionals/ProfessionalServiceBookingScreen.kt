@@ -487,10 +487,9 @@ fun ProfessionalServiceBookingScreen(
                                         contractorId = contractorId,
                                         clientId = clientId,
                                         selectedDate = date,
-                                        // Only send duration if NOT fixed/session AND value > 0
-                                        durationHours = (if (!isFixedOrSession && priceUnit == "PER_HOUR" && currentDurationValue > 0) {
-                                            currentDurationValue.toInt()
-                                        } else null) as Double? as Int?,
+                                        durationHours = if (!isFixedOrSession && priceUnit == "PER_HOUR" && currentDurationValue > 0) {
+                                            currentDurationValue  // This is already Int from toIntOrNull()
+                                        } else null,
                                         durationDays = if (!isFixedOrSession && priceUnit == "PER_DAY" && currentDurationValue > 0) {
                                             currentDurationValue.toInt()
                                         } else null,

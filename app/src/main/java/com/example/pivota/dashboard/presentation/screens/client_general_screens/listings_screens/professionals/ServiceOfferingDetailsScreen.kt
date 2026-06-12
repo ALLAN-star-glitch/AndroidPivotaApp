@@ -23,40 +23,46 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Help
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ContactSupport
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.ChatBubble
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material.icons.outlined.Work
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,6 +74,8 @@ import coil3.compose.AsyncImage
 import com.example.pivota.core.presentations.composables.TopBar
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.DayAvailability
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
+import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.professionals.ContactBottomSheet
+import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.professionals.ContactInfo
 import com.example.pivota.ui.theme.PivotaConnectTheme
 import java.text.NumberFormat
 import java.util.Locale
@@ -84,6 +92,16 @@ fun ServiceOfferingDetailsScreen(
     val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND) ||
             windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
+
+    // State for bottom sheet visibility
+    var showContactBottomSheet by remember { mutableStateOf(false) }
+
+    // State for custom contact dialog (since backend doesn't have phone/email yet)
+    var showContactOptionsDialog by remember { mutableStateOf(false) }
+
+    // Since backend doesn't have phone/email fields yet, we'll use a better approach
+    // Instead of showing "Contact Info Unavailable", we'll provide alternative options
+    val hasContactInfo = false // Set to true when backend provides phone/email
 
     val formattedPrice = formatPrice(serviceOffering.basePrice, serviceOffering.currency)
     val priceUnitLabel = formatPriceUnitLabel(serviceOffering.priceUnit)
@@ -123,7 +141,12 @@ fun ServiceOfferingDetailsScreen(
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp),
-                        onClick = onContactProvider,
+                        onClick = {
+                            // Show contact options dialog instead of bottom sheet
+                            // since backend doesn't have phone/email yet
+                            showContactOptionsDialog = true
+                            onContactProvider()
+                        },
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
@@ -148,6 +171,7 @@ fun ServiceOfferingDetailsScreen(
             }
         }
     ) { innerPadding ->
+        // Your existing content (all the existing UI code remains exactly the same)
         if (isWide) {
             Row(
                 modifier = Modifier
@@ -191,7 +215,7 @@ fun ServiceOfferingDetailsScreen(
                     .padding(horizontal = 20.dp)
                     .padding(bottom = 80.dp)
             ) {
-                // Price Section with Negotiable Badge and Booking Fee
+                // Price Section
                 PriceSection(
                     serviceOffering = serviceOffering,
                     formattedPrice = formattedPrice,
@@ -439,7 +463,133 @@ fun ServiceOfferingDetailsScreen(
             }
         }
     }
+
+    // Show contact options dialog when backend doesn't have phone/email yet
+    if (showContactOptionsDialog) {
+        ContactOptionsDialog(
+            professionalName = serviceOffering.professionalName,
+            onBookService = {
+                showContactOptionsDialog = false
+                onBookService()
+            },
+            onDismiss = { showContactOptionsDialog = false }
+        )
+    }
 }
+
+// New dialog component for when contact info isn't available yet
+@Composable
+fun ContactOptionsDialog(
+    professionalName: String,
+    onBookService: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Contact $professionalName",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    "You can connect with the professional through the following options:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // Option 1: Book Service
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            onDismiss()
+                            onBookService()
+                        },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Bookmark,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column {
+                            Text(
+                                "Book Their Service",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                "Send a booking request directly to the professional",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // Option 2: Info note
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.ContactSupport,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column {
+                            Text(
+                                "Contact Info Coming Soon",
+                                fontWeight = FontWeight.Medium,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                "Direct contact options will be available after booking",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Close", fontWeight = FontWeight.Medium)
+            }
+        },
+        shape = RoundedCornerShape(20.dp)
+    )
+}
+
 
 @Composable
 private fun PriceSection(

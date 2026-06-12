@@ -25,10 +25,10 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.15.0 - Build 25 - ClassCastException Fix
+        // Version 1.16.0 - Build 26 - ClassCastException Fix
         // Fixed: Integer cannot be cast to Double error in booking flow
-        versionCode = 25
-        versionName = "1.15.0"
+        versionCode = 26
+        versionName = "1.16.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -66,7 +66,7 @@ android {
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.15.0 - BOOKING CRASH FIX
+          PIVOTACONNECT v1.16.0 - BOOKING CRASH FIX
 ================================================================
 
 This release fixes a critical crash that occurred when customers
@@ -90,7 +90,7 @@ FIX DETAILS
 
 PROBLEM
 - The app crashed when clicking confirm on the booking screen
-- Error: Integer cannot be cast to Double at line 379
+- Error: Integer cannot be cast to Double at line 493
 
 ROOT CAUSE
 - Unsafe type casting from Int to Double and back to Int
@@ -102,7 +102,7 @@ SOLUTION
 - Clean conditional logic for duration values
 
 ================================================================
-AFFECTED SCREENS
+AFFECTED FILES
 ================================================================
 
 ProfessionalServiceBookingScreen.kt
@@ -142,12 +142,12 @@ TESTING SCENARIOS
 KNOWN ISSUES
 ================================================================
 
-- Payment processing not implemented (v1.16.0)
+- Payment processing not implemented (v1.17.0)
 - Push notifications pending integration
 - Booking cancellation flow enhancements in progress
 
 ================================================================
-COMING IN V1.16.0
+COMING IN V1.17.0
 ================================================================
 
 - Escrow payment integration
@@ -172,7 +172,7 @@ SUPPORT & FEEDBACK
 For issues, bug reports, or feature requests:
 Email: allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.15.0!
+Thank you for testing PivotaConnect v1.16.0!
 Your feedback helps us create a better experience.
 
 ================================================================
