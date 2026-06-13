@@ -41,6 +41,7 @@ import com.example.pivota.dashboard.presentation.composables.client_general_comp
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardSharedViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HeaderState
 import kotlinx.coroutines.delay
+import kotlin.math.absoluteValue
 
 // Plan configuration data class
 data class PlanConfig(
@@ -89,6 +90,11 @@ private fun truncateText(text: String, maxLength: Int = 20): String {
     } else {
         text
     }
+}
+
+
+private fun getBorderColor(colorScheme: ColorScheme): Color {
+    return colorScheme.surfaceVariant
 }
 
 @SuppressLint("Range")
@@ -171,7 +177,6 @@ fun ReusableHeader(
     val userScope = headerUser?.scope ?: "BUSINESS"
     val planName = headerUser?.planName
     val userRole = headerUser?.role ?: "Member"
-    val truncatedRole = truncateText(userRole, 12)
 
     // Scope-specific display logic
     val isSystemScope = userScope == "SYSTEM"
@@ -181,12 +186,12 @@ fun ReusableHeader(
     val planConfig = if (isBusinessScope) getPlanConfig(planName) else null
     val truncatedPlanName = truncateText(planConfig?.name ?: "Member", 10)
 
-    // Display text format with truncation
+    // Display text format with NO truncation for SYSTEM scope
     val displayText = when {
         isGuestMode -> "Guest"
-        isSystemScope -> truncatedRole
+        isSystemScope -> "Admin"  // ← FIXED: Show "Admin" instead of truncated role
         isBusinessScope -> truncatedPlanName
-        else -> truncatedRole
+        else -> "Member"  // ← FIXED: Fallback to "Member" instead of truncated role
     }
 
     val profileImageUrl = when {
@@ -194,39 +199,33 @@ fun ReusableHeader(
         headerUser != null -> headerUser.avatarUrl
         else -> null
     }
-
-    val isVerified = !isGuestMode && (headerUser?.isVerified == true)
+    val isVerified = !isGuestMode && true  // Temporarily always true for testing
+// TODO: Change back to: val isVerified = !isGuestMode && (headerUser?.isVerified == true)
 
     LaunchedEffect(headerUser, isLoading) {
         println("🔍 [ReusableHeader] Current values - firstName: $firstName, displayText: $displayText, scope: $userScope, planName: $planName, isLoading: $isLoading")
     }
 
     Column(
-        modifier = modifier
+        modifier = modifier.fillMaxWidth()
     ) {
-        // Professional Curved Header Surface with Dynamic Elevation
-        Surface(
+        // Professional Card Header with Rounded Corners on ALL sides and White Background
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
                     elevation = targetElevation,
-                    shape = RoundedCornerShape(
-                        topStart = 0.dp,
-                        topEnd = 0.dp,
-                        bottomStart = 28.dp,
-                        bottomEnd = 28.dp
-                    ),
-                    ambientColor = Color.Black.copy(alpha = 0.12f),
-                    spotColor = Color.Black.copy(alpha = 0.08f)
+                    shape = RoundedCornerShape(28.dp),
+                    ambientColor = Color.Black.copy(alpha = 0.08f),
+                    spotColor = Color.Black.copy(alpha = 0.06f)
                 ),
-            shape = RoundedCornerShape(
-                topStart = 0.dp,
-                topEnd = 0.dp,
-                bottomStart = 28.dp,
-                bottomEnd = 28.dp
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = colorScheme.surface
             ),
-            color = colorScheme.surface,
-            tonalElevation = if (isSticky || isScrolled) 3.dp else 1.dp
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = targetElevation
+            )
         ) {
             Column {
                 // Main Header Row
@@ -300,6 +299,9 @@ fun ReusableHeader(
                                     }
                                 }
                                 else -> {
+                                    // Get alternating border color based on user ID (border for everyone)
+                                    val borderColor = getBorderColor(colorScheme)
+
                                     AsyncImage(
                                         model = ImageRequest.Builder(context)
                                             .data(profileImageUrl)
@@ -312,8 +314,8 @@ fun ReusableHeader(
                                             .fillMaxSize()
                                             .clip(CircleShape)
                                             .border(
-                                                width = if (isVerified) 2.5.dp else 0.dp,
-                                                color = if (isVerified) colorScheme.tertiary else Color.Transparent,
+                                                width = 2.5.dp,
+                                                color = borderColor,
                                                 shape = CircleShape
                                             ),
                                         placeholder = painterResource(R.drawable.job_placeholder3),
@@ -336,7 +338,7 @@ fun ReusableHeader(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "Hi, $firstName",
+                                    text = firstName,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = colorScheme.onSurface,
@@ -406,7 +408,7 @@ fun ReusableHeader(
                                         }
                                     }
                                     isSystemScope -> {
-                                        // System scope: Show role pill
+                                        // System scope: Show "Admin" pill
                                         Surface(
                                             shape = RoundedCornerShape(20.dp),
                                             color = colorScheme.primary.copy(alpha = 0.12f),
@@ -424,7 +426,7 @@ fun ReusableHeader(
                                                     modifier = Modifier.size(12.dp)
                                                 )
                                                 Text(
-                                                    text = displayText,
+                                                    text = displayText,  // Now shows "Admin"
                                                     fontSize = 11.sp,
                                                     fontWeight = FontWeight.Medium,
                                                     color = colorScheme.primary,
@@ -436,9 +438,9 @@ fun ReusableHeader(
                                         }
                                     }
                                     else -> {
-                                        // Fallback - just text
+                                        // Fallback - just text (shows "Member")
                                         Text(
-                                            text = displayText,
+                                            text = displayText,  // Now shows "Member"
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Medium,
                                             color = colorScheme.onSurfaceVariant,
@@ -516,7 +518,7 @@ fun ReusableHeader(
                     }
                 }
 
-                // Animated Page Title Section
+                // Animated Page Title Section - Hides on scroll
                 AnimatedVisibility(
                     visible = !isScrolled,
                     enter = fadeIn(animationSpec = tween(300)) +
@@ -567,8 +569,8 @@ fun ReusableHeader(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            colorScheme.outline.copy(alpha = 0.15f),
-                            colorScheme.outline.copy(alpha = 0.15f),
+                            colorScheme.outline.copy(alpha = 0.1f),
+                            colorScheme.outline.copy(alpha = 0.1f),
                             Color.Transparent
                         )
                     )

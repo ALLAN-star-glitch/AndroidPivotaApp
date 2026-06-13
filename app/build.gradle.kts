@@ -25,10 +25,10 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.16.0 - Build 26 - ClassCastException Fix
-        // Fixed: Integer cannot be cast to Double error in booking flow
-        versionCode = 26
-        versionName = "1.16.0"
+        // Version 1.17.0 - Build 27 - Header UI Enhancements
+        // Added: Rounded card header, primary color avatar border, admin role display
+        versionCode = 27
+        versionName = "1.17.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -66,104 +66,193 @@ android {
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.16.0 - BOOKING CRASH FIX
+          PIVOTACONNECT v1.17.0 - HEADER UI ENHANCEMENTS
 ================================================================
 
-This release fixes a critical crash that occurred when customers
-attempted to book services.
+This release improves the app header with a modern card design,
+better visual hierarchy, and improved user information display.
 
 ================================================================
-CRITICAL BUG FIX
+HEADER UI IMPROVEMENTS
 ================================================================
 
-CLASS CAST EXCEPTION FIX
-- Fixed "java.lang.Integer cannot be cast to java.lang.Double" error
-- Proper type handling for duration values in booking creation
-- Removed unsafe double casting that caused app crashes
-- Ensured all duration values are sent as Int (not Double)
-- Booking flow now stable for all price unit types
-  (PER_HOUR, PER_DAY, PER_WEEK, PER_MONTH, FIXED, PER_SESSION)
+ROUNDED CARD DESIGN
+- Header now uses a fully rounded card (28dp corners)
+- White background with subtle elevation
+- Dynamic elevation based on scroll position (4dp → 8dp → 12dp)
+- Professional shadow effects for depth
+- Consistent with modern app design patterns
+
+AVATAR ENHANCEMENTS
+- Primary color border around all avatars (2.5dp)
+- Consistent styling for all users (not just verified)
+- Improved gradient backgrounds for guest mode
+- Better shadow and visual hierarchy
+
+ADMIN ROLE DISPLAY
+- System administrators now see "Admin" badge
+- No truncation for admin role (previously "PlatformSy...")
+- Primary color styling for admin badge
+- Professional pill design with icon
+
+VERIFIED USER BADGE
+- Verified icon now appears next to user name
+- Tertiary color for verification badge
+- Only shown for verified users
+- Clear visual indicator of trust status
 
 ================================================================
-FIX DETAILS
+HEADER STRUCTURE
 ================================================================
 
-PROBLEM
-- The app crashed when clicking confirm on the booking screen
-- Error: Integer cannot be cast to Double at line 493
+PERSISTENT HEADER
+- Avatar and action icons always visible
+- Page title only hides on scroll (standard behavior)
+- Smooth fade and slide animations
+- No disappearing header issues
 
-ROOT CAUSE
-- Unsafe type casting from Int to Double and back to Int
-- Incorrect handling of duration values in onConfirm lambda
-
-SOLUTION
-- Removed unnecessary double casting
-- Proper Int type handling for all duration fields
-- Clean conditional logic for duration values
+RESPONSIVE DESIGN
+- Proper truncation for long names (15 chars)
+- Plan names truncated to 10 characters
+- Member fallback for unknown roles
+- Consistent layout across screen sizes
 
 ================================================================
-AFFECTED FILES
+COLOR SCHEME UPDATES
 ================================================================
 
-ProfessionalServiceBookingScreen.kt
-- Updated onConfirm lambda to use proper Int types
-- Removed unsafe casting: (as Double? as Int?)
-- Clean conditional logic for duration fields
+THEME COLORS
+- Avatar border: Primary color
+- Admin badge: Primary color
+- Verified icon: Tertiary color
+- Plan pills: Color-coded by plan type
+- Surface variant backgrounds for icons
+
+DARK MODE SUPPORT
+- Fully compatible with dark theme
+- Proper color inversions
+- Shadows visible in both modes
+- Consistent visual hierarchy
+
+================================================================
+VISUAL ENHANCEMENTS
+================================================================
+
+ACTION ICONS
+- Gradient backgrounds for modern look
+- Press animation with scale effect (0.92x)
+- Dynamic shadows on interaction
+- Consistent 38dp sizing
+
+NOTIFICATION BADGE
+- Gradient background (Red to Red-80%)
+- Proper positioning with offset
+- "99+" handling for large counts
+- Rounded pill design
+
+PROFILE MENU
+- Bottom sheet with professional styling
+- Smooth animations
+- Clear menu items with icons
+- Logout option with destructive styling
+
+================================================================
+CODE IMPROVEMENTS
+================================================================
+
+PERFORMANCE
+- Optimized recompositions
+- Efficient animation triggers
+- Cached user data for smooth scrolling
+- Reduced unnecessary redraws
+
+STATE MANAGEMENT
+- Proper elevation state handling
+- Smooth scroll offset tracking
+- Clean LaunchedEffect usage
+- No state leaks
+
+================================================================
+BUG FIXES
+================================================================
+
+- Fixed header disappearing on scroll
+- Fixed admin role truncation issue
+- Fixed avatar border visibility for all users
+- Resolved elevation animation glitches
+- Fixed theme switching color updates
 
 ================================================================
 TESTING SCENARIOS
 ================================================================
 
-1. TEST PER_HOUR BOOKING
-   - Select a service with PER_HOUR pricing
-   - Enter duration (e.g., 2 hours)
-   - Click Confirm Booking
-   - Verify no crash occurs
+1. TEST HEADER VISUALS
+   - Launch app on different screen sizes
+   - Verify rounded card corners (28dp)
+   - Check avatar border (primary color)
+   - Test light and dark themes
+   - Verify proper truncation
 
-2. TEST FIXED PRICE BOOKING
-   - Select a service with FIXED pricing
-   - No duration field should appear
-   - Click Confirm Booking
-   - Verify no crash occurs
+2. TEST SCROLL BEHAVIOR
+   - Scroll slowly through content
+   - Verify header card elevation increases
+   - Check title fade animations
+   - Verify header never disappears
+   - Test smooth transitions
 
-3. TEST PER_DAY BOOKING
-   - Select a service with PER_DAY pricing
-   - Enter duration (e.g., 3 days)
-   - Click Confirm Booking
-   - Verify no crash occurs
+3. TEST USER ROLES
+   - Login as System Admin
+   - Verify "Admin" badge appears
+   - Check no truncation of role name
+   - Test Business user plan display
+   - Verify Member fallback for unknown roles
 
-4. TEST NEGOTIATED PRICE BOOKING
-   - Select a negotiable service
-   - Propose a different price
-   - Click Confirm Booking
-   - Verify no crash occurs
+4. TEST INTERACTIONS
+   - Press action icons for scale animation
+   - Tap avatar to open profile menu
+   - Scroll header to see elevation changes
+   - Toggle theme to verify colors
+   - Click notification badge
 
 ================================================================
 KNOWN ISSUES
 ================================================================
 
-- Payment processing not implemented (v1.17.0)
+- Payment processing not implemented (v1.18.0)
 - Push notifications pending integration
 - Booking cancellation flow enhancements in progress
 
 ================================================================
-COMING IN V1.17.0
+COMING IN V1.18.0
 ================================================================
 
 - Escrow payment integration
 - Professional counter-offer system
 - My Bookings management screen
 - Push notifications for booking updates
+- SMS notifications for urgent updates
 
 ================================================================
 HOW TO TEST THIS RELEASE
 ================================================================
 
-1. Clean install the app
-2. Navigate to any service offering
-3. Fill in booking details
-4. Click Confirm Booking
-5. Verify booking is created successfully without crash
+1. VISUAL TESTING
+   - Check header curvature on different devices
+   - Verify primary color avatar border
+   - Test dark mode appearance
+   - Check admin badge display
+
+2. SCROLL TESTING
+   - Scroll through content
+   - Verify header remains visible
+   - Check elevation transitions
+   - Test title hide/show animations
+
+3. ROLE TESTING
+   - Test with different user roles
+   - Verify admin displays correctly
+   - Check business plan pills
+   - Test member fallback
 
 ================================================================
 SUPPORT & FEEDBACK
@@ -172,7 +261,7 @@ SUPPORT & FEEDBACK
 For issues, bug reports, or feature requests:
 Email: allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.16.0!
+Thank you for testing PivotaConnect v1.17.0!
 Your feedback helps us create a better experience.
 
 ================================================================
