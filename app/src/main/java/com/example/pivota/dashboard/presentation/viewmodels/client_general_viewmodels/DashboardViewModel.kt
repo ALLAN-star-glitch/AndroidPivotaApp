@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.pivota.core.auth.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,6 +24,11 @@ class DashboardViewModel @Inject constructor(
     private val _networkErrorEvent = MutableSharedFlow<String>()
     val networkErrorEvent: SharedFlow<String> = _networkErrorEvent.asSharedFlow()
 
+
+    // Add recovery events from TokenManager
+    private val _recoveryEvent = MutableSharedFlow<TokenManager.RecoveryType>()
+    val recoveryEvent: SharedFlow<TokenManager.RecoveryType> = _recoveryEvent.asSharedFlow()
+
     init {
         // Collect logout events from TokenManager
         viewModelScope.launch {
@@ -33,6 +41,13 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             tokenManager.networkErrorEvent.collect { errorMessage ->
                 _networkErrorEvent.emit(errorMessage)
+            }
+        }
+
+        // Collect recovery events from TokenManager
+        viewModelScope.launch {
+            tokenManager.recoveryEvent.collect { recoveryType ->
+                _recoveryEvent.emit(recoveryType)
             }
         }
     }
@@ -74,12 +89,40 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+
+    /**
+     * Simplified manual retry without callback
+     */
+    suspend fun manualRetrySuspend(): Boolean {
+        return try {
+            tokenManager.manualRetry()
+        } catch (e: Exception) {
+            println("❌ [DashboardViewModel] Manual retry exception: ${e.message}")
+            false
+        }
+    }
+
     suspend fun getCurrentToken(): String? {
         return tokenManager.getCurrentToken()
     }
 
     suspend fun isTokenValid(): Boolean {
         return tokenManager.hasValidSession()
+    }
+
+    /**
+     * Get current backend status
+     */
+    fun getBackendStatus(): TokenManager.BackendStatus {
+        return tokenManager.getBackendStatus()
+    }
+
+    /**
+     * Reset failure state (useful when user manually triggers retry)
+     */
+    fun resetFailureState() {
+        tokenManager.resetFailureState()
+        println("🔄 [DashboardViewModel] Failure state reset")
     }
 
     override fun onCleared() {
@@ -94,4 +137,14 @@ class DashboardViewModel @Inject constructor(
             }
         }
     }
+}
+
+/**
+ * Result of a manual retry attempt
+ */
+sealed class RetryResult {
+    data object Success : RetryResult()
+    data object Failed : RetryResult()
+    data object AlreadyInProgress : RetryResult()
+    data class Error(val message: String) : RetryResult()
 }

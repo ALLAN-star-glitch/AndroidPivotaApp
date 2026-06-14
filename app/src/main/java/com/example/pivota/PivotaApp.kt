@@ -1,9 +1,11 @@
 package com.example.pivota
 
 import android.app.Application
+import com.example.pivota.core.ApplicationProvider
 import com.example.pivota.core.data.ThemeManager
 import com.example.pivota.core.utils.TabletDetector
 import com.example.pivota.core.network.KtorClientFactory
+import com.example.pivota.core.network.NetworkExceptionHandler
 import com.example.pivota.dashboard.data.sync.CategoriesSyncManager
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -15,16 +17,27 @@ class PivotaApp : Application() {
     lateinit var themeManager: ThemeManager
 
     override fun attachBaseContext(base: android.content.Context) {
+        // Initialize ApplicationProvider FIRST before anything else
+        ApplicationProvider.init(base)
+
         KtorClientFactory.init(base)
         super.attachBaseContext(base)
-        println("✅ [PivotaApp] KtorClientFactory initialized in attachBaseContext")
+
+        // Initialize NetworkExceptionHandler early
+        NetworkExceptionHandler.getInstance(this)
+
+        println("✅ [PivotaApp] ApplicationProvider initialized in attachBaseContext")
     }
 
     @Inject lateinit var categoriesSyncManager: CategoriesSyncManager
 
     override fun onCreate() {
-        KtorClientFactory.init(this)
         super.onCreate()
+
+        // Verify ApplicationProvider is initialized
+        if (!ApplicationProvider.isInitialized()) {
+            ApplicationProvider.init(this)
+        }
 
         categoriesSyncManager.startAutoSync()
 

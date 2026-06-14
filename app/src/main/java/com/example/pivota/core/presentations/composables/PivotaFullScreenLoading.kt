@@ -26,7 +26,7 @@ fun PivotaFullScreenLoading(
     message: String? = null
 ) {
     val composition by rememberLottieComposition(
-        LottieCompositionSpec.RawRes(R.raw.loading_amination)
+        LottieCompositionSpec.RawRes(R.raw.loading2)
     )
     val progress by animateLottieCompositionAsState(
         composition = composition,

@@ -25,10 +25,10 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.17.0 - Build 27 - Header UI Enhancements
-        // Added: Rounded card header, primary color avatar border, admin role display
-        versionCode = 27
-        versionName = "1.17.0"
+        // Version 1.18.0 - Build 28 - Token Management & Offline Recovery
+        // Added: Automatic token refresh, network recovery, offline banner
+        versionCode = 28
+        versionName = "1.18.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -66,164 +66,243 @@ android {
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.17.0 - HEADER UI ENHANCEMENTS
+          PIVOTACONNECT v1.18.0 - TOKEN MANAGEMENT & OFFLINE RECOVERY
 ================================================================
 
-This release improves the app header with a modern card design,
-better visual hierarchy, and improved user information display.
+This release introduces a comprehensive token management system
+with automatic refresh, intelligent offline handling, and seamless
+connection recovery when network or backend service is restored.
 
 ================================================================
-HEADER UI IMPROVEMENTS
+TOKEN MANAGEMENT SYSTEM
 ================================================================
 
-ROUNDED CARD DESIGN
-- Header now uses a fully rounded card (28dp corners)
-- White background with subtle elevation
-- Dynamic elevation based on scroll position (4dp → 8dp → 12dp)
-- Professional shadow effects for depth
-- Consistent with modern app design patterns
+AUTO TOKEN REFRESH
+- Tokens automatically refresh every 12 minutes
+- Prevents session expiration during extended app usage
+- No user interruption during refresh
+- Seamless background operation
 
-AVATAR ENHANCEMENTS
-- Primary color border around all avatars (2.5dp)
-- Consistent styling for all users (not just verified)
-- Improved gradient backgrounds for guest mode
-- Better shadow and visual hierarchy
+SMART REFRESH SCHEDULING
+- Refreshes token 5 minutes before expiration
+- Avoids unnecessary API calls
+- Reduces server load
+- Optimized refresh intervals
 
-ADMIN ROLE DISPLAY
-- System administrators now see "Admin" badge
-- No truncation for admin role (previously "PlatformSy...")
-- Primary color styling for admin badge
-- Professional pill design with icon
-
-VERIFIED USER BADGE
-- Verified icon now appears next to user name
-- Tertiary color for verification badge
-- Only shown for verified users
-- Clear visual indicator of trust status
+CONCURRENT REFRESH PROTECTION
+- Prevents multiple simultaneous refresh attempts
+- Mutex locks ensure thread safety
+- Handles race conditions gracefully
+- Maintains token integrity
 
 ================================================================
-HEADER STRUCTURE
+NETWORK & BACKEND RECOVERY
 ================================================================
 
-PERSISTENT HEADER
-- Avatar and action icons always visible
-- Page title only hides on scroll (standard behavior)
-- Smooth fade and slide animations
-- No disappearing header issues
+INTELLIGENT ERROR CLASSIFICATION
+- Distinguishes between network and backend errors
+- ConnectException = Backend unreachable (internet works)
+- UnknownHostException = No internet connection
+- Timeout = Server not responding
 
-RESPONSIVE DESIGN
-- Proper truncation for long names (15 chars)
-- Plan names truncated to 10 characters
-- Member fallback for unknown roles
-- Consistent layout across screen sizes
+AUTOMATIC RECOVERY
+- Health check runs every 30 seconds
+- Detects when backend comes back online
+- Auto-refreshes token on recovery
+- Seamless user experience
 
-================================================================
-COLOR SCHEME UPDATES
-================================================================
-
-THEME COLORS
-- Avatar border: Primary color
-- Admin badge: Primary color
-- Verified icon: Tertiary color
-- Plan pills: Color-coded by plan type
-- Surface variant backgrounds for icons
-
-DARK MODE SUPPORT
-- Fully compatible with dark theme
-- Proper color inversions
-- Shadows visible in both modes
-- Consistent visual hierarchy
+NETWORK CALLBACK MONITORING
+- Instant detection when network returns
+- Uses Android ConnectivityManager
+- Falls back to health check if callback unavailable
+- Works reliably on all devices
 
 ================================================================
-VISUAL ENHANCEMENTS
+OFFLINE BANNER SYSTEM
 ================================================================
 
-ACTION ICONS
-- Gradient backgrounds for modern look
-- Press animation with scale effect (0.92x)
-- Dynamic shadows on interaction
-- Consistent 38dp sizing
+ELEGANT BANNER DESIGN
+- Gradient background for modern look
+- Animated warning icon with pulse effect
+- Smooth slide-in/out animations
+- Rounded corners (20dp) with elevation
 
-NOTIFICATION BADGE
-- Gradient background (Red to Red-80%)
-- Proper positioning with offset
-- "99+" handling for large counts
-- Rounded pill design
+SMART MESSAGING
+- "No internet connection" for network issues
+- "Service temporarily unavailable" for backend issues
+- Clear, user-friendly error messages
+- Actionable guidance for users
 
-PROFILE MENU
-- Bottom sheet with professional styling
-- Smooth animations
-- Clear menu items with icons
-- Logout option with destructive styling
+MANUAL RETRY BUTTON
+- User can force retry at any time
+- Visual feedback during retry
+- Full-screen loading animation
+- Updates banner with result
+
+================================================================
+SESSION MANAGEMENT
+================================================================
+
+FORCE LOGOUT ON AUTH FAILURE
+- Detects invalid/expired refresh tokens
+- Clears all session data
+- Navigates to login screen
+- Prevents unauthorized access
+
+CLEAN SESSION CLEARING
+- Clears DataStore preferences
+- Removes Room database entries
+- Stops auto-refresh jobs
+- Resets all failure counters
+
+================================================================
+OFFLINE DATA ACCESS
+================================================================
+
+CACHED PROFILE DISPLAY
+- Shows cached profile when offline
+- Timestamp indicates cache age
+- Warning for stale data (>24 hours)
+- Transparent offline experience
+
+BACKGROUND PROFILE REFRESH
+- Attempts refresh when online
+- Updates cache on success
+- Preserves user experience
+- No UI blocking
+
+================================================================
+BANNER UI ENHANCEMENTS
+================================================================
+
+GRADIENT BACKGROUND
+- Horizontal gradient for visual appeal
+- Surface container colors adapt to theme
+- Proper dark mode support
+- Professional appearance
+
+ANIMATED ICON
+- Pulsing Wi-Fi Off icon
+- Smooth infinite animation
+- Error tint for visibility
+- 24dp size with scale transform
+
+RESPONSIVE BUTTONS
+- Dismiss and Retry options
+- Equal width with proper spacing
+- Rounded corners (12dp)
+- Primary color for Retry button
+
+LOADING STATE
+- Circular progress indicator
+- "Attempting to reconnect..." message
+- Buttons hidden during retry
+- Smooth transition
 
 ================================================================
 CODE IMPROVEMENTS
 ================================================================
 
-PERFORMANCE
-- Optimized recompositions
-- Efficient animation triggers
-- Cached user data for smooth scrolling
-- Reduced unnecessary redraws
+TOKEN MANAGER
+- Seamless class with comprehensive error handling
+- Recovery events for UI updates
+- Backend status tracking
+- Thread-safe operations
 
-STATE MANAGEMENT
-- Proper elevation state handling
-- Smooth scroll offset tracking
-- Clean LaunchedEffect usage
-- No state leaks
+NETWORK EXCEPTION HANDLER
+- Accurate network state detection
+- Uses ConnectivityManager when available
+- Smart fallback for error classification
+- Proper error message extraction
+
+DASHBOARD VIEWMODEL
+- Centralized retry logic
+- Offline state management
+- Recovery event handling
+- Clean state flows
+
+================================================================
+PERFORMANCE OPTIMIZATIONS
+================================================================
+
+EFFICIENT HEALTH CHECKS
+- 5-second timeout for health checks
+- Minimal battery impact
+- Non-blocking coroutines
+- Dispatchers.IO for network operations
+
+OPTIMIZED STATE FLOWS
+- SharedFlow for events
+- StateFlow for UI states
+- Proper scope management
+- No memory leaks
 
 ================================================================
 BUG FIXES
 ================================================================
 
-- Fixed header disappearing on scroll
-- Fixed admin role truncation issue
-- Fixed avatar border visibility for all users
-- Resolved elevation animation glitches
-- Fixed theme switching color updates
+- Fixed token refresh not retrying after network recovery
+- Fixed banner not appearing on second backend failure
+- Fixed manual retry not refreshing profile
+- Resolved duplicate loading indicators
+- Fixed offline state persistence across screen rotations
+- Corrected error message for backend vs network issues
 
 ================================================================
 TESTING SCENARIOS
 ================================================================
 
-1. TEST HEADER VISUALS
-   - Launch app on different screen sizes
-   - Verify rounded card corners (28dp)
-   - Check avatar border (primary color)
-   - Test light and dark themes
-   - Verify proper truncation
+1. TEST TOKEN AUTO-REFRESH
+   - Log in and leave app running for 12 minutes
+   - Verify token refreshes without interruption
+   - Check logs for successful refresh
+   - Confirm no user-facing errors
 
-2. TEST SCROLL BEHAVIOR
-   - Scroll slowly through content
-   - Verify header card elevation increases
-   - Check title fade animations
-   - Verify header never disappears
-   - Test smooth transitions
+2. TEST BACKEND DOWNTIME
+   - Kill backend server while app is running
+   - Verify banner appears: "Service temporarily unavailable"
+   - Wait 30 seconds, restart backend
+   - Verify banner disappears and data reloads
+   - Check auto-refresh on recovery
 
-3. TEST USER ROLES
-   - Login as System Admin
-   - Verify "Admin" badge appears
-   - Check no truncation of role name
-   - Test Business user plan display
-   - Verify Member fallback for unknown roles
+3. TEST NETWORK DOWNTIME
+   - Turn on Airplane mode
+   - Verify banner appears: "No internet connection"
+   - Turn off Airplane mode
+   - Verify banner disappears within 2-5 seconds
+   - Check data reloads automatically
 
-4. TEST INTERACTIONS
-   - Press action icons for scale animation
-   - Tap avatar to open profile menu
-   - Scroll header to see elevation changes
-   - Toggle theme to verify colors
-   - Click notification badge
+4. TEST MANUAL RETRY
+   - With backend down, click "Retry" button
+   - Verify full-screen loading appears
+   - Verify banner updates message on failure
+   - Start backend, click retry again
+   - Verify success and banner disappears
+
+5. TEST SESSION EXPIRY
+   - Manually invalidate refresh token on backend
+   - Verify app detects auth error
+   - Verify force logout occurs
+   - Verify navigation to login screen
+
+6. TEST OFFLINE CACHE
+   - Turn off network completely
+   - Kill and restart app
+   - Verify cached profile displays
+   - Verify "Using cached data" message appears
+   - Verify timestamp shows cache age
 
 ================================================================
 KNOWN ISSUES
 ================================================================
 
-- Payment processing not implemented (v1.18.0)
+- Payment processing not implemented (v1.19.0)
 - Push notifications pending integration
 - Booking cancellation flow enhancements in progress
+- Emulator network callbacks may be slower than physical devices
 
 ================================================================
-COMING IN V1.18.0
+COMING IN V1.19.0
 ================================================================
 
 - Escrow payment integration
@@ -231,28 +310,31 @@ COMING IN V1.18.0
 - My Bookings management screen
 - Push notifications for booking updates
 - SMS notifications for urgent updates
+- Enhanced offline data synchronization
 
 ================================================================
-HOW TO TEST THIS RELEASE
+TECHNICAL DETAILS
 ================================================================
 
-1. VISUAL TESTING
-   - Check header curvature on different devices
-   - Verify primary color avatar border
-   - Test dark mode appearance
-   - Check admin badge display
+TOKEN REFRESH FLOW
+1. Auto-refresh job runs every 12 minutes
+2. Checks token expiration (5 minutes before expiry)
+3. Calls refreshToken API with current refresh token
+4. On success, saves new tokens with timestamp
+5. On failure, classifies error (network/backend/auth)
+6. Retries with exponential backoff
 
-2. SCROLL TESTING
-   - Scroll through content
-   - Verify header remains visible
-   - Check elevation transitions
-   - Test title hide/show animations
+HEALTH CHECK SYSTEM
+1. Runs every 30 seconds when network available
+2. Attempts quick token validation
+3. Detects backend availability changes
+4. Emits recovery events when backend returns
 
-3. ROLE TESTING
-   - Test with different user roles
-   - Verify admin displays correctly
-   - Check business plan pills
-   - Test member fallback
+ERROR CLASSIFICATION
+- No internet: UnknownHostException, No route to host
+- Backend down: ConnectException, Connection refused
+- Timeout: SocketTimeoutException, Read timeout
+- Auth error: 401, "Invalid token", "Session expired"
 
 ================================================================
 SUPPORT & FEEDBACK
@@ -261,8 +343,8 @@ SUPPORT & FEEDBACK
 For issues, bug reports, or feature requests:
 Email: allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.17.0!
-Your feedback helps us create a better experience.
+Thank you for testing PivotaConnect v1.18.0!
+Your feedback helps us create a more reliable app.
 
 ================================================================
                 """.trimIndent()

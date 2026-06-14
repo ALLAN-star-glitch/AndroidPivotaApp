@@ -22,13 +22,18 @@ import com.example.pivota.dashboard.presentation.state.DashboardState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class DashboardSharedViewModel @Inject constructor(
@@ -53,6 +58,13 @@ class DashboardSharedViewModel @Inject constructor(
     val logoutEvent: StateFlow<Boolean> = _logoutEvent.asStateFlow()
     private val _isLoggingOut = MutableStateFlow(false)
     val isLoggingOut: StateFlow<Boolean> = _isLoggingOut.asStateFlow()
+
+    // Add state for tracking retry status
+    private val _isRetrying = MutableStateFlow(false)
+    val isRetrying: StateFlow<Boolean> = _isRetrying.asStateFlow()
+
+    private val _retryResult = MutableSharedFlow<RetryResult>()
+    val retryResult: SharedFlow<RetryResult> = _retryResult.asSharedFlow()
 
     private val _commonServicesState = MutableStateFlow<CommonServicesUiState>(CommonServicesUiState.Loading)
     val commonServicesState: StateFlow<CommonServicesUiState> = _commonServicesState.asStateFlow()
@@ -80,6 +92,10 @@ class DashboardSharedViewModel @Inject constructor(
 
     private val _offlineMessage = MutableStateFlow<String?>(null)
     val offlineMessage: StateFlow<String?> = _offlineMessage.asStateFlow()
+
+    // Manual retry state
+    private val _isManualRetrying = MutableStateFlow(false)
+    val isManualRetrying: StateFlow<Boolean> = _isManualRetrying.asStateFlow()
 
     // ======================================================
     // TAB STATE
@@ -114,6 +130,57 @@ class DashboardSharedViewModel @Inject constructor(
 
             // Step 2: Try to fetch fresh data in background
             refreshProfileInBackground()
+        }
+
+        // Listen for backend recovery and auto-refresh profile
+        viewModelScope.launch {
+            tokenManager.recoveryEvent.collect { recoveryType ->
+                when (recoveryType) {
+                    TokenManager.RecoveryType.BACKEND_RECOVERED -> {
+                        println("🔄 [DashboardSharedViewModel] Backend recovered! Auto-refreshing profile...")
+                        _offlineMessage.value = "Connection restored! Refreshing your data..."
+                        delay(2000.milliseconds)
+                        refreshProfileInBackground()
+                        delay(1000.milliseconds)
+                        _offlineMessage.value = null
+                        _isOffline.value = false
+                    }
+                    TokenManager.RecoveryType.NETWORK_RECOVERED -> {
+                        println("🔄 [DashboardSharedViewModel] Network recovered, waiting for service...")
+                        _offlineMessage.value = "Network restored. Waiting for service to become available..."
+                        delay(3000.milliseconds)
+                        if (_offlineMessage.value == "Network restored. Waiting for service to become available...") {
+                            _offlineMessage.value = "Service still unavailable. Will retry automatically when service is restored."
+                        }
+                    }
+                    TokenManager.RecoveryType.MANUAL_RETRY -> {
+                        println("🔄 [DashboardSharedViewModel] Manual retry completed")
+                    }
+                }
+            }
+        }
+
+        // Listen for network error events to show banner when backend/network is down
+        viewModelScope.launch {
+            tokenManager.networkErrorEvent.collect { errorMessage ->
+                println("🔴🔴🔴 [DashboardSharedViewModel] Received network error: $errorMessage")
+                if (errorMessage.isNotBlank()) {
+                    _offlineMessage.value = errorMessage
+                    _isOffline.value = true
+                    println("📡 [DashboardSharedViewModel] Banner should now show with message: $errorMessage")
+                }
+            }
+        }
+
+        // Also listen for backend status changes
+        viewModelScope.launch {
+            tokenManager.backendStatusEvent.collect { status ->
+                println("📡 [DashboardSharedViewModel] Backend status: isAvailable=${status.isAvailable}, errors=${status.consecutiveErrors}")
+                if (!status.isAvailable && status.lastError != null) {
+                    _offlineMessage.value = status.lastError
+                    _isOffline.value = true
+                }
+            }
         }
     }
 
@@ -170,7 +237,6 @@ class DashboardSharedViewModel @Inject constructor(
         _showLogoutDialog.value = true
     }
 
-
     fun onLogoutConfirmed() {
         _showLogoutDialog.value = false
 
@@ -180,7 +246,6 @@ class DashboardSharedViewModel @Inject constructor(
         _dashboardState.value = DashboardState.Loading
 
         // Launch network logout in a separate coroutine that won't be cancelled
-        // Use GlobalScope or a custom application scope
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 println("🌐 [LOGOUT] Starting network logout...")
@@ -190,8 +255,6 @@ class DashboardSharedViewModel @Inject constructor(
                 println("🌐 [LOGOUT] Refresh token: ${refreshToken?.take(20)}...")
 
                 if (refreshToken != null) {
-                    // Make the actual network call
-                    // You need to inject AuthUseCases or add this method to TokenManager
                     val result = authUseCases.logout(refreshToken)
 
                     when (result) {
@@ -230,7 +293,6 @@ class DashboardSharedViewModel @Inject constructor(
         _showLogoutDialog.value = false
     }
 
-
     /**
      * Refresh profile in background - doesn't block UI
      */
@@ -244,7 +306,7 @@ class DashboardSharedViewModel @Inject constructor(
 
         try {
             // 8 second timeout for background refresh
-            val result = withTimeoutOrNull(8000L) {
+            val result = withTimeoutOrNull(8000L.milliseconds) {
                 getProfileUseCase()
             }
 
@@ -269,24 +331,24 @@ class DashboardSharedViewModel @Inject constructor(
                 is ApiResult.Error -> {
                     val networkError = result.networkError
 
-                    // Check if this is an auth error (critical)
                     if (networkError is NetworkError.Unauthorized) {
-                        // Critical - need to logout
                         _headerState.value = HeaderState.AuthError(networkError.userFriendlyMessage)
                         _profileState.value = ProfileLoadState.AuthError(networkError.userFriendlyMessage)
                         println("❌ Auth error - needs re-login: ${networkError.userFriendlyMessage}")
                     }
                     else if (!hasEverLoadedProfile) {
                         // No cache available and fetch failed
-                        _offlineMessage.value = networkError.userFriendlyMessage
+                        val message = networkError.userFriendlyMessage
+                        _offlineMessage.value = message
                         _isOffline.value = true
-                        println("⚠️ Network error, no cache available: ${networkError.userFriendlyMessage}")
+                        println("⚠️ Network error, no cache available: $message")
                     }
                     else {
                         // Have cache but refresh failed - keep showing cache with warning
-                        _offlineMessage.value = "Using cached data. ${networkError.userFriendlyMessage}"
+                        val message = "Using cached data. ${networkError.userFriendlyMessage}"
+                        _offlineMessage.value = message
                         _isOffline.value = true
-                        println("⚠️ Refresh failed, keeping cached data: ${networkError.userFriendlyMessage}")
+                        println("⚠️ Refresh failed, keeping cached data: $message")
                     }
                 }
 
@@ -384,7 +446,9 @@ class DashboardSharedViewModel @Inject constructor(
             phoneNumber = userEntity.phone,
             profileImageUrl = userEntity.profileImage,
             status = UserStatus.ACTIVE,
-            role = userEntity.role ?: "user"
+            role = userEntity.role ?: "user",
+            scope = null,
+            planName = null
         )
 
         val profileAccount = ProfileAccount(
@@ -423,7 +487,9 @@ class DashboardSharedViewModel @Inject constructor(
             verifications = emptyList(),
             completion = profileCompletion,
             createdAt = "",
-            updatedAt = ""
+            updatedAt = "",
+            planName = null,
+            scope = null
         )
     }
 
@@ -453,7 +519,7 @@ class DashboardSharedViewModel @Inject constructor(
                 role = profile.user.role,
                 accountType = profile.account.type.name,
                 scope = profile.user.scope,
-                planName = profile.planName ?: profile.user.planName  // ← USE root planName first
+                planName = profile.planName ?: profile.user.planName
             )
         )
     }
@@ -472,7 +538,9 @@ class DashboardSharedViewModel @Inject constructor(
             phoneNumber = null,
             profileImageUrl = null,
             status = UserStatus.ACTIVE,
-            role = "user"
+            role = "user",
+            scope = null,
+            planName = null
         )
 
         val defaultAccount = ProfileAccount(
@@ -508,11 +576,17 @@ class DashboardSharedViewModel @Inject constructor(
             verifications = emptyList(),
             completion = defaultCompletion,
             createdAt = "",
-            updatedAt = ""
+            updatedAt = "",
+            planName = null,
+            scope = null
         )
 
         updateStatesWithProfile(defaultProfile)
     }
+
+    // ======================================================
+    // PUBLIC METHODS FOR UI
+    // ======================================================
 
     /**
      * Force refresh profile data (ignore cache)
@@ -529,6 +603,26 @@ class DashboardSharedViewModel @Inject constructor(
      */
     fun dismissOfflineMessage() {
         _offlineMessage.value = null
+        _isOffline.value = false
+        println("📡 [DashboardSharedViewModel] Offline message dismissed")
+    }
+
+    /**
+     * Update offline message (keeps offline state as true)
+     */
+    fun updateOfflineMessage(message: String) {
+        _offlineMessage.value = message
+        _isOffline.value = true
+        println("📡 [DashboardSharedViewModel] Offline message updated: $message")
+    }
+
+    /**
+     * Update offline state with custom message and offline flag
+     */
+    fun updateOfflineState(message: String, isOffline: Boolean) {
+        _offlineMessage.value = message
+        _isOffline.value = isOffline
+        println("📡 [DashboardSharedViewModel] Offline state updated: isOffline=$isOffline, message=$message")
     }
 
     /**
@@ -617,6 +711,7 @@ class DashboardSharedViewModel @Inject constructor(
         hasEverLoadedProfile = false
         _isOffline.value = false
         _offlineMessage.value = null
+        _isManualRetrying.value = false
     }
 
     /**
@@ -659,9 +754,60 @@ class DashboardSharedViewModel @Inject constructor(
         }
     }
 
-
     fun updateCommonServicesState(state: CommonServicesUiState) {
         _commonServicesState.value = state
+    }
+
+    // ======================================================
+    // MANUAL RETRY
+    // ======================================================
+
+    fun manualRetry(onResult: (RetryResult) -> Unit = {}) {
+        viewModelScope.launch {
+            if (_isRetrying.value) {
+                println("⚠️ [DashboardViewModel] Manual retry already in progress")
+                onResult(RetryResult.AlreadyInProgress)
+                return@launch
+            }
+
+            _isRetrying.value = true
+            println("🔄 [DashboardViewModel] Manual retry initiated")
+
+            try {
+                // Call TokenManager's manual retry
+                val success = tokenManager.manualRetry()
+
+                val result = if (success) {
+                    println("✅ [DashboardViewModel] Manual retry successful")
+                    RetryResult.Success
+                } else {
+                    println("❌ [DashboardViewModel] Manual retry failed")
+                    RetryResult.Failed
+                }
+
+                _retryResult.emit(result)
+                onResult(result)
+            } catch (e: Exception) {
+                println("❌ [DashboardViewModel] Manual retry exception: ${e.message}")
+                val result = RetryResult.Error(e.message ?: "Unknown error")
+                _retryResult.emit(result)
+                onResult(result)
+            } finally {
+                _isRetrying.value = false
+            }
+        }
+    }
+
+    /**
+     * Quick manual retry without UI feedback (for internal use)
+     */
+    suspend fun manualRetrySync(): Boolean {
+        return try {
+            tokenManager.manualRetry()
+        } catch (e: Exception) {
+            println("❌ [DashboardSharedViewModel] Manual retry sync failed: ${e.message}")
+            false
+        }
     }
 }
 

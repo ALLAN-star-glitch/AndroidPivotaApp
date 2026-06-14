@@ -4,10 +4,17 @@ import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,6 +64,9 @@ import java.util.Date
 import java.util.concurrent.TimeUnit
 import androidx.compose.material3.SheetState
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.zIndex
@@ -104,8 +114,12 @@ import com.example.pivota.dashboard.presentation.screens.client_general_screens.
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ServiceOfferingDetailsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ServiceOfferingsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.SubcategoriesScreen
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.RetryResult
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.ServiceDetailsState
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.ServiceOfferingsViewModel
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 // Quick conversion functions (keep as is)
 private fun quickConvertToDetailsJob(dashboardJob: DashboardJobListingUiModel): DetailsJobListingUiModel {
@@ -247,6 +261,9 @@ fun DashboardScaffold(
     val profile = sharedViewModel.getCurrentProfile()
     val headerState by sharedViewModel.headerState.collectAsState()
 
+    // Track retry state
+    val isRetrying by sharedViewModel.isRetrying.collectAsState()
+
     var showWelcomeSnackbar by remember { mutableStateOf(false) }
     var welcomeMessage by remember { mutableStateOf("") }
     var snackbarType by remember { mutableStateOf(SnackbarType.SUCCESS) }
@@ -290,6 +307,10 @@ fun DashboardScaffold(
     LaunchedEffect(Unit) {
         dashboardViewModel.networkErrorEvent.collect { errorMessage ->
             println("⚠️ Network error: $errorMessage")
+            // Update offline message when network error occurs
+            if (errorMessage.isNotBlank()) {
+                sharedViewModel.updateOfflineMessage(errorMessage)
+            }
         }
     }
 
@@ -481,25 +502,58 @@ fun DashboardScaffold(
                 )
             }
 
-            // Show offline/warning banner if needed
-            if (isOffline && offlineMessage != null) {
+            // In DashboardScaffold.kt - Fix the manualRetry callback
+            if (isOffline && offlineMessage != null && !isRetrying) {
                 OfflineWarningBanner(
                     message = offlineMessage!!,
-                    onDismiss = { sharedViewModel.dismissOfflineMessage() }
+                    onDismiss = {
+                        sharedViewModel.dismissOfflineMessage()
+                    },
+                    onRetry = {
+                        println("🔄 Manual retry triggered from banner")
+
+                        // Call manualRetry which returns RetryResult, not Boolean
+                        sharedViewModel.manualRetry { result ->
+                            when (result) {
+                                is RetryResult.Success -> {
+                                    // Token refresh succeeded, refresh the profile
+                                    sharedViewModel.refreshProfile()
+                                    println("✅ Manual retry successful")
+                                    // Clear offline state after successful refresh
+                                    sharedViewModel.dismissOfflineMessage()
+                                }
+                                is RetryResult.Failed -> {
+                                    // Token refresh failed, still try to refresh profile (might use cached data)
+                                    sharedViewModel.refreshProfile()
+                                    println("⚠️ Manual retry failed")
+                                    // Update offline message - use the existing offlineMessage flow
+                                    sharedViewModel.updateOfflineState(
+                                        message = "Still having connection issues. Please check your internet and try again.",
+                                        isOffline = true
+                                    )
+                                }
+                                is RetryResult.AlreadyInProgress -> {
+                                    println("⚠️ Manual retry already in progress")
+                                }
+                                is RetryResult.Error -> {
+                                    println("❌ Manual retry error: ${result.message}")
+                                    sharedViewModel.updateOfflineState(
+                                        message = "Error: ${result.message}",
+                                        isOffline = true
+                                    )
+                                }
+                            }
+                        }
+                    }
                 )
             }
 
-            // Show retry button if offline and user wants to retry
-            if (isOffline && hasProfileData) {
-                FloatingActionButton(
-                    onClick = { sharedViewModel.refreshProfile() },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(16.dp),
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Retry")
-                }
+
+            if (isRetrying) {
+                PivotaFullScreenLoading(
+                    message = "Reconnecting to server..."
+                )
+                return
             }
 
             // Show logging out indicator
@@ -2224,46 +2278,176 @@ fun NoBottomNavScaffold(
 @Composable
 fun OfflineWarningBanner(
     message: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onRetry: () -> Unit = {}
 ) {
     var visible by remember { mutableStateOf(true) }
+    var isRetrying by remember { mutableStateOf(false) }
+
+
 
     AnimatedVisibility(
-        visible = visible,
-        enter = slideInVertically(initialOffsetY = { -it }),
-        exit = slideOutVertically(targetOffsetY = { -it })
+        visible = visible && !isRetrying,
+        enter = slideInVertically(
+            initialOffsetY = { -it },
+            animationSpec = tween(400, easing = FastOutSlowInEasing)
+        ) + fadeIn(animationSpec = tween(400)),
+        exit = slideOutVertically(
+            targetOffsetY = { -it },
+            animationSpec = tween(300, easing = FastOutSlowInEasing)
+        ) + fadeOut(animationSpec = tween(300))
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            shadowElevation = 4.dp
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            shape = RoundedCornerShape(20.dp),
+            shadowElevation = 8.dp,
+            color = Color.Transparent
         ) {
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.surfaceContainerHigh,
+                                MaterialTheme.colorScheme.surfaceContainerHighest
+                            )
+                        ),
+                        shape = RoundedCornerShape(20.dp)
+                    )
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.WifiOff,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = message,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = { visible = false; onDismiss() }) {
-                    Icon(Icons.Default.Close, contentDescription = "Dismiss", modifier = Modifier.size(16.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            // Animated warning icon
+                            val infiniteTransition = rememberInfiniteTransition()
+                            val pulse by infiniteTransition.animateFloat(
+                                initialValue = 1f,
+                                targetValue = 1.2f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(1000, easing = FastOutSlowInEasing),
+                                    repeatMode = RepeatMode.Reverse
+                                )
+                            )
+
+                            Icon(
+                                Icons.Default.WifiOff,
+                                contentDescription = "Offline",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .graphicsLayer(scaleX = pulse, scaleY = pulse)
+                            )
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column {
+                                Text(
+                                    text = "Connection Lost",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = if (isRetrying) "Reconnecting..." else message,
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = 18.sp
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = {
+                                visible = false
+                                onDismiss()
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Dismiss",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+
+                    if (!isRetrying) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    visible = false
+                                    onDismiss()
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Dismiss", fontSize = 13.sp)
+                            }
+
+                            Button(
+                                onClick = {
+                                    isRetrying = true
+                                    onRetry()
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Retry", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    } else {
+                        // Loading state
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Attempting to reconnect...",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 }
             }
         }

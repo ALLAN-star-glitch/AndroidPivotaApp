@@ -1,9 +1,13 @@
 package com.example.pivota.core.network
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import androidx.core.content.ContextCompat
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.ktor.client.call.NoTransformationFoundException
 import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
-import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -12,9 +16,9 @@ import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import javax.inject.Inject
+import javax.inject.Singleton
 import javax.net.ssl.SSLHandshakeException
-
-
 
 // ✅ Convert from object to sealed class with data classes
 sealed class NetworkError(
@@ -53,7 +57,7 @@ sealed class NetworkError(
 
     data class Unauthorized(
         override val message: String = "Unauthorized",
-        override val userFriendlyMessage: String = "Invalid email or password.", // Changed from session expired
+        override val userFriendlyMessage: String = "Invalid email or password.",
         override val originalMessage: String? = null,
         override val statusCode: Int? = 401
     ) : NetworkError(message, userFriendlyMessage, originalMessage, statusCode)
@@ -87,145 +91,220 @@ sealed class NetworkError(
     ) : NetworkError(message, userFriendlyMessage, originalMessage, statusCode)
 }
 
-class NetworkExceptionHandler {
+@Singleton
+class NetworkExceptionHandler @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
+
     companion object {
+        @Volatile
+        private var instance: NetworkExceptionHandler? = null
 
-        // ✅ New: Extract error message from response body
-        private suspend fun extractErrorMessage(response: HttpResponse): String? {
-            return try {
-                val body = response.body<String>()
-                println("🔍 Raw error response body: $body")
+        fun getInstance(context: Context): NetworkExceptionHandler {
+            return instance ?: synchronized(this) {
+                instance ?: NetworkExceptionHandler(context).also { instance = it }
+            }
+        }
+    }
 
-                // Try to parse as JSON
-                val jsonElement = Json.parseToJsonElement(body)
-                val jsonObject = jsonElement.jsonObject
+    /**
+     * Check if device actually has internet connectivity using ConnectivityManager
+     */
+    private fun isNetworkActuallyAvailable(): Boolean {
+        val connectivityManager = ContextCompat.getSystemService(
+            context,
+            ConnectivityManager::class.java
+        ) ?: return false
 
-                // Try common error message fields (order matters)
-                val message = jsonObject["message"]?.jsonPrimitive?.content
-                    ?: jsonObject["error"]?.jsonPrimitive?.content
-                    ?: jsonObject["detail"]?.jsonPrimitive?.content
-                    ?: jsonObject["description"]?.jsonPrimitive?.content
-                    ?: jsonObject["title"]?.jsonPrimitive?.content
+        val activeNetwork = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
 
-                if (message != null) {
-                    println("✅ Extracted error message: $message")
-                    return message
+        return when {
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
+            else -> false
+        }
+    }
+
+    // Extract error message from response body
+    private suspend fun extractErrorMessage(response: HttpResponse): String? {
+        return try {
+            val body = response.body<String>()
+            println("🔍 Raw error response body: $body")
+
+            val jsonElement = Json.parseToJsonElement(body)
+            val jsonObject = jsonElement.jsonObject
+
+            val message = jsonObject["message"]?.jsonPrimitive?.content
+                ?: jsonObject["error"]?.jsonPrimitive?.content
+                ?: jsonObject["detail"]?.jsonPrimitive?.content
+                ?: jsonObject["description"]?.jsonPrimitive?.content
+                ?: jsonObject["title"]?.jsonPrimitive?.content
+
+            if (message != null) {
+                println("✅ Extracted error message: $message")
+                return message
+            }
+
+            body.take(200).takeIf { it.isNotEmpty() }
+        } catch (e: Exception) {
+            println("⚠️ Failed to parse error body: ${e.message}")
+            null
+        }
+    }
+
+    fun handleException(throwable: Throwable): NetworkError {
+        println("❌ ========== NETWORK EXCEPTION ==========")
+        println("❌ Exception Type: ${throwable::class.simpleName}")
+        println("❌ Exception Message: ${throwable.message}")
+        throwable.printStackTrace()
+        println("❌ =======================================")
+
+        return when (throwable) {
+            is UnknownHostException -> NetworkError.NoInternet(
+                originalMessage = throwable.message
+            )
+            is ConnectException -> {
+                // Use ConnectivityManager to check actual network state
+                val hasInternet = isNetworkActuallyAvailable()
+
+                if (hasInternet) {
+                    println("❌ Backend server unreachable - Service may be down: ${throwable.message}")
+                    println("❌ Network available: true (Internet is working, but backend is down)")
+                    NetworkError.ServerUnreachable(
+                        originalMessage = throwable.message,
+                        userFriendlyMessage = "Unable to reach the server. The service may be temporarily unavailable."
+                    )
+                } else {
+                    println("❌ No internet connection - Network unavailable: ${throwable.message}")
+                    println("❌ Network available: false")
+                    NetworkError.NoInternet(
+                        originalMessage = throwable.message,
+                        userFriendlyMessage = "No internet connection. Please check your network."
+                    )
                 }
-
-                // If no message field, return the first 200 chars of raw body
-                body.take(200).takeIf { it.isNotEmpty() }
-            } catch (e: Exception) {
-                println("⚠️ Failed to parse error body: ${e.message}")
-                null
             }
-        }
-
-        fun handleException(throwable: Throwable): NetworkError {
-            println("❌ ========== NETWORK EXCEPTION ==========")
-            println("❌ Exception Type: ${throwable::class.simpleName}")
-            println("❌ Exception Message: ${throwable.message}")
-            throwable.printStackTrace()
-            println("❌ =======================================")
-
-            return when (throwable) {
-                is UnknownHostException -> NetworkError.ServerUnreachable(
-                    originalMessage = throwable.message
-                )
-                is ConnectException -> NetworkError.ServerUnreachable(
-                    originalMessage = throwable.message
-                )
-                is SocketTimeoutException -> NetworkError.Timeout(
-                    originalMessage = throwable.message
-                )
-                is TimeoutCancellationException -> NetworkError.Timeout(
-                    originalMessage = throwable.message
-                )
-                is SSLHandshakeException -> NetworkError.ServerUnreachable(
-                    originalMessage = throwable.message
-                )
-                is IOException -> {
-                    when {
-                        throwable.message?.contains("unreachable") == true -> NetworkError.ServerUnreachable(
-                            originalMessage = throwable.message
-                        )
-                        throwable.message?.contains("timeout") == true -> NetworkError.Timeout(
-                            originalMessage = throwable.message
-                        )
-                        else -> NetworkError.NoInternet(
-                            originalMessage = throwable.message
-                        )
-                    }
+            is SocketTimeoutException -> NetworkError.Timeout(
+                originalMessage = throwable.message
+            )
+            is TimeoutCancellationException -> NetworkError.Timeout(
+                originalMessage = throwable.message
+            )
+            is SSLHandshakeException -> NetworkError.ServerUnreachable(
+                originalMessage = throwable.message
+            )
+            is IOException -> {
+                when {
+                    throwable.message?.contains("unreachable") == true -> NetworkError.ServerUnreachable(
+                        originalMessage = throwable.message
+                    )
+                    throwable.message?.contains("timeout") == true -> NetworkError.Timeout(
+                        originalMessage = throwable.message
+                    )
+                    else -> NetworkError.NoInternet(
+                        originalMessage = throwable.message
+                    )
                 }
-                is NoTransformationFoundException -> NetworkError.ParsingError(
-                    originalMessage = throwable.message
-                )
-                else -> NetworkError.Unknown(
-                    originalMessage = throwable.message
-                )
             }
+            is NoTransformationFoundException -> NetworkError.ParsingError(
+                originalMessage = throwable.message
+            )
+            else -> NetworkError.Unknown(
+                originalMessage = throwable.message
+            )
         }
+    }
 
-        // ✅ Updated to include original backend message
-        suspend fun handleHttpResponse(response: HttpResponse): NetworkError {
-            val statusCode = response.status.value
-            val originalMessage = extractErrorMessage(response)
+    suspend fun handleHttpResponse(response: HttpResponse): NetworkError {
+        val statusCode = response.status.value
+        val originalMessage = extractErrorMessage(response)
 
-            println("🔍 HTTP Response: $statusCode - ${response.status.description}")
-            println("🔍 Original message: $originalMessage")
+        println("🔍 HTTP Response: $statusCode - ${response.status.description}")
+        println("🔍 Original message: $originalMessage")
 
-            // ✅ Use statusCode (Int) for ALL cases
-            return when (statusCode) {
-                400 -> NetworkError.BadRequest(
-                    originalMessage = originalMessage,
-                    statusCode = statusCode
-                )
-                401 -> NetworkError.Unauthorized(
-                    originalMessage = originalMessage,
-                    userFriendlyMessage = originalMessage ?: "Invalid email or password.",
-                    statusCode = statusCode
-                )
-                403 -> NetworkError.Unauthorized(
-                    originalMessage = originalMessage,
-                    userFriendlyMessage = originalMessage ?: "Access denied. You don't have permission to perform this action.",
-                    statusCode = statusCode
-                )
-                404 -> NetworkError.NotFound(
-                    originalMessage = originalMessage,
-                    userFriendlyMessage = originalMessage ?: "Resource not found.",
-                    statusCode = statusCode
-                )
-                409 -> NetworkError.BadRequest(
-                    originalMessage = originalMessage,
-                    userFriendlyMessage = originalMessage ?: "Resource already exists.",
-                    statusCode = statusCode
-                )
-                in 400..499 -> NetworkError.BadRequest(
-                    originalMessage = originalMessage,
-                    userFriendlyMessage = originalMessage ?: "Invalid request.",
-                    statusCode = statusCode
-                )
-                in 500..599 -> NetworkError.ServerError(
-                    originalMessage = originalMessage,
-                    userFriendlyMessage = originalMessage ?: "Server error. Please try again.",
-                    statusCode = statusCode
-                )
-                else -> NetworkError.Unknown(
-                    originalMessage = originalMessage,
-                    userFriendlyMessage = originalMessage ?: "Unexpected response.",
-                    statusCode = statusCode
-                )
-            }
+        return when (statusCode) {
+            400 -> NetworkError.BadRequest(
+                originalMessage = originalMessage,
+                statusCode = statusCode
+            )
+            401 -> NetworkError.Unauthorized(
+                originalMessage = originalMessage,
+                userFriendlyMessage = originalMessage ?: "Invalid email or password.",
+                statusCode = statusCode
+            )
+            403 -> NetworkError.Unauthorized(
+                originalMessage = originalMessage,
+                userFriendlyMessage = originalMessage ?: "Access denied. You don't have permission to perform this action.",
+                statusCode = statusCode
+            )
+            404 -> NetworkError.NotFound(
+                originalMessage = originalMessage,
+                userFriendlyMessage = originalMessage ?: "Resource not found.",
+                statusCode = statusCode
+            )
+            409 -> NetworkError.BadRequest(
+                originalMessage = originalMessage,
+                userFriendlyMessage = originalMessage ?: "Resource already exists.",
+                statusCode = statusCode
+            )
+            in 400..499 -> NetworkError.BadRequest(
+                originalMessage = originalMessage,
+                userFriendlyMessage = originalMessage ?: "Invalid request.",
+                statusCode = statusCode
+            )
+            in 500..599 -> NetworkError.ServerError(
+                originalMessage = originalMessage,
+                userFriendlyMessage = originalMessage ?: "Server error. Please try again.",
+                statusCode = statusCode
+            )
+            else -> NetworkError.Unknown(
+                originalMessage = originalMessage,
+                userFriendlyMessage = originalMessage ?: "Unexpected response.",
+                statusCode = statusCode
+            )
         }
+    }
 
-        fun isNetworkAvailable(throwable: Throwable): Boolean {
-            return when (throwable) {
-                is UnknownHostException -> false
-                is ConnectException -> false
-                is SocketTimeoutException -> false
-                is TimeoutCancellationException -> false
-                is IOException -> true
-                else -> true
+    /**
+     * Check if the exception indicates a network issue (vs backend issue)
+     * Returns true if internet is available, false if internet is down
+     */
+    fun isNetworkAvailable(throwable: Throwable): Boolean {
+        return when (throwable) {
+            is UnknownHostException -> false
+            is ConnectException -> isNetworkActuallyAvailable()
+            is SocketTimeoutException -> true
+            is TimeoutCancellationException -> true
+            is SSLHandshakeException -> true
+            is IOException -> {
+                when {
+                    throwable.message?.contains("no route to host", ignoreCase = true) == true -> true
+                    throwable.message?.contains("network", ignoreCase = true) == true -> false
+                    else -> true
+                }
             }
+            else -> true
+        }
+    }
+
+    /**
+     * Get a user-friendly message for debugging/logging
+     */
+    fun getDebugMessage(throwable: Throwable): String {
+        return when (throwable) {
+            is UnknownHostException -> "No internet connection (DNS resolution failed)"
+            is ConnectException -> {
+                if (isNetworkActuallyAvailable()) {
+                    "Backend server unreachable (Internet is working, server may be down)"
+                } else {
+                    "No internet connection (Device offline)"
+                }
+            }
+            is SocketTimeoutException -> "Connection timeout (Server not responding, internet works)"
+            is TimeoutCancellationException -> "Request timeout (Server slow or down)"
+            is SSLHandshakeException -> "SSL/TLS handshake failed (Certificate issue)"
+            else -> throwable.message ?: "Unknown error"
         }
     }
 }
