@@ -2,6 +2,7 @@ package com.example.pivota.dashboard.domain.repository
 
 import com.example.pivota.core.network.ApiResult
 import com.example.pivota.dashboard.data.dto.CreateServiceOfferingRequestDto
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.GetAllOfferingsParams
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOfferingsResponse
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +18,15 @@ interface ServiceOfferingsRepository {
         forceRefresh: Boolean = false
     ): ApiResult<ServiceOfferingsResponse>
 
+    // ======================================================
+    // NEW: Get all offerings across all categories
+    // ======================================================
+
+    suspend fun getAllOfferings(
+        params: GetAllOfferingsParams = GetAllOfferingsParams(),
+        forceRefresh: Boolean = false
+    ): ApiResult<ServiceOfferingsResponse>
+
     fun getOfferingsByCategoryStream(
         categoryId: String
     ): Flow<ServiceOfferingsResponse>
@@ -26,6 +36,12 @@ interface ServiceOfferingsRepository {
     ): ApiResult<ServiceOfferingsResponse>
 
     suspend fun refreshOfferingsByCategory(categoryId: String, force: Boolean = false)
+
+    // ======================================================
+    // NEW: Refresh all offerings
+    // ======================================================
+
+    suspend fun refreshAllOfferings(force: Boolean = false)
 
     suspend fun clearOfferingsCache()
 
@@ -37,6 +53,12 @@ interface ServiceOfferingsRepository {
     ): ApiResult<ServiceOffering>
 
     suspend fun getCacheStatus(categoryId: String): CacheStatus
+
+    // ======================================================
+    // NEW: Get cache status for all offerings
+    // ======================================================
+
+    suspend fun getAllOfferingsCacheStatus(): CacheStatus
 }
 
 // Cache status sealed class

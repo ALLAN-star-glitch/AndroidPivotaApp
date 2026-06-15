@@ -3,9 +3,11 @@ package com.example.pivota.dashboard.data.mapper
 import com.example.pivota.dashboard.data.dto.ServiceOfferingsResponseDto
 import com.example.pivota.dashboard.data.dto.ServiceOfferingDto
 import com.example.pivota.dashboard.data.dto.DayAvailabilityDto
+import com.example.pivota.dashboard.data.dto.GetAllOfferingsRequestDto
 import com.example.pivota.dashboard.data.dto.PaginationInfoDto
 
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.DayAvailability
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.GetAllOfferingsParams
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.PaginationInfo
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOfferingsResponse
@@ -24,6 +26,23 @@ class ServiceOfferingMapper @Inject constructor() {
             code = dto.code,
             data = dto.data?.map { toServiceOffering(it) } ?: emptyList(),
             pagination = dto.pagination?.let { toPaginationInfo(it) }
+        )
+    }
+
+// ======================================================
+    // NEW: Map GetAllOfferingsParams to GetAllOfferingsRequestDto
+    // ======================================================
+
+    fun toGetAllOfferingsRequestDto(params: GetAllOfferingsParams): GetAllOfferingsRequestDto {
+        return GetAllOfferingsRequestDto(
+            limit = params.limit,
+            offset = params.offset,
+            city = params.city,
+            minPrice = params.minPrice,
+            maxPrice = params.maxPrice,
+            sortBy = params.sortBy.value,  // Convert enum to string value
+            minRating = params.minRating,
+            verifiedOnly = params.verifiedOnly
         )
     }
 

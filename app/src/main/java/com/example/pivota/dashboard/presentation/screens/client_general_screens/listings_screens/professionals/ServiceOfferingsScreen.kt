@@ -403,7 +403,7 @@ fun ServiceOfferingsScreen(
 }
 
 @Composable
-private fun ServiceOfferingsLoadingSkeleton(gridColumns: Int) {
+fun ServiceOfferingsLoadingSkeleton(gridColumns: Int) {
     if (gridColumns == 1) {
         // Phone layout - single column
         LazyColumn(

@@ -164,3 +164,50 @@ enum class ServiceExecutionStatus(val value: String) {
         }
 }
 
+// ======================================================
+// NEW: GET ALL OFFERINGS PARAMETERS (Domain Model)
+// ======================================================
+
+data class GetAllOfferingsParams(
+    val limit: Int = 20,
+    val offset: Int = 0,
+    val city: String? = null,
+    val minPrice: Double? = null,
+    val maxPrice: Double? = null,
+    val sortBy: SortOption = SortOption.RECENT,
+    val minRating: Int? = null,
+    val verifiedOnly: Boolean = false
+) {
+    enum class SortOption(val value: String) {
+        RECENT("recent"),
+        PRICE_ASC("price_asc"),
+        PRICE_DESC("price_desc"),
+        RATING("rating")
+    }
+}
+
+// ======================================================
+// NEW: GET OFFERINGS BY CATEGORY PARAMETERS (Domain Model)
+// ======================================================
+
+data class GetOfferingsByCategoryParams(
+    val categoryId: String,
+    val limit: Int = 20,
+    val offset: Int = 0,
+    val city: String? = null,
+    val minPrice: Double? = null,
+    val maxPrice: Double? = null
+)
+
+// ======================================================
+// OPTIONAL: Add a sealed class for offering loading state
+// ======================================================
+
+sealed class OfferingsLoadingState {
+    object Idle : OfferingsLoadingState()
+    object Loading : OfferingsLoadingState()
+    data class Success(val offerings: List<ServiceOffering>, val hasMore: Boolean, val totalCount: Int) : OfferingsLoadingState()
+    data class Error(val message: String) : OfferingsLoadingState()
+}
+
+

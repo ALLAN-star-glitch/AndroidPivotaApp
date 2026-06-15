@@ -3,8 +3,10 @@ package com.example.pivota.dashboard.presentation.viewmodels.client_general_view
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pivota.core.network.ApiResult
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.GetAllOfferingsParams
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
 import com.example.pivota.dashboard.domain.repository.CacheStatus
+import com.example.pivota.dashboard.domain.useCase.GetAllOfferingsUseCase
 import com.example.pivota.dashboard.domain.useCase.GetOfferingsByCategoryUseCase
 import com.example.pivota.dashboard.domain.useCase.GetServiceOfferingByIdUseCase
 import com.example.pivota.dashboard.presentation.state.ServiceOfferingsUiState
@@ -19,11 +21,15 @@ import javax.inject.Inject
 @HiltViewModel
 class ServiceOfferingsViewModel @Inject constructor(
     private val getOfferingsByCategoryUseCase: GetOfferingsByCategoryUseCase,
-    private val getServiceOfferingByIdUseCase: GetServiceOfferingByIdUseCase
+    private val getServiceOfferingByIdUseCase: GetServiceOfferingByIdUseCase,
+    private val getAllOfferingsUseCase: GetAllOfferingsUseCase
 ) : ViewModel() {
 
     private val _offeringsState = MutableStateFlow<ServiceOfferingsUiState>(ServiceOfferingsUiState.Loading)
     val offeringsState: StateFlow<ServiceOfferingsUiState> = _offeringsState.asStateFlow()
+
+    private val _allOfferingsState = MutableStateFlow<ServiceOfferingsUiState>(ServiceOfferingsUiState.Loading)
+    val allOfferingsState: StateFlow<ServiceOfferingsUiState> = _allOfferingsState.asStateFlow()
 
     private val _serviceDetailsState = MutableStateFlow<ServiceDetailsState>(ServiceDetailsState.Loading)
     val serviceDetailsState: StateFlow<ServiceDetailsState> = _serviceDetailsState.asStateFlow()
@@ -38,6 +44,11 @@ class ServiceOfferingsViewModel @Inject constructor(
     private var currentMinPrice: Double? = null
     private var currentMaxPrice: Double? = null
     private var hasMoreData: Boolean = true
+
+    // For all offerings pagination
+    private var currentAllOfferingsParams: GetAllOfferingsParams = GetAllOfferingsParams()
+    private var allOfferingsHasMore: Boolean = true
+    private var allOfferingsOffset: Int = 0
 
     fun loadOfferings(
         categoryId: String,
@@ -130,6 +141,92 @@ class ServiceOfferingsViewModel @Inject constructor(
         }
     }
 
+    // ======================================================
+    // NEW: Load all offerings across all categories
+    // ======================================================
+
+    fun loadAllOfferings(
+        params: GetAllOfferingsParams = GetAllOfferingsParams(),
+        isLoadMore: Boolean = false,
+        forceRefresh: Boolean = false
+    ) {
+        viewModelScope.launch {
+            if (!isLoadMore) {
+                _allOfferingsState.update { ServiceOfferingsUiState.Loading }
+                allOfferingsOffset = 0
+                currentAllOfferingsParams = params
+            }
+
+            val currentOffset = if (isLoadMore) allOfferingsOffset else 0
+            val requestParams = params.copy(offset = currentOffset)
+
+            when (val result = getAllOfferingsUseCase(requestParams, forceRefresh)) {
+                is ApiResult.Success -> {
+                    val offerings = result.data.data
+                    val pagination = result.data.pagination
+                    val isFromCache = result.data.message == "Cached data"
+
+                    allOfferingsHasMore = pagination?.hasMore ?: false
+                    allOfferingsOffset = currentOffset + (params.limit)
+
+                    val currentState = _allOfferingsState.value
+                    val existingOfferings = if (isLoadMore && currentState is ServiceOfferingsUiState.Success) {
+                        currentState.offerings
+                    } else {
+                        emptyList()
+                    }
+
+                    val allOfferingsList = existingOfferings + offerings
+
+                    // Cache individual offerings in memory
+                    offerings.forEach { offering ->
+                        cachedOfferings[offering.id] = offering
+                    }
+
+                    _allOfferingsState.update {
+                        ServiceOfferingsUiState.Success(
+                            offerings = allOfferingsList,
+                            hasMore = allOfferingsHasMore,
+                            totalCount = pagination?.total ?: allOfferingsList.size,
+                            isFromCache = isFromCache,
+                            warningMessage = null  // No cache warning for all offerings since we don't cache them
+                        )
+                    }
+                }
+                is ApiResult.Error -> {
+                    _allOfferingsState.update {
+                        ServiceOfferingsUiState.Error(
+                            message = result.networkError.userFriendlyMessage,
+                            technicalMessage = result.technicalMessage
+                        )
+                    }
+                }
+                ApiResult.Loading -> {
+                    // Already handled above
+                }
+            }
+        }
+    }
+
+    fun loadMoreAllOfferings() {
+        if (allOfferingsHasMore && _allOfferingsState.value is ServiceOfferingsUiState.Success) {
+            loadAllOfferings(
+                params = currentAllOfferingsParams.copy(offset = allOfferingsOffset),
+                isLoadMore = true
+            )
+        }
+    }
+
+    fun refreshAllOfferings() {
+        allOfferingsOffset = 0
+        allOfferingsHasMore = true
+        loadAllOfferings(
+            params = currentAllOfferingsParams.copy(offset = 0),
+            isLoadMore = false,
+            forceRefresh = true
+        )
+    }
+
     fun loadServiceOffering(serviceId: String, forceRefresh: Boolean = false) {
         // Check in-memory cache first (fastest)
         if (!forceRefresh && cachedOfferings[serviceId] != null) {
@@ -220,9 +317,13 @@ class ServiceOfferingsViewModel @Inject constructor(
 
     fun clearState() {
         _offeringsState.update { ServiceOfferingsUiState.Loading }
+        _allOfferingsState.update { ServiceOfferingsUiState.Loading }
         currentCategoryId = ""
         currentOffset = 0
         hasMoreData = true
+        allOfferingsOffset = 0
+        allOfferingsHasMore = true
+        currentAllOfferingsParams = GetAllOfferingsParams()
     }
 
     fun clearServiceDetailsState() {
@@ -231,7 +332,7 @@ class ServiceOfferingsViewModel @Inject constructor(
 
     fun clearCache() {
         cachedOfferings.clear()
-        // Also clear repository cache if needed
+        // Also clear repository cache if needed (only for individual offerings)
         viewModelScope.launch {
             getOfferingsByCategoryUseCase.clearAllCache()
         }
@@ -242,6 +343,7 @@ class ServiceOfferingsViewModel @Inject constructor(
         super.onCleared()
         cachedOfferings.clear()
         _offeringsState.update { ServiceOfferingsUiState.Loading }
+        _allOfferingsState.update { ServiceOfferingsUiState.Loading }
         _serviceDetailsState.update { ServiceDetailsState.Loading }
     }
 }

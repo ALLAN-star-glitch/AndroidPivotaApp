@@ -137,6 +137,18 @@ data class CreateServiceOfferingResponseDto(
     @SerialName("status") val status: String
 )
 
+
+@Serializable
+data class GetAllOfferingsRequestDto(
+    @SerialName("limit") val limit: Int = 20,
+    @SerialName("offset") val offset: Int = 0,
+    @SerialName("city") val city: String? = null,
+    @SerialName("minPrice") val minPrice: Double? = null,
+    @SerialName("maxPrice") val maxPrice: Double? = null,
+    @SerialName("sortBy") val sortBy: String = "recent",
+    @SerialName("minRating") val minRating: Int? = null,
+    @SerialName("verifiedOnly") val verifiedOnly: Boolean = false
+)
 @Serializable
 data class CreatedServiceOfferingDataDto(
     @SerialName("id") val id: String,

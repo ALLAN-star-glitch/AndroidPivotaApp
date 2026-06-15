@@ -4,6 +4,7 @@ import com.example.pivota.core.di.AuthHttpClient
 import com.example.pivota.core.network.NetworkConstants
 import com.example.pivota.dashboard.data.dto.CreateServiceOfferingRequestDto
 import com.example.pivota.dashboard.data.dto.CreateServiceOfferingResponseDto
+import com.example.pivota.dashboard.data.dto.GetAllOfferingsRequestDto
 import com.example.pivota.dashboard.data.dto.ServiceOfferingsResponseDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -75,6 +76,75 @@ class ServiceOfferingsApiService @Inject constructor(
             throw e
         } catch (e: Exception) {
             println("❌ Get Offerings By Category Failed: ${e.message}")
+            throw e
+        }
+    }
+
+    // ======================================================
+    // NEW: GET ALL OFFERINGS (Across all categories)
+    // ======================================================
+
+    /**
+     * Get all service offerings across all categories with pagination and filtering
+     * @param limit - Results per page (default: 20)
+     * @param offset - Pagination offset (default: 0)
+     * @param city - Filter by city (optional)
+     * @param minPrice - Minimum price filter (optional)
+     * @param maxPrice - Maximum price filter (optional)
+     * @param sortBy - Sort by option (recent, price_asc, price_desc, rating)
+     * @param minRating - Minimum rating filter (1-5)
+     * @param verifiedOnly - Show only verified professionals
+     */
+    suspend fun getAllOfferings(
+        limit: Int = 20,
+        offset: Int = 0,
+        city: String? = null,
+        minPrice: Double? = null,
+        maxPrice: Double? = null,
+        sortBy: String = "recent",
+        minRating: Int? = null,
+        verifiedOnly: Boolean = false
+    ): ServiceOfferingsResponseDto {
+        println("🔍 ========== GET ALL OFFERINGS REQUEST ==========")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/contractors-module/service-offerings/all")
+        println("🔍 PARAMS: limit=$limit, offset=$offset, city=$city, sortBy=$sortBy, minRating=$minRating, verifiedOnly=$verifiedOnly")
+        println("🔍 PRICE RANGE: minPrice=$minPrice, maxPrice=$maxPrice")
+        println("🔍 ===============================================")
+
+        return try {
+            val response: ServiceOfferingsResponseDto = client.get("v1/contractors-module/service-offerings/all") {
+                contentType(ContentType.Application.Json)
+                parameter("limit", limit)
+                parameter("offset", offset)
+                city?.let { parameter("city", it) }
+                minPrice?.let { parameter("minPrice", it) }
+                maxPrice?.let { parameter("maxPrice", it) }
+                parameter("sortBy", sortBy)
+                minRating?.let { parameter("minRating", it) }
+                parameter("verifiedOnly", verifiedOnly)
+            }.body()
+
+            println("🔍 ========== GET ALL OFFERINGS RESPONSE ==========")
+            println("🔍 SUCCESS: ${response.success}")
+            println("🔍 MESSAGE: ${response.message}")
+            println("🔍 CODE: ${response.code}")
+            println("🔍 OFFERINGS COUNT: ${response.data?.size ?: 0}")
+            response.pagination?.let { pagination ->
+                println("🔍 PAGINATION: total=${pagination.total}, hasMore=${pagination.hasMore}")
+            }
+            println("🔍 ===============================================")
+
+            response
+        } catch (e: ClientRequestException) {
+            println("❌ Get All Offerings Client Error (${e.response.status.value}): ${e.message}")
+            val errorBody = try { e.response.bodyAsText() } catch (ex: Exception) { "Unable to read error body" }
+            println("❌ Error Body: $errorBody")
+            throw e
+        } catch (e: ServerResponseException) {
+            println("❌ Get All Offerings Server Error (${e.response.status.value}): ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("❌ Get All Offerings Failed: ${e.message}")
             throw e
         }
     }

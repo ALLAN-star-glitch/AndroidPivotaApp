@@ -25,10 +25,10 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.18.0 - Build 28 - Token Management & Offline Recovery
-        // Added: Automatic token refresh, network recovery, offline banner
-        versionCode = 28
-        versionName = "1.18.0"
+        // Version 1.19.0 - Build 29 - All Services Screen UI Overhaul
+        // Added: Segmented switch, enhanced search bars, responsive layouts
+        versionCode = 29
+        versionName = "1.19.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -66,243 +66,348 @@ android {
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.18.0 - TOKEN MANAGEMENT & OFFLINE RECOVERY
+          PIVOTACONNECT v1.19.0 - ALL SERVICES UI OVERHAUL
 ================================================================
 
-This release introduces a comprehensive token management system
-with automatic refresh, intelligent offline handling, and seamless
-connection recovery when network or backend service is restored.
+This release introduces a complete redesign of the All Services
+screen with modern UI components, improved navigation, and a
+seamless experience for browsing both services and categories.
 
 ================================================================
-TOKEN MANAGEMENT SYSTEM
+ALL SERVICES SCREEN - COMPLETE REDESIGN
 ================================================================
 
-AUTO TOKEN REFRESH
-- Tokens automatically refresh every 12 minutes
-- Prevents session expiration during extended app usage
-- No user interruption during refresh
-- Seamless background operation
+SEGMENTED SWITCH (SERVICES / CATEGORIES)
+- Modern iOS-style segmented control with smooth animation
+- Clean underline indicator that slides between options
+- Professional typography with proper font weights
+- Services tab shows all service offerings across categories
+- Categories tab displays the organized category grid
 
-SMART REFRESH SCHEDULING
-- Refreshes token 5 minutes before expiration
-- Avoids unnecessary API calls
-- Reduces server load
-- Optimized refresh intervals
+STICKY HEADER WITH COLLAPSIBLE TITLE
+- Title collapses when scrolling for more content space
+- Back button and title in same row for cleaner layout
+- Smooth fade animation when title collapses
+- Compact header appears with just back button when scrolling
 
-CONCURRENT REFRESH PROTECTION
-- Prevents multiple simultaneous refresh attempts
-- Mutex locks ensure thread safety
-- Handles race conditions gracefully
-- Maintains token integrity
-
-================================================================
-NETWORK & BACKEND RECOVERY
-================================================================
-
-INTELLIGENT ERROR CLASSIFICATION
-- Distinguishes between network and backend errors
-- ConnectException = Backend unreachable (internet works)
-- UnknownHostException = No internet connection
-- Timeout = Server not responding
-
-AUTOMATIC RECOVERY
-- Health check runs every 30 seconds
-- Detects when backend comes back online
-- Auto-refreshes token on recovery
-- Seamless user experience
-
-NETWORK CALLBACK MONITORING
-- Instant detection when network returns
-- Uses Android ConnectivityManager
-- Falls back to health check if callback unavailable
-- Works reliably on all devices
+ANIMATED SEGMENT INDICATOR
+- Spring animation for smooth sliding between tabs
+- 250ms transition with FastOutSlowInEasing
+- Gradient underline for visual appeal
+- Proper alignment based on selected tab
 
 ================================================================
-OFFLINE BANNER SYSTEM
+SERVICES TAB ENHANCEMENTS
 ================================================================
 
-ELEGANT BANNER DESIGN
-- Gradient background for modern look
-- Animated warning icon with pulse effect
-- Smooth slide-in/out animations
-- Rounded corners (20dp) with elevation
+ALL OFFERINGS API INTEGRATION
+- New GetAllOfferings endpoint fetches all services
+- Pagination support for infinite scrolling
+- Load more button at bottom for better UX
+- Pull-to-refresh support for fresh data
 
-SMART MESSAGING
-- "No internet connection" for network issues
-- "Service temporarily unavailable" for backend issues
-- Clear, user-friendly error messages
-- Actionable guidance for users
+ENHANCED SEARCH BAR
+- Modern rounded design with subtle shadow
+- Clear button for easy query reset
+- Loading indicator during search
+- Persistent filter button with active count badge
 
-MANUAL RETRY BUTTON
-- User can force retry at any time
-- Visual feedback during retry
-- Full-screen loading animation
-- Updates banner with result
+SERVICE OFFERING FILTERS
+- Sort by: Recent, Price Low-High, Price High-Low, Highest Rated
+- Price range filter (min/max in KES)
+- Verified professionals only toggle
+- Minimum rating filter (3★, 4★, 5★)
+- Active filters summary with clear display
 
-================================================================
-SESSION MANAGEMENT
-================================================================
-
-FORCE LOGOUT ON AUTH FAILURE
-- Detects invalid/expired refresh tokens
-- Clears all session data
-- Navigates to login screen
-- Prevents unauthorized access
-
-CLEAN SESSION CLEARING
-- Clears DataStore preferences
-- Removes Room database entries
-- Stops auto-refresh jobs
-- Resets all failure counters
+IMPROVED FILTER BOTTOM SHEET
+- Clean modal design with rounded corners
+- Real-time preview of active filters
+- Reset button to clear all filters
+- Apply button with primary theme color
+- Smooth drag handle for dismissing
 
 ================================================================
-OFFLINE DATA ACCESS
+CATEGORIES TAB ENHANCEMENTS
 ================================================================
 
-CACHED PROFILE DISPLAY
-- Shows cached profile when offline
-- Timestamp indicates cache age
-- Warning for stale data (>24 hours)
-- Transparent offline experience
+UNIFIED SEARCH BAR DESIGN
+- Same modern design as Services tab
+- Consistent spacing and styling
+- Filter button with active count badge
 
-BACKGROUND PROFILE REFRESH
-- Attempts refresh when online
-- Updates cache on success
-- Preserves user experience
-- No UI blocking
+HORIZONTAL FILTER PILLS
+- Scrolling row of category filters
+- "All Services", "Property Services", "Career Services", "Community Support"
+- Color-coded chips matching vertical pillars
+- Selected state with vibrant background
 
-================================================================
-BANNER UI ENHANCEMENTS
-================================================================
-
-GRADIENT BACKGROUND
-- Horizontal gradient for visual appeal
-- Surface container colors adapt to theme
-- Proper dark mode support
-- Professional appearance
-
-ANIMATED ICON
-- Pulsing Wi-Fi Off icon
-- Smooth infinite animation
-- Error tint for visibility
-- 24dp size with scale transform
-
-RESPONSIVE BUTTONS
-- Dismiss and Retry options
-- Equal width with proper spacing
-- Rounded corners (12dp)
-- Primary color for Retry button
-
-LOADING STATE
-- Circular progress indicator
-- "Attempting to reconnect..." message
-- Buttons hidden during retry
-- Smooth transition
+RESPONSIVE GRID LAYOUT
+- Adaptive columns: 3 on phone, 4 on medium, 6 on expanded
+- Proper spacing between items (12-20dp based on screen size)
+- Circle icons with colored backgrounds
+- Subcategory badge indicator (📁) for parent categories
 
 ================================================================
-CODE IMPROVEMENTS
+SERVICE OFFERING CARD IMPROVEMENTS
 ================================================================
 
-TOKEN MANAGER
-- Seamless class with comprehensive error handling
-- Recovery events for UI updates
-- Backend status tracking
-- Thread-safe operations
+IMPROVED CARD DESIGN
+- Modern rounded corners (16dp)
+- Consistent elevation with subtle shadow
+- Clean typography with proper hierarchy
+- Verified badge for trusted professionals
 
-NETWORK EXCEPTION HANDLER
-- Accurate network state detection
-- Uses ConnectivityManager when available
-- Smart fallback for error classification
-- Proper error message extraction
+ENHANCED PRICE DISPLAY
+- Negotiable pricing indicator
+- Custom booking fee display when applicable
+- Price per unit (hour, day, month, etc.)
+- Currency formatting with KES support
 
-DASHBOARD VIEWMODEL
-- Centralized retry logic
-- Offline state management
-- Recovery event handling
-- Clean state flows
+PROFESSIONAL INFORMATION
+- Professional name and avatar
+- Years of experience display
+- Location/coverage areas
+- Average rating with star icon
+
+================================================================
+SHIMMER LOADING ANIMATIONS
+================================================================
+
+ENHANCED SKELETON LOADING
+- Smooth shimmer effect for all loading states
+- Color-matched shimmer for category icons
+- Proper card skeleton matching actual content
+- Infinite animation until data loads
+
+RESPONSIVE SKELETON LAYOUT
+- Grid adjusts based on screen size
+- Proper number of skeleton items per row
+- No layout shift when actual content loads
+- Graceful loading experience
+
+================================================================
+RESPONSIVE DESIGN IMPROVEMENTS
+================================================================
+
+TABLET OPTIMIZATION
+- 2-column grid for services on tablets
+- 4-6 column grid for categories on tablets
+- Proper padding and spacing for larger screens
+- Maintains readability on all devices
+
+PHONE OPTIMIZATION
+- Single column for services on phones
+- 3-column grid for categories on phones
+- Optimized touch targets for thumb reach
+- Compact but usable interface
+
+DYNAMIC PADDING
+- 16dp on phones, 24dp on medium, 32dp on expanded
+- Ensures content doesn't touch screen edges
+- Consistent with Material Design guidelines
+- Adapts to window size classes
+
+================================================================
+NAVIGATION ENHANCEMENTS
+================================================================
+
+SMOOTH BACK NAVIGATION
+- Proper popBackStack handling
+- State preservation when returning
+- No duplicate navigation entries
+
+SERVICE DETAILS NAVIGATION
+- Clicking card navigates to ServiceOfferingDetailsScreen
+- Full service information displayed
+- Book Service button for making bookings
+- Contact Provider option (with improved UX)
+
+BOOKING FLOW INTEGRATION
+- ProfessionalServiceBooking screen for scheduling
+- Handles service offering and contractor IDs
+- Smooth transition from details to booking
+
+================================================================
+ANIMATION IMPROVEMENTS
+================================================================
+
+TAB TRANSITIONS
+- 250ms spring animation for indicator
+- Smooth crossfade between content
+- No jarring jumps or layout shifts
+- Professional feel
+
+SEARCH BAR ANIMATIONS
+- Smooth appearance of clear button
+- Progress indicator with fade-in
+- Filter button badge animation
+
+SCROLL BEHAVIOR
+- Sticky search bar on both tabs
+- Content scrolls independently
+- No conflicts with lazy grids
+- Consistent across platforms
 
 ================================================================
 PERFORMANCE OPTIMIZATIONS
 ================================================================
 
-EFFICIENT HEALTH CHECKS
-- 5-second timeout for health checks
-- Minimal battery impact
-- Non-blocking coroutines
-- Dispatchers.IO for network operations
+LAZY LOADING
+- LazyVerticalGrid for efficient rendering
+- Only composables visible on screen are rendered
+- Smooth scrolling with 60fps
+- Recycler-like performance
 
-OPTIMIZED STATE FLOWS
-- SharedFlow for events
-- StateFlow for UI states
-- Proper scope management
-- No memory leaks
+STATE MANAGEMENT
+- Proper remember and derivedStateOf usage
+- No unnecessary recompositions
+- Stable keys for list items
+- Efficient filter calculations
+
+CACHE INTEGRATION
+- Individual service offerings cached for offline access
+- In-memory cache for quick navigation
+- Room database for persistent storage
+- Automatic cache invalidation on updates
 
 ================================================================
 BUG FIXES
 ================================================================
 
-- Fixed token refresh not retrying after network recovery
-- Fixed banner not appearing on second backend failure
-- Fixed manual retry not refreshing profile
-- Resolved duplicate loading indicators
-- Fixed offline state persistence across screen rotations
-- Corrected error message for backend vs network issues
+- Fixed LazyVerticalGrid inside verticalScroll causing crash
+- Fixed duplicate ServicesContent function definitions
+- Resolved shimmer animation not playing on skeletons
+- Fixed filter counts not updating correctly
+- Corrected navigation back stack behavior
+- Fixed tablet layout spacing issues
+- Resolved category grid column calculation on rotation
+- Fixed search debouncing for both tabs
+
+================================================================
+UI/UX IMPROVEMENTS
+================================================================
+
+COLOR SCHEME CONSISTENCY
+- Proper use of MaterialTheme colorScheme
+- Surface containers for cards and backgrounds
+- Primary, secondary, tertiary colors for pillars
+- Dark mode fully supported
+
+TYPOGRAPHY ENHANCEMENTS
+- Proper font scales (sp)
+- Appropriate font weights (Medium, SemiBold, Bold)
+- Line heights for readability
+- Text overflow handling with ellipsis
+
+EMPTY STATES
+- Professional empty state illustrations
+- Clear CTAs for clearing filters
+- Friendly messaging for no results
+- Maintains brand consistency
+
+ERROR HANDLING
+- User-friendly error messages
+- Retry buttons for failed loads
+- Offline detection and messaging
+- Graceful degradation
+
+================================================================
+CODE QUALITY IMPROVEMENTS
+================================================================
+
+CLEAN ARCHITECTURE
+- Domain models separated from DTOs
+- Use cases for business logic
+- Repository pattern for data access
+- ViewModels for state management
+
+COMPOSE BEST PRACTICES
+- Proper state hoisting
+- Reusable composable functions
+- Modifier parameter for flexibility
+- No side effects in composables
+
+TESTABILITY
+- ViewModels with constructor injection
+- Repositories with dependency injection
+- Use cases easily mockable
+- Separation of concerns
 
 ================================================================
 TESTING SCENARIOS
 ================================================================
 
-1. TEST TOKEN AUTO-REFRESH
-   - Log in and leave app running for 12 minutes
-   - Verify token refreshes without interruption
-   - Check logs for successful refresh
-   - Confirm no user-facing errors
+1. TEST SEGMENTED SWITCH
+   - Tap between Services and Categories
+   - Verify smooth animation
+   - Check content updates correctly
+   - Verify state persists on rotation
 
-2. TEST BACKEND DOWNTIME
-   - Kill backend server while app is running
-   - Verify banner appears: "Service temporarily unavailable"
-   - Wait 30 seconds, restart backend
-   - Verify banner disappears and data reloads
-   - Check auto-refresh on recovery
+2. TEST SEARCH FUNCTIONALITY
+   - Type in search bar on Services tab
+   - Verify results filter in real-time
+   - Clear search with X button
+   - Test search on Categories tab
+   - Verify debouncing works (300ms delay)
 
-3. TEST NETWORK DOWNTIME
-   - Turn on Airplane mode
-   - Verify banner appears: "No internet connection"
-   - Turn off Airplane mode
-   - Verify banner disappears within 2-5 seconds
-   - Check data reloads automatically
+3. TEST FILTERS ON SERVICES TAB
+   - Tap filter button
+   - Apply multiple filters (sort, price range, rating)
+   - Verify active count badge updates
+   - Reset filters and verify clearing
+   - Apply filters and close sheet
 
-4. TEST MANUAL RETRY
-   - With backend down, click "Retry" button
-   - Verify full-screen loading appears
-   - Verify banner updates message on failure
-   - Start backend, click retry again
-   - Verify success and banner disappears
+4. TEST FILTERS ON CATEGORIES TAB
+   - Tap filter pills (Property Services, Career Services, etc.)
+   - Verify grid updates with filtered categories
+   - Tap "All Services" to reset
+   - Verify active filter count badge
 
-5. TEST SESSION EXPIRY
-   - Manually invalidate refresh token on backend
-   - Verify app detects auth error
-   - Verify force logout occurs
-   - Verify navigation to login screen
+5. TEST SERVICE CARD CLICKS
+   - Click any service offering card
+   - Verify navigation to ServiceOfferingDetailsScreen
+   - Check back button returns correctly
+   - Verify bookmark state persists
 
-6. TEST OFFLINE CACHE
-   - Turn off network completely
-   - Kill and restart app
-   - Verify cached profile displays
-   - Verify "Using cached data" message appears
-   - Verify timestamp shows cache age
+6. TEST PAGINATION
+   - Scroll to bottom of services
+   - Click "Load More" button
+   - Verify more services load
+   - Continue until no more data
+
+7. TEST RESPONSIVE LAYOUT
+   - Test on phone (small screen)
+   - Test on tablet (medium screen)
+   - Test on large tablet/desktop (expanded)
+   - Verify grid columns adjust correctly
+   - Check padding and spacing
+
+8. TEST OFFLINE BEHAVIOR
+   - Turn off internet
+   - Open All Services screen
+   - Verify error message
+   - Turn on internet and retry
+   - Verify data loads
+
+9. TEST SHIMMER ANIMATION
+   - Slow network connection
+   - Observe skeleton loading
+   - Verify shimmer animation plays
+   - Check content loads smoothly
 
 ================================================================
 KNOWN ISSUES
 ================================================================
 
-- Payment processing not implemented (v1.19.0)
+- Professional contact info not yet available from backend
+- Contact dialog shows alternative options until backend provides data
+- Payment processing not implemented (v1.20.0)
 - Push notifications pending integration
 - Booking cancellation flow enhancements in progress
-- Emulator network callbacks may be slower than physical devices
+- Some emulators may have slower animation performance
 
 ================================================================
-COMING IN V1.19.0
+COMING IN V1.20.0
 ================================================================
 
 - Escrow payment integration
@@ -311,30 +416,31 @@ COMING IN V1.19.0
 - Push notifications for booking updates
 - SMS notifications for urgent updates
 - Enhanced offline data synchronization
+- Professional profile pages
+- Service offering sharing
 
 ================================================================
 TECHNICAL DETAILS
 ================================================================
 
-TOKEN REFRESH FLOW
-1. Auto-refresh job runs every 12 minutes
-2. Checks token expiration (5 minutes before expiry)
-3. Calls refreshToken API with current refresh token
-4. On success, saves new tokens with timestamp
-5. On failure, classifies error (network/backend/auth)
-6. Retries with exponential backoff
+ALL OFFERINGS API
+- Endpoint: GET /v1/contractors-module/service-offerings/all
+- Pagination with limit/offset
+- Filters: price range, rating, verified only
+- Sorting: recent, price_asc, price_desc, rating
 
-HEALTH CHECK SYSTEM
-1. Runs every 30 seconds when network available
-2. Attempts quick token validation
-3. Detects backend availability changes
-4. Emits recovery events when backend returns
+COMPOSE STRUCTURE
+- AllServicesScreen: Main container with state management
+- ServicesContent: Services tab with search and filters
+- CategoriesContent: Categories tab with filter pills
+- AnimatedSegmentedSwitch: Custom tab component
+- ServicesSearchBarWithFilter: Reusable search component
 
-ERROR CLASSIFICATION
-- No internet: UnknownHostException, No route to host
-- Backend down: ConnectException, Connection refused
-- Timeout: SocketTimeoutException, Read timeout
-- Auth error: 401, "Invalid token", "Session expired"
+STATE MANAGEMENT
+- categoriesActiveFilterCount: Tracks active category filters
+- servicesActiveFilterCount: Tracks active service filters
+- debouncedCategoriesQuery: Delayed search for categories
+- debouncedServicesQuery: Delayed search for services
 
 ================================================================
 SUPPORT & FEEDBACK
@@ -343,8 +449,8 @@ SUPPORT & FEEDBACK
 For issues, bug reports, or feature requests:
 Email: allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.18.0!
-Your feedback helps us create a more reliable app.
+Thank you for testing PivotaConnect v1.19.0!
+Your feedback helps us create a better user experience.
 
 ================================================================
                 """.trimIndent()

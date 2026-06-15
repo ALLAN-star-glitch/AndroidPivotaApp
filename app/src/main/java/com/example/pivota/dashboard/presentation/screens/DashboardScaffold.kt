@@ -1158,13 +1158,14 @@ private fun MobileNavHost(
                         ))
                     },
                     onSubcategoriesClick = { id, name, vertical ->
-                        navController.navigate(
-                            Subcategories(
-                                parentCategoryId = id,
-                                parentCategoryName = name,
-                                vertical = vertical
-                            )
-                        )
+                        navController.navigate(Subcategories(
+                            parentCategoryId = id,
+                            parentCategoryName = name,
+                            vertical = vertical
+                        ))
+                    },
+                    onOfferingClick = { offeringId ->  // ← This is what we need
+                        navController.navigate(ServiceDetails(serviceId = offeringId))
                     },
                     onNavigateBack = {
                         navController.popBackStack()
@@ -1683,6 +1684,9 @@ private fun TabletNavHost(
                         parentCategoryName = name,
                         vertical = vertical
                     ))
+                },
+                onOfferingClick = { offeringId ->  // ← This is what we need
+                    navController.navigate(ServiceDetails(serviceId = offeringId))
                 },
                 onNavigateBack = {
                     navController.popBackStack()

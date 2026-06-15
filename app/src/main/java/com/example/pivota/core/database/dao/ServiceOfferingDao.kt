@@ -49,4 +49,8 @@ interface ServiceOfferingDao {
 
     @Query("SELECT COUNT(*) FROM service_offerings_cache_metadata")
     suspend fun getCacheMetadataCount(): Int
+
+    // Add this to your ServiceOfferingDao interface
+    @Query("SELECT * FROM service_offerings")
+    suspend fun getAllOfferings(): List<ServiceOfferingEntity>
 }

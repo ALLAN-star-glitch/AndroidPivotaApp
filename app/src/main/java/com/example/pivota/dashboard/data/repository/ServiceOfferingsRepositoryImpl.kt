@@ -2,7 +2,6 @@ package com.example.pivota.dashboard.data.repository
 
 import android.util.Log
 import com.example.pivota.core.database.dao.ServiceOfferingDao
-import com.example.pivota.core.database.entity.ServiceOfferingsCacheMetadataEntity
 import com.example.pivota.core.network.ApiResult
 import com.example.pivota.core.network.NetworkError
 import com.example.pivota.core.network.safeApiCall
@@ -12,14 +11,12 @@ import com.example.pivota.dashboard.data.mapper.ServiceOfferingCacheMapper
 import com.example.pivota.dashboard.data.mapper.ServiceOfferingMapper
 import com.example.pivota.dashboard.data.remote.ServiceOfferingsApiService
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.DayAvailability
+import com.example.pivota.dashboard.domain.model.listings_models.professionals.GetAllOfferingsParams
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
 import com.example.pivota.dashboard.domain.repository.CacheStatus
 import com.example.pivota.dashboard.domain.repository.ServiceOfferingsRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.flowOf
 import javax.inject.Inject
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOfferingsResponse
 
@@ -34,10 +31,13 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
     companion object {
         private const val TAG = "ServiceOfferingsRepo"
 
-        private const val CACHE_EXPIRY_FRESH_MS = 5 * 60 * 1000L
-        private const val CACHE_EXPIRY_STALE_MS = 30 * 60 * 1000L
-        private const val CACHE_EXPIRY_OFFLINE_MS = 24 * 60 * 60 * 1000L
+        // Cache only for individual offerings (15 minutes)
+        private const val INDIVIDUAL_OFFERING_CACHE_MS = 15 * 60 * 1000L
     }
+
+    // ======================================================
+    // LISTINGS / SEARCH RESULTS - NO CACHING (Direct network)
+    // ======================================================
 
     override suspend fun getOfferingsByCategory(
         categoryId: String,
@@ -48,167 +48,10 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
         maxPrice: Double?,
         forceRefresh: Boolean
     ): ApiResult<ServiceOfferingsResponse> {
-        val metadata = offeringDao.getCacheMetadata(categoryId)
-        val now = System.currentTimeMillis()
-        val isNetworkAvailable = networkMonitor.isNetworkAvailable()
+        Log.d(TAG, "getOfferingsByCategory: categoryId=$categoryId, forceRefresh=$forceRefresh")
 
-        Log.d(TAG, "getOfferingsByCategory: categoryId=$categoryId, forceRefresh=$forceRefresh, isNetworkAvailable=$isNetworkAvailable")
-
-        if (forceRefresh && isNetworkAvailable) {
-            Log.d(TAG, "Strategy 1: Force refresh - fetching from network")
-            return fetchFromNetworkAndCache(categoryId, limit, offset, city, minPrice, maxPrice)
-        }
-
-        val isCacheFresh = metadata != null &&
-                (now - metadata.lastUpdated) < CACHE_EXPIRY_FRESH_MS
-
-        if (isCacheFresh) {
-            Log.d(TAG, "Strategy 2: Using fresh cache")
-            val cachedResponse = getCachedOfferings(categoryId)
-            if (cachedResponse is ApiResult.Success && cachedResponse.data.data.isNotEmpty()) {
-                return cachedResponse
-            }
-        }
-
-        val isCacheStale = metadata != null &&
-                (now - metadata.lastUpdated) < CACHE_EXPIRY_STALE_MS
-
-        if (isCacheStale && isNetworkAvailable) {
-            Log.d(TAG, "Strategy 3: Cache stale, returning stale data with background refresh")
-            val staleResponse = getCachedOfferings(categoryId)
-            if (staleResponse is ApiResult.Success && staleResponse.data.data.isNotEmpty()) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    Log.d(TAG, "Background refresh triggered for category: $categoryId")
-                    fetchFromNetworkAndCache(categoryId, limit, offset, city, minPrice, maxPrice)
-                }
-                return staleResponse
-            }
-        }
-
-        if (isNetworkAvailable) {
-            Log.d(TAG, "Strategy 4: No valid cache, fetching from network")
-            return fetchFromNetworkAndCache(categoryId, limit, offset, city, minPrice, maxPrice)
-        }
-
-        val anyCachedData = getCachedOfferings(categoryId)
-        if (anyCachedData is ApiResult.Success && anyCachedData.data.data.isNotEmpty()) {
-            Log.d(TAG, "Strategy 5: No network, returning stale cache with offline warning")
-            return anyCachedData
-        }
-
-        Log.e(TAG, "Strategy 6: No network and no cache available")
-        return ApiResult.Error(
-            networkError = NetworkError.Unknown(
-                originalMessage = "No internet connection and no cached data available"
-            ),
-            technicalMessage = "Offline - no cached data for category: $categoryId"
-        )
-    }
-
-    override fun getOfferingsByCategoryStream(
-        categoryId: String
-    ): Flow<ServiceOfferingsResponse> {
-        Log.d(TAG, "getOfferingsByCategoryStream: categoryId=$categoryId")
-        return offeringDao.getOfferingsByCategory(categoryId).map { entities ->
-            val offerings = cacheMapper.toDomainList(entities)
-            ServiceOfferingsResponse(
-                success = true,
-                message = "Cached data",
-                code = "CACHED",
-                data = offerings,
-                pagination = null
-            )
-        }
-    }
-
-    override suspend fun refreshOfferingsByCategory(categoryId: String, force: Boolean) {
-        Log.d(TAG, "refreshOfferingsByCategory: categoryId=$categoryId, force=$force")
-
-        val metadata = offeringDao.getCacheMetadata(categoryId)
-        val now = System.currentTimeMillis()
-        val isNetworkAvailable = networkMonitor.isNetworkAvailable()
-
-        val shouldRefresh = force ||
-                metadata == null ||
-                (now - metadata.lastUpdated) > CACHE_EXPIRY_FRESH_MS
-
-        if (shouldRefresh && isNetworkAvailable) {
-            try {
-                Log.d(TAG, "Refreshing offerings for category: $categoryId")
-                val networkResult = safeApiCall {
-                    apiService.getOfferingsByCategory(categoryId = categoryId)
-                }
-
-                if (networkResult is ApiResult.Success) {
-                    val response = networkResult.data
-                    if (response.success && response.data != null) {
-                        val entities = response.data.map { dto ->
-                            cacheMapper.toEntity(dto, categoryId)
-                        }
-                        offeringDao.insertOfferings(entities)
-                        offeringDao.upsertCacheMetadata(
-                            ServiceOfferingsCacheMetadataEntity(
-                                categoryId = categoryId,
-                                lastUpdated = System.currentTimeMillis(),
-                                totalCount = response.data.size
-                            )
-                        )
-                        Log.d(TAG, "Successfully refreshed offerings for category: $categoryId, count: ${response.data.size}")
-                    }
-                } else {
-                    Log.w(TAG, "Failed to refresh offerings for category: $categoryId")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error refreshing offerings for category: $categoryId", e)
-            }
-        } else {
-            Log.d(TAG, "Skipping refresh for category: $categoryId (shouldRefresh=$shouldRefresh, isNetworkAvailable=$isNetworkAvailable)")
-        }
-    }
-
-    override suspend fun clearOfferingsCache() {
-        Log.d(TAG, "clearOfferingsCache: Clearing stale offerings")
-        val staleTime = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
-        offeringDao.deleteStaleOfferings(staleTime)
-    }
-
-    override suspend fun clearAllCache() {
-        Log.d(TAG, "clearAllCache: Clearing all offerings cache")
-        offeringDao.clearAllOfferings()
-        offeringDao.clearAllCacheMetadata()
-    }
-
-    override suspend fun getCacheStatus(categoryId: String): CacheStatus {
-        val metadata = offeringDao.getCacheMetadata(categoryId)
-        if (metadata == null) {
-            Log.d(TAG, "getCacheStatus: No cache for category $categoryId")
-            return CacheStatus.Empty
-        }
-
-        val now = System.currentTimeMillis()
-        val age = now - metadata.lastUpdated
-
-        val status = when {
-            age < CACHE_EXPIRY_FRESH_MS -> CacheStatus.Fresh(age)
-            age < CACHE_EXPIRY_STALE_MS -> CacheStatus.Stale(age)
-            else -> CacheStatus.Expired(age)
-        }
-
-        Log.d(TAG, "getCacheStatus: category=$categoryId, status=$status, age=${age}ms")
-        return status
-    }
-
-    private suspend fun fetchFromNetworkAndCache(
-        categoryId: String,
-        limit: Int,
-        offset: Int,
-        city: String?,
-        minPrice: Double?,
-        maxPrice: Double?
-    ): ApiResult<ServiceOfferingsResponse> {
-        Log.d(TAG, "fetchFromNetworkAndCache: categoryId=$categoryId, limit=$limit, offset=$offset")
-
-        val networkResult = safeApiCall {
+        // Always fetch from network for listings - users expect fresh results
+        return safeApiCall {
             apiService.getOfferingsByCategory(
                 categoryId = categoryId,
                 limit = limit,
@@ -217,93 +60,159 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                 minPrice = minPrice,
                 maxPrice = maxPrice
             )
+        }.let { result ->
+            when (result) {
+                is ApiResult.Success -> {
+                    val response = result.data
+                    if (response.success && response.data != null) {
+                        Log.d(TAG, "Successfully fetched ${response.data.size} offerings")
+                        ApiResult.Success(networkMapper.toServiceOfferingsResponse(response))
+                    } else {
+                        ApiResult.Error(
+                            networkError = NetworkError.Unknown(originalMessage = response.message),
+                            technicalMessage = response.message
+                        )
+                    }
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "Failed to fetch offerings: ${result.technicalMessage}")
+                    result
+                }
+                ApiResult.Loading -> ApiResult.Loading
+            }
+        }
+    }
+
+    override suspend fun getAllOfferings(
+        params: GetAllOfferingsParams,
+        forceRefresh: Boolean
+    ): ApiResult<ServiceOfferingsResponse> {
+        Log.d(TAG, "getAllOfferings: params=$params, forceRefresh=$forceRefresh")
+
+        // Always fetch from network for listings
+        return safeApiCall {
+            apiService.getAllOfferings(
+                limit = params.limit,
+                offset = params.offset,
+                city = params.city,
+                minPrice = params.minPrice,
+                maxPrice = params.maxPrice,
+                sortBy = params.sortBy.value,
+                minRating = params.minRating,
+                verifiedOnly = params.verifiedOnly
+            )
+        }.let { result ->
+            when (result) {
+                is ApiResult.Success -> {
+                    val response = result.data
+                    if (response.success && response.data != null) {
+                        Log.d(TAG, "Successfully fetched ${response.data.size} all offerings")
+                        ApiResult.Success(networkMapper.toServiceOfferingsResponse(response))
+                    } else {
+                        ApiResult.Error(
+                            networkError = NetworkError.Unknown(originalMessage = response.message),
+                            technicalMessage = response.message
+                        )
+                    }
+                }
+                is ApiResult.Error -> {
+                    Log.e(TAG, "Failed to fetch all offerings: ${result.technicalMessage}")
+                    result
+                }
+                ApiResult.Loading -> ApiResult.Loading
+            }
+        }
+    }
+
+    // ======================================================
+    // INDIVIDUAL OFFERINGS - CACHE IS GOOD HERE
+    // ======================================================
+
+    override suspend fun getServiceOfferingById(
+        serviceId: String,
+        forceRefresh: Boolean
+    ): ApiResult<ServiceOffering> {
+        Log.d(TAG, "getServiceOfferingById: serviceId=$serviceId, forceRefresh=$forceRefresh")
+
+        val isNetworkAvailable = networkMonitor.isNetworkAvailable()
+
+        // Check cache first (only if not forcing refresh)
+        if (!forceRefresh) {
+            val cached = offeringDao.getServiceOfferingById(serviceId)
+            if (cached != null) {
+                val metadata = offeringDao.getCacheMetadata(cached.categoryId)
+                val isCacheFresh = metadata != null &&
+                        (System.currentTimeMillis() - metadata.lastUpdated) < INDIVIDUAL_OFFERING_CACHE_MS
+
+                // Return cached if fresh OR offline
+                if (isCacheFresh || !isNetworkAvailable) {
+                    Log.d(TAG, "Returning cached offering: $serviceId (fresh=$isCacheFresh, offline=${!isNetworkAvailable})")
+                    return ApiResult.Success(cacheMapper.toDomain(cached))
+                }
+            }
         }
 
-        return when (networkResult) {
+        // Fetch from network
+        val result = safeApiCall {
+            apiService.getServiceOfferingById(serviceId)
+        }
+
+        return when (result) {
             is ApiResult.Success -> {
-                val response = networkResult.data
+                val response = result.data
                 if (response.success && response.data != null) {
-                    Log.d(TAG, "Network fetch successful, caching ${response.data.size} offerings")
+                    val offeringData = response.data
+                    val domainOffering = mapToDomain(offeringData)
 
-                    val entities = response.data.map { dto ->
-                        cacheMapper.toEntity(dto, categoryId)
-                    }
-                    offeringDao.insertOfferings(entities)
+                    // Cache the result
+                    val entity = cacheMapper.toEntityFromDetail(offeringData, offeringData.categoryId)
+                    offeringDao.insertOfferings(listOf(entity))
 
-                    val metadata = ServiceOfferingsCacheMetadataEntity(
-                        categoryId = categoryId,
-                        lastUpdated = System.currentTimeMillis(),
-                        totalCount = response.data.size
+                    // Update cache metadata
+                    offeringDao.upsertCacheMetadata(
+                        com.example.pivota.core.database.entity.ServiceOfferingsCacheMetadataEntity(
+                            categoryId = offeringData.categoryId,
+                            lastUpdated = System.currentTimeMillis(),
+                            totalCount = 1
+                        )
                     )
-                    offeringDao.upsertCacheMetadata(metadata)
 
-                    val domainResponse = networkMapper.toServiceOfferingsResponse(response)
-                    ApiResult.Success(domainResponse)
+                    Log.d(TAG, "Successfully fetched and cached offering: $serviceId")
+                    ApiResult.Success(domainOffering)
                 } else {
-                    Log.w(TAG, "Network response successful but no data, falling back to cache")
-                    getCachedOfferings(categoryId)
+                    // Try to return cached version even if network failed
+                    val cached = offeringDao.getServiceOfferingById(serviceId)
+                    if (cached != null) {
+                        Log.d(TAG, "Network returned empty, returning cached version")
+                        ApiResult.Success(cacheMapper.toDomain(cached))
+                    } else {
+                        ApiResult.Error(
+                            networkError = NetworkError.Unknown(originalMessage = response.message),
+                            technicalMessage = response.message
+                        )
+                    }
                 }
             }
             is ApiResult.Error -> {
-                Log.e(TAG, "Network error: ${networkResult.technicalMessage}, falling back to cache")
-                getCachedOfferings(categoryId)
+                // Try to return cached version on error
+                val cached = offeringDao.getServiceOfferingById(serviceId)
+                if (cached != null) {
+                    Log.d(TAG, "Network error, returning cached version")
+                    ApiResult.Success(cacheMapper.toDomain(cached))
+                } else {
+                    result
+                }
             }
-            ApiResult.Loading -> {
-                Log.d(TAG, "Network loading state")
-                ApiResult.Loading
-            }
+            ApiResult.Loading -> ApiResult.Loading
         }
     }
 
-    private suspend fun getCachedOfferings(
-        categoryId: String
-    ): ApiResult<ServiceOfferingsResponse> {
-        return try {
-            val cached = offeringDao.getOfferingsByCategoryList(categoryId)
-            if (cached.isNotEmpty()) {
-                Log.d(TAG, "Found ${cached.size} cached offerings for category: $categoryId")
-                val domainOfferings = cacheMapper.toDomainList(cached)
-                ApiResult.Success(
-                    ServiceOfferingsResponse(
-                        success = true,
-                        message = "Cached data",
-                        code = "CACHED",
-                        data = domainOfferings,
-                        pagination = null
-                    )
-                )
-            } else {
-                Log.w(TAG, "No cached offerings found for category: $categoryId")
-                ApiResult.Error(
-                    networkError = NetworkError.Unknown(
-                        originalMessage = "No cached data available"
-                    ),
-                    technicalMessage = "No cached data available for category: $categoryId"
-                )
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting cached offerings for category: $categoryId", e)
-            ApiResult.Error(
-                networkError = NetworkError.Unknown(
-                    originalMessage = e.message ?: "Failed to load cached data"
-                ),
-                technicalMessage = e.message
-            )
-        }
-    }
+    // ======================================================
+    // CREATE SERVICE OFFERING
+    // ======================================================
 
     override suspend fun createServiceOffering(request: CreateServiceOfferingRequestDto): ApiResult<ServiceOfferingsResponse> {
-        println("🔍 ========== CREATE SERVICE OFFERING ==========")
-        println("🔍 Title: ${request.title}")
-        println("🔍 CategoryId: ${request.categoryId}")
-        println("🔍 BasePrice: ${request.basePrice}")
-        println("🔍 CoverageAreas: ${request.coverageAreas}")
-        println("🔍 IsNegotiable: ${request.isNegotiable}")
-        println("🔍 MinNegotiablePrice: ${request.minNegotiablePrice}")
-        println("🔍 MaxNegotiablePrice: ${request.maxNegotiablePrice}")
-        println("🔍 UseCustomBookingFee: ${request.useCustomBookingFee}")
-        println("🔍 CustomBookingFeeAmount: ${request.customBookingFeeAmount}")
-        println("🔍 =============================================")
+        Log.d(TAG, "createServiceOffering: title=${request.title}, categoryId=${request.categoryId}")
 
         val result = safeApiCall {
             apiService.createServiceOffering(request)
@@ -312,55 +221,16 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
         return when (result) {
             is ApiResult.Success -> {
                 val response = result.data
-                println("🔍 CREATE SERVICE OFFERING RESPONSE: success=${response.success}, message=${response.message}")
-
                 if (response.success && response.data != null) {
                     val createdData = response.data
-                    val domainOffering = ServiceOffering(
-                        id = createdData.id,
-                        externalId = createdData.externalId,
-                        professionalName = createdData.professionalName,
-                        professionalAvatar = createdData.professionalAvatar,
-                        isVerified = createdData.isVerified,
-                        title = createdData.title,
-                        description = createdData.description,
-                        categoryId = createdData.categoryId,
-                        categoryName = createdData.categoryName,
-                        basePrice = createdData.basePrice,
-                        priceUnit = createdData.priceUnit,
-                        currency = createdData.currency,
-                        coverageAreas = createdData.coverageAreas,
-                        availability = createdData.availability?.map { dayDto ->
-                            DayAvailability(
-                                day = dayDto.day,
-                                open = dayDto.open,
-                                close = dayDto.close,
-                                isClosed = dayDto.isClosed
-                            )
-                        } ?: emptyList(),
-                        yearsExperience = createdData.yearsExperience,
-                        hourlyRate = createdData.hourlyRate,
-                        status = createdData.status,
-                        averageRating = createdData.averageRating,
-                        reviewCount = createdData.reviewCount,
-                        createdAt = createdData.createdAt,
-                        updatedAt = createdData.updatedAt,
-                        isNegotiable = createdData.isNegotiable ?: true,
-                        minNegotiablePrice = createdData.minNegotiablePrice,
-                        maxNegotiablePrice = createdData.maxNegotiablePrice,
-                        useCustomBookingFee = createdData.useCustomBookingFee ?: false,
-                        customBookingFeeEnabled = createdData.customBookingFeeEnabled,
-                        customBookingFeeAmount = createdData.customBookingFeeAmount,
-                        customBookingFeeCurrency = createdData.customBookingFeeCurrency,
-                        customBookingFeeDescription = createdData.customBookingFeeDescription,
-                        customBookingFeeRefundable = createdData.customBookingFeeRefundable,
-                        skilledProfessionalId = createdData.skilledProfessionalId
-                    )
+                    val domainOffering = mapToDomain(createdData)
 
-                    CoroutineScope(Dispatchers.IO).launch {
-                        offeringDao.deleteCacheMetadata(createdData.categoryId)
-                        Log.d(TAG, "Cache invalidated for category: ${createdData.categoryId} after creation")
-                    }
+                    // Optionally cache the new offering
+                    val entity = cacheMapper.toEntityFromDetail(createdData, createdData.categoryId)
+                    offeringDao.insertOfferings(listOf(entity))
+
+                    // Invalidate cache for this category (since new offering affects listings)
+                    // But we don't cache listings, so this is optional
 
                     val serviceOfferingsResponse = ServiceOfferingsResponse(
                         success = response.success,
@@ -372,141 +242,129 @@ class ServiceOfferingsRepositoryImpl @Inject constructor(
                     ApiResult.Success(serviceOfferingsResponse)
                 } else {
                     ApiResult.Error(
-                        networkError = NetworkError.Unknown(
-                            originalMessage = response.message
-                        ),
+                        networkError = NetworkError.Unknown(originalMessage = response.message),
                         technicalMessage = response.message
                     )
                 }
             }
             is ApiResult.Error -> {
-                println("❌ CREATE SERVICE OFFERING ERROR: ${result.technicalMessage}")
-                ApiResult.Error(
-                    networkError = result.networkError,
-                    technicalMessage = result.technicalMessage
-                )
+                Log.e(TAG, "Failed to create offering: ${result.technicalMessage}")
+                result
             }
             ApiResult.Loading -> ApiResult.Loading
         }
     }
 
-    override suspend fun getServiceOfferingById(
-        serviceId: String,
-        forceRefresh: Boolean
-    ): ApiResult<ServiceOffering> {
-        println("🔍 ========== GET SERVICE OFFERING BY ID ==========")
-        println("🔍 Service ID: $serviceId")
-        println("🔍 Force Refresh: $forceRefresh")
-        println("🔍 ================================================")
+    // ======================================================
+    // STREAMS - Only for offline cached data
+    // ======================================================
 
-        val isNetworkAvailable = networkMonitor.isNetworkAvailable()
+    override fun getOfferingsByCategoryStream(
+        categoryId: String
+    ): Flow<ServiceOfferingsResponse> {
+        Log.d(TAG, "getOfferingsByCategoryStream: categoryId=$categoryId")
+        // Return cached offerings for offline viewing only
+        return flowOf(
+            ServiceOfferingsResponse(
+                success = true,
+                message = "Cached data",
+                code = "CACHED",
+                data = emptyList(), // You can implement this if needed
+                pagination = null
+            )
+        )
+    }
 
-        val cachedOffering = if (!forceRefresh) {
-            offeringDao.getServiceOfferingById(serviceId)
+    // ======================================================
+    // REFRESH METHODS - Simplified
+    // ======================================================
+
+    override suspend fun refreshOfferingsByCategory(categoryId: String, force: Boolean) {
+        Log.d(TAG, "refreshOfferingsByCategory: categoryId=$categoryId, force=$force")
+        // Since we don't cache listings, nothing to refresh
+        // Individual offerings are refreshed on-demand when forceRefresh=true
+    }
+
+    override suspend fun refreshAllOfferings(force: Boolean) {
+        Log.d(TAG, "refreshAllOfferings: force=$force")
+        // Since we don't cache listings, nothing to refresh
+    }
+
+    override suspend fun clearOfferingsCache() {
+        Log.d(TAG, "clearOfferingsCache: Clearing stale individual offerings")
+        val staleTime = System.currentTimeMillis() - INDIVIDUAL_OFFERING_CACHE_MS
+        offeringDao.deleteStaleOfferings(staleTime)
+    }
+
+    override suspend fun clearAllCache() {
+        Log.d(TAG, "clearAllCache: Clearing all cached offerings")
+        offeringDao.clearAllOfferings()
+        offeringDao.clearAllCacheMetadata()
+    }
+
+    override suspend fun getCacheStatus(categoryId: String): CacheStatus {
+        // Simplified - only for individual offerings
+        val metadata = offeringDao.getCacheMetadata(categoryId)
+        if (metadata == null) {
+            return CacheStatus.Empty
+        }
+        val age = System.currentTimeMillis() - metadata.lastUpdated
+        return if (age < INDIVIDUAL_OFFERING_CACHE_MS) {
+            CacheStatus.Fresh(age)
         } else {
-            null
+            CacheStatus.Expired(age)
         }
+    }
 
-        if (cachedOffering != null && !forceRefresh) {
-            println("📦 Found cached service offering: $serviceId")
-            val domainOffering = cacheMapper.toDomain(cachedOffering)
+    override suspend fun getAllOfferingsCacheStatus(): CacheStatus {
+        // Not applicable since we don't cache all offerings
+        return CacheStatus.Empty
+    }
 
-            val metadata = offeringDao.getCacheMetadata(cachedOffering.categoryId)
-            val now = System.currentTimeMillis()
-            val isCacheFresh = metadata != null &&
-                    (now - metadata.lastUpdated) < CACHE_EXPIRY_FRESH_MS
+    // ======================================================
+    // PRIVATE HELPERS
+    // ======================================================
 
-            if (isCacheFresh || !isNetworkAvailable) {
-                println("✅ Returning cached offering (fresh=$isCacheFresh, forceRefresh=$forceRefresh)")
-                return ApiResult.Success(domainOffering)
-            }
-        }
-
-        if (forceRefresh && !isNetworkAvailable && cachedOffering != null) {
-            println("📦 Force refresh requested but offline, returning cached version")
-            return ApiResult.Success(cacheMapper.toDomain(cachedOffering))
-        }
-
-        val result = safeApiCall {
-            apiService.getServiceOfferingById(serviceId)
-        }
-
-        return when (result) {
-            is ApiResult.Success -> {
-                val response = result.data
-                println("🔍 GET SERVICE OFFERING BY ID RESPONSE: success=${response.success}, message=${response.message}")
-
-                if (response.success && response.data != null) {
-                    val offeringData = response.data
-                    val domainOffering = ServiceOffering(
-                        id = offeringData.id,
-                        externalId = offeringData.externalId,
-                        professionalName = offeringData.professionalName,
-                        professionalAvatar = offeringData.professionalAvatar,
-                        isVerified = offeringData.isVerified,
-                        title = offeringData.title,
-                        description = offeringData.description,
-                        categoryId = offeringData.categoryId,
-                        categoryName = offeringData.categoryName,
-                        basePrice = offeringData.basePrice,
-                        priceUnit = offeringData.priceUnit,
-                        currency = offeringData.currency,
-                        coverageAreas = offeringData.coverageAreas,
-                        availability = offeringData.availability?.map { dayDto ->
-                            DayAvailability(
-                                day = dayDto.day,
-                                open = dayDto.open,
-                                close = dayDto.close,
-                                isClosed = dayDto.isClosed
-                            )
-                        } ?: emptyList(),
-                        yearsExperience = offeringData.yearsExperience,
-                        hourlyRate = offeringData.hourlyRate,
-                        status = offeringData.status,
-                        averageRating = offeringData.averageRating,
-                        reviewCount = offeringData.reviewCount,
-                        createdAt = offeringData.createdAt,
-                        updatedAt = offeringData.updatedAt,
-                        isNegotiable = offeringData.isNegotiable ?: true,
-                        minNegotiablePrice = offeringData.minNegotiablePrice,
-                        maxNegotiablePrice = offeringData.maxNegotiablePrice,
-                        useCustomBookingFee = offeringData.useCustomBookingFee ?: false,
-                        customBookingFeeEnabled = offeringData.customBookingFeeEnabled,
-                        customBookingFeeAmount = offeringData.customBookingFeeAmount,
-                        customBookingFeeCurrency = offeringData.customBookingFeeCurrency,
-                        customBookingFeeDescription = offeringData.customBookingFeeDescription,
-                        customBookingFeeRefundable = offeringData.customBookingFeeRefundable,
-                        skilledProfessionalId = offeringData.skilledProfessionalId
-                    )
-
-                    val entity = cacheMapper.toEntityFromDetail(offeringData, offeringData.categoryId)
-                    offeringDao.insertOfferings(listOf(entity))
-
-                    println("✅ Cached offering from network: $serviceId")
-                    ApiResult.Success(domainOffering)
-                } else {
-                    cachedOffering?.let {
-                        println("📦 Returning cached version due to empty network response")
-                        ApiResult.Success(cacheMapper.toDomain(it))
-                    } ?: ApiResult.Error(
-                        networkError = NetworkError.Unknown(
-                            originalMessage = response.message
-                        ),
-                        technicalMessage = response.message
-                    )
-                }
-            }
-            is ApiResult.Error -> {
-                println("❌ GET SERVICE OFFERING BY ID ERROR: ${result.technicalMessage}")
-                cachedOffering?.let {
-                    println("📦 Returning cached version due to network error")
-                    ApiResult.Success(cacheMapper.toDomain(it))
-                } ?: ApiResult.Error(
-                    networkError = result.networkError,
-                    technicalMessage = result.technicalMessage
+    private fun mapToDomain(data: com.example.pivota.dashboard.data.dto.CreatedServiceOfferingDataDto): ServiceOffering {
+        return ServiceOffering(
+            id = data.id,
+            externalId = data.externalId,
+            professionalName = data.professionalName,
+            professionalAvatar = data.professionalAvatar,
+            isVerified = data.isVerified,
+            title = data.title,
+            description = data.description,
+            categoryId = data.categoryId,
+            categoryName = data.categoryName,
+            basePrice = data.basePrice,
+            priceUnit = data.priceUnit,
+            currency = data.currency,
+            coverageAreas = data.coverageAreas,
+            availability = data.availability?.map { dayDto ->
+                DayAvailability(
+                    day = dayDto.day,
+                    open = dayDto.open,
+                    close = dayDto.close,
+                    isClosed = dayDto.isClosed
                 )
-            }
-            ApiResult.Loading -> ApiResult.Loading
-        }
+            } ?: emptyList(),
+            yearsExperience = data.yearsExperience,
+            hourlyRate = data.hourlyRate,
+            status = data.status,
+            averageRating = data.averageRating,
+            reviewCount = data.reviewCount,
+            createdAt = data.createdAt,
+            updatedAt = data.updatedAt,
+            isNegotiable = data.isNegotiable ?: true,
+            minNegotiablePrice = data.minNegotiablePrice,
+            maxNegotiablePrice = data.maxNegotiablePrice,
+            useCustomBookingFee = data.useCustomBookingFee ?: false,
+            customBookingFeeEnabled = data.customBookingFeeEnabled,
+            customBookingFeeAmount = data.customBookingFeeAmount,
+            customBookingFeeCurrency = data.customBookingFeeCurrency,
+            customBookingFeeDescription = data.customBookingFeeDescription,
+            customBookingFeeRefundable = data.customBookingFeeRefundable,
+            skilledProfessionalId = data.skilledProfessionalId
+        )
     }
 }
