@@ -41,12 +41,12 @@ class ServiceOfferingsApiService @Inject constructor(
         maxPrice: Double? = null
     ): ServiceOfferingsResponseDto {
         println("🔍 ========== GET OFFERINGS BY CATEGORY REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/contractors-module/service-offerings/category/$categoryId")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/contractors-module/service-offerings/category/$categoryId")
         println("🔍 PARAMS: limit=$limit, offset=$offset, city=$city, minPrice=$minPrice, maxPrice=$maxPrice")
         println("🔍 =======================================================")
 
         return try {
-            val response: ServiceOfferingsResponseDto = client.get("v1/contractors-module/service-offerings/category/$categoryId") {
+            val response: ServiceOfferingsResponseDto = client.get("contractors-module/service-offerings/category/$categoryId") {
                 contentType(ContentType.Application.Json)
                 parameter("limit", limit)
                 parameter("offset", offset)
@@ -106,13 +106,13 @@ class ServiceOfferingsApiService @Inject constructor(
         verifiedOnly: Boolean = false
     ): ServiceOfferingsResponseDto {
         println("🔍 ========== GET ALL OFFERINGS REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/contractors-module/service-offerings/all")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/contractors-module/service-offerings/all")
         println("🔍 PARAMS: limit=$limit, offset=$offset, city=$city, sortBy=$sortBy, minRating=$minRating, verifiedOnly=$verifiedOnly")
         println("🔍 PRICE RANGE: minPrice=$minPrice, maxPrice=$maxPrice")
         println("🔍 ===============================================")
 
         return try {
-            val response: ServiceOfferingsResponseDto = client.get("v1/contractors-module/service-offerings/all") {
+            val response: ServiceOfferingsResponseDto = client.get("contractors-module/service-offerings/all") {
                 contentType(ContentType.Application.Json)
                 parameter("limit", limit)
                 parameter("offset", offset)
@@ -157,12 +157,12 @@ class ServiceOfferingsApiService @Inject constructor(
         request: CreateServiceOfferingRequestDto
     ): CreateServiceOfferingResponseDto {
         println("🔍 ========== CREATE SERVICE OFFERING REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/contractors-module/service-offerings")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/contractors-module/service-offerings")
         println("🔍 REQUEST: title=${request.title}, categoryId=${request.categoryId}, basePrice=${request.basePrice}")
         println("🔍 =====================================================")
 
         return try {
-            val response: CreateServiceOfferingResponseDto = client.post("v1/contractors-module/service-offerings") {
+            val response: CreateServiceOfferingResponseDto = client.post("contractors-module/service-offerings") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }.body()
@@ -201,12 +201,12 @@ class ServiceOfferingsApiService @Inject constructor(
         serviceId: String
     ): CreateServiceOfferingResponseDto {
         println("🔍 ========== GET SERVICE OFFERING BY ID REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/contractors-module/service-offerings/$serviceId")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/contractors-module/service-offerings/$serviceId")
         println("🔍 SERVICE ID: $serviceId")
         println("🔍 =======================================================")
 
         return try {
-            val response: CreateServiceOfferingResponseDto = client.get("v1/contractors-module/service-offerings/$serviceId") {
+            val response: CreateServiceOfferingResponseDto = client.get("contractors-module/service-offerings/$serviceId") {
                 contentType(ContentType.Application.Json)
             }.body()
 

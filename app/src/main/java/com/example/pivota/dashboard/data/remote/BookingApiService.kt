@@ -18,7 +18,7 @@ class BookingApiService @Inject constructor(
 ) {
 
     private companion object {
-        const val BASE_PATH = "v1/bookings"
+        const val BASE_PATH = "bookings"
     }
 
     // ===========================================================

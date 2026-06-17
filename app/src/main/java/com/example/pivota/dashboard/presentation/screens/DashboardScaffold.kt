@@ -2266,7 +2266,6 @@ fun MainScreenScaffold(
     }
 }
 
-// No Bottom Navigation Scaffold for detail screens
 @Composable
 fun NoBottomNavScaffold(
     content: @Composable () -> Unit
@@ -2274,6 +2273,7 @@ fun NoBottomNavScaffold(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .navigationBarsPadding()  // ← ADD THIS - adds padding for system navigation bar
     ) {
         content()
     }

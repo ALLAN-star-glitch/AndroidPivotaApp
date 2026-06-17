@@ -26,11 +26,11 @@ class PricingUnitsApiService @Inject constructor(
         categoryId: String
     ): PricingUnitsByCategoryResponseDto {
         println("🔍 ========== GET PRICING UNITS BY CATEGORY REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/contractors-pricing/units/category/$categoryId")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/contractors-pricing/units/category/$categoryId")
         println("🔍 ==========================================================")
 
         return try {
-            val response: PricingUnitsByCategoryResponseDto = client.get("v1/contractors-pricing/units/category/$categoryId") {
+            val response: PricingUnitsByCategoryResponseDto = client.get("contractors-pricing/units/category/$categoryId") {
                 contentType(ContentType.Application.Json)
             }.body()
 

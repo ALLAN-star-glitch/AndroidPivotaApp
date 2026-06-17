@@ -37,23 +37,20 @@ class AuthApiService @Inject constructor(
      * Request OTP for signup, login, or password reset
      */
     suspend fun requestOtp(request: RequestOtpRequestDto): BaseOtpResponseDto {
-        // Build request body - only include phone if it's provided
         val requestBody = mutableMapOf<String, String>("email" to request.email)
         request.phone?.let { requestBody["phone"] = it }
 
-        // Log REQUEST
         println("🔍 ========== OTP REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/otp/request?purpose=${request.purpose}")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/authentication/otp/request?purpose=${request.purpose}")
         println("🔍 BODY: email=${request.email}${request.phone?.let { ", phone=$it" } ?: ""}")
         println("🔍 ==================================")
 
         return try {
-            val response: BaseOtpResponseDto = client.post("v1/auth-module/otp/request?purpose=${request.purpose}") {
+            val response: BaseOtpResponseDto = client.post("authentication/otp/request?purpose=${request.purpose}") {
                 contentType(ContentType.Application.Json)
                 setBody(requestBody)
             }.body()
 
-            // Log RESPONSE
             println("🔍 ========== OTP RESPONSE ==========")
             println("🔍 SUCCESS: ${response.success}")
             println("🔍 MESSAGE: ${response.message}")
@@ -63,13 +60,11 @@ class AuthApiService @Inject constructor(
 
             response
         } catch (e: ClientRequestException) {
-            // 4xx errors
             println("❌ OTP Request Client Error (${e.response.status.value}): ${e.message}")
             val errorBody = try { e.response.bodyAsText() } catch (ex: Exception) { "Unable to read error body" }
             println("❌ Error Body: $errorBody")
             throw e
         } catch (e: ServerResponseException) {
-            // 5xx errors
             println("❌ OTP Request Server Error (${e.response.status.value}): ${e.message}")
             throw e
         } catch (e: Exception) {
@@ -83,7 +78,7 @@ class AuthApiService @Inject constructor(
      */
     suspend fun verifyOtp(request: VerifyOtpRequestDto): VerifyOtpResponseDto {
         return try {
-            client.post("v1/auth-module/otp/verify") {
+            client.post("authentication/otp/verify") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }.body()
@@ -101,7 +96,7 @@ class AuthApiService @Inject constructor(
         println("🔍 SIGNUP Request: $jsonString")
 
         return try {
-            client.post("v1/auth-module/signup") {
+            client.post("authentication-onboarding/signup") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }.body()
@@ -115,19 +110,17 @@ class AuthApiService @Inject constructor(
      * User Login (Stage 1 - returns MFA_REQUIRED or tokens)
      */
     suspend fun login(request: LoginRequestDto): LoginResponseDto {
-        // Log REQUEST
         println("🔍 ========== LOGIN REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/login")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/authentication/login")
         println("🔍 BODY: email=${request.email}, password=${request.password}")
         println("🔍 ====================================")
 
         return try {
-            val response: LoginResponseDto = client.post("v1/auth-module/login") {
+            val response: LoginResponseDto = client.post("authentication/login") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }.body()
 
-            // Log RESPONSE
             println("🔍 ========== LOGIN RESPONSE ==========")
             println("🔍 SUCCESS: ${response.success}")
             println("🔍 MESSAGE: ${response.message}")
@@ -155,19 +148,17 @@ class AuthApiService @Inject constructor(
      * Verify MFA and complete login (Stage 2)
      */
     suspend fun verifyMfaLogin(request: VerifyMfaLoginRequestDto): LoginResponseDto {
-        // Log REQUEST
         println("🔍 ========== VERIFY MFA LOGIN REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/login/verify-mfa")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/authentication/login/verify-mfa")
         println("🔍 BODY: email=${request.email}, code=${request.code}")
         println("🔍 ===============================================")
 
         return try {
-            val response: LoginResponseDto = client.post("v1/auth-module/login/verify-mfa") {
+            val response: LoginResponseDto = client.post("authentication/login/verify-mfa") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }.body()
 
-            // Log RESPONSE
             println("🔍 ========== VERIFY MFA LOGIN RESPONSE ==========")
             println("🔍 SUCCESS: ${response.success}")
             println("🔍 MESSAGE: ${response.message}")
@@ -189,15 +180,11 @@ class AuthApiService @Inject constructor(
 
     /**
      * Google Sign-In - Login or Register using Google OAuth token
-     *
-     * @param request Contains Google ID token and optional onboarding data
-     * @return LoginResponseDto with tokens and user info (same as regular login)
      */
     suspend fun googleSignIn(request: GoogleSignInRequestDto): LoginResponseDto {
-        // Log REQUEST
         println("🔍 ========== GOOGLE SIGN-IN REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/google")
-        println("🔍 TOKEN: ${request.token.take(20)}...") // Only show first 20 chars
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/authentication/google")
+        println("🔍 TOKEN: ${request.token.take(20)}...")
         println("🔍 HAS ONBOARDING DATA: ${request.onboardingData != null}")
         request.onboardingData?.primaryPurpose?.let {
             println("🔍 PRIMARY PURPOSE: $it")
@@ -205,12 +192,11 @@ class AuthApiService @Inject constructor(
         println("🔍 ============================================")
 
         return try {
-            val response: LoginResponseDto = client.post("v1/auth-module/google") {
+            val response: LoginResponseDto = client.post("authentication/google") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }.body()
 
-            // Log RESPONSE
             println("🔍 ========== GOOGLE SIGN-IN RESPONSE ==========")
             println("🔍 SUCCESS: ${response.success}")
             println("🔍 MESSAGE: ${response.message}")
@@ -238,7 +224,7 @@ class AuthApiService @Inject constructor(
      */
     suspend fun refreshToken(refreshToken: String): RefreshTokenResponseDto {
         return try {
-            client.post("v1/auth-module/refreshToken") {
+            client.post("authentication/refresh-token") {
                 contentType(ContentType.Application.Json)
                 setBody(mapOf("refreshToken" to refreshToken))
             }.body()
@@ -253,12 +239,12 @@ class AuthApiService @Inject constructor(
      */
     suspend fun requestPasswordReset(email: String): BaseOtpResponseDto {
         println("🔍 ========== PASSWORD RESET REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/password/forgot")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/authentication/password/forgot")
         println("🔍 BODY: email=$email")
         println("🔍 ============================================")
 
         return try {
-            val response: BaseOtpResponseDto = client.post("v1/auth-module/password/forgot") {
+            val response: BaseOtpResponseDto = client.post("authentication/password/forgot") {
                 contentType(ContentType.Application.Json)
                 setBody(mapOf("email" to email))
             }.body()
@@ -282,12 +268,12 @@ class AuthApiService @Inject constructor(
      */
     suspend fun resetPassword(email: String, code: String, newPassword: String): BaseResponseDto<Nothing> {
         println("🔍 ========== RESET PASSWORD REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/auth-module/password/reset")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/authentication/password/reset")
         println("🔍 BODY: email=$email, code=$code, newPassword=${"*".repeat(newPassword.length)}")
         println("🔍 ============================================")
 
         return try {
-            val response: BaseResponseDto<Nothing> = client.post("v1/auth-module/password/reset") {
+            val response: BaseResponseDto<Nothing> = client.post("authentication/password/reset") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     mapOf(

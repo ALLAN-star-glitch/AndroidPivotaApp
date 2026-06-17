@@ -30,12 +30,12 @@ class CategoriesApiService @Inject constructor(
         type: String? = null
     ): DiscoveryMetadataResponseDto {
         println("🔍 ========== FETCH DISCOVERY METADATA REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/categories-module/categories/discovery")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/categories-module/categories/discovery")
         println("🔍 PARAMS: vertical=$vertical, type=$type")
         println("🔍 ======================================================")
 
         return try {
-            val response: DiscoveryMetadataResponseDto = client.get("v1/categories-module/categories/discovery") {
+            val response: DiscoveryMetadataResponseDto = client.get("categories-module/categories/discovery") {
                 contentType(ContentType.Application.Json)
 
                 // Add query parameters
@@ -86,12 +86,12 @@ class CategoriesApiService @Inject constructor(
         includeNested: Boolean? = null
     ): CategoriesResponseDto {
         println("🔍 ========== FETCH CATEGORIES REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/categories-module/categories")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/categories-module/categories")
         println("🔍 PARAMS: vertical=$vertical, type=$type, parentId=$parentId")
         println("🔍 ===============================================")
 
         return try {
-            val response: CategoriesResponseDto = client.get("v1/categories-module/categories") {
+            val response: CategoriesResponseDto = client.get("categories-module/categories") {
                 contentType(ContentType.Application.Json)
 
                 // Add query parameters

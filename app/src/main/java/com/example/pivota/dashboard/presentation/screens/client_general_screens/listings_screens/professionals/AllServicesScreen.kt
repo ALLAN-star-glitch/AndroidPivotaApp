@@ -17,6 +17,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -57,8 +59,6 @@ import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewm
 import com.example.pivota.dashboard.presentation.state.CommonServicesUiState
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.ServiceOfferingsViewModel
 import kotlinx.coroutines.delay
-
-
 
 enum class ServiceFilterPill {
     ALL,
@@ -130,7 +130,30 @@ fun AllServicesScreen(
         else -> 12.dp
     }
 
+    // Use pager state for swipe functionality
+    val pagerState = rememberPagerState(
+        initialPage = 0,
+        pageCount = { 2 } // 2 tabs: SERVICES (0) and CATEGORIES (1)
+    )
+
     var currentView by remember { mutableStateOf(AllServicesView.SERVICES) }
+
+    // When pager page changes, update the currentView
+    LaunchedEffect(pagerState.currentPage) {
+        currentView = if (pagerState.currentPage == 0) {
+            AllServicesView.SERVICES
+        } else {
+            AllServicesView.CATEGORIES
+        }
+    }
+
+    // When currentView changes externally (e.g., from the segmented switch), update the pager
+    LaunchedEffect(currentView) {
+        val targetPage = if (currentView == AllServicesView.SERVICES) 0 else 1
+        if (pagerState.currentPage != targetPage) {
+            pagerState.animateScrollToPage(targetPage)
+        }
+    }
 
     // ==================== CATEGORIES TAB STATE ====================
     var categoriesSearchQuery by remember { mutableStateOf("") }
@@ -315,58 +338,68 @@ fun AllServicesScreen(
             // Animated Segmented Switch
             AnimatedSegmentedSwitch(
                 currentView = currentView,
-                onViewSelected = { currentView = it },
+                onViewSelected = { view ->
+                    currentView = view
+                },
                 colorScheme = colorScheme,
                 isTablet = isTablet,
                 modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 8.dp)
             )
 
-            // Content based on selected view
-            when (currentView) {
-                AllServicesView.SERVICES -> {
-                    ServicesContent(
-                        allOfferingsState = allOfferingsState,
-                        filteredOfferings = filteredOfferings,
-                        searchQuery = servicesSearchQuery,
-                        onSearchQueryChange = { servicesSearchQuery = it },
-                        isSearching = isServicesSearching,
-                        onFilterClick = { showServicesFilterModal = true },
-                        activeFilterCount = servicesActiveFilterCount,
-                        isTablet = isTablet,
-                        onOfferingClick = onOfferingClick,
-                        onRefresh = { serviceOfferingsViewModel.refreshAllOfferings() },
-                        onLoadMore = { serviceOfferingsViewModel.loadMoreAllOfferings() },
-                        hasMoreData = (allOfferingsState as? ServiceOfferingsUiState.Success)?.hasMore ?: false,
-                        colorScheme = colorScheme,
-                        horizontalPadding = horizontalPadding
-                    )
-                }
-                AllServicesView.CATEGORIES -> {
-                    CategoriesContent(
-                        uiState = uiState,
-                        filteredServices = filteredServices,
-                        searchQuery = categoriesSearchQuery,
-                        onSearchQueryChange = { categoriesSearchQuery = it },
-                        isSearching = isCategoriesSearching,
-                        onFilterClick = { showCategoriesFilterModal = true },
-                        activeFilterCount = categoriesActiveFilterCount,
-                        selectedFilter = categoriesSelectedFilter,
-                        onFilterSelected = { categoriesSelectedFilter = it },
-                        gridColumns = gridColumns,
-                        horizontalPadding = horizontalPadding,
-                        gridSpacing = gridSpacing,
-                        gridState = categoriesGridState,
-                        onServiceClick = onServiceClick,
-                        onSubcategoriesClick = onSubcategoriesClick,
-                        onRefresh = { viewModel.refresh() },
-                        onClearFilters = {
-                            categoriesSearchQuery = ""
-                            categoriesSelectedFilter = ServiceFilterPill.ALL
-                            categoriesFocusManager.clearFocus()
-                        },
-                        colorScheme = colorScheme,
-                        isTablet = isTablet
-                    )
+            // Horizontal Pager for swiping between tabs
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                userScrollEnabled = true
+            ) { page ->
+                when (page) {
+                    0 -> {
+                        // SERVICES Tab
+                        ServicesContent(
+                            allOfferingsState = allOfferingsState,
+                            filteredOfferings = filteredOfferings,
+                            searchQuery = servicesSearchQuery,
+                            onSearchQueryChange = { servicesSearchQuery = it },
+                            isSearching = isServicesSearching,
+                            onFilterClick = { showServicesFilterModal = true },
+                            activeFilterCount = servicesActiveFilterCount,
+                            isTablet = isTablet,
+                            onOfferingClick = onOfferingClick,
+                            onRefresh = { serviceOfferingsViewModel.refreshAllOfferings() },
+                            onLoadMore = { serviceOfferingsViewModel.loadMoreAllOfferings() },
+                            hasMoreData = (allOfferingsState as? ServiceOfferingsUiState.Success)?.hasMore ?: false,
+                            colorScheme = colorScheme,
+                            horizontalPadding = horizontalPadding
+                        )
+                    }
+                    1 -> {
+                        // CATEGORIES Tab
+                        CategoriesContent(
+                            uiState = uiState,
+                            filteredServices = filteredServices,
+                            searchQuery = categoriesSearchQuery,
+                            onSearchQueryChange = { categoriesSearchQuery = it },
+                            isSearching = isCategoriesSearching,
+                            onFilterClick = { showCategoriesFilterModal = true },
+                            activeFilterCount = categoriesActiveFilterCount,
+                            selectedFilter = categoriesSelectedFilter,
+                            onFilterSelected = { categoriesSelectedFilter = it },
+                            gridColumns = gridColumns,
+                            horizontalPadding = horizontalPadding,
+                            gridSpacing = gridSpacing,
+                            gridState = categoriesGridState,
+                            onServiceClick = onServiceClick,
+                            onSubcategoriesClick = onSubcategoriesClick,
+                            onRefresh = { viewModel.refresh() },
+                            onClearFilters = {
+                                categoriesSearchQuery = ""
+                                categoriesSelectedFilter = ServiceFilterPill.ALL
+                                categoriesFocusManager.clearFocus()
+                            },
+                            colorScheme = colorScheme,
+                            isTablet = isTablet
+                        )
+                    }
                 }
             }
         }
@@ -405,6 +438,7 @@ fun AllServicesScreen(
         )
     }
 }
+
 
 @Composable
 private fun AnimatedSegmentedSwitch(

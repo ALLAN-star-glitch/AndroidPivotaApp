@@ -19,11 +19,11 @@ class ProfileApiService @Inject constructor(
 
     suspend fun fetchProfile(): ProfileResponseDto {
         println("🔍 ========== FETCH PROFILE REQUEST ==========")
-        println("🔍 URL: ${NetworkConstants.BASE_URL}/v1/users-profile-module/me")
+        println("🔍 URL: ${NetworkConstants.BASE_URL}/users-profile-module/me")
         println("🔍 ============================================")
 
         return try {
-            val response: ProfileResponseDto = client.get("v1/users-profile-module/me") {
+            val response: ProfileResponseDto = client.get("users-profile-module/me") {
                 contentType(ContentType.Application.Json)
             }.body()
 
