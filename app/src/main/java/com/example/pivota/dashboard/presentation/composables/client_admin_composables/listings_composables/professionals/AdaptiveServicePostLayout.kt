@@ -296,14 +296,6 @@ fun AdaptiveServicePostLayout(
                     message = errorMessage,
                     type = SnackbarType.ERROR,
                     duration = 8000,
-                    actionText = if (isPermissionError) "Get Professional Status" else null,
-                    onAction = if (isPermissionError) {
-                        {
-                            showErrorSnackbar = false
-                            errorMessage = ""
-                            viewModel.resetError()
-                        }
-                    } else null,
                     onDismiss = {
                         showErrorSnackbar = false
                         errorMessage = ""

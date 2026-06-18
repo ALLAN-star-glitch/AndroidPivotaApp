@@ -25,10 +25,13 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.19.1 - Build 30 - Added Swipe Gesture Support
-        // Added: Horizontal swipe between Services and Categories tabs
-        versionCode = 30
-        versionName = "1.19.1"
+        // Version 1.20.0 - Build 31 - Adaptive UI & Grid Improvements
+        // Added: Responsive grid layouts for Jobs, Housing, Professionals, and Services
+        // Added: Adaptive card designs for mobile, tablet, and desktop
+        // Added: Chevron icons for mobile navigation
+        // Added: Window size class adaptive layouts
+        versionCode = 31
+        versionName = "1.20.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -66,123 +69,152 @@ android {
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.19.1 - SWIPE GESTURE SUPPORT
+          PIVOTACONNECT v1.20.0 - ADAPTIVE UI & GRID IMPROVEMENTS
 ================================================================
 
-This release adds a highly requested feature: swipe gestures
-for navigating between tabs on the All Services screen.
+This release introduces a fully adaptive UI with responsive 
+grid layouts and improved card designs across all device sizes.
 
 ================================================================
 NEW FEATURES
 ================================================================
 
-SWIPE GESTURE SUPPORT
-- Swipe left or right to switch between Services and Categories
-- Smooth, responsive animations when swiping
-- Works seamlessly with the existing segmented switch
-- Natural gesture interaction that users expect
+ADAPTIVE GRID LAYOUTS
+- Jobs: 1-3 columns based on screen size (small phones to tablets)
+- Housing: 1-3 columns with adaptive card sizes
+- Professionals: 1-3 columns with responsive layouts
+- Services: 3-6 columns depending on device width
+- Consistent grid behavior across all content sections
 
-IMPROVED TAB NAVIGATION
-- Both tap and swipe interactions are supported
-- The segmented switch updates to reflect the current tab
-- Synchronized state between swipe and tap interactions
-- Consistent and intuitive user experience
+RESPONSIVE CARD DESIGNS
+- Mobile cards: Compact with essential information
+- Tablet cards: Medium size with full features
+- Desktop cards: Full featured with decorative elements
+- Cards adapt seamlessly as window size changes
+
+IMPROVED NAVIGATION
+- Chevron icons replace arrows on mobile for better UX
+- Consistent iconography across all card types
+- Better touch targets for mobile interaction
+
+================================================================
+ADAPTIVE WINDOW SIZING
+================================================================
+
+WINDOW SIZE CLASS SUPPORT
+- EXPANDED: 3 columns for Jobs, Housing, Professionals
+- MEDIUM: 2 columns for Jobs, Housing, Professionals
+- COMPACT (Landscape): 2 columns for most content
+- COMPACT (Portrait, ≥480dp): 2 columns
+- COMPACT (Portrait, <480dp): 1 column for clean readability
+
+ORIENTATION AWARENESS
+- Layouts adapt to landscape mode on phones
+- Better use of screen real estate in landscape
+- Consistent experience across rotations
+
+================================================================
+CARD ENHANCEMENTS
+================================================================
+
+MODERN JOB CARD V2
+- Three variants: Desktop, Medium, Mobile
+- Adaptive image sizes based on screen
+- Contextual information display
+- Clean typography and spacing
+
+MODERN HOUSING CARD V2
+- Responsive image and content layout
+- Smart badge display based on screen size
+- Property features shown appropriately
+- Verified status visible on all variants
+
+MODERN PROFESSIONAL CARD V2
+- Adaptive profile image sizes
+- Rating and job count display optimized
+- Professional type badges responsive
+- Clean layout for all screen sizes
 
 ================================================================
 TECHNICAL IMPROVEMENTS
 ================================================================
 
-HORIZONTAL PAGER INTEGRATION
-- Implemented using Compose Foundation's HorizontalPager
-- Efficient rendering with lazy loading of tab content
-- Proper state management between pager and switch
-- Smooth physics and animations out of the box
+ADAPTIVE COMPOSABLES
+- Used currentWindowAdaptiveInfo() for window sizing
+- Implemented WindowWidthSizeClass detection
+- Orientation-aware layouts
+- Consistent spacing across all screen sizes
 
-STATE SYNCHRONIZATION
-- LaunchedEffect observers keep pager and switch in sync
-- No desync issues when switching via tap or swipe
-- Page changes trigger immediate UI updates
-- Reliable state management across configuration changes
+PERFORMANCE OPTIMIZATIONS
+- Lazy loading for grid content
+- Optimized image loading with Coil
+- Efficient recomposition with remember
+- Smooth scrolling performance
 
-================================================================
-USER EXPERIENCE ENHANCEMENTS
-================================================================
-
-NATURAL INTERACTION
-- Swipe gestures feel natural and responsive
-- Tabs respond immediately to finger movement
-- Smooth snap-to-page behavior
-- No accidental page changes
-
-TOUCH FEEDBACK
-- Visual feedback during swipe interaction
-- The indicator follows the swipe motion
-- Responsive to both slow and fast swipes
+CODE CLEANUP
+- Removed duplicate adaptive logic
+- Centralized grid column calculations
+- Consistent spacing values
+- Better code organization
 
 ================================================================
-IMPLEMENTATION DETAILS
+COMPATIBILITY
 ================================================================
 
-TECHNICAL APPROACH
-- Used androidx.compose.foundation.pager.HorizontalPager
-- rememberPagerState for managing page state
-- LaunchedEffect for bidirectional synchronization
-- userScrollEnabled = true for swipe support
+SUPPORTED DEVICES
+- Small phones (compact, portrait): 1 column
+- Large phones (compact, portrait ≥480dp): 2 columns
+- Phones in landscape: 2 columns
+- Tablets (medium): 2 columns
+- Large tablets/desktops (expanded): 3 columns
 
-ARCHITECTURE
-- Minimal changes to existing code structure
-- Kept the same composable functions for content
-- Pager wraps the existing tab content
-- No duplication of code
+ANDROID VERSION SUPPORT
+- Minimum SDK: 24 (Android 7.0)
+- Target SDK: 36 (Android 16)
+- Full material3 adaptive support
 
 ================================================================
 TESTING SCENARIOS
 ================================================================
 
-1. TEST SWIPE GESTURE
-   - Open All Services screen (default: Services tab)
-   - Swipe left to navigate to Categories tab
-   - Verify the segmented switch updates
-   - Swipe right to return to Services tab
-   - Verify content updates correctly
+1. TEST RESPONSIVE GRID
+   - Open Discover Screen on small phone
+   - Verify 1 column for Jobs, Housing, Professionals
+   - Verify 3 columns for Services
+   - Rotate to landscape, verify 2 columns
+   - Test on tablet, verify 2-3 columns
 
-2. TEST TAP AND SWIPE SYNC
-   - Tap "Categories" on the segmented switch
-   - Verify the page animates to Categories
-   - Swipe left to go to Categories
-   - Tap "Services" on the switch
-   - Verify the page animates back
+2. TEST CARD VARIANTS
+   - Compare mobile vs tablet card designs
+   - Verify compact cards on phone
+   - Check full cards on tablet/desktop
+   - Ensure consistent information hierarchy
 
-3. TEST FAST SWIPES
-   - Quickly swipe between tabs multiple times
-   - Verify the app remains responsive
-   - Check that the state is always correct
-   - No crashes or glitches
+3. TEST NAVIGATION
+   - Tap chevron icons on mobile cards
+   - Verify navigation works correctly
+   - Check touch targets are adequate
+   - Test on different screen sizes
 
-4. TEST SLOW SWIPES
-   - Slowly swipe halfway between tabs
-   - Release the swipe
-   - Verify the page snaps to the correct tab
-   - Smooth snap animation
-
-5. TEST ROTATION
-   - Rotate the device while on either tab
-   - Verify the current tab is preserved
-   - Ensure the content displays correctly
+4. TEST PERFORMANCE
+   - Scroll through content sections
+   - Verify smooth scrolling
+   - Check image loading performance
+   - Monitor memory usage
 
 ================================================================
 KNOWN ISSUES
 ================================================================
 
-- Professional contact info not yet available from backend (v1.20.0)
+- Professional contact info not yet available from backend
 - Contact dialog shows alternative options until backend provides data
-- Payment processing not implemented (v1.21.0)
+- Payment processing not implemented
 - Push notifications pending integration
 - Booking cancellation flow enhancements in progress
 - Some emulators may have slower animation performance
 
 ================================================================
-COMING IN V1.20.0
+COMING IN V1.21.0
 ================================================================
 
 - Professional contact information from backend
@@ -190,6 +222,7 @@ COMING IN V1.20.0
 - Enhanced offline data synchronization
 - Professional profile pages
 - Service offering sharing functionality
+- Improved image caching
 
 ================================================================
 SUPPORT & FEEDBACK
@@ -198,7 +231,7 @@ SUPPORT & FEEDBACK
 For issues, bug reports, or feature requests:
 Email: allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.19.1!
+Thank you for testing PivotaConnect v1.20.0!
 Your feedback helps us create a better user experience.
 
 ================================================================

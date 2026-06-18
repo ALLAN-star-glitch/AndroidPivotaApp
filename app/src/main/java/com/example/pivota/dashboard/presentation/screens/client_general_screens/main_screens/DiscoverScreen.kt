@@ -1,6 +1,7 @@
 package com.example.pivota.dashboard.presentation.screens.client_general_screens.main_screens
 
 import android.annotation.SuppressLint
+import android.content.res.Configuration
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -75,7 +76,7 @@ private fun getFilterCategories(colorScheme: ColorScheme): List<FilterCategory> 
     )
 }
 
-@SuppressLint("FrequentlyChangingValue")
+@SuppressLint("FrequentlyChangingValue", "ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DiscoverScreen(
@@ -105,18 +106,47 @@ fun DiscoverScreen(
     val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isExpanded = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
     val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
     val isTablet = isExpanded || isMedium
 
     val filterCategories = getFilterCategories(colorScheme)
 
-    val jobGridColumns = if (isExpanded || isMedium) 2 else 1
-    val housingGridColumns = if (isExpanded || isMedium) 2 else 1
-    val professionalGridColumns = if (isExpanded || isMedium) 2 else 1
+    // Get screen configuration for orientation
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val screenWidthDp = configuration.screenWidthDp
+
+    // ADAPTIVE GRID COLUMNS - All content types using same logic
+    val jobGridColumns = when {
+        isExpanded -> 3
+        isMedium -> 2
+        isCompact && isLandscape -> 2
+        isCompact && screenWidthDp >= 480 -> 2
+        else -> 1
+    }
+
+    val housingGridColumns = when {
+        isExpanded -> 3
+        isMedium -> 2
+        isCompact && isLandscape -> 2
+        isCompact && screenWidthDp >= 480 -> 2
+        else -> 1
+    }
+
+    val professionalGridColumns = when {
+        isExpanded -> 3
+        isMedium -> 2
+        isCompact && isLandscape -> 2
+        isCompact && screenWidthDp >= 480 -> 2
+        else -> 1
+    }
+
     val serviceGridColumns = if (isTablet) 6 else 4
 
     val horizontalPadding = when {
         isExpanded -> 24.dp
         isMedium -> 20.dp
+        isCompact && isLandscape -> 16.dp
         else -> 16.dp
     }
 
@@ -633,19 +663,44 @@ data class FilterCategory(
 fun JobsContent(
     items: List<JobItem>,
     gridColumns: Int,
-    horizontalPadding: Dp
+    horizontalPadding: Dp,
+    modifier: Modifier = Modifier
 ) {
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
+
+    // Get screen configuration for orientation detection
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    // Adaptive spacing based on screen size
+    val cardSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
+    val verticalSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = horizontalPadding),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(verticalSpacing)
     ) {
         val rows = items.chunked(gridColumns)
         rows.forEach { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(cardSpacing)
             ) {
                 rowItems.forEach { item ->
                     Box(
@@ -677,19 +732,44 @@ fun JobsContent(
 fun HousingContent(
     items: List<HousingItem>,
     gridColumns: Int,
-    horizontalPadding: Dp
+    horizontalPadding: Dp,
+    modifier: Modifier = Modifier
 ) {
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
+
+    // Get screen configuration for orientation detection
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    // Adaptive spacing based on screen size
+    val cardSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
+    val verticalSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = horizontalPadding),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(verticalSpacing)
     ) {
         val rows = items.chunked(gridColumns)
         rows.forEach { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(cardSpacing)
             ) {
                 rowItems.forEach { item ->
                     Box(
@@ -725,19 +805,44 @@ fun HousingContent(
 fun ProfessionalsContent(
     items: List<ProfessionalItem>,
     gridColumns: Int,
-    horizontalPadding: Dp
+    horizontalPadding: Dp,
+    modifier: Modifier = Modifier
 ) {
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
+
+    // Get screen configuration for orientation detection
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    // Adaptive spacing based on screen size
+    val cardSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
+    val verticalSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = horizontalPadding),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(verticalSpacing)
     ) {
         val rows = items.chunked(gridColumns)
         rows.forEach { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(cardSpacing)
             ) {
                 rowItems.forEach { item ->
                     Box(
