@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -766,6 +767,428 @@ fun OptimizedJobImage(
     }
 }
 
+// Add to your ModernJobCardV2 file
+
+// ======================================================
+// SKELETON LOADING CARDS
+// ======================================================
+
+@Composable
+fun JobCardSkeleton(
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val isTwoColumnCompact = isCompact && (isLandscape || configuration.screenWidthDp >= 480)
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(
+                when {
+                    isWide -> 180.dp
+                    isMedium -> 140.dp
+                    isTwoColumnCompact -> 120.dp
+                    else -> 140.dp
+                }
+            ),
+        shape = RoundedCornerShape(
+            when {
+                isWide -> 12.dp
+                isMedium -> 12.dp
+                isTwoColumnCompact -> 10.dp
+                else -> 12.dp
+            }
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = when {
+                isWide -> 3.dp
+                isTwoColumnCompact -> 1.dp
+                else -> 2.dp
+            }
+        )
+    ) {
+        when {
+            isWide -> DesktopJobCardSkeleton(colorScheme)
+            isMedium -> MediumJobCardSkeleton(colorScheme)
+            isTwoColumnCompact -> MobileJobCardSkeleton(colorScheme, isTwoColumn = true)
+            else -> MobileJobCardSkeleton(colorScheme, isTwoColumn = false)
+        }
+    }
+}
+
+@Composable
+private fun DesktopJobCardSkeleton(
+    colorScheme: ColorScheme
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        colorScheme.surface,
+                        colorScheme.surface.copy(alpha = 0.95f)
+                    )
+                )
+            )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Left side: Logo skeleton with gradient ring
+            Box(
+                modifier = Modifier.size(56.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Gradient ring skeleton
+                Surface(
+                    modifier = Modifier.size(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.Transparent
+                ) {}
+
+                Surface(
+                    modifier = Modifier.size(48.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    color = colorScheme.surfaceVariant
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .shimmerEffect()
+                    )
+                }
+            }
+
+            // Right side: Content skeletons
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // Badges skeleton
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .width(70.dp)
+                            .height(20.dp)
+                            .shimmerEffect(),
+                        shape = RoundedCornerShape(4.dp),
+                        color = colorScheme.surfaceVariant
+                    ) {}
+                    Surface(
+                        modifier = Modifier
+                            .width(60.dp)
+                            .height(20.dp)
+                            .shimmerEffect(),
+                        shape = RoundedCornerShape(4.dp),
+                        color = colorScheme.surfaceVariant
+                    ) {}
+                }
+
+                // Title skeleton
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .height(18.dp)
+                        .shimmerEffect(),
+                    shape = RoundedCornerShape(4.dp),
+                    color = colorScheme.surfaceVariant
+                ) {}
+
+                // Company name skeleton
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth(0.5f)
+                        .height(14.dp)
+                        .shimmerEffect(),
+                    shape = RoundedCornerShape(4.dp),
+                    color = colorScheme.surfaceVariant
+                ) {}
+
+                // Location skeleton
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth(0.4f)
+                        .height(14.dp)
+                        .shimmerEffect(),
+                    shape = RoundedCornerShape(4.dp),
+                    color = colorScheme.surfaceVariant
+                ) {}
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Divider skeleton
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    colorScheme.surfaceVariant,
+                                    colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                )
+                            )
+                        )
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Footer skeletons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(14.dp)
+                            .shimmerEffect(),
+                        shape = RoundedCornerShape(4.dp),
+                        color = colorScheme.surfaceVariant
+                    ) {}
+                    Surface(
+                        modifier = Modifier
+                            .width(60.dp)
+                            .height(14.dp)
+                            .shimmerEffect(),
+                        shape = RoundedCornerShape(4.dp),
+                        color = colorScheme.surfaceVariant
+                    ) {}
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediumJobCardSkeleton(
+    colorScheme: ColorScheme
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        // Logo skeleton
+        Surface(
+            modifier = Modifier
+                .size(48.dp)
+                .shimmerEffect(),
+            shape = RoundedCornerShape(8.dp),
+            color = colorScheme.surfaceVariant
+        ) {}
+
+        // Content skeletons
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .align(Alignment.CenterVertically),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // Badges skeleton
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .width(60.dp)
+                        .height(16.dp)
+                        .shimmerEffect(),
+                    shape = RoundedCornerShape(4.dp),
+                    color = colorScheme.surfaceVariant
+                ) {}
+                Surface(
+                    modifier = Modifier
+                        .width(50.dp)
+                        .height(16.dp)
+                        .shimmerEffect(),
+                    shape = RoundedCornerShape(4.dp),
+                    color = colorScheme.surfaceVariant
+                ) {}
+            }
+
+            // Title skeleton
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+                    .height(16.dp)
+                    .shimmerEffect(),
+                shape = RoundedCornerShape(4.dp),
+                color = colorScheme.surfaceVariant
+            ) {}
+
+            // Company + Location skeleton
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .width(80.dp)
+                        .height(12.dp)
+                        .shimmerEffect(),
+                    shape = RoundedCornerShape(4.dp),
+                    color = colorScheme.surfaceVariant
+                ) {}
+                Surface(
+                    modifier = Modifier
+                        .width(60.dp)
+                        .height(12.dp)
+                        .shimmerEffect(),
+                    shape = RoundedCornerShape(4.dp),
+                    color = colorScheme.surfaceVariant
+                ) {}
+            }
+        }
+
+        // Right side skeletons
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .width(50.dp)
+                    .height(12.dp)
+                    .shimmerEffect(),
+                shape = RoundedCornerShape(4.dp),
+                color = colorScheme.surfaceVariant
+            ) {}
+            Surface(
+                modifier = Modifier
+                    .size(24.dp)
+                    .shimmerEffect(),
+                shape = CircleShape,
+                color = colorScheme.surfaceVariant
+            ) {}
+        }
+    }
+}
+
+@Composable
+private fun MobileJobCardSkeleton(
+    colorScheme: ColorScheme,
+    isTwoColumn: Boolean = false
+) {
+    val paddingSize = if (isTwoColumn) 8.dp else 12.dp
+    val logoSize = if (isTwoColumn) 40.dp else 48.dp
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(paddingSize),
+        horizontalArrangement = Arrangement.spacedBy(if (isTwoColumn) 6.dp else 10.dp)
+    ) {
+        // Logo skeleton
+        Surface(
+            modifier = Modifier
+                .size(logoSize)
+                .shimmerEffect(),
+            shape = RoundedCornerShape(if (isTwoColumn) 6.dp else 8.dp),
+            color = colorScheme.surfaceVariant
+        ) {}
+
+        // Content skeletons
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .align(Alignment.CenterVertically),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            // Title skeleton
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(if (isTwoColumn) 0.9f else 0.7f)
+                    .height(if (isTwoColumn) 14.dp else 16.dp)
+                    .shimmerEffect(),
+                shape = RoundedCornerShape(4.dp),
+                color = colorScheme.surfaceVariant
+            ) {}
+
+            // Company skeleton
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(if (isTwoColumn) 0.7f else 0.5f)
+                    .height(if (isTwoColumn) 10.dp else 12.dp)
+                    .shimmerEffect(),
+                shape = RoundedCornerShape(4.dp),
+                color = colorScheme.surfaceVariant
+            ) {}
+
+            // Badge skeleton (only in 1-column mode)
+            if (!isTwoColumn) {
+                Surface(
+                    modifier = Modifier
+                        .width(80.dp)
+                        .height(14.dp)
+                        .shimmerEffect(),
+                    shape = RoundedCornerShape(4.dp),
+                    color = colorScheme.surfaceVariant
+                ) {}
+            }
+        }
+
+        // Right side skeletons
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(if (isTwoColumn) 2.dp else 4.dp)
+        ) {
+            // Time skeleton (only in 1-column mode)
+            if (!isTwoColumn) {
+                Surface(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(10.dp)
+                        .shimmerEffect(),
+                    shape = RoundedCornerShape(4.dp),
+                    color = colorScheme.surfaceVariant
+                ) {}
+            }
+
+            // Chevron skeleton
+            Surface(
+                modifier = Modifier
+                    .size(if (isTwoColumn) 20.dp else 24.dp)
+                    .shimmerEffect(),
+                shape = CircleShape,
+                color = colorScheme.surfaceVariant
+            ) {}
+        }
+    }
+}
+
+// Shimmer Effect Modifier
+fun Modifier.shimmerEffect(): Modifier = this.drawBehind {
+    val shimmerWidth = size.width * 0.3f
+    val gradient = Brush.horizontalGradient(
+        colors = listOf(
+            Color.Transparent,
+            Color.White.copy(alpha = 0.3f),
+            Color.Transparent
+        ),
+        startX = -shimmerWidth,
+        endX = -shimmerWidth + size.width
+    )
+    // This is a placeholder - you'll need to animate this
+    drawRect(brush = gradient)
+}
+
 // Sample image URL for testing
 private const val SAMPLE_IMAGE_URL = "https://images.unsplash.com/photo-1573164713988-8665fc963095?w=100&h=100&fit=crop"
 
@@ -836,6 +1259,8 @@ private fun PreviewModernJobCardV2Light() {
         }
     }
 }
+
+
 
 // Dark Theme Preview
 @Preview(

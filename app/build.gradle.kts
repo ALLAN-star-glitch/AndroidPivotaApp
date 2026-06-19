@@ -25,13 +25,16 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.20.0 - Build 31 - Adaptive UI & Grid Improvements
-        // Added: Responsive grid layouts for Jobs, Housing, Professionals, and Services
-        // Added: Adaptive card designs for mobile, tablet, and desktop
-        // Added: Chevron icons for mobile navigation
-        // Added: Window size class adaptive layouts
-        versionCode = 31
-        versionName = "1.20.0"
+        // Version 1.21.0 - Build 32 - Jobs API Integration & Enhanced Filtering
+        // Added: Real jobs API integration with JobPostsViewModel
+        // Added: 6 jobs limit on Discover screen with skeleton loading
+        // Added: Job card improvements with dynamic data formatting
+        // Added: Advanced job filtering on JobListingsScreen
+        // Added: Pagination support for job listings
+        // Fixed: Job card image placeholder handling
+        // Fixed: Employment type and commitment label formatting
+        versionCode = 32
+        versionName = "1.21.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -69,138 +72,173 @@ android {
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.20.0 - ADAPTIVE UI & GRID IMPROVEMENTS
+          PIVOTACONNECT v1.21.0 - JOBS API INTEGRATION
 ================================================================
 
-This release introduces a fully adaptive UI with responsive 
-grid layouts and improved card designs across all device sizes.
+This release integrates real job data from the API with enhanced
+filtering, pagination, and improved job card displays.
 
 ================================================================
 NEW FEATURES
 ================================================================
 
-ADAPTIVE GRID LAYOUTS
-- Jobs: 1-3 columns based on screen size (small phones to tablets)
-- Housing: 1-3 columns with adaptive card sizes
-- Professionals: 1-3 columns with responsive layouts
-- Services: 3-6 columns depending on device width
-- Consistent grid behavior across all content sections
+REAL JOBS API INTEGRATION
+- Discover screen now loads 6 real jobs from the API
+- JobListingsScreen fetches all jobs with pagination
+- Job data includes: title, company, location, pay, commitment
+- Proper employment type mapping (Formal/Informal)
+- Commitment label formatting (Full Time, Part Time, etc.)
 
-RESPONSIVE CARD DESIGNS
-- Mobile cards: Compact with essential information
-- Tablet cards: Medium size with full features
-- Desktop cards: Full featured with decorative elements
-- Cards adapt seamlessly as window size changes
+JOBS SKELETON LOADING
+- Beautiful skeleton loaders while jobs are fetching
+- 6 skeleton cards on Discover screen
+- Responsive skeleton grid matching content layout
+- Smooth loading experience with no layout shifts
 
-IMPROVED NAVIGATION
-- Chevron icons replace arrows on mobile for better UX
-- Consistent iconography across all card types
-- Better touch targets for mobile interaction
+ADVANCED JOB FILTERING
+- Filter by job type: All, Full Time, Part Time, Contract, Internship
+- Filter by salary range (min/max)
+- Filter by employer type: All, Companies, Individuals
+- Filter by listing status
+- Active filter count badge
+- Search by title, company, location, or description
 
-================================================================
-ADAPTIVE WINDOW SIZING
-================================================================
-
-WINDOW SIZE CLASS SUPPORT
-- EXPANDED: 3 columns for Jobs, Housing, Professionals
-- MEDIUM: 2 columns for Jobs, Housing, Professionals
-- COMPACT (Landscape): 2 columns for most content
-- COMPACT (Portrait, ≥480dp): 2 columns
-- COMPACT (Portrait, <480dp): 1 column for clean readability
-
-ORIENTATION AWARENESS
-- Layouts adapt to landscape mode on phones
-- Better use of screen real estate in landscape
-- Consistent experience across rotations
+JOB LISTINGS PAGINATION
+- Load more jobs when scrolling to bottom
+- Loading indicator at bottom of list
+- Infinite scroll with smooth loading
+- Preserves scroll position
 
 ================================================================
-CARD ENHANCEMENTS
+JOB CARD ENHANCEMENTS
 ================================================================
 
-MODERN JOB CARD V2
-- Three variants: Desktop, Medium, Mobile
-- Adaptive image sizes based on screen
-- Contextual information display
-- Clean typography and spacing
+DYNAMIC DATA FORMATTING
+- Posted time: "Just now", "5m ago", "2h ago", "1d ago", etc.
+- Employment type: Formal (Permanent/Contract) or Informal
+- Commitment: Full Time, Part Time, Project Based, On Call
+- Company profile images from API
 
-MODERN HOUSING CARD V2
-- Responsive image and content layout
-- Smart badge display based on screen size
-- Property features shown appropriately
-- Verified status visible on all variants
+RESPONSIVE JOB CARDS
+- Desktop: Full featured with gradient ring and decorative dots
+- Tablet: Medium layout with badges
+- Mobile: Compact layout optimized for small screens
+- Two-column compact mode for larger phones in landscape
 
-MODERN PROFESSIONAL CARD V2
-- Adaptive profile image sizes
-- Rating and job count display optimized
-- Professional type badges responsive
-- Clean layout for all screen sizes
+================================================================
+UI IMPROVEMENTS
+================================================================
+
+JOB LISTINGS HEADER
+- Clean header with back button
+- Title and subtitle
+- Search bar with voice input
+- Category filter pills
+- Sticky search bar when scrolling
+
+FILTER MODAL
+- Adaptive bottom sheet for phones
+- Alert dialog for tablets
+- Filter by: Job Type, Salary, Employer Type, Status
+- Reset and Apply actions
+- Real-time filter preview
+
+EMPTY STATES
+- No jobs found with filters
+- No jobs available at all
+- Clear filter button
+- Post job CTA
 
 ================================================================
 TECHNICAL IMPROVEMENTS
 ================================================================
 
-ADAPTIVE COMPOSABLES
-- Used currentWindowAdaptiveInfo() for window sizing
-- Implemented WindowWidthSizeClass detection
-- Orientation-aware layouts
-- Consistent spacing across all screen sizes
+VIEWMODEL INTEGRATION
+- JobPostsViewModel with state management
+- JobsUiState: Loading, Success, Error
+- Lifecycle-aware state collection
+- Proper error handling
 
-PERFORMANCE OPTIMIZATIONS
-- Lazy loading for grid content
-- Optimized image loading with Coil
-- Efficient recomposition with remember
-- Smooth scrolling performance
+PAGINATION SUPPORT
+- loadMore() function for infinite scroll
+- SnapshotFlow to detect scroll position
+- Prevents duplicate loading requests
+- Smooth user experience
 
+OPTIMIZED PERFORMANCE
+- LazyVerticalGrid for efficient rendering
+- Cached image requests with Coil
+- Debounced search to reduce API calls
+- Remembered filtered results
+
+================================================================
 CODE CLEANUP
-- Removed duplicate adaptive logic
-- Centralized grid column calculations
-- Consistent spacing values
-- Better code organization
+================================================================
+
+REMOVED DUPLICATE CODE
+- Removed hardcoded jobItems from DiscoverScreen
+- Removed duplicate job formatting functions
+- Centralized job data mapping
+- Consistent helper functions across screens
+
+IMPROVED ORGANIZATION
+- Clear separation of concerns
+- Reusable composable functions
+- Consistent naming conventions
+- Better code maintainability
 
 ================================================================
 COMPATIBILITY
 ================================================================
-
-SUPPORTED DEVICES
-- Small phones (compact, portrait): 1 column
-- Large phones (compact, portrait ≥480dp): 2 columns
-- Phones in landscape: 2 columns
-- Tablets (medium): 2 columns
-- Large tablets/desktops (expanded): 3 columns
 
 ANDROID VERSION SUPPORT
 - Minimum SDK: 24 (Android 7.0)
 - Target SDK: 36 (Android 16)
 - Full material3 adaptive support
 
+SUPPORTED DEVICES
+- All Android devices running API 24+
+- Optimized for phones, tablets, and desktop
+
 ================================================================
 TESTING SCENARIOS
 ================================================================
 
-1. TEST RESPONSIVE GRID
-   - Open Discover Screen on small phone
-   - Verify 1 column for Jobs, Housing, Professionals
-   - Verify 3 columns for Services
-   - Rotate to landscape, verify 2 columns
-   - Test on tablet, verify 2-3 columns
+1. TEST JOBS LOADING ON DISCOVER SCREEN
+   - Open Discover screen
+   - Verify 6 skeleton cards appear
+   - Wait for jobs to load
+   - Verify jobs display with correct data
+   - Check formatting: time, type, commitment
 
-2. TEST CARD VARIANTS
-   - Compare mobile vs tablet card designs
-   - Verify compact cards on phone
-   - Check full cards on tablet/desktop
-   - Ensure consistent information hierarchy
+2. TEST JOB LISTINGS SCREEN
+   - Navigate to Job Listings
+   - Verify all jobs load
+   - Scroll to bottom, verify pagination
+   - Use search to filter jobs
+   - Apply various filters
+   - Verify filter count badge updates
 
-3. TEST NAVIGATION
-   - Tap chevron icons on mobile cards
-   - Verify navigation works correctly
-   - Check touch targets are adequate
-   - Test on different screen sizes
+3. TEST JOB CARD VARIANTS
+   - Check cards on phone (1 column)
+   - Check cards on tablet (2 columns)
+   - Check cards on desktop (3 columns)
+   - Verify image placeholders work
+   - Check all data displays correctly
 
-4. TEST PERFORMANCE
-   - Scroll through content sections
-   - Verify smooth scrolling
-   - Check image loading performance
-   - Monitor memory usage
+4. TEST FILTERING
+   - Filter by Full Time jobs
+   - Filter by salary range
+   - Filter by Companies only
+   - Combine multiple filters
+   - Clear filters
+   - Verify no results state
+
+5. TEST EMPTY STATES
+   - Search for non-existent job
+   - Verify no results message
+   - Click "Clear Filters"
+   - Verify jobs reload
 
 ================================================================
 KNOWN ISSUES
@@ -212,9 +250,10 @@ KNOWN ISSUES
 - Push notifications pending integration
 - Booking cancellation flow enhancements in progress
 - Some emulators may have slower animation performance
+- Job images not yet available from API (using fallback)
 
 ================================================================
-COMING IN V1.21.0
+COMING IN V1.22.0
 ================================================================
 
 - Professional contact information from backend
@@ -223,6 +262,8 @@ COMING IN V1.21.0
 - Professional profile pages
 - Service offering sharing functionality
 - Improved image caching
+- Job application flow
+- Saved jobs feature
 
 ================================================================
 SUPPORT & FEEDBACK
@@ -231,7 +272,7 @@ SUPPORT & FEEDBACK
 For issues, bug reports, or feature requests:
 Email: allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.20.0!
+Thank you for testing PivotaConnect v1.21.0!
 Your feedback helps us create a better user experience.
 
 ================================================================
@@ -281,6 +322,10 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+
+    // Lifecycle utilities for Compose
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

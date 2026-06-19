@@ -2,6 +2,8 @@ package com.example.pivota.dashboard.presentation.screens.client_general_screens
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -38,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import coil3.compose.AsyncImage
@@ -45,12 +48,15 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.dashboard.domain.model.listings_models.general.DiscoveryCategory
+import com.example.pivota.dashboard.domain.model.listings_models.jobs.GetAllJobsParams
+import com.example.pivota.dashboard.domain.model.listings_models.jobs.JobPost
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.BannerType
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.MarketingCarouselBanner
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.ReusableHeader
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.EmptyServicesState
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.ErrorServicesState
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.ServiceGridSkeleton
+import com.example.pivota.dashboard.presentation.composables.listings_composables.JobCardSkeleton
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ModernHousingCardV2
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ModernJobCardV2
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ModernProfessionalCardV2
@@ -59,10 +65,14 @@ import com.example.pivota.dashboard.presentation.state.CommonServicesUiState
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.CommonServicesViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardSharedViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HeaderState
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.JobPostsViewModel
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.getIconForService
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.JobsUiState
 import com.example.pivota.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.Duration
 
 // Filter categories using theme colors
 @Composable
@@ -76,6 +86,41 @@ private fun getFilterCategories(colorScheme: ColorScheme): List<FilterCategory> 
     )
 }
 
+// ======================================================
+// HELPER FUNCTIONS FOR JOB FORMATTING
+// ======================================================
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun getFormattedPostedTime(createdAt: String): String {
+    return try {
+        val created = Instant.parse(createdAt)
+        val now = Instant.now()
+        val duration = Duration.between(created, now)
+
+        when {
+            duration.toMinutes() < 1 -> "Just now"
+            duration.toMinutes() < 60 -> "${duration.toMinutes()}m ago"
+            duration.toHours() < 24 -> "${duration.toHours()}h ago"
+            duration.toDays() < 7 -> "${duration.toDays()}d ago"
+            duration.toDays() < 30 -> "${duration.toDays() / 7}w ago"
+            else -> "${duration.toDays() / 30}mo ago"
+        }
+    } catch (e: Exception) {
+        "Posted"
+    }
+}
+
+fun getCommitmentLabel(commitment: String?): String {
+    return when (commitment) {
+        "FULL_TIME" -> "Full Time"
+        "PART_TIME" -> "Part Time"
+        "PROJECT_BASED" -> "Project Based"
+        "ON_CALL" -> "On Call"
+        else -> commitment ?: "Unknown"
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("FrequentlyChangingValue", "ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -92,7 +137,8 @@ fun DiscoverScreen(
     onSearchClick: () -> Unit = {},
     isGuestMode: Boolean = false,
     sharedViewModel: DashboardSharedViewModel = hiltViewModel(),
-    commonServicesViewModel: CommonServicesViewModel = hiltViewModel()
+    commonServicesViewModel: CommonServicesViewModel = hiltViewModel(),
+    jobPostsViewModel: JobPostsViewModel = hiltViewModel()
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val headerState by sharedViewModel.headerState.collectAsState()
@@ -102,6 +148,16 @@ fun DiscoverScreen(
     var stickySearchQuery by remember { mutableStateOf("") }
 
     val commonServicesState by commonServicesViewModel.uiState.collectAsState()
+
+    // Jobs state from ViewModel
+    val jobsState by jobPostsViewModel.jobsState.collectAsStateWithLifecycle()
+    val isLoading = jobsState is JobsUiState.Loading
+
+    // Get jobs from state
+    val jobs = when (val currentState = jobsState) {
+        is JobsUiState.Success -> currentState.jobs
+        else -> emptyList()
+    }
 
     val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isExpanded = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
@@ -176,10 +232,14 @@ fun DiscoverScreen(
         }
     }
 
-    val jobItemsMemo = remember { jobItems }
     val housingItemsMemo = remember { housingItems }
     val professionalItemsMemo = remember { professionalItems }
     val supportItemsMemo = remember { supportItems }
+
+    // Load jobs when screen first appears - limit to 6 for discover page
+    LaunchedEffect(Unit) {
+        jobPostsViewModel.loadJobs(GetAllJobsParams(limit = 6))
+    }
 
     LaunchedEffect(Unit) {
         delay(100)
@@ -362,11 +422,33 @@ fun DiscoverScreen(
                 }
 
                 item(key = "jobs_content") {
-                    JobsContent(
-                        items = jobItemsMemo,
-                        gridColumns = jobGridColumns,
-                        horizontalPadding = horizontalPadding
-                    )
+                    if (isLoading) {
+                        // Show skeletons while loading - using JobCardSkeleton from package
+                        JobsSkeletonContent(
+                            gridColumns = jobGridColumns,
+                            horizontalPadding = horizontalPadding
+                        )
+                    } else if (jobs.isNotEmpty()) {
+                        JobsContent(
+                            jobs = jobs,
+                            gridColumns = jobGridColumns,
+                            horizontalPadding = horizontalPadding
+                        )
+                    } else {
+                        // Show empty state for jobs
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = horizontalPadding, vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No jobs available at the moment",
+                                color = colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
                 }
 
                 item(key = "housing_header") {
@@ -428,6 +510,152 @@ fun DiscoverScreen(
                         colorScheme = colorScheme,
                         horizontalPadding = horizontalPadding
                     )
+                }
+            }
+        }
+    }
+}
+
+// ======================================================
+// JOBS CONTENT COMPOSABLE
+// ======================================================
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun JobsContent(
+    jobs: List<JobPost>,
+    gridColumns: Int,
+    horizontalPadding: Dp
+) {
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
+
+    // Get screen configuration for orientation detection
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    // Adaptive spacing based on screen size
+    val cardSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
+    val verticalSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = horizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(verticalSpacing)
+    ) {
+        val rows = jobs.chunked(gridColumns)
+        rows.forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(cardSpacing)
+            ) {
+                rowItems.forEach { job ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        ModernJobCardV2(
+                            jobTitle = job.title,
+                            companyName = job.account.name,
+                            location = job.locationCity,
+                            postedTime = getFormattedPostedTime(job.createdAt),
+                            employmentType = if (job.employmentType == "PERMANENT" || job.employmentType == "CONTRACT") "Formal" else "Informal",
+                            jobType = getCommitmentLabel(job.commitment),
+                            onViewDetailsClick = { /* Navigate to job details */ }
+                        )
+                    }
+                }
+                repeat(gridColumns - rowItems.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+// ======================================================
+// JOBS SKELETON CONTENT - Using JobCardSkeleton from package
+// ======================================================
+
+@Composable
+fun JobsSkeletonContent(
+    gridColumns: Int,
+    horizontalPadding: Dp
+) {
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
+
+    // Get screen configuration for orientation detection
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    // Adaptive spacing based on screen size
+    val cardSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
+    val verticalSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = horizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(verticalSpacing)
+    ) {
+        // Show 6 skeleton items (2 rows of 3, or adjusted for grid columns)
+        val totalSkeletons = 6
+        val rows = totalSkeletons / gridColumns + if (totalSkeletons % gridColumns != 0) 1 else 0
+
+        repeat(rows) { rowIndex ->
+            val itemsInRow = if (rowIndex == rows - 1) {
+                val remaining = totalSkeletons - (rowIndex * gridColumns)
+                if (remaining > 0) remaining else gridColumns
+            } else {
+                gridColumns
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(cardSpacing)
+            ) {
+                repeat(itemsInRow) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        JobCardSkeleton(
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                repeat(gridColumns - itemsInRow) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -516,7 +744,6 @@ fun StickySearchBar(
     onSearchQueryChanged: (String) -> Unit,
     colorScheme: ColorScheme
 ) {
-    // Removed FocusRequester and keyboardController - no more autofocus
     val keyboardController = LocalSoftwareKeyboardController.current
 
     Surface(
@@ -548,7 +775,7 @@ fun StickySearchBar(
             BasicTextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChanged,
-                modifier = Modifier.weight(1f),  // Removed .focusRequester(focusRequester)
+                modifier = Modifier.weight(1f),
                 decorationBox = { innerTextField ->
                     Box {
                         if (searchQuery.isEmpty()) {
@@ -600,8 +827,6 @@ fun StickySearchBar(
             }
         }
     }
-
-    // REMOVED: Auto-focus LaunchedEffect block
 }
 
 @Composable
@@ -660,75 +885,6 @@ data class FilterCategory(
 )
 
 @Composable
-fun JobsContent(
-    items: List<JobItem>,
-    gridColumns: Int,
-    horizontalPadding: Dp,
-    modifier: Modifier = Modifier
-) {
-    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
-    val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
-    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
-    val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
-
-    // Get screen configuration for orientation detection
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-
-    // Adaptive spacing based on screen size
-    val cardSpacing = when {
-        isWide -> 16.dp
-        isMedium -> 12.dp
-        isCompact && isLandscape -> 10.dp
-        else -> 12.dp
-    }
-
-    val verticalSpacing = when {
-        isWide -> 16.dp
-        isMedium -> 12.dp
-        isCompact && isLandscape -> 10.dp
-        else -> 12.dp
-    }
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = horizontalPadding),
-        verticalArrangement = Arrangement.spacedBy(verticalSpacing)
-    ) {
-        val rows = items.chunked(gridColumns)
-        rows.forEach { rowItems ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(cardSpacing)
-            ) {
-                rowItems.forEach { item ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    ) {
-                        ModernJobCardV2(
-                            imageUrl = item.imageUrl,
-                            jobTitle = item.jobTitle,
-                            companyName = item.companyName,
-                            location = item.location,
-                            postedTime = item.postedTime,
-                            employmentType = item.employmentType,
-                            jobType = item.jobType,
-                            onViewDetailsClick = {}
-                        )
-                    }
-                }
-                repeat(gridColumns - rowItems.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun HousingContent(
     items: List<HousingItem>,
     gridColumns: Int,
@@ -740,11 +896,9 @@ fun HousingContent(
     val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
     val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
 
-    // Get screen configuration for orientation detection
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    // Adaptive spacing based on screen size
     val cardSpacing = when {
         isWide -> 16.dp
         isMedium -> 12.dp
@@ -813,11 +967,9 @@ fun ProfessionalsContent(
     val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
     val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
 
-    // Get screen configuration for orientation detection
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    // Adaptive spacing based on screen size
     val cardSpacing = when {
         isWide -> 16.dp
         isMedium -> 12.dp
@@ -1140,16 +1292,6 @@ fun ModernSupportCard(
 }
 
 // Data classes
-data class JobItem(
-    val imageUrl: Any?,
-    val jobTitle: String,
-    val companyName: String,
-    val location: String,
-    val postedTime: String,
-    val employmentType: String,
-    val jobType: String
-)
-
 data class HousingItem(
     val imageUrl: Any?,
     val title: String,
@@ -1182,16 +1324,7 @@ data class SupportItem(
     val isUrgent: Boolean
 )
 
-// Sample data
-private val jobItems = listOf(
-    JobItem(R.drawable.job_placeholder3, "Construction Foreman", "BuildWell Ltd", "Upper Hill, Nairobi", "2h ago", "Formal", "Contract"),
-    JobItem(R.drawable.job_placeholder2, "Junior Accountant", "FinCorp", "Westlands, Nairobi", "1d ago", "Formal", "Full-time"),
-    JobItem(null, "Welder & Fabricator", "Joseph's Welding", "Industrial Area, Nairobi", "3h ago", "Informal", "Gig"),
-    JobItem(R.drawable.job_placeholder4, "Store Keeper", "Retail Solutions", "Mombasa Rd, Nairobi", "5h ago", "Formal", "Full-time"),
-    JobItem(R.drawable.job_placeholder5, "Solar Installer", "Green Energy", "Karen, Nairobi", "1d ago", "Formal", "Contract"),
-    JobItem(R.drawable.job_placeholder3, "Delivery Rider", "Bolt Food", "CBD, Nairobi", "2h ago", "Informal", "Gig")
-)
-
+// Sample data for housing, professionals, and support
 private val housingItems = listOf(
     HousingItem(R.drawable.property_placeholder1, "Modern 2BR Apartment", "KES 45,000", "Westlands, Nairobi", "2h ago", "Apartment", "For Rent", 2, 2, 85, true),
     HousingItem(R.drawable.property_placeholder2, "Spacious Family Home", "KES 12,500,000", "Karen, Nairobi", "1d ago", "House", "For Sale", 4, 3, 220, true),

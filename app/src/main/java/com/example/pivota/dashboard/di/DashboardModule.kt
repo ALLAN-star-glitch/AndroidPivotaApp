@@ -3,11 +3,13 @@ package com.example.pivota.dashboard.di
 
 import com.example.pivota.dashboard.data.repository.BookingRepositoryImpl
 import com.example.pivota.dashboard.data.repository.CategoriesRepositoryImpl
+import com.example.pivota.dashboard.data.repository.JobPostRepositoryImpl
 import com.example.pivota.dashboard.data.repository.PricingUnitsRepositoryImpl
 import com.example.pivota.dashboard.data.repository.ProfileRepositoryImpl
 import com.example.pivota.dashboard.data.repository.ServiceOfferingsRepositoryImpl
 import com.example.pivota.dashboard.domain.repository.BookingRepository
 import com.example.pivota.dashboard.domain.repository.CategoriesRepository
+import com.example.pivota.dashboard.domain.repository.JobPostRepository
 import com.example.pivota.dashboard.domain.repository.PricingUnitsRepository
 import com.example.pivota.dashboard.domain.repository.ProfileRepository
 import com.example.pivota.dashboard.domain.repository.ServiceOfferingsRepository
@@ -48,6 +50,11 @@ abstract class DashboardModule {
     @Binds
     @Singleton
     abstract fun bindBookingRepository(impl: BookingRepositoryImpl): BookingRepository  // Fixed: BookingRepositoryImpl -> BookingRepository
+
+    // In the @Binds section
+    @Binds
+    @Singleton
+    abstract fun bindJobPostRepository(impl: JobPostRepositoryImpl): JobPostRepository
 
     companion object {
         @Provides
