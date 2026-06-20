@@ -48,6 +48,9 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.dashboard.domain.model.listings_models.general.DiscoveryCategory
+import com.example.pivota.dashboard.domain.model.listings_models.housing.GetAllHousingParams
+import com.example.pivota.dashboard.domain.model.listings_models.housing.HousePost
+import com.example.pivota.dashboard.domain.model.listings_models.housing.HousingUiState
 import com.example.pivota.dashboard.domain.model.listings_models.jobs.GetAllJobsParams
 import com.example.pivota.dashboard.domain.model.listings_models.jobs.JobPost
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.BannerType
@@ -56,15 +59,23 @@ import com.example.pivota.dashboard.presentation.composables.client_general_comp
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.EmptyServicesState
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.ErrorServicesState
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.ServiceGridSkeleton
+import com.example.pivota.dashboard.presentation.composables.listings_composables.ElegantHousingCard
+import com.example.pivota.dashboard.presentation.composables.listings_composables.ElegantHousingCardSkeleton
 import com.example.pivota.dashboard.presentation.composables.listings_composables.JobCardSkeleton
-import com.example.pivota.dashboard.presentation.composables.listings_composables.ModernHousingCardV2
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ModernJobCardV2
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ModernProfessionalCardV2
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ProfessionalType
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.housing.getFormattedLocation
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.housing.getFormattedPostedTime
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.housing.getFormattedPrice
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.housing.getListingTypeLabel
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.housing.getMainImage
+import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.housing.getPropertyTypeLabel
 import com.example.pivota.dashboard.presentation.state.CommonServicesUiState
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.CommonServicesViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardSharedViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HeaderState
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HousingViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.JobPostsViewModel
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.getIconForService
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.JobsUiState
@@ -91,7 +102,7 @@ private fun getFilterCategories(colorScheme: ColorScheme): List<FilterCategory> 
 // ======================================================
 
 @RequiresApi(Build.VERSION_CODES.O)
-fun getFormattedPostedTime(createdAt: String): String {
+fun getFormattedPostedTimeJob(createdAt: String): String {
     return try {
         val created = Instant.parse(createdAt)
         val now = Instant.now()
@@ -138,7 +149,8 @@ fun DiscoverScreen(
     isGuestMode: Boolean = false,
     sharedViewModel: DashboardSharedViewModel = hiltViewModel(),
     commonServicesViewModel: CommonServicesViewModel = hiltViewModel(),
-    jobPostsViewModel: JobPostsViewModel = hiltViewModel()
+    jobPostsViewModel: JobPostsViewModel = hiltViewModel(),
+    housingViewModel: HousingViewModel = hiltViewModel()
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val headerState by sharedViewModel.headerState.collectAsState()
@@ -151,11 +163,21 @@ fun DiscoverScreen(
 
     // Jobs state from ViewModel
     val jobsState by jobPostsViewModel.jobsState.collectAsStateWithLifecycle()
-    val isLoading = jobsState is JobsUiState.Loading
+    val isLoadingJobs = jobsState is JobsUiState.Loading
 
     // Get jobs from state
     val jobs = when (val currentState = jobsState) {
         is JobsUiState.Success -> currentState.jobs
+        else -> emptyList()
+    }
+
+    // Housing state from ViewModel
+    val housingState by housingViewModel.housingState.collectAsStateWithLifecycle()
+    val isLoadingHousing = housingState is HousingUiState.Loading
+
+    // Get houses from state
+    val houses = when (val currentState = housingState) {
+        is HousingUiState.Success -> currentState.houses
         else -> emptyList()
     }
 
@@ -232,13 +254,17 @@ fun DiscoverScreen(
         }
     }
 
-    val housingItemsMemo = remember { housingItems }
     val professionalItemsMemo = remember { professionalItems }
     val supportItemsMemo = remember { supportItems }
 
     // Load jobs when screen first appears - limit to 6 for discover page
     LaunchedEffect(Unit) {
         jobPostsViewModel.loadJobs(GetAllJobsParams(limit = 6))
+    }
+
+    // Load housing when screen first appears - limit to 6 for discover page
+    LaunchedEffect(Unit) {
+        housingViewModel.loadHousingListings(GetAllHousingParams(limit = 6))
     }
 
     LaunchedEffect(Unit) {
@@ -422,7 +448,7 @@ fun DiscoverScreen(
                 }
 
                 item(key = "jobs_content") {
-                    if (isLoading) {
+                    if (isLoadingJobs) {
                         // Show skeletons while loading - using JobCardSkeleton from package
                         JobsSkeletonContent(
                             gridColumns = jobGridColumns,
@@ -462,11 +488,34 @@ fun DiscoverScreen(
                 }
 
                 item(key = "housing_content") {
-                    HousingContent(
-                        items = housingItemsMemo,
-                        gridColumns = housingGridColumns,
-                        horizontalPadding = horizontalPadding
-                    )
+                    if (isLoadingHousing) {
+                        // Show skeletons for housing
+                        HousingSkeletonContent(
+                            gridColumns = housingGridColumns,
+                            horizontalPadding = horizontalPadding
+                        )
+                    } else if (houses.isNotEmpty()) {
+                        HousingContent(
+                            houses = houses,
+                            gridColumns = housingGridColumns,
+                            horizontalPadding = horizontalPadding,
+                            onListingClick = { /* Navigate to housing detail */ }
+                        )
+                    } else {
+                        // Show empty state for housing
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = horizontalPadding, vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No housing available at the moment",
+                                color = colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
                 }
 
                 item(key = "professionals_header") {
@@ -573,7 +622,7 @@ fun JobsContent(
                             jobTitle = job.title,
                             companyName = job.account.name,
                             location = job.locationCity,
-                            postedTime = getFormattedPostedTime(job.createdAt),
+                            postedTime = getFormattedPostedTimeJob(job.createdAt),
                             employmentType = if (job.employmentType == "PERMANENT" || job.employmentType == "CONTRACT") "Formal" else "Informal",
                             jobType = getCommitmentLabel(job.commitment),
                             onViewDetailsClick = { /* Navigate to job details */ }
@@ -655,6 +704,155 @@ fun JobsSkeletonContent(
                     }
                 }
                 repeat(gridColumns - itemsInRow) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+// ======================================================
+// HOUSING SKELETON CONTENT
+// ======================================================
+
+@Composable
+fun HousingSkeletonContent(
+    gridColumns: Int,
+    horizontalPadding: Dp
+) {
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val cardSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
+    val verticalSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = horizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(verticalSpacing)
+    ) {
+        val totalSkeletons = 6
+        val rows = totalSkeletons / gridColumns + if (totalSkeletons % gridColumns != 0) 1 else 0
+
+        repeat(rows) { rowIndex ->
+            val itemsInRow = if (rowIndex == rows - 1) {
+                val remaining = totalSkeletons - (rowIndex * gridColumns)
+                if (remaining > 0) remaining else gridColumns
+            } else {
+                gridColumns
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(cardSpacing)
+            ) {
+                repeat(itemsInRow) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        ElegantHousingCardSkeleton(
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                repeat(gridColumns - itemsInRow) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+// ======================================================
+// HOUSING CONTENT COMPOSABLE - Using ElegantHousingCard with real data
+// ======================================================
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun HousingContent(
+    houses: List<HousePost>,
+    gridColumns: Int,
+    horizontalPadding: Dp,
+    onListingClick: (HousePost) -> Unit
+) {
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val cardSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
+    val verticalSpacing = when {
+        isWide -> 16.dp
+        isMedium -> 12.dp
+        isCompact && isLandscape -> 10.dp
+        else -> 12.dp
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = horizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(verticalSpacing)
+    ) {
+        val rows = houses.chunked(gridColumns)
+        rows.forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(cardSpacing)
+            ) {
+                rowItems.forEach { house ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        ElegantHousingCard(
+                            imageUrl = house.getMainImage(),
+                            title = house.title,
+                            price = house.getFormattedPrice(),
+                            location = house.getFormattedLocation(),
+                            postedTime = house.getFormattedPostedTime(),
+                            propertyType = house.getPropertyTypeLabel(),
+                            listingType = house.getListingTypeLabel(),
+                            bedrooms = house.bedrooms ?: 0,
+                            bathrooms = house.bathrooms ?: 0,
+                            squareMeters = house.squareFootage ?: 0,
+                            isVerified = house.titleDeedAvailable ?: false,
+                            isFavorite = false,
+                            onViewDetailsClick = { onListingClick(house) },
+                            onFavoriteClick = { /* Handle favorite toggle */ }
+                        )
+                    }
+                }
+                repeat(gridColumns - rowItems.size) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
             }
@@ -883,77 +1081,6 @@ data class FilterCategory(
     val icon: ImageVector,
     val color: Color
 )
-
-@Composable
-fun HousingContent(
-    items: List<HousingItem>,
-    gridColumns: Int,
-    horizontalPadding: Dp,
-    modifier: Modifier = Modifier
-) {
-    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
-    val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
-    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
-    val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
-
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-
-    val cardSpacing = when {
-        isWide -> 16.dp
-        isMedium -> 12.dp
-        isCompact && isLandscape -> 10.dp
-        else -> 12.dp
-    }
-
-    val verticalSpacing = when {
-        isWide -> 16.dp
-        isMedium -> 12.dp
-        isCompact && isLandscape -> 10.dp
-        else -> 12.dp
-    }
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = horizontalPadding),
-        verticalArrangement = Arrangement.spacedBy(verticalSpacing)
-    ) {
-        val rows = items.chunked(gridColumns)
-        rows.forEach { rowItems ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(cardSpacing)
-            ) {
-                rowItems.forEach { item ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    ) {
-                        ModernHousingCardV2(
-                            imageUrl = item.imageUrl,
-                            title = item.title,
-                            price = item.price,
-                            location = item.location,
-                            postedTime = item.postedTime,
-                            propertyType = item.propertyType,
-                            listingType = item.listingType,
-                            bedrooms = item.bedrooms,
-                            bathrooms = item.bathrooms,
-                            squareMeters = item.squareMeters,
-                            isVerified = item.isVerified,
-                            onViewDetailsClick = {}
-                        )
-                    }
-                }
-                repeat(gridColumns - rowItems.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun ProfessionalsContent(
@@ -1292,20 +1419,6 @@ fun ModernSupportCard(
 }
 
 // Data classes
-data class HousingItem(
-    val imageUrl: Any?,
-    val title: String,
-    val price: String,
-    val location: String,
-    val postedTime: String,
-    val propertyType: String,
-    val listingType: String,
-    val bedrooms: Int,
-    val bathrooms: Int,
-    val squareMeters: Int,
-    val isVerified: Boolean
-)
-
 data class ProfessionalItem(
     val imageUrl: Any?,
     val name: String,
@@ -1324,16 +1437,7 @@ data class SupportItem(
     val isUrgent: Boolean
 )
 
-// Sample data for housing, professionals, and support
-private val housingItems = listOf(
-    HousingItem(R.drawable.property_placeholder1, "Modern 2BR Apartment", "KES 45,000", "Westlands, Nairobi", "2h ago", "Apartment", "For Rent", 2, 2, 85, true),
-    HousingItem(R.drawable.property_placeholder2, "Spacious Family Home", "KES 12,500,000", "Karen, Nairobi", "1d ago", "House", "For Sale", 4, 3, 220, true),
-    HousingItem(null, "Cozy Bedsitter", "KES 8,500", "Umoja, Nairobi", "3d ago", "Bedsitter", "For Rent", 1, 1, 25, false),
-    HousingItem(R.drawable.property_placeholder4, "Studio Apartment", "KES 35,000", "Kilimani, Nairobi", "5h ago", "Studio", "For Rent", 1, 1, 45, true),
-    HousingItem(R.drawable.property_placeholder3, "Luxury Villa", "KES 4.5M", "Karen, Nairobi", "2d ago", "Villa", "For Sale", 4, 4, 350, true),
-    HousingItem(R.drawable.property_placeholder1, "2BR Apartment", "KES 28,000", "Ruiru, Nairobi", "1d ago", "Apartment", "For Rent", 2, 2, 75, false)
-)
-
+// Sample data for professionals and support
 private val professionalItems = listOf(
     ProfessionalItem(null, "QuickMovers Kenya", "Moving & Logistics", "Nairobi", "2h ago", ProfessionalType.ORGANIZATION, 4.9f, 342),
     ProfessionalItem(null, "John Mwangi", "Electrician", "Eastlands, Nairobi", "5h ago", ProfessionalType.INDIVIDUAL, 4.8f, 127),

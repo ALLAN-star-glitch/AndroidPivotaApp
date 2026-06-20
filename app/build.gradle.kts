@@ -25,16 +25,20 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.21.0 - Build 32 - Jobs API Integration & Enhanced Filtering
-        // Added: Real jobs API integration with JobPostsViewModel
-        // Added: 6 jobs limit on Discover screen with skeleton loading
-        // Added: Job card improvements with dynamic data formatting
-        // Added: Advanced job filtering on JobListingsScreen
-        // Added: Pagination support for job listings
-        // Fixed: Job card image placeholder handling
-        // Fixed: Employment type and commitment label formatting
-        versionCode = 32
-        versionName = "1.21.0"
+        // Version 1.22.0 - Build 33 - Enhanced Housing Cards & Navigation Fixes
+        // Added: Elegant housing card design with improved large screen support
+        // Added: Favorite button and verified badge animations
+        // Added: Professional navigation rail (only on main screens for tablet)
+        // Added: Bottom bar navigation padding to prevent overlap with system buttons
+        // Added: Service offering details bottom bar fix
+        // Added: Housing ViewModel integration on Discover screen
+        // Added: Real housing data fetching from backend
+        // Fixed: Housing cards layout on large screens (better proportions, spacing)
+        // Fixed: Navigation rail visibility on tablet (only shows on main screens)
+        // Fixed: Bottom bars overlapping with system navigation buttons
+        // Fixed: Sticky search bar behavior on housing listings
+        versionCode = 33
+        versionName = "1.22.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -72,173 +76,204 @@ android {
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.21.0 - JOBS API INTEGRATION
+          PIVOTACONNECT v1.22.0 - ENHANCED HOUSING CARDS & NAVIGATION FIXES
 ================================================================
 
-This release integrates real job data from the API with enhanced
-filtering, pagination, and improved job card displays.
+This release introduces elegant housing cards with improved visual
+design, better large screen support, and critical navigation fixes.
 
 ================================================================
 NEW FEATURES
 ================================================================
 
-REAL JOBS API INTEGRATION
-- Discover screen now loads 6 real jobs from the API
-- JobListingsScreen fetches all jobs with pagination
-- Job data includes: title, company, location, pay, commitment
-- Proper employment type mapping (Formal/Informal)
-- Commitment label formatting (Full Time, Part Time, etc.)
+ELEGANT HOUSING CARDS
+- Completely redesigned housing cards with modern aesthetic
+- Gradient backgrounds and subtle shadows for premium feel
+- Favorite button with heart icon toggle
+- Animated verified badge with scale and fade effects
+- Status badges (FOR SALE / FOR RENT) with proper color coding
+- Feature chips with icons for bedrooms, bathrooms, sq. meters
 
-JOBS SKELETON LOADING
-- Beautiful skeleton loaders while jobs are fetching
-- 6 skeleton cards on Discover screen
-- Responsive skeleton grid matching content layout
-- Smooth loading experience with no layout shifts
+LARGE SCREEN OPTIMIZATION
+- Desktop cards: 20% larger images, more spacing, bigger typography
+- Increased padding from 24-32dp to 32-40dp on large screens
+- Corner radius: 20dp on desktop (was 16dp)
+- Card elevation: 12dp on desktop (was 8dp)
+- Feature chips with "large" variant for better visibility
+- Content now center-aligned vertically for better balance
 
-ADVANCED JOB FILTERING
-- Filter by job type: All, Full Time, Part Time, Contract, Internship
-- Filter by salary range (min/max)
-- Filter by employer type: All, Companies, Individuals
-- Filter by listing status
-- Active filter count badge
-- Search by title, company, location, or description
-
-JOB LISTINGS PAGINATION
-- Load more jobs when scrolling to bottom
-- Loading indicator at bottom of list
-- Infinite scroll with smooth loading
-- Preserves scroll position
+TABLEt NAVIGATION IMPROVEMENTS
+- Navigation rail now only shows on main screens (Dashboard, Connect, Profile)
+- Detail screens (HouseListings, JobListings, etc.) have full-width content
+- Dynamic padding adjustment based on navigation rail visibility
+- Consistent experience across all tablet screens
 
 ================================================================
-JOB CARD ENHANCEMENTS
+UI/UX IMPROVEMENTS
 ================================================================
 
-DYNAMIC DATA FORMATTING
-- Posted time: "Just now", "5m ago", "2h ago", "1d ago", etc.
-- Employment type: Formal (Permanent/Contract) or Informal
-- Commitment: Full Time, Part Time, Project Based, On Call
-- Company profile images from API
+BOTTOM BAR FIXES
+- Added navigationBarsPadding() to all sticky bottom elements
+- Prevents overlap with system navigation buttons
+- Fixes: Service offering details bottom bar
+- Fixes: House details bottom bar
+- Fixes: Main screen scaffold navigation bar
+- Ensures proper positioning on all devices
 
-RESPONSIVE JOB CARDS
-- Desktop: Full featured with gradient ring and decorative dots
-- Tablet: Medium layout with badges
-- Mobile: Compact layout optimized for small screens
-- Two-column compact mode for larger phones in landscape
+HOUSING VIEWMODEL INTEGRATION
+- Discover screen now uses HousingViewModel for real data
+- Fetches 6 real housing listings from backend
+- Elegant skeleton loading for housing cards
+- Loading, success, and empty states handled properly
+- Consistent with jobs implementation
+
+ENHANCED FILTERING
+- Category filter pills on housing listings
+- Price range filtering (min/max)
+- Status filtering (Available, Pending, Rented, Sold, Inactive)
+- Active filter count badge on filter button
+- Search debouncing for better performance
 
 ================================================================
-UI IMPROVEMENTS
+CODE IMPROVEMENTS
 ================================================================
 
-JOB LISTINGS HEADER
-- Clean header with back button
-- Title and subtitle
-- Search bar with voice input
-- Category filter pills
-- Sticky search bar when scrolling
+UNIFIED HOUSING EXTENSIONS
+- Consistent helper functions across screens
+- getMainImage(), getFormattedPrice(), getFormattedLocation()
+- getPropertyTypeLabel(), getListingTypeLabel()
+- getFormattedPostedTime() with proper time formatting
+- Shared across HouseListingsScreen and DiscoverScreen
 
-FILTER MODAL
-- Adaptive bottom sheet for phones
-- Alert dialog for tablets
-- Filter by: Job Type, Salary, Employer Type, Status
-- Reset and Apply actions
-- Real-time filter preview
+RESPONSIVE GRID LAYOUTS
+- Housing grid: 1 column (phone) → 2 (tablet) → 3 (desktop)
+- Adaptive spacing based on screen size
+- Proper card sizing with weight distribution
+- Consistent with jobs and professionals sections
 
-EMPTY STATES
-- No jobs found with filters
-- No jobs available at all
-- Clear filter button
-- Post job CTA
+IMPROVED SKELETON LOADING
+- ElegantHousingCardSkeleton matching card design
+- Desktop skeleton: 240dp height with proper layout
+- Medium skeleton: compact row layout
+- Mobile skeleton: optimized for small screens
+- Shimmer effect for loading feedback
+
+================================================================
+NAVIGATION IMPROVEMENTS
+================================================================
+
+CONDITIONAL NAVIGATION RAIL
+- isMainScreen flag determines navigation rail visibility
+- Main screens: Dashboard, Connect, Profile
+- Detail screens: Full-width content without rail
+- Cleaner tablet experience
+
+STICKY SEARCH BEHAVIOR
+- Search bar pins when scrolling on housing listings
+- Smooth transition between unpinned and pinned states
+- Category pills remain accessible while scrolling
+- Consistent with main Discover screen behavior
+
+================================================================
+HOUSING CARD VARIANTS
+================================================================
+
+DESKTOP VARIANT
+- 200-240dp square image with 16dp corner radius
+- Large title (24-28sp) and price (26-30sp)
+- Feature chips with circle background
+- View Property button with chevron
+- Posted time with clock icon
+
+MEDIUM/TABLET VARIANT
+- 110dp square image with 12dp corner radius
+- Compact row layout with badges
+- 17sp title and 19sp price
+- Feature chips compact style
+- Chevron button for details
+
+MOBILE VARIANT
+- 80-95dp square image
+- Optimized for one or two-column layouts
+- Smaller typography for limited space
+- Essential info only
+- Clean and scannable
 
 ================================================================
 TECHNICAL IMPROVEMENTS
 ================================================================
 
-VIEWMODEL INTEGRATION
-- JobPostsViewModel with state management
-- JobsUiState: Loading, Success, Error
-- Lifecycle-aware state collection
-- Proper error handling
-
-PAGINATION SUPPORT
-- loadMore() function for infinite scroll
-- SnapshotFlow to detect scroll position
-- Prevents duplicate loading requests
-- Smooth user experience
-
-OPTIMIZED PERFORMANCE
+PERFORMANCE OPTIMIZATIONS
 - LazyVerticalGrid for efficient rendering
 - Cached image requests with Coil
 - Debounced search to reduce API calls
 - Remembered filtered results
+- Proper key management for list items
+
+STATE MANAGEMENT
+- HousingUiState: Loading, Success, Error
+- Lifecycle-aware state collection
+- Proper error handling with retry
+- Pagination support with loadMore()
+
+RESPONSIVE BREAKPOINTS
+- EXPANDED: 3+ columns, large padding
+- MEDIUM: 2 columns, medium padding
+- COMPACT: 1-2 columns, small padding
+- Landscape detection for two-column compact
 
 ================================================================
-CODE CLEANUP
+BUG FIXES
 ================================================================
 
-REMOVED DUPLICATE CODE
-- Removed hardcoded jobItems from DiscoverScreen
-- Removed duplicate job formatting functions
-- Centralized job data mapping
-- Consistent helper functions across screens
-
-IMPROVED ORGANIZATION
-- Clear separation of concerns
-- Reusable composable functions
-- Consistent naming conventions
-- Better code maintainability
-
-================================================================
-COMPATIBILITY
-================================================================
-
-ANDROID VERSION SUPPORT
-- Minimum SDK: 24 (Android 7.0)
-- Target SDK: 36 (Android 16)
-- Full material3 adaptive support
-
-SUPPORTED DEVICES
-- All Android devices running API 24+
-- Optimized for phones, tablets, and desktop
+- Fixed: Housing cards overlapping on large screens
+- Fixed: Navigation rail showing on detail screens
+- Fixed: Bottom bars overlapping system navigation
+- Fixed: Search bar pinning behavior
+- Fixed: Filter count badge updating correctly
+- Fixed: Empty states showing proper messages
+- Fixed: Skeleton loading height consistency
 
 ================================================================
 TESTING SCENARIOS
 ================================================================
 
-1. TEST JOBS LOADING ON DISCOVER SCREEN
+1. TEST HOUSING CARDS ON DIFFERENT SCREENS
+   - Phone (portrait): Single column layout
+   - Phone (landscape): Two-column layout
+   - Tablet (portrait): Two-column layout
+   - Tablet (landscape): Three-column layout
+   - Desktop: Three-column layout with larger cards
+
+2. TEST NAVIGATION ON TABLET
+   - Navigate to Dashboard → Navigation rail visible
+   - Navigate to Connect → Navigation rail visible
+   - Navigate to Profile → Navigation rail visible
+   - Navigate to HouseListings → Navigation rail hidden
+   - Navigate to JobListings → Navigation rail hidden
+   - Navigate back → Rail reappears correctly
+
+3. TEST BOTTOM BAR OVERLAP
+   - Check service details bottom bar
+   - Check house details bottom bar
+   - Check main scaffold navigation bar
+   - Verify no overlap with system navigation
+   - Test on devices with gesture navigation
+   - Test on devices with 3-button navigation
+
+4. TEST REAL DATA INTEGRATION
    - Open Discover screen
-   - Verify 6 skeleton cards appear
-   - Wait for jobs to load
-   - Verify jobs display with correct data
-   - Check formatting: time, type, commitment
+   - Verify housing data loads from API
+   - Check skeleton loading states
+   - Verify all fields display correctly
+   - Test empty state when no data
 
-2. TEST JOB LISTINGS SCREEN
-   - Navigate to Job Listings
-   - Verify all jobs load
-   - Scroll to bottom, verify pagination
-   - Use search to filter jobs
-   - Apply various filters
-   - Verify filter count badge updates
-
-3. TEST JOB CARD VARIANTS
-   - Check cards on phone (1 column)
-   - Check cards on tablet (2 columns)
-   - Check cards on desktop (3 columns)
-   - Verify image placeholders work
-   - Check all data displays correctly
-
-4. TEST FILTERING
-   - Filter by Full Time jobs
-   - Filter by salary range
-   - Filter by Companies only
-   - Combine multiple filters
+5. TEST FILTERING
+   - Filter by category (Apartment, House, Studio, etc.)
+   - Filter by price range (min/max)
+   - Filter by status
    - Clear filters
-   - Verify no results state
-
-5. TEST EMPTY STATES
-   - Search for non-existent job
-   - Verify no results message
-   - Click "Clear Filters"
-   - Verify jobs reload
+   - Verify results update correctly
 
 ================================================================
 KNOWN ISSUES
@@ -251,9 +286,10 @@ KNOWN ISSUES
 - Booking cancellation flow enhancements in progress
 - Some emulators may have slower animation performance
 - Job images not yet available from API (using fallback)
+- Housing images: some listings may not have images
 
 ================================================================
-COMING IN V1.22.0
+COMING IN V1.23.0
 ================================================================
 
 - Professional contact information from backend
@@ -264,6 +300,8 @@ COMING IN V1.22.0
 - Improved image caching
 - Job application flow
 - Saved jobs feature
+- Housing application flow
+- Favorites management
 
 ================================================================
 SUPPORT & FEEDBACK
@@ -272,7 +310,7 @@ SUPPORT & FEEDBACK
 For issues, bug reports, or feature requests:
 Email: allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.21.0!
+Thank you for testing PivotaConnect v1.22.0!
 Your feedback helps us create a better user experience.
 
 ================================================================
@@ -322,10 +360,6 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-
-    // Lifecycle utilities for Compose
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

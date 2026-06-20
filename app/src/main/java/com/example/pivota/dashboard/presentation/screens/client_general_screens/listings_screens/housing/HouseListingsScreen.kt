@@ -1,5 +1,8 @@
 package com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.housing
 
+import android.annotation.SuppressLint
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,6 +14,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -38,13 +42,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.example.pivota.R
-
-import com.example.pivota.dashboard.presentation.composables.listings_composables.ModernHousingCardV2
-import com.example.pivota.dashboard.presentation.state.HousingListingUiModel
-import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HouseListingsViewModel
-import kotlinx.coroutines.delay
-import androidx.compose.foundation.rememberScrollState
+import com.example.pivota.dashboard.domain.model.listings_models.housing.HousePost
+import com.example.pivota.dashboard.domain.model.listings_models.housing.GetAllHousingParams
 import com.example.pivota.dashboard.domain.ListingStatus
+import com.example.pivota.dashboard.domain.model.listings_models.housing.HousingUiState
+import com.example.pivota.dashboard.presentation.composables.listings_composables.ElegantHousingCard
+import com.example.pivota.dashboard.presentation.composables.listings_composables.ElegantHousingCardSkeleton
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HousingViewModel
+import kotlinx.coroutines.delay
+
 
 // Category type for housing filtering
 enum class HousingCategoryType {
@@ -52,7 +58,10 @@ enum class HousingCategoryType {
     APARTMENT,
     HOUSE,
     STUDIO,
-    BEDSITTER
+    BEDSITTER,
+    CONDO,
+    TOWNHOUSE,
+    VILLA
 }
 
 // Status filter state for bottom sheet
@@ -66,21 +75,91 @@ data class HousePriceRange(
     val max: Int? = null
 )
 
+// ======================================================
+// HELPER EXTENSIONS
+// ======================================================
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun HousePost.getFormattedPostedTime(): String {
+    return try {
+        val created = java.time.Instant.parse(createdAt)
+        val now = java.time.Instant.now()
+        val duration = java.time.Duration.between(created, now)
+
+        when {
+            duration.toMinutes() < 1 -> "Just now"
+            duration.toMinutes() < 60 -> "${duration.toMinutes()}m ago"
+            duration.toHours() < 24 -> "${duration.toHours()}h ago"
+            duration.toDays() < 7 -> "${duration.toDays()}d ago"
+            duration.toDays() < 30 -> "${duration.toDays() / 7}w ago"
+            else -> "${duration.toDays() / 30}mo ago"
+        }
+    } catch (e: Exception) {
+        "Recently"
+    }
+}
+
+fun HousePost.getMainImage(): String? {
+    return images.find { it.isMain }?.url ?: images.firstOrNull()?.url
+}
+
+fun HousePost.getFormattedPrice(): String {
+    return when (listingType) {
+        "RENTAL" -> "KES ${price.toInt().toString().replace(Regex("\\B(?=(\\d{3})+(?!\\d))"), ",")}/mo"
+        else -> "KES ${price.toInt().toString().replace(Regex("\\B(?=(\\d{3})+(?!\\d))"), ",")}"
+    }
+}
+
+fun HousePost.getFormattedLocation(): String {
+    return when {
+        locationNeighborhood != null -> "$locationCity, $locationNeighborhood"
+        else -> locationCity
+    }
+}
+
+fun HousePost.getPropertyTypeLabel(): String {
+    return when (propertyType) {
+        "APARTMENT" -> "Apartment"
+        "HOUSE" -> "House"
+        "CONDO" -> "Condo"
+        "TOWNHOUSE" -> "Townhouse"
+        "VILLA" -> "Villa"
+        "STUDIO" -> "Studio"
+        else -> propertyType ?: "Property"
+    }
+}
+
+fun HousePost.getListingTypeLabel(): String {
+    return when (listingType) {
+        "RENTAL" -> "For Rent"
+        "SALE" -> "For Sale"
+        else -> listingType
+    }
+}
+
 /* ────────────── SCREEN ────────────── */
 
+@SuppressLint("ConfigurationScreenWidthHeight")
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HouseListingsScreen(
-    viewModel: HouseListingsViewModel = hiltViewModel(),
-    onListingClick: (HousingListingUiModel) -> Unit,
-    onBookClick: (HousingListingUiModel) -> Unit,
+    viewModel: HousingViewModel = hiltViewModel(),
+    onListingClick: (HousePost) -> Unit,
     onPostListingClick: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val listings by viewModel.filteredListings.collectAsStateWithLifecycle()
+    val housingState by viewModel.housingState.collectAsStateWithLifecycle()
+    val isLoading = housingState is HousingUiState.Loading
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
+
+    // Get houses from state
+    val houses = when (val currentState = housingState) {
+        is HousingUiState.Success -> currentState.houses
+        else -> emptyList()
+    }
 
     // State for search and filters
     var searchQuery by remember { mutableStateOf("") }
@@ -115,28 +194,33 @@ fun HouseListingsScreen(
         }
     }
 
-    // Filter listings based on category, status, price, and search
-    val filteredListings = remember(debouncedQuery.value, selectedCategory, statusFilterState, priceRange, listings) {
-        listings.filter { listing ->
+    // Filter houses based on category, status, price, and search
+    val filteredHouses = remember(debouncedQuery.value, selectedCategory, statusFilterState, priceRange, houses) {
+        houses.filter { house ->
             var matches = true
 
             // Apply category filter
             when (selectedCategory) {
                 HousingCategoryType.ALL -> matches = true
-                HousingCategoryType.APARTMENT -> matches = listing.propertyType.equals("Apartment", ignoreCase = true)
-                HousingCategoryType.HOUSE -> matches = listing.propertyType.equals("House", ignoreCase = true)
-                HousingCategoryType.STUDIO -> matches = listing.propertyType.equals("Studio", ignoreCase = true)
-                HousingCategoryType.BEDSITTER -> matches = listing.propertyType.equals("Bedsitter", ignoreCase = true)
+                HousingCategoryType.APARTMENT -> matches = house.propertyType.equals("APARTMENT", ignoreCase = true)
+                HousingCategoryType.HOUSE -> matches = house.propertyType.equals("HOUSE", ignoreCase = true)
+                HousingCategoryType.STUDIO -> matches = house.propertyType.equals("STUDIO", ignoreCase = true)
+                HousingCategoryType.BEDSITTER -> matches = house.propertyType.equals("BEDSITTER", ignoreCase = true)
+                HousingCategoryType.CONDO -> matches = house.propertyType.equals("CONDO", ignoreCase = true)
+                HousingCategoryType.TOWNHOUSE -> matches = house.propertyType.equals("TOWNHOUSE", ignoreCase = true)
+                HousingCategoryType.VILLA -> matches = house.propertyType.equals("VILLA", ignoreCase = true)
             }
 
             // Apply status filter
             if (statusFilterState.selectedStatuses.isNotEmpty() && matches) {
-                matches = statusFilterState.selectedStatuses.contains(listing.status)
+                matches = statusFilterState.selectedStatuses.any { status ->
+                    house.status.equals(status.name, ignoreCase = true)
+                }
             }
 
             // Apply price range filter
             if (matches) {
-                val price = extractPriceValue(listing.price)
+                val price = house.price.toInt()
                 priceRange.min?.let {
                     if (price < it) matches = false
                 }
@@ -147,9 +231,10 @@ fun HouseListingsScreen(
 
             // Apply search filter
             if (debouncedQuery.value.isNotEmpty() && matches) {
-                matches = listing.title.lowercase().contains(debouncedQuery.value) ||
-                        listing.location.lowercase().contains(debouncedQuery.value) ||
-                        listing.description.lowercase().contains(debouncedQuery.value)
+                matches = house.title.lowercase().contains(debouncedQuery.value) ||
+                        house.locationCity.lowercase().contains(debouncedQuery.value) ||
+                        house.description.lowercase().contains(debouncedQuery.value) ||
+                        (house.locationNeighborhood?.lowercase()?.contains(debouncedQuery.value) ?: false)
             }
 
             matches
@@ -163,17 +248,35 @@ fun HouseListingsScreen(
         activeFilterCount = count
     }
 
+    // Load initial houses
+    LaunchedEffect(Unit) {
+        viewModel.loadHousingListings(GetAllHousingParams(limit = 20))
+    }
+
+    // Load more when scrolling to bottom
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastVisibleIndex ->
+                if (lastVisibleIndex != null) {
+                    val totalItems = gridState.layoutInfo.totalItemsCount
+                    if (lastVisibleIndex >= totalItems - 3 && !isLoading) {
+                        viewModel.loadMore()
+                    }
+                }
+            }
+    }
+
     // ────────────── ADAPTIVE BREAKPOINTS ──────────────
     val windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val windowWidthClass = windowSizeClass.windowWidthSizeClass
 
     // Determine grid columns based on screen width
     val gridColumns = when {
-        windowWidthClass == WindowWidthSizeClass.EXPANDED -> 3  // Large tablets and desktops (840dp+)
-        windowWidthClass == WindowWidthSizeClass.MEDIUM -> 2   // Medium tablets (600-840dp)
-        screenWidth >= 900 -> 3  // Extra large phones in landscape or large tablets
-        screenWidth >= 600 -> 2  // Tablets or large phones in landscape
-        else -> 1  // Regular phones
+        windowWidthClass == WindowWidthSizeClass.EXPANDED -> 3
+        windowWidthClass == WindowWidthSizeClass.MEDIUM -> 2
+        screenWidth >= 900 -> 3
+        screenWidth >= 600 -> 2
+        else -> 1
     }
 
     // Adaptive content padding
@@ -222,7 +325,6 @@ fun HouseListingsScreen(
                 }
 
                 // Search Bar and Category Pills - ONLY show when NOT pinned
-                // When pinned, the sticky version takes over to prevent duplication
                 if (!isSearchBarPinned) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         HousingSearchAndPillsSection(
@@ -242,8 +344,15 @@ fun HouseListingsScreen(
                     }
                 }
 
-                // Empty state or listings
-                if (filteredListings.isEmpty()) {
+                // Show skeletons when loading and no data
+                if (isLoading && filteredHouses.isEmpty()) {
+                    items(count = 6, key = { index -> "skeleton_$index" }) { _ ->
+                        ElegantHousingCardSkeleton(
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                } else if (filteredHouses.isEmpty()) {
+                    // Empty state
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         if (searchQuery.isNotEmpty() || selectedCategory != HousingCategoryType.ALL ||
                             statusFilterState.selectedStatuses.isNotEmpty() || priceRange.min != null ||
@@ -268,21 +377,41 @@ fun HouseListingsScreen(
                         }
                     }
                 } else {
-                    items(filteredListings, key = { it.id }) { listing ->
-                        ModernHousingCardV2(
-                            imageUrl = listing.imageRes ?: R.drawable.property_placeholder1,
-                            title = listing.title,
-                            price = listing.price,
-                            location = listing.location,
-                            postedTime = listing.postedTime ?: "Recently",
-                            propertyType = listing.propertyType,
-                            listingType = if (listing.isForSale) "For Sale" else "For Rent",
-                            bedrooms = listing.bedrooms,
-                            bathrooms = listing.bathrooms,
-                            squareMeters = listing.squareMeters,
-                            isVerified = listing.isVerified,
-                            onViewDetailsClick = { onListingClick(listing) }
+                    items(filteredHouses, key = { it.id }) { house ->
+                        ElegantHousingCard(
+                            imageUrl = house.getMainImage(),
+                            title = house.title,
+                            price = house.getFormattedPrice(),
+                            location = house.getFormattedLocation(),
+                            postedTime = house.getFormattedPostedTime(),
+                            propertyType = house.getPropertyTypeLabel(),
+                            listingType = house.getListingTypeLabel(),
+                            bedrooms = house.bedrooms ?: 0,
+                            bathrooms = house.bathrooms ?: 0,
+                            squareMeters = house.squareFootage ?: 0,
+                            isVerified = house.titleDeedAvailable ?: false,
+                            isFavorite = false, // You can add favorite state management here
+                            onViewDetailsClick = { onListingClick(house) },
+                            onFavoriteClick = { /* Handle favorite toggle */ },
+                            modifier = Modifier.fillMaxWidth()
                         )
+                    }
+                }
+
+                // Loading indicator at bottom for pagination
+                if (isLoading && !filteredHouses.isEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                                color = colorScheme.primary
+                            )
+                        }
                     }
                 }
             }
@@ -320,7 +449,6 @@ fun HouseListingsScreen(
                             isSticky = true
                         )
 
-                        // Bottom divider line for visual separation
                         Divider(
                             color = colorScheme.outlineVariant.copy(alpha = 0.5f),
                             thickness = 1.dp,
@@ -332,10 +460,9 @@ fun HouseListingsScreen(
         }
     }
 
-    // Filter Modal - Adaptive presentation based on screen size
+    // Filter Bottom Sheet - Adaptive presentation based on screen size
     if (showFilterModal) {
         if (windowWidthClass == WindowWidthSizeClass.COMPACT) {
-            // Use bottom sheet for phones
             HousingFilterBottomSheet(
                 statusFilterState = statusFilterState,
                 priceRange = priceRange,
@@ -353,7 +480,6 @@ fun HouseListingsScreen(
                 isExpanded = false
             )
         } else {
-            // Use dialog for tablets and larger screens
             AlertDialog(
                 onDismissRequest = { showFilterModal = false },
                 title = {
@@ -406,7 +532,7 @@ fun HouseListingsScreen(
     }
 }
 
-/* ────────────── SEARCH AND PILLS SECTION ────────────── */
+// ────────────── SEARCH AND PILLS SECTION ──────────────
 
 @Composable
 private fun HousingSearchAndPillsSection(
@@ -496,7 +622,6 @@ private fun HousingSearchAndPillsSection(
                         )
                     }
                 } else {
-                    // Loading indicator while searching
                     if (isSearching) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(if (isExpanded) 24.dp else 20.dp),
@@ -506,7 +631,6 @@ private fun HousingSearchAndPillsSection(
                         Spacer(modifier = Modifier.width(8.dp))
                     }
 
-                    // Audio Icon
                     IconButton(
                         onClick = onAudioClick,
                         modifier = Modifier
@@ -547,7 +671,6 @@ private fun HousingSearchAndPillsSection(
                         Spacer(modifier = Modifier.width(4.dp))
                     }
 
-                    // Filter button with badge
                     Box {
                         Surface(
                             shape = RoundedCornerShape(20.dp),
@@ -575,7 +698,6 @@ private fun HousingSearchAndPillsSection(
                             }
                         }
 
-                        // Badge
                         if (activeFilterCount > 0) {
                             Box(
                                 modifier = Modifier
@@ -610,7 +732,6 @@ private fun HousingSearchAndPillsSection(
             Spacer(modifier = Modifier.height(if (isExpanded) 16.dp else 12.dp))
         }
 
-        // Category Filter Pills
         HousingCategoryFilterPills(
             selectedCategory = selectedCategory,
             onCategorySelected = onCategorySelected,
@@ -620,7 +741,7 @@ private fun HousingSearchAndPillsSection(
     }
 }
 
-/* ────────────── HEADER (NON-STICKY, SCROLLS AWAY) ────────────── */
+// ────────────── HEADER (NON-STICKY, SCROLLS AWAY) ──────────────
 
 @Composable
 private fun HouseListingsHeader(
@@ -638,7 +759,6 @@ private fun HouseListingsHeader(
                 vertical = if (isExpanded) 20.dp else 12.dp
             )
     ) {
-        // Back button row
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -671,9 +791,8 @@ private fun HouseListingsHeader(
 
         Spacer(modifier = Modifier.height(if (isExpanded) 12.dp else 8.dp))
 
-        // Title and subtitle
         Text(
-            text = "Properties",
+            text = "Property Listings",
             style = MaterialTheme.typography.headlineSmall.copy(
                 fontWeight = FontWeight.ExtraBold,
                 color = colorScheme.onSurface,
@@ -694,7 +813,7 @@ private fun HouseListingsHeader(
     }
 }
 
-/* ────────────── CATEGORY FILTER PILLS ────────────── */
+// ────────────── CATEGORY FILTER PILLS ──────────────
 
 @Composable
 private fun HousingCategoryFilterPills(
@@ -713,7 +832,10 @@ private fun HousingCategoryFilterPills(
             HousingCategoryType.APARTMENT to "Apartments",
             HousingCategoryType.HOUSE to "Houses",
             HousingCategoryType.STUDIO to "Studios",
-            HousingCategoryType.BEDSITTER to "Bedsitters"
+            HousingCategoryType.BEDSITTER to "Bedsitters",
+            HousingCategoryType.CONDO to "Condos",
+            HousingCategoryType.TOWNHOUSE to "Townhouses",
+            HousingCategoryType.VILLA to "Villas"
         )
 
         items(categories) { (category, displayName) ->
@@ -744,7 +866,7 @@ private fun HousingCategoryFilterPills(
     }
 }
 
-/* ────────────── HELPER FUNCTION ────────────── */
+// ────────────── HELPER FUNCTION ──────────────
 
 private fun extractPriceValue(priceString: String): Int {
     return try {
@@ -752,6 +874,8 @@ private fun extractPriceValue(priceString: String): Int {
             .replace("KES", "")
             .replace("KSh", "")
             .replace(",", "")
+            .replace("/mo", "")
+            .replace("/month", "")
             .replace(" ", "")
             .trim()
 
@@ -771,7 +895,7 @@ private fun extractPriceValue(priceString: String): Int {
     }
 }
 
-/* ────────────── FILTER DIALOG CONTENT (for tablets) ────────────── */
+// ────────────── FILTER DIALOG CONTENT (for tablets) ──────────────
 
 @Composable
 private fun HousingFilterDialogContent(
@@ -785,7 +909,6 @@ private fun HousingFilterDialogContent(
     var localMinPrice by remember { mutableStateOf(priceRange.min?.toString() ?: "") }
     var localMaxPrice by remember { mutableStateOf(priceRange.max?.toString() ?: "") }
 
-    // Update parent state when local state changes
     LaunchedEffect(localStatusState, localMinPrice, localMaxPrice) {
         onStatusFilterChange(localStatusState)
         onPriceRangeChange(HousePriceRange(min = localMinPrice.toIntOrNull(), max = localMaxPrice.toIntOrNull()))
@@ -889,7 +1012,7 @@ private fun HousingFilterDialogContent(
     }
 }
 
-/* ────────────── FILTER BOTTOM SHEET (for phones) ────────────── */
+// ────────────── FILTER BOTTOM SHEET (for phones) ──────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -921,7 +1044,6 @@ private fun HousingFilterBottomSheet(
                 .padding(horizontal = if (isExpanded) 32.dp else 20.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -958,7 +1080,6 @@ private fun HousingFilterBottomSheet(
                 }
             }
 
-            // Price Range Section
             Text(
                 text = "Price Range (KES)",
                 fontSize = 15.sp,
@@ -1002,7 +1123,6 @@ private fun HousingFilterBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Status Section
             Text(
                 text = "Listing Status",
                 fontSize = 15.sp,
@@ -1076,7 +1196,6 @@ private fun HousingFilterBottomSheet(
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // Action Buttons
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1141,7 +1260,7 @@ private fun HousingFilterBottomSheet(
     }
 }
 
-/* ────────────── NO RESULTS EMPTY STATE ────────────── */
+// ────────────── NO RESULTS EMPTY STATE ──────────────
 
 @Composable
 private fun HousingNoResultsEmptyState(
@@ -1200,7 +1319,7 @@ private fun HousingNoResultsEmptyState(
     }
 }
 
-/* ────────────── EMPTY STATE ────────────── */
+// ────────────── EMPTY STATE ──────────────
 
 @Composable
 private fun HousingEmptyState(

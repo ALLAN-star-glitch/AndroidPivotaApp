@@ -1,4 +1,3 @@
-// dashboard/di/DashboardModule.kt
 package com.example.pivota.dashboard.di
 
 import com.example.pivota.dashboard.data.repository.BookingRepositoryImpl
@@ -7,12 +6,14 @@ import com.example.pivota.dashboard.data.repository.JobPostRepositoryImpl
 import com.example.pivota.dashboard.data.repository.PricingUnitsRepositoryImpl
 import com.example.pivota.dashboard.data.repository.ProfileRepositoryImpl
 import com.example.pivota.dashboard.data.repository.ServiceOfferingsRepositoryImpl
+import com.example.pivota.dashboard.data.repository.HousingRepositoryImpl
 import com.example.pivota.dashboard.domain.repository.BookingRepository
 import com.example.pivota.dashboard.domain.repository.CategoriesRepository
 import com.example.pivota.dashboard.domain.repository.JobPostRepository
 import com.example.pivota.dashboard.domain.repository.PricingUnitsRepository
 import com.example.pivota.dashboard.domain.repository.ProfileRepository
 import com.example.pivota.dashboard.domain.repository.ServiceOfferingsRepository
+import com.example.pivota.dashboard.domain.repository.HousingRepository
 import com.example.pivota.dashboard.domain.useCase.CreateBookingUseCase
 import com.example.pivota.dashboard.domain.useCase.GetCommonServicesUseCase
 import com.example.pivota.dashboard.domain.useCase.GetComplimentaryCategoriesUseCase
@@ -20,6 +21,7 @@ import com.example.pivota.dashboard.domain.useCase.GetFullComplimentaryCategorie
 import com.example.pivota.dashboard.domain.useCase.GetOfferingsByCategoryUseCase
 import com.example.pivota.dashboard.domain.useCase.GetPricingUnitsByCategoryUseCase
 import com.example.pivota.dashboard.domain.useCase.GetProfileUseCase
+import com.example.pivota.dashboard.domain.useCase.GetAllHousingListingsUseCase
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -49,12 +51,15 @@ abstract class DashboardModule {
 
     @Binds
     @Singleton
-    abstract fun bindBookingRepository(impl: BookingRepositoryImpl): BookingRepository  // Fixed: BookingRepositoryImpl -> BookingRepository
+    abstract fun bindBookingRepository(impl: BookingRepositoryImpl): BookingRepository
 
-    // In the @Binds section
     @Binds
     @Singleton
     abstract fun bindJobPostRepository(impl: JobPostRepositoryImpl): JobPostRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindHousingRepository(impl: HousingRepositoryImpl): HousingRepository
 
     companion object {
         @Provides
@@ -101,6 +106,14 @@ abstract class DashboardModule {
             repository: BookingRepository
         ): CreateBookingUseCase {
             return CreateBookingUseCase(repository)
+        }
+
+        @Provides
+        @Singleton
+        fun provideGetAllHousingListingsUseCase(
+            repository: HousingRepository
+        ): GetAllHousingListingsUseCase {
+            return GetAllHousingListingsUseCase(repository)
         }
     }
 }

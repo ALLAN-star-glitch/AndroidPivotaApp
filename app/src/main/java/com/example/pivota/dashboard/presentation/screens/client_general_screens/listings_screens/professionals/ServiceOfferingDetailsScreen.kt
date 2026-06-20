@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -126,6 +127,7 @@ fun ServiceOfferingDetailsScreen(
         bottomBar = {
             Surface(
                 color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.navigationBarsPadding(), //prevents overlap with system navigation
                 shadowElevation = 8.dp,
                 tonalElevation = 3.dp
             ) {

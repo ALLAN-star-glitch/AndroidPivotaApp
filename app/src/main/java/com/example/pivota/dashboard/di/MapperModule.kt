@@ -4,6 +4,8 @@ import com.example.pivota.dashboard.data.mapper.BookingCacheMapper
 import com.example.pivota.dashboard.data.mapper.BookingMapper
 import com.example.pivota.dashboard.data.mapper.ServiceOfferingCacheMapper
 import com.example.pivota.dashboard.data.mapper.ServiceOfferingMapper
+import com.example.pivota.dashboard.data.mapper.JobPostMapper
+import com.example.pivota.dashboard.data.mapper.HousingMapper
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
@@ -46,5 +48,17 @@ object MapperModule {
     @Singleton
     fun provideBookingCacheMapper(moshi: Moshi): BookingCacheMapper {
         return BookingCacheMapper(moshi)
+    }
+
+    @Provides
+    @Singleton
+    fun provideJobPostMapper(): JobPostMapper {
+        return JobPostMapper()
+    }
+
+    @Provides
+    @Singleton
+    fun provideHousingMapper(): HousingMapper {
+        return HousingMapper()
     }
 }

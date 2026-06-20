@@ -114,6 +114,7 @@ import com.example.pivota.dashboard.presentation.screens.client_general_screens.
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ServiceOfferingDetailsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.ServiceOfferingsScreen
 import com.example.pivota.dashboard.presentation.screens.client_general_screens.listings_screens.professionals.SubcategoriesScreen
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HousingViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.RetryResult
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.ServiceDetailsState
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.ServiceOfferingsViewModel
@@ -121,46 +122,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
-
-
-// NEW: Conversion function for admin job details
-private fun convertToAdminJobListing(dashboardJob: DashboardJobListingUiModel): AdminJobListingUiModel {
-    // Map to admin job status
-    val jobStatus = JobStatus.ACTIVE // Default, you can map based on your data
-
-    return AdminJobListingUiModel(
-        id = dashboardJob.id,
-        title = dashboardJob.title,
-        companyName = dashboardJob.company,
-        companyLogoUrl = null,
-        location = dashboardJob.location,
-        exactLocation = dashboardJob.location,
-        jobType = dashboardJob.jobType,
-        status = jobStatus,
-        postedDate = Date(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(3)),
-        expiryDate = Date(System.currentTimeMillis() + TimeUnit.DAYS.toMillis(25)),
-        views = 0,
-        applications = 0,
-        newApplications = 0,
-        reviewedApplications = 0,
-        description = dashboardJob.description,
-        requirements = listOf(
-            "Bachelor's degree in Computer Science or related field",
-            "5+ years of experience"
-        ),
-        skills = listOf("Kotlin", "Android", "REST APIs"),
-        benefits = listOf("Health Insurance", "Transport allowance"),
-        isVerified = dashboardJob.isVerified,
-        employerName = dashboardJob.company,
-        employerVerified = true,
-        averageTimeToApply = 3.2,
-        applicationFunnel = ApplicationFunnel(
-            viewed = 100,
-            applied = 24,
-            reviewed = 12
-        )
-    )
-}
+// ... (keep all the helper functions and conversion functions as they are)
 
 @RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("ViewModelConstructorInComposable")
@@ -194,6 +156,20 @@ fun DashboardScaffold(
     var showWelcomeSnackbar by remember { mutableStateOf(false) }
     var welcomeMessage by remember { mutableStateOf("") }
     var snackbarType by remember { mutableStateOf(SnackbarType.SUCCESS) }
+
+    // Track current destination to determine if we're on a main screen
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+
+    // Define which routes are considered "main" screens (where nav rail should show)
+    val isMainScreen = remember(currentDestination) {
+        when (currentDestination?.route) {
+            Dashboard::class.qualifiedName,
+            Connect::class.qualifiedName,
+            Profile::class.qualifiedName -> true
+            else -> false
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (!isGuestMode) {
@@ -257,9 +233,6 @@ fun DashboardScaffold(
     var selectedAdminJobForViewing by remember { mutableStateOf<AdminJobListingUiModel?>(null) }
     var selectedServiceForBooking by remember { mutableStateOf<ServiceOffering?>(null) }
     var bookingContractorId by remember { mutableStateOf("") }
-
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
 
     val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isTablet = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED ||
@@ -346,6 +319,7 @@ fun DashboardScaffold(
                     navController = navController,
                     currentDestination = currentDestination,
                     visibleRoutes = visibleRoutes,
+                    isMainScreen = isMainScreen, // Pass down whether we're on a main screen
                     selectedListingForBooking = selectedListingForBooking,
                     selectedListingForViewing = selectedListingForViewing,
                     selectedListingForAdminView = selectedListingForAdminView,
@@ -493,8 +467,6 @@ fun DashboardScaffold(
     }
 }
 
-
-
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -502,6 +474,7 @@ private fun TabletDashboardContent(
     navController: NavHostController,
     currentDestination: NavDestination?,
     visibleRoutes: List<TopLevelRoute>,
+    isMainScreen: Boolean, // NEW: Whether we're on a main screen
     selectedListingForBooking: HousingListingUiModel?,
     selectedListingForViewing: HousingListingUiModel?,
     selectedListingForAdminView: HousingListingUiModel?,
@@ -524,55 +497,61 @@ private fun TabletDashboardContent(
     selectedServiceForBooking: ServiceOffering?,
     bookingContractorId: String,
     onBookingComplete: (Booking) -> Unit,
-    onBookingNavigationBack: () -> Unit,  // Add this parameter
-    onUpdateServiceForBooking: (ServiceOffering, String) -> Unit  // Add this parameter
+    onBookingNavigationBack: () -> Unit,
+    onUpdateServiceForBooking: (ServiceOffering, String) -> Unit
 ) {
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
         Row(modifier = Modifier.fillMaxSize()) {
-            NavigationRail(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .navigationBarsPadding(),
-                containerColor = MaterialTheme.colorScheme.surface,
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxHeight(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
+            // ✅ Navigation Rail - Only show on main screens
+            if (isMainScreen) {
+                NavigationRail(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .navigationBarsPadding(),
+                    containerColor = MaterialTheme.colorScheme.surface,
                 ) {
-                    visibleRoutes.forEach { route ->
-                        val isSelected = currentDestination?.hierarchy?.any { it.route == route.route::class.qualifiedName } == true
-                        NavigationRailItem(
-                            icon = { Icon(route.icon, contentDescription = route.contentDescription, modifier = Modifier.size(24.dp)) },
-                            label = { Text(route.label, fontSize = 11.sp) },
-                            selected = isSelected,
-                            onClick = {
-                                if (currentDestination?.route != route.route) {
-                                    navController.navigate(route.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
+                    Column(
+                        modifier = Modifier.fillMaxHeight(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        visibleRoutes.forEach { route ->
+                            val isSelected = currentDestination?.hierarchy?.any { it.route == route.route::class.qualifiedName } == true
+                            NavigationRailItem(
+                                icon = { Icon(route.icon, contentDescription = route.contentDescription, modifier = Modifier.size(24.dp)) },
+                                label = { Text(route.label, fontSize = 11.sp) },
+                                selected = isSelected,
+                                onClick = {
+                                    if (currentDestination?.route != route.route) {
+                                        navController.navigate(route.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
-                                }
-                            },
-                            colors = NavigationRailItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.tertiary,
-                                selectedTextColor = MaterialTheme.colorScheme.tertiary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                colors = NavigationRailItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                                    selectedTextColor = MaterialTheme.colorScheme.tertiary,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
 
-            // Content area
+            // Content area - with padding only when nav rail is visible
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(start = 8.dp)
+                    .then(
+                        if (isMainScreen) Modifier.padding(start = 8.dp)
+                        else Modifier
+                    )
             ) {
                 TabletNavHost(
                     navController = navController,
@@ -595,21 +574,13 @@ private fun TabletDashboardContent(
                     selectedServiceForBooking = selectedServiceForBooking,
                     bookingContractorId = bookingContractorId,
                     onBookingComplete = onBookingComplete,
-                    onBookingNavigationBack = onBookingNavigationBack,  // Pass the callback
-                    onUpdateServiceForBooking = onUpdateServiceForBooking  // Pass the callback
+                    onBookingNavigationBack = onBookingNavigationBack,
+                    onUpdateServiceForBooking = onUpdateServiceForBooking
                 )
             }
         }
 
-        // ✅ ADD FAB FOR TABLET (same as mobile)
-        // Check if we're on a main screen that should show the FAB
-        val isMainScreen = when (currentDestination?.route) {
-            Dashboard::class.qualifiedName,
-            Connect::class.qualifiedName,
-            Profile::class.qualifiedName -> true
-            else -> false
-        }
-
+        // FAB - Only show on main screens (same logic as nav rail)
         if (isMainScreen) {
             PulsingPostFab(
                 onClick = { onShowSheetChange(true) },
@@ -661,6 +632,7 @@ private fun TabletDashboardContent(
         )
     }
 }
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1372,16 +1344,10 @@ private fun MobileNavHost(
         // House Listings
         composable<HouseListings> {
             NoBottomNavScaffold {
-                val viewModel: HouseListingsViewModel = hiltViewModel()
+                val viewModel: HousingViewModel = hiltViewModel()
                 HouseListingsScreen(
                     viewModel = viewModel,
-                    onListingClick = { housingListing ->
-                        onViewingSelected(housingListing)
-                        navController.navigate(HouseDetails)
-                    },
-                    onBookClick = { housingListing ->
-                        onBookingSelected(housingListing)
-                        navController.navigate(BookViewing)
+                    onListingClick = {
                     },
                     onPostListingClick = {
                         if (!isGuestMode) onShowSheetChange(true)
@@ -1843,16 +1809,10 @@ private fun TabletNavHost(
 
         // House Listings
         composable<HouseListings> {
-            val viewModel: HouseListingsViewModel = hiltViewModel()
+            val viewModel: HousingViewModel = hiltViewModel()
             HouseListingsScreen(
                 viewModel = viewModel,
-                onListingClick = { housingListing ->
-                    onViewingSelected(housingListing)
-                    navController.navigate(HouseDetails)
-                },
-                onBookClick = { housingListing ->
-                    onBookingSelected(housingListing)
-                    navController.navigate(BookViewing)
+                onListingClick = {
                 },
                 onPostListingClick = {
                     if (!isGuestMode) onShowSheetChange(true)
