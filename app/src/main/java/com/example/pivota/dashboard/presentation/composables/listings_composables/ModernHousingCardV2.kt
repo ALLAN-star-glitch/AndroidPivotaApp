@@ -64,6 +64,7 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.crossfade
 import com.example.pivota.R
+import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.shimmer
 import com.example.pivota.ui.theme.PivotaConnectTheme
 
 @SuppressLint("ConfigurationScreenWidthHeight")
@@ -1166,17 +1167,14 @@ private fun DesktopHousingCardSkeleton(colorScheme: ColorScheme) {
                     color = Color.Transparent
                 ) {}
 
+                // ✅ Fix: Apply shimmer directly to the Surface's background
                 Surface(
-                    modifier = Modifier.size(72.dp),
+                    modifier = Modifier
+                        .size(72.dp)
+                        .shimmer(shape = RoundedCornerShape(10.dp)),
                     shape = RoundedCornerShape(10.dp),
-                    color = colorScheme.surfaceVariant
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .shimmerEffectHousing()
-                    )
-                }
+                    color = Color.Transparent // Make transparent so shimmer shows through
+                ) {}
             }
 
             // Right side: Content skeletons
@@ -1188,21 +1186,22 @@ private fun DesktopHousingCardSkeleton(colorScheme: ColorScheme) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    // ✅ Fix: Apply shimmer to Surface with transparent color
                     Surface(
                         modifier = Modifier
                             .width(70.dp)
                             .height(20.dp)
-                            .shimmerEffectHousing(),
+                            .shimmer(shape = RoundedCornerShape(4.dp)),
                         shape = RoundedCornerShape(4.dp),
-                        color = colorScheme.surfaceVariant
+                        color = Color.Transparent
                     ) {}
                     Surface(
                         modifier = Modifier
                             .width(60.dp)
                             .height(20.dp)
-                            .shimmerEffectHousing(),
+                            .shimmer(shape = RoundedCornerShape(4.dp)),
                         shape = RoundedCornerShape(4.dp),
-                        color = colorScheme.surfaceVariant
+                        color = Color.Transparent
                     ) {}
                 }
 
@@ -1211,9 +1210,9 @@ private fun DesktopHousingCardSkeleton(colorScheme: ColorScheme) {
                     modifier = Modifier
                         .fillMaxWidth(0.8f)
                         .height(18.dp)
-                        .shimmerEffectHousing(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
 
                 // Price skeleton
@@ -1221,9 +1220,9 @@ private fun DesktopHousingCardSkeleton(colorScheme: ColorScheme) {
                     modifier = Modifier
                         .fillMaxWidth(0.3f)
                         .height(20.dp)
-                        .shimmerEffectHousing(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
 
                 // Location skeleton
@@ -1231,9 +1230,9 @@ private fun DesktopHousingCardSkeleton(colorScheme: ColorScheme) {
                     modifier = Modifier
                         .fillMaxWidth(0.4f)
                         .height(14.dp)
-                        .shimmerEffectHousing(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
 
                 // Features skeleton
@@ -1245,9 +1244,9 @@ private fun DesktopHousingCardSkeleton(colorScheme: ColorScheme) {
                             modifier = Modifier
                                 .width(50.dp)
                                 .height(14.dp)
-                                .shimmerEffectHousing(),
+                                .shimmer(shape = RoundedCornerShape(4.dp)),
                             shape = RoundedCornerShape(4.dp),
-                            color = colorScheme.surfaceVariant
+                            color = Color.Transparent
                         ) {}
                     }
                 }
@@ -1280,17 +1279,17 @@ private fun DesktopHousingCardSkeleton(colorScheme: ColorScheme) {
                         modifier = Modifier
                             .width(80.dp)
                             .height(14.dp)
-                            .shimmerEffectHousing(),
+                            .shimmer(shape = RoundedCornerShape(4.dp)),
                         shape = RoundedCornerShape(4.dp),
-                        color = colorScheme.surfaceVariant
+                        color = Color.Transparent
                     ) {}
                     Surface(
                         modifier = Modifier
                             .width(60.dp)
                             .height(14.dp)
-                            .shimmerEffectHousing(),
+                            .shimmer(shape = RoundedCornerShape(4.dp)),
                         shape = RoundedCornerShape(4.dp),
-                        color = colorScheme.surfaceVariant
+                        color = Color.Transparent
                     ) {}
                 }
             }
@@ -1310,9 +1309,9 @@ private fun MediumHousingCardSkeleton(colorScheme: ColorScheme) {
         Surface(
             modifier = Modifier
                 .size(72.dp)
-                .shimmerEffectHousing(),
+                .shimmer(shape = RoundedCornerShape(8.dp)),
             shape = RoundedCornerShape(8.dp),
-            color = colorScheme.surfaceVariant
+            color = Color.Transparent
         ) {}
 
         // Content skeletons
@@ -1330,17 +1329,17 @@ private fun MediumHousingCardSkeleton(colorScheme: ColorScheme) {
                     modifier = Modifier
                         .width(60.dp)
                         .height(16.dp)
-                        .shimmerEffectHousing(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
                 Surface(
                     modifier = Modifier
                         .width(50.dp)
                         .height(16.dp)
-                        .shimmerEffectHousing(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
             }
 
@@ -1349,9 +1348,9 @@ private fun MediumHousingCardSkeleton(colorScheme: ColorScheme) {
                 modifier = Modifier
                     .fillMaxWidth(0.7f)
                     .height(16.dp)
-                    .shimmerEffectHousing(),
+                    .shimmer(shape = RoundedCornerShape(4.dp)),
                 shape = RoundedCornerShape(4.dp),
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
 
             // Price skeleton
@@ -1359,9 +1358,9 @@ private fun MediumHousingCardSkeleton(colorScheme: ColorScheme) {
                 modifier = Modifier
                     .fillMaxWidth(0.3f)
                     .height(18.dp)
-                    .shimmerEffectHousing(),
+                    .shimmer(shape = RoundedCornerShape(4.dp)),
                 shape = RoundedCornerShape(4.dp),
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
 
             // Location skeleton
@@ -1369,9 +1368,9 @@ private fun MediumHousingCardSkeleton(colorScheme: ColorScheme) {
                 modifier = Modifier
                     .fillMaxWidth(0.4f)
                     .height(12.dp)
-                    .shimmerEffectHousing(),
+                    .shimmer(shape = RoundedCornerShape(4.dp)),
                 shape = RoundedCornerShape(4.dp),
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
 
             // Features skeleton
@@ -1383,9 +1382,9 @@ private fun MediumHousingCardSkeleton(colorScheme: ColorScheme) {
                         modifier = Modifier
                             .width(40.dp)
                             .height(12.dp)
-                            .shimmerEffectHousing(),
+                            .shimmer(shape = RoundedCornerShape(4.dp)),
                         shape = RoundedCornerShape(4.dp),
-                        color = colorScheme.surfaceVariant
+                        color = Color.Transparent
                     ) {}
                 }
             }
@@ -1399,24 +1398,24 @@ private fun MediumHousingCardSkeleton(colorScheme: ColorScheme) {
             Surface(
                 modifier = Modifier
                     .size(28.dp)
-                    .shimmerEffectHousing(),
+                    .shimmer(shape = CircleShape),
                 shape = CircleShape,
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
             Surface(
                 modifier = Modifier
                     .width(50.dp)
                     .height(12.dp)
-                    .shimmerEffectHousing(),
+                    .shimmer(shape = RoundedCornerShape(4.dp)),
                 shape = RoundedCornerShape(4.dp),
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
             Surface(
                 modifier = Modifier
                     .size(24.dp)
-                    .shimmerEffectHousing(),
+                    .shimmer(shape = CircleShape),
                 shape = CircleShape,
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
         }
     }
@@ -1440,9 +1439,9 @@ private fun MobileHousingCardSkeleton(
         Surface(
             modifier = Modifier
                 .size(imageSize)
-                .shimmerEffectHousing(),
+                .shimmer(shape = RoundedCornerShape(if (isTwoColumn) 6.dp else 8.dp)),
             shape = RoundedCornerShape(if (isTwoColumn) 6.dp else 8.dp),
-            color = colorScheme.surfaceVariant
+            color = Color.Transparent
         ) {}
 
         // Content skeletons
@@ -1460,17 +1459,17 @@ private fun MobileHousingCardSkeleton(
                         modifier = Modifier
                             .width(40.dp)
                             .height(12.dp)
-                            .shimmerEffectHousing(),
+                            .shimmer(shape = RoundedCornerShape(4.dp)),
                         shape = RoundedCornerShape(4.dp),
-                        color = colorScheme.surfaceVariant
+                        color = Color.Transparent
                     ) {}
                     Surface(
                         modifier = Modifier
                             .width(35.dp)
                             .height(12.dp)
-                            .shimmerEffectHousing(),
+                            .shimmer(shape = RoundedCornerShape(4.dp)),
                         shape = RoundedCornerShape(4.dp),
-                        color = colorScheme.surfaceVariant
+                        color = Color.Transparent
                     ) {}
                 }
             }
@@ -1480,9 +1479,9 @@ private fun MobileHousingCardSkeleton(
                 modifier = Modifier
                     .fillMaxWidth(if (isTwoColumn) 0.9f else 0.7f)
                     .height(if (isTwoColumn) 14.dp else 16.dp)
-                    .shimmerEffectHousing(),
+                    .shimmer(shape = RoundedCornerShape(4.dp)),
                 shape = RoundedCornerShape(4.dp),
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
 
             // Price skeleton
@@ -1490,9 +1489,9 @@ private fun MobileHousingCardSkeleton(
                 modifier = Modifier
                     .fillMaxWidth(if (isTwoColumn) 0.5f else 0.3f)
                     .height(if (isTwoColumn) 14.dp else 16.dp)
-                    .shimmerEffectHousing(),
+                    .shimmer(shape = RoundedCornerShape(4.dp)),
                 shape = RoundedCornerShape(4.dp),
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
 
             if (!isTwoColumn) {
@@ -1505,9 +1504,9 @@ private fun MobileHousingCardSkeleton(
                             modifier = Modifier
                                 .width(30.dp)
                                 .height(10.dp)
-                                .shimmerEffectHousing(),
+                                .shimmer(shape = RoundedCornerShape(4.dp)),
                             shape = RoundedCornerShape(4.dp),
-                            color = colorScheme.surfaceVariant
+                            color = Color.Transparent
                         ) {}
                     }
                 }
@@ -1522,9 +1521,9 @@ private fun MobileHousingCardSkeleton(
             Surface(
                 modifier = Modifier
                     .size(if (isTwoColumn) 24.dp else 28.dp)
-                    .shimmerEffectHousing(),
+                    .shimmer(shape = CircleShape),
                 shape = CircleShape,
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
 
             if (!isTwoColumn) {
@@ -1532,53 +1531,23 @@ private fun MobileHousingCardSkeleton(
                     modifier = Modifier
                         .width(40.dp)
                         .height(10.dp)
-                        .shimmerEffectHousing(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
             }
 
             Surface(
                 modifier = Modifier
                     .size(if (isTwoColumn) 20.dp else 24.dp)
-                    .shimmerEffectHousing(),
+                    .shimmer(shape = CircleShape),
                 shape = CircleShape,
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
         }
     }
 }
 
-// ======================================================
-// SHIMMER EFFECT EXTENSION
-// ======================================================
-
-@Composable
-fun Modifier.shimmerEffectHousing(): Modifier {
-    return this.drawBehind {
-        val shimmerWidth = size.width * 0.5f
-        val startX = -shimmerWidth
-        val endX = size.width + shimmerWidth
-
-        val brush = Brush.linearGradient(
-            colors = listOf(
-                Color.Transparent,
-                Color.White.copy(alpha = 0.1f),
-                Color.White.copy(alpha = 0.2f),
-                Color.White.copy(alpha = 0.1f),
-                Color.Transparent
-            ),
-            start = Offset(startX, 0f),
-            end = Offset(endX, 0f)
-        )
-
-        drawRect(
-            brush = brush,
-            topLeft = Offset(0f, 0f),
-            size = size
-        )
-    }
-}
 
 // ======================================================
 // PREVIEWS

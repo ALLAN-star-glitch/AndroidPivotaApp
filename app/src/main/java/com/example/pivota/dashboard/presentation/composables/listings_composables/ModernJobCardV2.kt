@@ -58,6 +58,7 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.crossfade
 import com.example.pivota.R
+import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.shimmer
 import com.example.pivota.ui.theme.PivotaConnectTheme
 
 @SuppressLint("ConfigurationScreenWidthHeight")
@@ -773,6 +774,12 @@ fun OptimizedJobImage(
 // SKELETON LOADING CARDS
 // ======================================================
 
+
+
+// ======================================================
+// SKELETON LOADING CARDS - Updated with shimmer from general package
+// ======================================================
+
 @Composable
 fun JobCardSkeleton(
     modifier: Modifier = Modifier
@@ -860,17 +867,14 @@ private fun DesktopJobCardSkeleton(
                     color = Color.Transparent
                 ) {}
 
+                // ✅ Logo placeholder with shimmer - using Color.Transparent
                 Surface(
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier
+                        .size(48.dp)
+                        .shimmer(shape = RoundedCornerShape(10.dp)),
                     shape = RoundedCornerShape(10.dp),
-                    color = colorScheme.surfaceVariant
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .shimmerEffect()
-                    )
-                }
+                    color = Color.Transparent
+                ) {}
             }
 
             // Right side: Content skeletons
@@ -886,17 +890,17 @@ private fun DesktopJobCardSkeleton(
                         modifier = Modifier
                             .width(70.dp)
                             .height(20.dp)
-                            .shimmerEffect(),
+                            .shimmer(shape = RoundedCornerShape(4.dp)),
                         shape = RoundedCornerShape(4.dp),
-                        color = colorScheme.surfaceVariant
+                        color = Color.Transparent
                     ) {}
                     Surface(
                         modifier = Modifier
                             .width(60.dp)
                             .height(20.dp)
-                            .shimmerEffect(),
+                            .shimmer(shape = RoundedCornerShape(4.dp)),
                         shape = RoundedCornerShape(4.dp),
-                        color = colorScheme.surfaceVariant
+                        color = Color.Transparent
                     ) {}
                 }
 
@@ -905,9 +909,9 @@ private fun DesktopJobCardSkeleton(
                     modifier = Modifier
                         .fillMaxWidth(0.8f)
                         .height(18.dp)
-                        .shimmerEffect(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
 
                 // Company name skeleton
@@ -915,9 +919,9 @@ private fun DesktopJobCardSkeleton(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
                         .height(14.dp)
-                        .shimmerEffect(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
 
                 // Location skeleton
@@ -925,9 +929,9 @@ private fun DesktopJobCardSkeleton(
                     modifier = Modifier
                         .fillMaxWidth(0.4f)
                         .height(14.dp)
-                        .shimmerEffect(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -958,17 +962,17 @@ private fun DesktopJobCardSkeleton(
                         modifier = Modifier
                             .width(80.dp)
                             .height(14.dp)
-                            .shimmerEffect(),
+                            .shimmer(shape = RoundedCornerShape(4.dp)),
                         shape = RoundedCornerShape(4.dp),
-                        color = colorScheme.surfaceVariant
+                        color = Color.Transparent
                     ) {}
                     Surface(
                         modifier = Modifier
                             .width(60.dp)
                             .height(14.dp)
-                            .shimmerEffect(),
+                            .shimmer(shape = RoundedCornerShape(4.dp)),
                         shape = RoundedCornerShape(4.dp),
-                        color = colorScheme.surfaceVariant
+                        color = Color.Transparent
                     ) {}
                 }
             }
@@ -990,9 +994,9 @@ private fun MediumJobCardSkeleton(
         Surface(
             modifier = Modifier
                 .size(48.dp)
-                .shimmerEffect(),
+                .shimmer(shape = RoundedCornerShape(8.dp)),
             shape = RoundedCornerShape(8.dp),
-            color = colorScheme.surfaceVariant
+            color = Color.Transparent
         ) {}
 
         // Content skeletons
@@ -1010,17 +1014,17 @@ private fun MediumJobCardSkeleton(
                     modifier = Modifier
                         .width(60.dp)
                         .height(16.dp)
-                        .shimmerEffect(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
                 Surface(
                     modifier = Modifier
                         .width(50.dp)
                         .height(16.dp)
-                        .shimmerEffect(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
             }
 
@@ -1029,9 +1033,9 @@ private fun MediumJobCardSkeleton(
                 modifier = Modifier
                     .fillMaxWidth(0.7f)
                     .height(16.dp)
-                    .shimmerEffect(),
+                    .shimmer(shape = RoundedCornerShape(4.dp)),
                 shape = RoundedCornerShape(4.dp),
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
 
             // Company + Location skeleton
@@ -1042,17 +1046,17 @@ private fun MediumJobCardSkeleton(
                     modifier = Modifier
                         .width(80.dp)
                         .height(12.dp)
-                        .shimmerEffect(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
                 Surface(
                     modifier = Modifier
                         .width(60.dp)
                         .height(12.dp)
-                        .shimmerEffect(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
             }
         }
@@ -1066,16 +1070,16 @@ private fun MediumJobCardSkeleton(
                 modifier = Modifier
                     .width(50.dp)
                     .height(12.dp)
-                    .shimmerEffect(),
+                    .shimmer(shape = RoundedCornerShape(4.dp)),
                 shape = RoundedCornerShape(4.dp),
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
             Surface(
                 modifier = Modifier
                     .size(24.dp)
-                    .shimmerEffect(),
+                    .shimmer(shape = CircleShape),
                 shape = CircleShape,
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
         }
     }
@@ -1099,9 +1103,9 @@ private fun MobileJobCardSkeleton(
         Surface(
             modifier = Modifier
                 .size(logoSize)
-                .shimmerEffect(),
+                .shimmer(shape = RoundedCornerShape(if (isTwoColumn) 6.dp else 8.dp)),
             shape = RoundedCornerShape(if (isTwoColumn) 6.dp else 8.dp),
-            color = colorScheme.surfaceVariant
+            color = Color.Transparent
         ) {}
 
         // Content skeletons
@@ -1116,9 +1120,9 @@ private fun MobileJobCardSkeleton(
                 modifier = Modifier
                     .fillMaxWidth(if (isTwoColumn) 0.9f else 0.7f)
                     .height(if (isTwoColumn) 14.dp else 16.dp)
-                    .shimmerEffect(),
+                    .shimmer(shape = RoundedCornerShape(4.dp)),
                 shape = RoundedCornerShape(4.dp),
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
 
             // Company skeleton
@@ -1126,9 +1130,9 @@ private fun MobileJobCardSkeleton(
                 modifier = Modifier
                     .fillMaxWidth(if (isTwoColumn) 0.7f else 0.5f)
                     .height(if (isTwoColumn) 10.dp else 12.dp)
-                    .shimmerEffect(),
+                    .shimmer(shape = RoundedCornerShape(4.dp)),
                 shape = RoundedCornerShape(4.dp),
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
 
             // Badge skeleton (only in 1-column mode)
@@ -1137,9 +1141,9 @@ private fun MobileJobCardSkeleton(
                     modifier = Modifier
                         .width(80.dp)
                         .height(14.dp)
-                        .shimmerEffect(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
             }
         }
@@ -1155,9 +1159,9 @@ private fun MobileJobCardSkeleton(
                     modifier = Modifier
                         .width(40.dp)
                         .height(10.dp)
-                        .shimmerEffect(),
+                        .shimmer(shape = RoundedCornerShape(4.dp)),
                     shape = RoundedCornerShape(4.dp),
-                    color = colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {}
             }
 
@@ -1165,13 +1169,19 @@ private fun MobileJobCardSkeleton(
             Surface(
                 modifier = Modifier
                     .size(if (isTwoColumn) 20.dp else 24.dp)
-                    .shimmerEffect(),
+                    .shimmer(shape = CircleShape),
                 shape = CircleShape,
-                color = colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {}
         }
     }
 }
+
+// ======================================================
+// REMOVE the old shimmerEffect() function - no longer needed
+// ======================================================
+// Delete this function:
+// fun Modifier.shimmerEffect(): Modifier = this.drawBehind { ... }
 
 // Shimmer Effect Modifier
 fun Modifier.shimmerEffect(): Modifier = this.drawBehind {

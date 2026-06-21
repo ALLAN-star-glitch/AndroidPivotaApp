@@ -25,20 +25,24 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.22.0 - Build 33 - Enhanced Housing Cards & Navigation Fixes
-        // Added: Elegant housing card design with improved large screen support
-        // Added: Favorite button and verified badge animations
-        // Added: Professional navigation rail (only on main screens for tablet)
-        // Added: Bottom bar navigation padding to prevent overlap with system buttons
-        // Added: Service offering details bottom bar fix
-        // Added: Housing ViewModel integration on Discover screen
-        // Added: Real housing data fetching from backend
-        // Fixed: Housing cards layout on large screens (better proportions, spacing)
-        // Fixed: Navigation rail visibility on tablet (only shows on main screens)
-        // Fixed: Bottom bars overlapping with system navigation buttons
-        // Fixed: Sticky search bar behavior on housing listings
-        versionCode = 33
-        versionName = "1.22.0"
+        // Version 1.23.0 - Build 34 - Enhanced UI with Shimmer Effects & Lottie Error States
+        // Added: Elegant shimmer loading effect for housing and job cards
+        // Added: Lottie animation for error states with retry functionality
+        // Added: Unified shimmer system using sliding light streak effect
+        // Added: Connect logo in bottom navigation bar and tablet rail
+        // Added: Smooth curve bump in bottom navigation for Connect item
+        // Added: Shimmer effect for all skeleton loading states
+        // Added: ErrorStateWithLottie composable for network failures
+        // Fixed: Housing skeleton loading with proper shimmer effect
+        // Fixed: Job skeleton loading with consistent shimmer
+        // Fixed: Navigation rail visibility on tablet detail screens
+        // Fixed: Bottom bar gap when system navigation is hidden
+        // Fixed: Service details bottom bar positioning
+        // Fixed: Housing cards shimmer effect matching AllServicesScreen style
+        // Improved: Bottom navigation bar height and styling
+        // Improved: Navigation rail with logo for Connect item
+        versionCode = 34
+        versionName = "1.23.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -72,208 +76,144 @@ android {
             firebaseAppDistribution {
                 artifactType = "APK"
 
-                testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, janenyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
+                testers = "allanmathenge22@gmail.com, allanmathenge67@gmail.com, allanmathenge319@gmail.com, stepenjuguna9010@gmail.com, s9010901090109010@gmail.com, martinmichuki8@gmail.com, brianmulimuteti@gmail.com, carolkim194@gmail.com, allanmathenge82@gmail.com, jananyambura4272@gmail.com, allaneditor67@gmail.com, kelvijames2023@gmail.com, deniskiplimo816@gmail.com"
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.22.0 - ENHANCED HOUSING CARDS & NAVIGATION FIXES
+          PIVOTACONNECT v1.23.0 - ENHANCED UI WITH SHIMMER EFFECTS & ERROR STATES
 ================================================================
 
-This release introduces elegant housing cards with improved visual
-design, better large screen support, and critical navigation fixes.
+This release introduces elegant shimmer loading effects, Lottie 
+animations for error states, and significant UI improvements across 
+the entire app.
 
 ================================================================
 NEW FEATURES
 ================================================================
 
-ELEGANT HOUSING CARDS
-- Completely redesigned housing cards with modern aesthetic
-- Gradient backgrounds and subtle shadows for premium feel
-- Favorite button with heart icon toggle
-- Animated verified badge with scale and fade effects
-- Status badges (FOR SALE / FOR RENT) with proper color coding
-- Feature chips with icons for bedrooms, bathrooms, sq. meters
+UNIFIED SHIMMER EFFECT SYSTEM
+- Implemented sliding light streak shimmer for all loading states
+- Consistent shimmer across housing, jobs, and service cards
+- Optimized animation speed and smoothness
+- Dark mode compatible shimmer colors
+- Reusable shimmer composable in general package
+- Alpha-based pulsing shimmer option for simple elements
 
-LARGE SCREEN OPTIMIZATION
-- Desktop cards: 20% larger images, more spacing, bigger typography
-- Increased padding from 24-32dp to 32-40dp on large screens
-- Corner radius: 20dp on desktop (was 16dp)
-- Card elevation: 12dp on desktop (was 8dp)
-- Feature chips with "large" variant for better visibility
-- Content now center-aligned vertically for better balance
+LOTTIE ERROR STATE ANIMATIONS
+- Added ErrorStateWithLottie composable for network failures
+- Beautiful Lottie animations for loading errors
+- Retry button with proper refresh functionality
+- Consistent error state across all sections
+- Custom Lottie animations for jobs, housing, and services
+- Seamless integration with existing error handling
 
-TABLEt NAVIGATION IMPROVEMENTS
-- Navigation rail now only shows on main screens (Dashboard, Connect, Profile)
-- Detail screens (HouseListings, JobListings, etc.) have full-width content
-- Dynamic padding adjustment based on navigation rail visibility
-- Consistent experience across all tablet screens
+CONNECT LOGO IN BOTTOM NAVIGATION
+- Custom Connect logo icon in bottom navigation bar
+- Bulging effect with shadow and glow
+- Larger size when selected (56dp)
+- Gradient ring animation for selected state
+- Smooth curved bump in bottom navigation bar
+- Consistent Connect logo in tablet navigation rail
+
+ENHANCED SKELETON LOADING
+- HousingSkeletonContent with shimmer effect
+- ElegantHousingCardSkeleton matching card design
+- JobCardSkeleton with sliding shimmer
+- ServiceGridSkeleton with shimmer effect
+- Proper responsive heights for all screen sizes
+- Consistent loading experience
 
 ================================================================
 UI/UX IMPROVEMENTS
 ================================================================
 
-BOTTOM BAR FIXES
-- Added navigationBarsPadding() to all sticky bottom elements
-- Prevents overlap with system navigation buttons
-- Fixes: Service offering details bottom bar
-- Fixes: House details bottom bar
-- Fixes: Main screen scaffold navigation bar
-- Ensures proper positioning on all devices
+BOTTOM NAVIGATION BAR
+- Increased height to 72dp for better visibility
+- Smooth curve bump at Connect item position
+- Larger Connect logo with glow effect
+- Bold text for Connect label when selected
+- Removed default indicator for cleaner look
+- Consistent styling across all screens
 
-HOUSING VIEWMODEL INTEGRATION
-- Discover screen now uses HousingViewModel for real data
-- Fetches 6 real housing listings from backend
-- Elegant skeleton loading for housing cards
-- Loading, success, and empty states handled properly
-- Consistent with jobs implementation
+NAVIGATION RAIL (TABLET)
+- Connect logo displayed in rail
+- Wider rail (80dp) for logo visibility
+- Proper spacing and alignment
+- Consistent with bottom navigation
+- Only shows on main screens
 
-ENHANCED FILTERING
-- Category filter pills on housing listings
-- Price range filtering (min/max)
-- Status filtering (Available, Pending, Rented, Sold, Inactive)
-- Active filter count badge on filter button
-- Search debouncing for better performance
+ERROR HANDLING
+- Proper visual feedback for network errors
+- Lottie animations for engaging error states
+- Clear retry functionality
+- Consistent error messages
+- Proper state management for error recovery
+
+================================================================
+PERFORMANCE IMPROVEMENTS
+================================================================
+
+OPTIMIZED SHIMMER ANIMATION
+- Faster animation speed (800ms)
+- Linear easing for smooth motion
+- Wider gradient spread (400f)
+- Better start/end positions
+- Reduced CPU usage
+- Animated with rememberInfiniteTransition
+
+EFFICIENT SKELETON RENDERING
+- Proper key management for skeleton items
+- LazyColumn/LazyVerticalGrid for performance
+- Cached shimmer compositions
+- Reduced recompositions
+- Optimized for large lists
 
 ================================================================
 CODE IMPROVEMENTS
 ================================================================
 
-UNIFIED HOUSING EXTENSIONS
-- Consistent helper functions across screens
-- getMainImage(), getFormattedPrice(), getFormattedLocation()
-- getPropertyTypeLabel(), getListingTypeLabel()
-- getFormattedPostedTime() with proper time formatting
-- Shared across HouseListingsScreen and DiscoverScreen
+UNIFIED SHIMMER UTILITY
+- Single source of truth for shimmer effects
+- Reusable shimmerBrush and shimmer modifier
+- Consistent shimmer across all components
+- Easy to customize shimmer colors
+- Proper documentation
 
-RESPONSIVE GRID LAYOUTS
-- Housing grid: 1 column (phone) → 2 (tablet) → 3 (desktop)
-- Adaptive spacing based on screen size
-- Proper card sizing with weight distribution
-- Consistent with jobs and professionals sections
+IMPROVED ERROR STATE HANDLING
+- Common ErrorStateWithLottie composable
+- Configurable Lottie animations
+- Consistent error UI across screens
+- Proper retry callbacks
+- State management improvements
 
-IMPROVED SKELETON LOADING
-- ElegantHousingCardSkeleton matching card design
-- Desktop skeleton: 240dp height with proper layout
-- Medium skeleton: compact row layout
-- Mobile skeleton: optimized for small screens
-- Shimmer effect for loading feedback
-
-================================================================
-NAVIGATION IMPROVEMENTS
-================================================================
-
-CONDITIONAL NAVIGATION RAIL
-- isMainScreen flag determines navigation rail visibility
-- Main screens: Dashboard, Connect, Profile
-- Detail screens: Full-width content without rail
-- Cleaner tablet experience
-
-STICKY SEARCH BEHAVIOR
-- Search bar pins when scrolling on housing listings
-- Smooth transition between unpinned and pinned states
-- Category pills remain accessible while scrolling
-- Consistent with main Discover screen behavior
+RESPONSIVE NAVIGATION
+- Conditional navigation rail visibility
+- Proper padding adjustments
+- Consistent tablet experience
+- Dynamic content width based on rail visibility
 
 ================================================================
-HOUSING CARD VARIANTS
+FIXES & IMPROVEMENTS
 ================================================================
 
-DESKTOP VARIANT
-- 200-240dp square image with 16dp corner radius
-- Large title (24-28sp) and price (26-30sp)
-- Feature chips with circle background
-- View Property button with chevron
-- Posted time with clock icon
+BOTTOM BAR FIXES
+- Fixed gap when system navigation is hidden
+- Proper navigationBarsPadding usage
+- Consistent bottom bar positioning
+- Fixed service details bottom bar
+- Fixed house details bottom bar
 
-MEDIUM/TABLET VARIANT
-- 110dp square image with 12dp corner radius
-- Compact row layout with badges
-- 17sp title and 19sp price
-- Feature chips compact style
-- Chevron button for details
+SKELETON LOADING FIXES
+- Fixed shimmer effect on all skeleton components
+- Proper height for different screen sizes
+- Consistent loading states
+- Fixed skeleton layout issues
 
-MOBILE VARIANT
-- 80-95dp square image
-- Optimized for one or two-column layouts
-- Smaller typography for limited space
-- Essential info only
-- Clean and scannable
-
-================================================================
-TECHNICAL IMPROVEMENTS
-================================================================
-
-PERFORMANCE OPTIMIZATIONS
-- LazyVerticalGrid for efficient rendering
-- Cached image requests with Coil
-- Debounced search to reduce API calls
-- Remembered filtered results
-- Proper key management for list items
-
-STATE MANAGEMENT
-- HousingUiState: Loading, Success, Error
-- Lifecycle-aware state collection
-- Proper error handling with retry
-- Pagination support with loadMore()
-
-RESPONSIVE BREAKPOINTS
-- EXPANDED: 3+ columns, large padding
-- MEDIUM: 2 columns, medium padding
-- COMPACT: 1-2 columns, small padding
-- Landscape detection for two-column compact
-
-================================================================
-BUG FIXES
-================================================================
-
-- Fixed: Housing cards overlapping on large screens
-- Fixed: Navigation rail showing on detail screens
-- Fixed: Bottom bars overlapping system navigation
-- Fixed: Search bar pinning behavior
-- Fixed: Filter count badge updating correctly
-- Fixed: Empty states showing proper messages
-- Fixed: Skeleton loading height consistency
-
-================================================================
-TESTING SCENARIOS
-================================================================
-
-1. TEST HOUSING CARDS ON DIFFERENT SCREENS
-   - Phone (portrait): Single column layout
-   - Phone (landscape): Two-column layout
-   - Tablet (portrait): Two-column layout
-   - Tablet (landscape): Three-column layout
-   - Desktop: Three-column layout with larger cards
-
-2. TEST NAVIGATION ON TABLET
-   - Navigate to Dashboard → Navigation rail visible
-   - Navigate to Connect → Navigation rail visible
-   - Navigate to Profile → Navigation rail visible
-   - Navigate to HouseListings → Navigation rail hidden
-   - Navigate to JobListings → Navigation rail hidden
-   - Navigate back → Rail reappears correctly
-
-3. TEST BOTTOM BAR OVERLAP
-   - Check service details bottom bar
-   - Check house details bottom bar
-   - Check main scaffold navigation bar
-   - Verify no overlap with system navigation
-   - Test on devices with gesture navigation
-   - Test on devices with 3-button navigation
-
-4. TEST REAL DATA INTEGRATION
-   - Open Discover screen
-   - Verify housing data loads from API
-   - Check skeleton loading states
-   - Verify all fields display correctly
-   - Test empty state when no data
-
-5. TEST FILTERING
-   - Filter by category (Apartment, House, Studio, etc.)
-   - Filter by price range (min/max)
-   - Filter by status
-   - Clear filters
-   - Verify results update correctly
+NAVIGATION FIXES
+- Fixed rail showing on detail screens
+- Proper isMainScreen logic
+- Consistent navigation experience
+- Fixed back navigation
 
 ================================================================
 KNOWN ISSUES
@@ -286,10 +226,9 @@ KNOWN ISSUES
 - Booking cancellation flow enhancements in progress
 - Some emulators may have slower animation performance
 - Job images not yet available from API (using fallback)
-- Housing images: some listings may not have images
 
 ================================================================
-COMING IN V1.23.0
+COMING IN V1.24.0
 ================================================================
 
 - Professional contact information from backend
@@ -302,6 +241,8 @@ COMING IN V1.23.0
 - Saved jobs feature
 - Housing application flow
 - Favorites management
+- Enhanced search functionality
+- Push notification integration
 
 ================================================================
 SUPPORT & FEEDBACK
@@ -310,7 +251,7 @@ SUPPORT & FEEDBACK
 For issues, bug reports, or feature requests:
 Email: allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.22.0!
+Thank you for testing PivotaConnect v1.23.0!
 Your feedback helps us create a better user experience.
 
 ================================================================

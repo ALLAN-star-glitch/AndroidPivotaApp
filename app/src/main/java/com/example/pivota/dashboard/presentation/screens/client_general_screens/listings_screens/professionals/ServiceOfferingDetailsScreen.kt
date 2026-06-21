@@ -127,9 +127,10 @@ fun ServiceOfferingDetailsScreen(
         bottomBar = {
             Surface(
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.navigationBarsPadding(), //prevents overlap with system navigation
-                shadowElevation = 8.dp,
-                tonalElevation = 3.dp
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding(), // ✅ ADD THIS - prevents overlap with system navigation
+
             ) {
                 Row(
                     modifier = Modifier

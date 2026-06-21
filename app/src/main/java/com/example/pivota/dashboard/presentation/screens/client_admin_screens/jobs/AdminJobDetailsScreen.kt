@@ -575,8 +575,9 @@ fun AdminJobDetailsBottomBar(
 
     Surface(
         color = colorScheme.surface,
-        shadowElevation = 8.dp,
-        tonalElevation = 2.dp
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding(), // ADD THIS - prevents overlap with system navigation
     ) {
         Row(
             modifier = Modifier

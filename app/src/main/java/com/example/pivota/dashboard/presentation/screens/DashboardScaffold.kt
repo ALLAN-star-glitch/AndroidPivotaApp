@@ -14,8 +14,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -64,13 +67,17 @@ import java.util.Date
 import java.util.concurrent.TimeUnit
 import androidx.compose.material3.SheetState
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.zIndex
 import androidx.navigation.toRoute
+import coil3.compose.AsyncImage
 import com.example.pivota.core.presentations.composables.PivotaFullScreenLoading
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.Booking
 import com.example.pivota.dashboard.domain.model.listings_models.professionals.ServiceOffering
@@ -121,7 +128,7 @@ import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewm
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
-
+import com.example.pivota.R
 // ... (keep all the helper functions and conversion functions as they are)
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -474,7 +481,7 @@ private fun TabletDashboardContent(
     navController: NavHostController,
     currentDestination: NavDestination?,
     visibleRoutes: List<TopLevelRoute>,
-    isMainScreen: Boolean, // NEW: Whether we're on a main screen
+    isMainScreen: Boolean,
     selectedListingForBooking: HousingListingUiModel?,
     selectedListingForViewing: HousingListingUiModel?,
     selectedListingForAdminView: HousingListingUiModel?,
@@ -509,36 +516,112 @@ private fun TabletDashboardContent(
                 NavigationRail(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .navigationBarsPadding(),
+                        .navigationBarsPadding()
+                        .width(80.dp), // Slightly wider for better visibility
                     containerColor = MaterialTheme.colorScheme.surface,
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxHeight(),
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(vertical = 16.dp),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         visibleRoutes.forEach { route ->
-                            val isSelected = currentDestination?.hierarchy?.any { it.route == route.route::class.qualifiedName } == true
-                            NavigationRailItem(
-                                icon = { Icon(route.icon, contentDescription = route.contentDescription, modifier = Modifier.size(24.dp)) },
-                                label = { Text(route.label, fontSize = 11.sp) },
-                                selected = isSelected,
-                                onClick = {
-                                    if (currentDestination?.route != route.route) {
-                                        navController.navigate(route.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
+                            val isSelected = currentDestination?.hierarchy?.any {
+                                it.route == route.route::class.qualifiedName
+                            } == true
+                            val isConnectRoute = route.route == Connect
+
+                            if (isConnectRoute) {
+                                // Special handling for Connect with logo
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .padding(vertical = 8.dp)
+                                        .clickable {
+                                            if (currentDestination?.route != route.route) {
+                                                navController.navigate(route.route) {
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
+                                            }
                                         }
-                                    }
-                                },
-                                colors = NavigationRailItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.tertiary,
-                                    selectedTextColor = MaterialTheme.colorScheme.tertiary,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                ) {
+                                    // Logo image
+                                    Image(
+                                        painter = painterResource(id = R.drawable.pclogo_icon_transparent),
+                                        contentDescription = route.contentDescription,
+                                        modifier = Modifier
+                                            .size(if (isSelected) 40.dp else 32.dp)
+                                            .then(
+                                                if (isSelected) {
+                                                    Modifier.graphicsLayer {
+                                                        scaleX = 1.1f
+                                                        scaleY = 1.1f
+                                                    }
+                                                } else Modifier
+                                            )
+                                    )
+                                    Text(
+                                        route.label,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected)
+                                            MaterialTheme.colorScheme.tertiary
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                }
+                            } else {
+                                NavigationRailItem(
+                                    icon = {
+                                        Icon(
+                                            if (isSelected) route.selectedIcon else route.icon,
+                                            contentDescription = route.contentDescription,
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .then(
+                                                    if (isSelected) {
+                                                        Modifier.graphicsLayer {
+                                                            scaleX = 1.1f
+                                                            scaleY = 1.1f
+                                                        }
+                                                    } else Modifier
+                                                )
+                                        )
+                                    },
+                                    label = {
+                                        Text(
+                                            route.label,
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+                                        )
+                                    },
+                                    selected = isSelected,
+                                    onClick = {
+                                        if (currentDestination?.route != route.route) {
+                                            navController.navigate(route.route) {
+                                                popUpTo(navController.graph.findStartDestination().id) {
+                                                    saveState = true
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                    },
+                                    colors = NavigationRailItemDefaults.colors(
+                                        selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                                        selectedTextColor = MaterialTheme.colorScheme.tertiary,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
                 }
@@ -725,6 +808,16 @@ private fun GuestContent(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
+    // Define which routes are considered "main" screens (where nav rail should show)
+    val isMainScreen = remember(currentDestination) {
+        when (currentDestination?.route) {
+            Dashboard::class.qualifiedName,
+            Connect::class.qualifiedName,
+            Profile::class.qualifiedName -> true
+            else -> false
+        }
+    }
+
     val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isTablet = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED ||
             windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
@@ -735,41 +828,115 @@ private fun GuestContent(
 
     if (isTablet) {
         Row(modifier = Modifier.fillMaxSize()) {
-            NavigationRail(
-                modifier = Modifier.fillMaxHeight().navigationBarsPadding(),
-                containerColor = MaterialTheme.colorScheme.surface,
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxHeight(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
+            // ✅ Navigation Rail - Only show on main screens
+            if (isMainScreen) {
+                NavigationRail(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .navigationBarsPadding()
+                        .width(80.dp), // Slightly wider for the logo
+                    containerColor = MaterialTheme.colorScheme.surface,
                 ) {
-                    visibleRoutes.forEach { route ->
-                        val isSelected = currentDestination?.hierarchy?.any { it.route == route.route::class.qualifiedName } == true
-                        NavigationRailItem(
-                            icon = { Icon(route.icon, contentDescription = route.contentDescription, modifier = Modifier.size(24.dp)) },
-                            label = { Text(route.label, fontSize = 11.sp) },
-                            selected = isSelected,
-                            onClick = {
-                                if (currentDestination?.route != route.route) {
-                                    navController.navigate(route.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(vertical = 16.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        visibleRoutes.forEach { route ->
+                            val isSelected = currentDestination?.hierarchy?.any {
+                                it.route == route.route::class.qualifiedName
+                            } == true
+                            val isConnectRoute = route.route == Connect
+
+                            if (isConnectRoute) {
+                                // Special handling for Connect with logo
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .padding(vertical = 8.dp)
+                                        .clickable {
+                                            if (currentDestination?.route != route.route) {
+                                                navController.navigate(route.route) {
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
+                                            }
+                                        }
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.pclogo_icon_transparent),
+                                        contentDescription = route.contentDescription,
+                                        modifier = Modifier
+                                            .size(if (isSelected) 40.dp else 32.dp)
+                                            .then(
+                                                if (isSelected) {
+                                                    Modifier.graphicsLayer {
+                                                        scaleX = 1.1f
+                                                        scaleY = 1.1f
+                                                    }
+                                                } else Modifier
+                                            )
+                                    )
+                                    Text(
+                                        route.label,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected)
+                                            MaterialTheme.colorScheme.tertiary
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
                                 }
-                            },
-                            colors = NavigationRailItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.tertiary,
-                                selectedTextColor = MaterialTheme.colorScheme.tertiary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        )
+                            } else {
+                                NavigationRailItem(
+                                    icon = {
+                                        Icon(
+                                            route.icon,
+                                            contentDescription = route.contentDescription,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    },
+                                    label = { Text(route.label, fontSize = 11.sp) },
+                                    selected = isSelected,
+                                    onClick = {
+                                        if (currentDestination?.route != route.route) {
+                                            navController.navigate(route.route) {
+                                                popUpTo(navController.graph.findStartDestination().id) {
+                                                    saveState = true
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                    },
+                                    colors = NavigationRailItemDefaults.colors(
+                                        selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                                        selectedTextColor = MaterialTheme.colorScheme.tertiary,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }
-            Box(modifier = Modifier.fillMaxSize().padding(start = 8.dp)) {
+
+            // Content area - with padding only when nav rail is visible
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (isMainScreen) Modifier.padding(start = 8.dp)
+                        else Modifier
+                    )
+            ) {
                 TabletNavHost(
                     navController = navController,
                     selectedListingForBooking = selectedListingForBooking,
@@ -2039,8 +2206,7 @@ fun MainScreenScaffold(
     onSnackbarDismiss: () -> Unit,
     sharedViewModel: DashboardSharedViewModel,
     content: @Composable () -> Unit,
-
-    ) {
+) {
     Scaffold(
         bottomBar = {
             NavigationBar(
@@ -2051,18 +2217,41 @@ fun MainScreenScaffold(
                         it.route == route.route::class.qualifiedName
                     } == true
 
+                    // Check if this is the Connect route
+                    val isConnectRoute = route.route == Connect
+
                     NavigationBarItem(
                         icon = {
-                            Icon(
-                                route.icon,
-                                contentDescription = route.contentDescription,
-                                modifier = Modifier.size(24.dp)
-                            )
+                            if (isConnectRoute) {
+                                // Use logo for Connect item
+                                Image(
+                                    painter = painterResource(id = R.drawable.pclogo_icon_transparent),
+                                    contentDescription = route.contentDescription,
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .then(
+                                            if (isSelected) {
+                                                Modifier.graphicsLayer {
+                                                    scaleX = 1.1f
+                                                    scaleY = 1.1f
+                                                }
+                                            } else Modifier
+                                        )
+                                )
+                            } else {
+                                Icon(
+                                    if (isSelected) route.selectedIcon else route.icon,
+                                    contentDescription = route.contentDescription,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         },
                         label = {
                             Text(
                                 route.label,
-                                fontSize = 12.sp
+                                fontSize = 12.sp,
+                                fontWeight = if (isConnectRoute && isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
                         selected = isSelected,
@@ -2088,10 +2277,9 @@ fun MainScreenScaffold(
             }
         },
         floatingActionButton = {
-                PulsingPostFab(
-                    onClick = { onShowSheetChange(true) }
-                )
-
+            PulsingPostFab(
+                onClick = { onShowSheetChange(true) }
+            )
         },
         floatingActionButtonPosition = FabPosition.End,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -2101,10 +2289,8 @@ fun MainScreenScaffold(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Main content
             content()
 
-            // Snackbar positioned at bottom with small padding - using normal Box with Z-index
             if (showWelcomeSnackbar && welcomeMessage.isNotBlank()) {
                 AnimatedVisibility(
                     visible = true,
@@ -2117,7 +2303,7 @@ fun MainScreenScaffold(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(bottom = 16.dp)
-                        .zIndex(100f)  // Add zIndex to ensure it floats above content
+                        .zIndex(100f)
                 ) {
                     PivotaSnackbar(
                         message = welcomeMessage,
@@ -2130,7 +2316,6 @@ fun MainScreenScaffold(
         }
     }
 
-    // Bottom Sheet (kept outside Scaffold as it's a modal)
     if (showSheet && !isGuestMode) {
         PostOptionsBottomSheet(
             sheetState = sheetState,
@@ -2334,6 +2519,94 @@ fun OfflineWarningBanner(
                             )
                         }
                     }
+                }
+            }
+
+            @Composable
+            fun ConnectLogoIcon(
+                isSelected: Boolean,
+                modifier: Modifier = Modifier
+            ) {
+                // Animation for the bulge/pulse effect
+                val infiniteTransition = rememberInfiniteTransition()
+                val pulse by infiniteTransition.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.15f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1500, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    )
+                )
+
+                // Scale for selection state
+                val scale = if (isSelected) 1.2f else 1f
+
+                Box(
+                    modifier = modifier
+                        .size(if (isSelected) 56.dp else 48.dp)
+                        .then(
+                            if (isSelected) {
+                                Modifier.graphicsLayer {
+                                    scaleX = scale * pulse
+                                    scaleY = scale * pulse
+                                }
+                            } else {
+                                Modifier.graphicsLayer {
+                                    scaleX = pulse
+                                    scaleY = pulse
+                                }
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Glowing background circle
+                    Box(
+                        modifier = Modifier
+                            .size(if (isSelected) 52.dp else 44.dp)
+                            .background(
+                                brush = if (isSelected) {
+                                    Brush.radialGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
+                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f),
+                                            Color.Transparent
+                                        ),
+                                        radius = 50f
+                                    )
+                                } else {
+                                    Brush.radialGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
+                                            Color.Transparent
+                                        ),
+                                        radius = 40f
+                                    )
+                                },
+                                shape = CircleShape
+                            )
+                    )
+
+                    // Logo image with border glow
+                    AsyncImage(
+                        model = R.drawable.pclogo_icon_transparent,
+                        contentDescription = "Connect",
+                        modifier = Modifier
+                            .size(if (isSelected) 36.dp else 28.dp)
+                            .shadow(
+                                elevation = if (isSelected) 8.dp else 4.dp,
+                                shape = CircleShape,
+                                clip = false
+                            )
+                            .clip(CircleShape)
+                            .background(
+                                color = if (isSelected)
+                                    MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
+                                else
+                                    Color.Transparent,
+                                shape = CircleShape
+                            )
+                            .padding(if (isSelected) 4.dp else 2.dp)
+                    )
                 }
             }
         }

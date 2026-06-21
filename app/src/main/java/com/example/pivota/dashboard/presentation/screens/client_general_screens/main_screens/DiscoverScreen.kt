@@ -9,7 +9,6 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,11 +26,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,9 +39,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import com.example.pivota.R
 import com.example.pivota.dashboard.domain.model.listings_models.general.DiscoveryCategory
 import com.example.pivota.dashboard.domain.model.listings_models.housing.GetAllHousingParams
@@ -54,13 +47,13 @@ import com.example.pivota.dashboard.domain.model.listings_models.housing.Housing
 import com.example.pivota.dashboard.domain.model.listings_models.jobs.GetAllJobsParams
 import com.example.pivota.dashboard.domain.model.listings_models.jobs.JobPost
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.BannerType
+import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.ErrorStateWithLottie
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.MarketingCarouselBanner
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.general.ReusableHeader
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.EmptyServicesState
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.ErrorServicesState
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.ServiceGridSkeleton
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ElegantHousingCard
-import com.example.pivota.dashboard.presentation.composables.listings_composables.ElegantHousingCardSkeleton
 import com.example.pivota.dashboard.presentation.composables.listings_composables.JobCardSkeleton
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ModernJobCardV2
 import com.example.pivota.dashboard.presentation.composables.listings_composables.ModernProfessionalCardV2
@@ -78,6 +71,7 @@ import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewm
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HousingViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.JobPostsViewModel
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.listings_composables.categories.getIconForService
+import com.example.pivota.dashboard.presentation.composables.listings_composables.ElegantHousingCardSkeleton
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.JobsUiState
 import com.example.pivota.ui.theme.*
 import kotlinx.coroutines.delay
@@ -311,7 +305,7 @@ fun DiscoverScreen(
                 item(key = "header") {
                     ReusableHeader(
                         colorScheme = colorScheme,
-                        pageTitle = "Connect",
+                        pageTitle = "Pivota Connect",
                         pageSubtitle = "Connect to opportunities near you",
                         isGuestMode = isGuestMode,
                         isSticky = false,
@@ -437,6 +431,8 @@ fun DiscoverScreen(
                     }
                 }
 
+                // In DiscoverScreen.kt - Update the jobs section
+
                 item(key = "jobs_header") {
                     ModernSectionHeader(
                         title = "Jobs Near You",
@@ -448,31 +444,96 @@ fun DiscoverScreen(
                 }
 
                 item(key = "jobs_content") {
-                    if (isLoadingJobs) {
-                        // Show skeletons while loading - using JobCardSkeleton from package
-                        JobsSkeletonContent(
-                            gridColumns = jobGridColumns,
-                            horizontalPadding = horizontalPadding
-                        )
-                    } else if (jobs.isNotEmpty()) {
-                        JobsContent(
-                            jobs = jobs,
-                            gridColumns = jobGridColumns,
-                            horizontalPadding = horizontalPadding
-                        )
-                    } else {
-                        // Show empty state for jobs
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = horizontalPadding, vertical = 16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No jobs available at the moment",
-                                color = colorScheme.onSurfaceVariant,
-                                fontSize = 14.sp
+                    when (val currentJobsState = jobsState) {
+                        is JobsUiState.Loading -> {
+                            // Show JobCardSkeleton directly in a grid
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = horizontalPadding),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                val totalSkeletons = 6
+                                val rows = totalSkeletons / jobGridColumns + if (totalSkeletons % jobGridColumns != 0) 1 else 0
+
+                                repeat(rows) { rowIndex ->
+                                    val itemsInRow = if (rowIndex == rows - 1) {
+                                        val remaining = totalSkeletons - (rowIndex * jobGridColumns)
+                                        if (remaining > 0) remaining else jobGridColumns
+                                    } else {
+                                        jobGridColumns
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        repeat(itemsInRow) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxWidth()
+                                            ) {
+                                                JobCardSkeleton(
+                                                    modifier = Modifier.fillMaxWidth()
+                                                )
+                                            }
+                                        }
+                                        repeat(jobGridColumns - itemsInRow) {
+                                            Spacer(modifier = Modifier.weight(1f))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        is JobsUiState.Success -> {
+                            if (currentJobsState.jobs.isNotEmpty()) {
+                                JobsContent(
+                                    jobs = currentJobsState.jobs,
+                                    gridColumns = jobGridColumns,
+                                    horizontalPadding = horizontalPadding
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = horizontalPadding, vertical = 16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "No jobs available at the moment",
+                                        color = colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
+                        }
+                        is JobsUiState.Error -> {
+                            // ✅ Show Lottie error state with retry button
+                            ErrorStateWithLottie(
+                                message = "Failed to load jobs",
+                                onRetry = {
+                                    jobPostsViewModel.loadJobs(GetAllJobsParams(limit = 6))
+                                },
+                                lottieRawResId = R.raw.oops_error, // Your Lottie file in res/raw/
+                                retryButtonText = "Retry",
+                                modifier = Modifier.padding(vertical = 16.dp)
                             )
+                        }
+                        else -> {
+                            // Empty or unknown state
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = horizontalPadding, vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No jobs available at the moment",
+                                    color = colorScheme.onSurfaceVariant,
+                                    fontSize = 14.sp
+                                )
+                            }
                         }
                     }
                 }
@@ -488,32 +549,98 @@ fun DiscoverScreen(
                 }
 
                 item(key = "housing_content") {
-                    if (isLoadingHousing) {
-                        // Show skeletons for housing
-                        HousingSkeletonContent(
-                            gridColumns = housingGridColumns,
-                            horizontalPadding = horizontalPadding
-                        )
-                    } else if (houses.isNotEmpty()) {
-                        HousingContent(
-                            houses = houses,
-                            gridColumns = housingGridColumns,
-                            horizontalPadding = horizontalPadding,
-                            onListingClick = { /* Navigate to housing detail */ }
-                        )
-                    } else {
-                        // Show empty state for housing
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = horizontalPadding, vertical = 16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No housing available at the moment",
-                                color = colorScheme.onSurfaceVariant,
-                                fontSize = 14.sp
+                    when (val currentHousingState = housingState) {
+                        is HousingUiState.Loading -> {
+                            // Simply call ElegantHousingCardSkeleton directly in a grid
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = horizontalPadding),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                val totalSkeletons = 6
+                                val rows = totalSkeletons / housingGridColumns + if (totalSkeletons % housingGridColumns != 0) 1 else 0
+
+                                repeat(rows) { rowIndex ->
+                                    val itemsInRow = if (rowIndex == rows - 1) {
+                                        val remaining = totalSkeletons - (rowIndex * housingGridColumns)
+                                        if (remaining > 0) remaining else housingGridColumns
+                                    } else {
+                                        housingGridColumns
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        repeat(itemsInRow) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxWidth()
+                                            ) {
+                                                // ✅ Just call ElegantHousingCardSkeleton directly
+                                                ElegantHousingCardSkeleton(
+                                                    modifier = Modifier.fillMaxWidth()
+                                                )
+                                            }
+                                        }
+                                        repeat(housingGridColumns - itemsInRow) {
+                                            Spacer(modifier = Modifier.weight(1f))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        is HousingUiState.Success -> {
+                            if (currentHousingState.houses.isNotEmpty()) {
+                                HousingContent(
+                                    houses = currentHousingState.houses,
+                                    gridColumns = housingGridColumns,
+                                    horizontalPadding = horizontalPadding,
+                                    onListingClick = { /* Navigate to housing detail */ }
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = horizontalPadding, vertical = 16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "No housing available at the moment",
+                                        color = colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
+                        }
+                        is HousingUiState.Error -> {
+                            // ✅ Show Lottie error state with retry button
+                            ErrorStateWithLottie(
+                                message = "Failed to load housing",
+                                onRetry = {
+                                    housingViewModel.loadHousingListings(GetAllHousingParams(limit = 6))
+                                },
+                                lottieRawResId = R.raw.oops_error,
+                                retryButtonText = "Retry",
+                                modifier = Modifier.padding(vertical = 16.dp)
                             )
+                        }
+                        else -> {
+                            // Empty or unknown state
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = horizontalPadding, vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No housing available at the moment",
+                                    color = colorScheme.onSurfaceVariant,
+                                    fontSize = 14.sp
+                                )
+                            }
                         }
                     }
                 }
@@ -637,150 +764,6 @@ fun JobsContent(
     }
 }
 
-// ======================================================
-// JOBS SKELETON CONTENT - Using JobCardSkeleton from package
-// ======================================================
-
-@Composable
-fun JobsSkeletonContent(
-    gridColumns: Int,
-    horizontalPadding: Dp
-) {
-    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
-    val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
-    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
-    val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
-
-    // Get screen configuration for orientation detection
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-
-    // Adaptive spacing based on screen size
-    val cardSpacing = when {
-        isWide -> 16.dp
-        isMedium -> 12.dp
-        isCompact && isLandscape -> 10.dp
-        else -> 12.dp
-    }
-
-    val verticalSpacing = when {
-        isWide -> 16.dp
-        isMedium -> 12.dp
-        isCompact && isLandscape -> 10.dp
-        else -> 12.dp
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = horizontalPadding),
-        verticalArrangement = Arrangement.spacedBy(verticalSpacing)
-    ) {
-        // Show 6 skeleton items (2 rows of 3, or adjusted for grid columns)
-        val totalSkeletons = 6
-        val rows = totalSkeletons / gridColumns + if (totalSkeletons % gridColumns != 0) 1 else 0
-
-        repeat(rows) { rowIndex ->
-            val itemsInRow = if (rowIndex == rows - 1) {
-                val remaining = totalSkeletons - (rowIndex * gridColumns)
-                if (remaining > 0) remaining else gridColumns
-            } else {
-                gridColumns
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(cardSpacing)
-            ) {
-                repeat(itemsInRow) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    ) {
-                        JobCardSkeleton(
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-                repeat(gridColumns - itemsInRow) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-// ======================================================
-// HOUSING SKELETON CONTENT
-// ======================================================
-
-@Composable
-fun HousingSkeletonContent(
-    gridColumns: Int,
-    horizontalPadding: Dp
-) {
-    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
-    val isWide = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
-    val isMedium = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
-    val isCompact = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
-
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-
-    val cardSpacing = when {
-        isWide -> 16.dp
-        isMedium -> 12.dp
-        isCompact && isLandscape -> 10.dp
-        else -> 12.dp
-    }
-
-    val verticalSpacing = when {
-        isWide -> 16.dp
-        isMedium -> 12.dp
-        isCompact && isLandscape -> 10.dp
-        else -> 12.dp
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = horizontalPadding),
-        verticalArrangement = Arrangement.spacedBy(verticalSpacing)
-    ) {
-        val totalSkeletons = 6
-        val rows = totalSkeletons / gridColumns + if (totalSkeletons % gridColumns != 0) 1 else 0
-
-        repeat(rows) { rowIndex ->
-            val itemsInRow = if (rowIndex == rows - 1) {
-                val remaining = totalSkeletons - (rowIndex * gridColumns)
-                if (remaining > 0) remaining else gridColumns
-            } else {
-                gridColumns
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(cardSpacing)
-            ) {
-                repeat(itemsInRow) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    ) {
-                        ElegantHousingCardSkeleton(
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-                repeat(gridColumns - itemsInRow) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
 
 // ======================================================
 // HOUSING CONTENT COMPOSABLE - Using ElegantHousingCard with real data

@@ -120,7 +120,7 @@ fun SplashContent() {
 
                 // Logo in center (protected from overlap by orbit radius)
                 Image(
-                    painter = painterResource(id = R.drawable.pivota_logo_transparent),
+                    painter = painterResource(id = R.drawable.pclogo_icon_transparent),
                     contentDescription = "PivotaConnect Logo",
                     modifier = Modifier
                         .size(120.dp) // Slightly smaller to ensure clearance
