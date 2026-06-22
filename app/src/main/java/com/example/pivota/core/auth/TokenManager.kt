@@ -7,8 +7,11 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import androidx.core.content.ContextCompat
 import com.example.pivota.auth.domain.useCase.AuthUseCases
+import com.example.pivota.core.health.GatewayHealthChecker
 import com.example.pivota.core.network.ApiResult
+import com.example.pivota.core.network.NetworkError
 import com.example.pivota.core.network.getUserFriendlyMessage
+import com.example.pivota.core.network.useCase.HealthUseCase
 import com.example.pivota.core.preferences.PivotaDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +36,8 @@ import kotlin.time.Duration.Companion.milliseconds
 class TokenManager @Inject constructor(
     private val dataStore: PivotaDataStore,
     private val authUseCases: dagger.Lazy<AuthUseCases>,
+    private val gatewayHealthChecker: GatewayHealthChecker,
+    private val healthUseCase: HealthUseCase,
     @ApplicationContext private val context: Context
 ) : TokenProvider {
 
@@ -41,6 +46,10 @@ class TokenManager @Inject constructor(
     private var refreshJob: kotlinx.coroutines.Job? = null
     private var healthCheckJob: kotlinx.coroutines.Job? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // ✅ Cooldown ONLY for token refresh, NOT for network detection
+    private var lastTokenRefreshTime = 0L
+    private val TOKEN_REFRESH_COOLDOWN_MS = 30000L // 30 seconds between token refreshes
 
     // Track refresh failures
     private var consecutiveFailures = 0
@@ -54,6 +63,9 @@ class TokenManager @Inject constructor(
     private var isBackendAvailable = true
     private var lastSuccessfulRefresh = 0L
     private var consecutiveBackendErrors = 0
+
+    // ✅ Track current service status for different messages
+    private var currentStatus: ServiceStatus = ServiceStatus.AVAILABLE
 
     // Emit logout events when token refresh fails permanently
     private val _logoutEvent = MutableSharedFlow<Unit>()
@@ -79,6 +91,22 @@ class TokenManager @Inject constructor(
         private const val HEALTH_CHECK_INTERVAL_MS = 30 * 1000L // Check health every 30 seconds
         private const val HEALTH_CHECK_TIMEOUT_MS = 5000L // 5 second timeout for health check
         private const val MAX_BACKEND_ERRORS_BEFORE_COOLDOWN = 3
+
+        // ✅ Different messages for different scenarios
+        const val MSG_NO_INTERNET = "No internet connection. Please check your network."
+        const val MSG_BACKEND_DOWN = "We are experiencing technical downtime. Our team is working on it."
+        const val MSG_NETWORK_RECOVERED = "Network restored! Reconnecting..."
+        const val MSG_BACKEND_RECOVERED = "Service restored! Refreshing your data..."
+        const val MSG_RETRYING = "Retrying connection..."
+        const val MSG_CONNECTING = "Connecting to service..."
+    }
+
+    // ✅ Service status enum for different states
+    enum class ServiceStatus {
+        AVAILABLE,
+        INTERNET_DOWN,
+        BACKEND_DOWN,
+        RECOVERING
     }
 
     enum class RecoveryType {
@@ -89,6 +117,7 @@ class TokenManager @Inject constructor(
 
     data class BackendStatus(
         val isAvailable: Boolean,
+        val status: ServiceStatus = ServiceStatus.AVAILABLE,
         val lastError: String? = null,
         val consecutiveErrors: Int = 0,
         val lastSuccessTime: Long = 0
@@ -126,6 +155,7 @@ class TokenManager @Inject constructor(
         isRefreshing = false
         isNetworkAvailable = isNetworkActuallyAvailable()
         isBackendAvailable = true
+        currentStatus = ServiceStatus.AVAILABLE
         lastSuccessfulRefresh = System.currentTimeMillis()
         consecutiveBackendErrors = 0
 
@@ -188,7 +218,6 @@ class TokenManager @Inject constructor(
         }
     }
 
-
     private fun registerNetworkCallback() {
         val connectivityManager = ContextCompat.getSystemService(
             context,
@@ -203,28 +232,100 @@ class TokenManager @Inject constructor(
         networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 println("🌐 [TokenManager] 🔥 NETWORK CALLBACK FIRED - Internet available!")
+                // ✅ INSTANT - no delay for network detection
+                isNetworkAvailable = true
+                println("✅ [TokenManager] Network is available: true")
+
                 scope.launch {
-                    delay(2000.milliseconds)
-                    isNetworkAvailable = true
+                    // ✅ Small delay only for stability, not for detection
+                    delay(500.milliseconds)
+
+                    // ✅ Double-check network is actually available
+                    if (!isNetworkActuallyAvailable()) {
+                        println("⚠️ [TokenManager] Network callback fired but no actual network")
+                        isNetworkAvailable = false
+                        return@launch
+                    }
+
                     println("✅ [TokenManager] Network confirmed available")
+
+                    // ✅ If we were in INTERNET_DOWN state, transition to RECOVERING
+                    if (currentStatus == ServiceStatus.INTERNET_DOWN) {
+                        currentStatus = ServiceStatus.RECOVERING
+                        _networkErrorEvent.emit(MSG_NETWORK_RECOVERED)
+                        _backendStatusEvent.emit(BackendStatus(
+                            isAvailable = false,
+                            status = ServiceStatus.RECOVERING,
+                            lastError = MSG_NETWORK_RECOVERED,
+                            consecutiveErrors = consecutiveBackendErrors
+                        ))
+                    }
+
+                    // ✅ Check token refresh cooldown before refreshing
+                    val now = System.currentTimeMillis()
+                    if (now - lastTokenRefreshTime < TOKEN_REFRESH_COOLDOWN_MS) {
+                        val secondsLeft = (TOKEN_REFRESH_COOLDOWN_MS - (now - lastTokenRefreshTime)) / 1000
+                        println("⚠️ [TokenManager] Token refresh skipped - cooldown active (${secondsLeft}s remaining)")
+                        return@launch
+                    }
 
                     val backendHealthy = checkBackendHealth()
 
                     if (backendHealthy) {
                         isBackendAvailable = true
-                        println("✅ [TokenManager] Network and backend available, refreshing token...")
+                        currentStatus = ServiceStatus.RECOVERING
+                        println("✅ [TokenManager] Network and backend available")
+
+                        _backendStatusEvent.emit(BackendStatus(
+                            isAvailable = true,
+                            status = ServiceStatus.RECOVERING,
+                            lastSuccessTime = System.currentTimeMillis()
+                        ))
                         _recoveryEvent.emit(RecoveryType.NETWORK_RECOVERED)
+                        _networkErrorEvent.emit(MSG_NETWORK_RECOVERED)
+
+                        lastTokenRefreshTime = System.currentTimeMillis()
+                        println("🔄 [TokenManager] Refreshing token after network recovery...")
                         refreshToken()
+
+                        currentStatus = ServiceStatus.AVAILABLE
+                        _backendStatusEvent.emit(BackendStatus(
+                            isAvailable = true,
+                            status = ServiceStatus.AVAILABLE,
+                            lastSuccessTime = System.currentTimeMillis()
+                        ))
+                        _networkErrorEvent.emit("")
                     } else {
                         println("⚠️ [TokenManager] Network available but backend still down")
+                        currentStatus = ServiceStatus.BACKEND_DOWN
+                        _backendStatusEvent.emit(BackendStatus(
+                            isAvailable = false,
+                            status = ServiceStatus.BACKEND_DOWN,
+                            lastError = MSG_BACKEND_DOWN,
+                            consecutiveErrors = consecutiveBackendErrors
+                        ))
                         _recoveryEvent.emit(RecoveryType.NETWORK_RECOVERED)
+                        _networkErrorEvent.emit(MSG_BACKEND_DOWN)
                     }
                 }
             }
 
             override fun onLost(network: Network) {
                 println("⚠️ [TokenManager] 🔥 NETWORK CALLBACK FIRED - Internet lost!")
+                // ✅ INSTANT - immediately update network state
                 isNetworkAvailable = false
+                currentStatus = ServiceStatus.INTERNET_DOWN
+
+                scope.launch {
+                    _backendStatusEvent.emit(BackendStatus(
+                        isAvailable = false,
+                        status = ServiceStatus.INTERNET_DOWN,
+                        lastError = MSG_NO_INTERNET,
+                        consecutiveErrors = 0
+                    ))
+                    _networkErrorEvent.emit(MSG_NO_INTERNET)
+                    println("📡 [TokenManager] Emitted NO_INTERNET message")
+                }
             }
         }
 
@@ -250,11 +351,23 @@ class TokenManager @Inject constructor(
     private suspend fun performHealthCheck() {
         val previousBackendState = isBackendAvailable
 
-        // Use actual network check instead of assuming true
-        isNetworkAvailable = isNetworkActuallyAvailable()
+        // ✅ Check network state
+        val networkAvailable = isNetworkActuallyAvailable()
+        println("🔍 [TokenManager] performHealthCheck - networkAvailable: $networkAvailable")
 
-        if (!isNetworkAvailable) {
+        if (!networkAvailable) {
             println("⚠️ [TokenManager] No network connection, skipping health check")
+            // ✅ Set INTERNET_DOWN status if not already
+            if (currentStatus != ServiceStatus.INTERNET_DOWN) {
+                currentStatus = ServiceStatus.INTERNET_DOWN
+                _backendStatusEvent.emit(BackendStatus(
+                    isAvailable = false,
+                    status = ServiceStatus.INTERNET_DOWN,
+                    lastError = MSG_NO_INTERNET,
+                    consecutiveErrors = 0
+                ))
+                _networkErrorEvent.emit(MSG_NO_INTERNET)
+            }
             return
         }
 
@@ -265,65 +378,133 @@ class TokenManager @Inject constructor(
             isBackendAvailable = backendHealthy
 
             if (backendHealthy && !previousBackendState) {
-                // Backend just recovered!
+                // ✅ Backend recovered!
                 println("✅ [TokenManager] Backend is back online!")
+                currentStatus = ServiceStatus.RECOVERING
+
                 _backendStatusEvent.emit(BackendStatus(
                     isAvailable = true,
+                    status = ServiceStatus.RECOVERING,
                     lastSuccessTime = System.currentTimeMillis()
                 ))
                 _recoveryEvent.emit(RecoveryType.BACKEND_RECOVERED)
+                _networkErrorEvent.emit(MSG_BACKEND_RECOVERED)
 
-                // Reset backend error counter
                 consecutiveBackendErrors = 0
 
-                // Force token refresh after backend recovery
-                if (consecutiveFailures > 0 && consecutiveFailures < MAX_CONSECUTIVE_FAILURES) {
-                    println("🔄 [TokenManager] Backend recovered, attempting token refresh...")
+                // ✅ Check token refresh cooldown
+                val now = System.currentTimeMillis()
+                if (now - lastTokenRefreshTime >= TOKEN_REFRESH_COOLDOWN_MS) {
+                    println("🔄 [TokenManager] Refreshing token after backend recovery...")
                     delay(2000)
                     refreshToken()
+                    lastTokenRefreshTime = System.currentTimeMillis()
+                } else {
+                    val secondsLeft = (TOKEN_REFRESH_COOLDOWN_MS - (now - lastTokenRefreshTime)) / 1000
+                    println("⚠️ [TokenManager] Token refresh skipped - cooldown active (${secondsLeft}s remaining)")
                 }
+
+                currentStatus = ServiceStatus.AVAILABLE
+                _backendStatusEvent.emit(BackendStatus(
+                    isAvailable = true,
+                    status = ServiceStatus.AVAILABLE,
+                    lastSuccessTime = System.currentTimeMillis()
+                ))
+                delay(3000)
+                _networkErrorEvent.emit("")
+
             } else if (!backendHealthy && previousBackendState) {
-                // Backend just went down
+                // ✅ Backend went down (network is still available)
                 println("❌ [TokenManager] Backend appears to be down")
+                currentStatus = ServiceStatus.BACKEND_DOWN
+
                 _backendStatusEvent.emit(BackendStatus(
                     isAvailable = false,
-                    lastError = "Backend service unavailable",
+                    status = ServiceStatus.BACKEND_DOWN,
+                    lastError = MSG_BACKEND_DOWN,
                     consecutiveErrors = consecutiveBackendErrors
                 ))
-                _networkErrorEvent.emit("Service temporarily unavailable. Will retry automatically.")
+                _networkErrorEvent.emit(MSG_BACKEND_DOWN)
             }
         }
     }
 
     private suspend fun checkBackendHealth(): Boolean {
-        // First, verify we actually have network
-        if (!isNetworkActuallyAvailable()) {
-            println("⚠️ [TokenManager] No network available for health check")
+        // ✅ Step 1: Check actual network connectivity FIRST
+        val networkAvailable = isNetworkActuallyAvailable()
+        println("🔍 [TokenManager] checkBackendHealth - isNetworkActuallyAvailable: $networkAvailable")
+
+        if (!networkAvailable) {
+            println("⚠️ [TokenManager] No network connection detected")
+            currentStatus = ServiceStatus.INTERNET_DOWN
+            _backendStatusEvent.emit(BackendStatus(
+                isAvailable = false,
+                status = ServiceStatus.INTERNET_DOWN,
+                lastError = MSG_NO_INTERNET,
+                consecutiveErrors = consecutiveBackendErrors
+            ))
+            _networkErrorEvent.emit(MSG_NO_INTERNET)
             return false
         }
 
+        // ✅ Step 2: DNS check (only if network is available)
+        val isGatewayHealthy = gatewayHealthChecker.isGatewayHealthy()
+        if (!isGatewayHealthy) {
+            println("⚠️ [TokenManager] DNS resolution failed")
+            consecutiveBackendErrors++
+            return false
+        }
+
+        // ✅ Step 3: HTTP health check
         return try {
-            val refreshToken = dataStore.getRefreshToken()
-            if (refreshToken != null) {
-                val result = withTimeoutOrNull(HEALTH_CHECK_TIMEOUT_MS.milliseconds) {
-                    authUseCases.get().refreshToken(refreshToken)
-                }
-                if (result == null) {
-                    consecutiveBackendErrors++
-                    println("⚠️ [TokenManager] Health check timeout - backend unreachable")
-                    false
-                } else {
-                    if (consecutiveBackendErrors > 0) {
-                        println("✅ [TokenManager] Health check successful - backend reachable")
-                        consecutiveBackendErrors = 0
+            val result = withTimeoutOrNull(HEALTH_CHECK_TIMEOUT_MS.milliseconds) {
+                healthUseCase()
+            }
+
+            if (result == null) {
+                println("⚠️ [TokenManager] Health check timeout - service unreachable")
+                consecutiveBackendErrors++
+                return false
+            }
+
+            when (result) {
+                is ApiResult.Success -> {
+                    val healthData = result.data
+                    if (healthData.status == "ok") {
+                        if (consecutiveBackendErrors > 0) {
+                            println("✅ [TokenManager] Service recovered!")
+                            consecutiveBackendErrors = 0
+                        }
+                        true
+                    } else {
+                        println("⚠️ [TokenManager] Health check status: ${healthData.status}")
+                        consecutiveBackendErrors++
+                        false
                     }
-                    true
                 }
-            } else {
-                true
+                is ApiResult.Error -> {
+                    // ✅ Check if it's a network error
+                    if (result.networkError is NetworkError.NoInternet ||
+                        result.networkError is NetworkError.Timeout) {
+                        println("⚠️ [TokenManager] Network/connection issue detected")
+                        currentStatus = ServiceStatus.INTERNET_DOWN
+                        _backendStatusEvent.emit(BackendStatus(
+                            isAvailable = false,
+                            status = ServiceStatus.INTERNET_DOWN,
+                            lastError = MSG_NO_INTERNET,
+                            consecutiveErrors = consecutiveBackendErrors
+                        ))
+                        _networkErrorEvent.emit(MSG_NO_INTERNET)
+                    } else {
+                        println("⚠️ [TokenManager] Health check error: ${result.networkError.userFriendlyMessage}")
+                        consecutiveBackendErrors++
+                    }
+                    false
+                }
+                ApiResult.Loading -> false
             }
         } catch (e: Exception) {
-            println("⚠️ [TokenManager] Backend health check failed: ${e.message}")
+            println("⚠️ [TokenManager] Health check failed: ${e.message}")
             consecutiveBackendErrors++
             false
         }
@@ -344,6 +525,7 @@ class TokenManager @Inject constructor(
         healthCheckJob = null
         consecutiveFailures = 0
         isRefreshing = false
+        currentStatus = ServiceStatus.AVAILABLE
         println("🔄 [TokenManager] Token auto-refresh stopped")
     }
 
@@ -392,6 +574,14 @@ class TokenManager @Inject constructor(
 
     // Force refresh token
     suspend fun refreshToken(): Boolean {
+        // ✅ Check token refresh cooldown
+        val now = System.currentTimeMillis()
+        if (now - lastTokenRefreshTime < TOKEN_REFRESH_COOLDOWN_MS) {
+            val secondsLeft = (TOKEN_REFRESH_COOLDOWN_MS - (now - lastTokenRefreshTime)) / 1000
+            println("⚠️ [TokenManager] Refresh skipped - cooldown active (${secondsLeft}s remaining)")
+            return false
+        }
+
         if (isRefreshing) {
             println("⚠️ [TokenManager] Refresh already in progress, skipping")
             return false
@@ -402,14 +592,16 @@ class TokenManager @Inject constructor(
         if (!hasNetwork) {
             println("⚠️ [TokenManager] No network connection (actual check), skipping refresh")
             isNetworkAvailable = false
-            _networkErrorEvent.emit("No internet connection. Will retry when online.")
+            currentStatus = ServiceStatus.INTERNET_DOWN
+            _networkErrorEvent.emit(MSG_NO_INTERNET)
             return false
         }
         isNetworkAvailable = true
 
         if (!isBackendAvailable) {
             println("⚠️ [TokenManager] Backend appears down, skipping refresh")
-            _networkErrorEvent.emit("Service is temporarily unavailable. Please try again later.")
+            currentStatus = ServiceStatus.BACKEND_DOWN
+            _networkErrorEvent.emit(MSG_BACKEND_DOWN)
             return false
         }
 
@@ -425,7 +617,7 @@ class TokenManager @Inject constructor(
 
             println("🔄 [TokenManager] Attempting token refresh...")
 
-            val result = withTimeoutOrNull(REFRESH_TIMEOUT_MS) {
+            val result = withTimeoutOrNull(REFRESH_TIMEOUT_MS.milliseconds) {
                 authUseCases.get().refreshToken(refreshToken)
             }
 
@@ -466,6 +658,8 @@ class TokenManager @Inject constructor(
         lastSuccessfulRefresh = System.currentTimeMillis()
         isBackendAvailable = true
         isNetworkAvailable = true
+        currentStatus = ServiceStatus.AVAILABLE
+        lastTokenRefreshTime = System.currentTimeMillis()
 
         dataStore.saveTokensWithTimestamp(accessToken, refreshToken)
         println("✅ [TokenManager] Token refreshed successfully")
@@ -479,11 +673,11 @@ class TokenManager @Inject constructor(
         consecutiveBackendErrors++
         isBackendAvailable = false
         isNetworkAvailable = true
+        currentStatus = ServiceStatus.BACKEND_DOWN
 
         println("❌ [TokenManager] Token refresh timeout ($consecutiveBackendErrors/$MAX_BACKEND_ERRORS_BEFORE_COOLDOWN)")
 
         if (consecutiveBackendErrors >= MAX_BACKEND_ERRORS_BEFORE_COOLDOWN) {
-            println("⚠️ [TokenManager] Multiple timeouts - backend may be down")
             _networkErrorEvent.emit("Service is slow or unavailable. Using cached data.")
         } else {
             _networkErrorEvent.emit("Connection timeout. Will retry automatically.")
@@ -503,10 +697,12 @@ class TokenManager @Inject constructor(
             consecutiveBackendErrors++
             isBackendAvailable = false
             isNetworkAvailable = true
+            currentStatus = ServiceStatus.BACKEND_DOWN
             println("⚠️ [TokenManager] Backend error detected ($consecutiveBackendErrors/$MAX_BACKEND_ERRORS_BEFORE_COOLDOWN): $errorMessage")
 
             _backendStatusEvent.emit(BackendStatus(
                 isAvailable = false,
+                status = ServiceStatus.BACKEND_DOWN,
                 lastError = errorMessage,
                 consecutiveErrors = consecutiveBackendErrors
             ))
@@ -525,6 +721,7 @@ class TokenManager @Inject constructor(
             println("   Message: $errorMessage")
             isNetworkAvailable = false
             isBackendAvailable = false
+            currentStatus = ServiceStatus.INTERNET_DOWN
             _networkErrorEvent.emit(errorMessage)
             lastRefreshAttempt = System.currentTimeMillis() - (RETRY_COOLDOWN_MS - 5000)
             return
@@ -550,10 +747,12 @@ class TokenManager @Inject constructor(
                     consecutiveBackendErrors++
                     isBackendAvailable = false
                     isNetworkAvailable = true
+                    currentStatus = ServiceStatus.BACKEND_DOWN
                     println("⚠️ [TokenManager] Backend error detected ($consecutiveBackendErrors/$MAX_BACKEND_ERRORS_BEFORE_COOLDOWN): ${e.message}")
 
                     _backendStatusEvent.emit(BackendStatus(
                         isAvailable = false,
+                        status = ServiceStatus.BACKEND_DOWN,
                         lastError = e.message ?: "Backend service unavailable",
                         consecutiveErrors = consecutiveBackendErrors
                     ))
@@ -571,6 +770,7 @@ class TokenManager @Inject constructor(
                     println("⚠️ [TokenManager] Network/connection issue: ${e.message}")
                     isNetworkAvailable = false
                     isBackendAvailable = false
+                    currentStatus = ServiceStatus.INTERNET_DOWN
                     _networkErrorEvent.emit("No internet connection. Will retry when online.")
                     return
                 }
@@ -640,7 +840,7 @@ class TokenManager @Inject constructor(
                 (message.contains("unknownhost") && !message.contains("10.0.2.2"))
     }
 
-    private suspend fun forceLogout() {
+    suspend fun forceLogout() {
         println("🚨 [TokenManager] Force logout initiated")
 
         try {
@@ -649,6 +849,7 @@ class TokenManager @Inject constructor(
             stopAutoRefresh()
             consecutiveFailures = 0
             isRefreshing = false
+            currentStatus = ServiceStatus.AVAILABLE
             _logoutEvent.emit(Unit)
             println("🚨 [TokenManager] User forcefully logged out due to token refresh failures")
         } catch (e: Exception) {
@@ -687,6 +888,7 @@ class TokenManager @Inject constructor(
             dataStore.clearGuestMode()
             consecutiveFailures = 0
             isRefreshing = false
+            currentStatus = ServiceStatus.AVAILABLE
             println("🔐 [TokenManager] Session cleared manually")
         } catch (e: Exception) {
             println("❌ [TokenManager] Error clearing session: ${e.message}")
@@ -697,6 +899,11 @@ class TokenManager @Inject constructor(
     suspend fun getTokenAge(): Long {
         return dataStore.getTokenAge()
     }
+
+    /**
+     * Get current network availability
+     */
+    fun isNetworkAvailable(): Boolean = isNetworkAvailable
 
     // Get current access token (without refresh check)
     suspend fun getCurrentToken(): String? {
@@ -727,13 +934,15 @@ class TokenManager @Inject constructor(
 
         if (!isNetworkAvailable) {
             println("⚠️ [TokenManager] No network connection, manual retry failed")
-            _networkErrorEvent.emit("No internet connection. Please check your network.")
+            currentStatus = ServiceStatus.INTERNET_DOWN
+            _networkErrorEvent.emit(MSG_NO_INTERNET)
             return false
         }
 
         if (!isBackendAvailable) {
             println("⚠️ [TokenManager] Backend unavailable, manual retry failed")
-            _networkErrorEvent.emit("Service is still unavailable. Please try again in a few minutes.")
+            currentStatus = ServiceStatus.BACKEND_DOWN
+            _networkErrorEvent.emit(MSG_BACKEND_DOWN)
             return false
         }
 
@@ -741,7 +950,9 @@ class TokenManager @Inject constructor(
 
         if (result) {
             println("✅ [TokenManager] Manual retry successful")
+            currentStatus = ServiceStatus.AVAILABLE
             _recoveryEvent.emit(RecoveryType.MANUAL_RETRY)
+            _networkErrorEvent.emit("")
         } else {
             println("❌ [TokenManager] Manual retry failed")
         }
@@ -759,6 +970,7 @@ class TokenManager @Inject constructor(
         isRefreshing = false
         isNetworkAvailable = isNetworkActuallyAvailable()
         isBackendAvailable = true
+        currentStatus = ServiceStatus.AVAILABLE
         println("🔄 [TokenManager] Failure state reset")
     }
 
@@ -768,10 +980,16 @@ class TokenManager @Inject constructor(
     fun getBackendStatus(): BackendStatus {
         return BackendStatus(
             isAvailable = isBackendAvailable,
+            status = currentStatus,
             consecutiveErrors = consecutiveBackendErrors,
             lastSuccessTime = lastSuccessfulRefresh
         )
     }
+
+    /**
+     * Get current service status
+     */
+    fun getCurrentStatus(): ServiceStatus = currentStatus
 
     /**
      * Call logout API to invalidate refresh token on server
@@ -819,6 +1037,7 @@ class TokenManager @Inject constructor(
             dataStore.clearGuestMode()
             consecutiveFailures = 0
             isRefreshing = false
+            currentStatus = ServiceStatus.AVAILABLE
             _logoutEvent.emit(Unit)
 
             println("✅ [TokenManager] Local session cleared successfully")

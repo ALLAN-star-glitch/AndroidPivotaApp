@@ -35,6 +35,18 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
+// ======================================================
+// BANNER TYPES
+// ======================================================
+
+enum class BannerType {
+    NONE,
+    NO_INTERNET,
+    BACKEND_DOWN,
+    RECOVERING,
+    BACKEND_RECOVERED
+}
+
 @HiltViewModel
 class DashboardSharedViewModel @Inject constructor(
     private val getProfileUseCase: GetProfileUseCase,
@@ -93,6 +105,19 @@ class DashboardSharedViewModel @Inject constructor(
     private val _offlineMessage = MutableStateFlow<String?>(null)
     val offlineMessage: StateFlow<String?> = _offlineMessage.asStateFlow()
 
+    // ======================================================
+    // BANNER TYPE STATE (NEW)
+    // ======================================================
+
+    private val _bannerType = MutableStateFlow<BannerType>(BannerType.NONE)
+    val bannerType: StateFlow<BannerType> = _bannerType.asStateFlow()
+
+    private val _isBackendDown = MutableStateFlow(false)
+    val isBackendDown: StateFlow<Boolean> = _isBackendDown.asStateFlow()
+
+    private val _isInternetDown = MutableStateFlow(false)
+    val isInternetDown: StateFlow<Boolean> = _isInternetDown.asStateFlow()
+
     // Manual retry state
     private val _isManualRetrying = MutableStateFlow(false)
     val isManualRetrying: StateFlow<Boolean> = _isManualRetrying.asStateFlow()
@@ -108,7 +133,6 @@ class DashboardSharedViewModel @Inject constructor(
     private var lastFetchTime = 0L
     private val STALE_THRESHOLD_MS = 5 * 60 * 1000 // 5 minutes
 
-    // ✅ Single Json instance for performance
     companion object {
         private val json = Json {
             ignoreUnknownKeys = true
@@ -123,6 +147,10 @@ class DashboardSharedViewModel @Inject constructor(
     private var currentUserId: String = ""
     private var hasEverLoadedProfile = false
 
+    private var lastNetworkMessage: String? = null
+    private var isRecoveringBannerShowing = false
+
+
     init {
         viewModelScope.launch {
             // Step 1: Load cached profile from Room immediately (instant display)
@@ -132,25 +160,56 @@ class DashboardSharedViewModel @Inject constructor(
             refreshProfileInBackground()
         }
 
-        // Listen for backend recovery and auto-refresh profile
+        // ✅ Listen for backend recovery and auto-refresh profile
         viewModelScope.launch {
             tokenManager.recoveryEvent.collect { recoveryType ->
                 when (recoveryType) {
                     TokenManager.RecoveryType.BACKEND_RECOVERED -> {
                         println("🔄 [DashboardSharedViewModel] Backend recovered! Auto-refreshing profile...")
-                        _offlineMessage.value = "Connection restored! Refreshing your data..."
+                        if (_bannerType.value != BannerType.RECOVERING) {
+                            _bannerType.value = BannerType.RECOVERING
+                            _offlineMessage.value = TokenManager.MSG_BACKEND_RECOVERED
+                            _isOffline.value = true
+                            _isBackendDown.value = false
+                            _isInternetDown.value = false
+                            lastNetworkMessage = TokenManager.MSG_BACKEND_RECOVERED
+                        }
+
                         delay(2000.milliseconds)
                         refreshProfileInBackground()
+
                         delay(1000.milliseconds)
+                        _bannerType.value = BannerType.NONE
                         _offlineMessage.value = null
                         _isOffline.value = false
+                        lastNetworkMessage = null
+                        isRecoveringBannerShowing = false
                     }
                     TokenManager.RecoveryType.NETWORK_RECOVERED -> {
-                        println("🔄 [DashboardSharedViewModel] Network recovered, waiting for service...")
-                        _offlineMessage.value = "Network restored. Waiting for service to become available..."
+                        println("🔄 [DashboardSharedViewModel] Network recovered, checking service...")
+                        if (_bannerType.value != BannerType.RECOVERING) {
+                            _bannerType.value = BannerType.RECOVERING
+                            _offlineMessage.value = "Network restored. Checking service availability..."
+                            _isOffline.value = true
+                            _isBackendDown.value = false
+                            _isInternetDown.value = false
+                            lastNetworkMessage = "Network restored. Checking service availability..."
+                            isRecoveringBannerShowing = true
+                        }
+
                         delay(3000.milliseconds)
-                        if (_offlineMessage.value == "Network restored. Waiting for service to become available...") {
-                            _offlineMessage.value = "Service still unavailable. Will retry automatically when service is restored."
+                        if (tokenManager.getCurrentStatus() == TokenManager.ServiceStatus.AVAILABLE) {
+                            _bannerType.value = BannerType.NONE
+                            _offlineMessage.value = null
+                            _isOffline.value = false
+                            lastNetworkMessage = null
+                            isRecoveringBannerShowing = false
+                        } else {
+                            _bannerType.value = BannerType.BACKEND_DOWN
+                            _offlineMessage.value = TokenManager.MSG_BACKEND_DOWN
+                            _isBackendDown.value = true
+                            lastNetworkMessage = TokenManager.MSG_BACKEND_DOWN
+                            isRecoveringBannerShowing = false
                         }
                     }
                     TokenManager.RecoveryType.MANUAL_RETRY -> {
@@ -160,25 +219,156 @@ class DashboardSharedViewModel @Inject constructor(
             }
         }
 
-        // Listen for network error events to show banner when backend/network is down
+        // ✅ Listen for network error events
         viewModelScope.launch {
             tokenManager.networkErrorEvent.collect { errorMessage ->
                 println("🔴🔴🔴 [DashboardSharedViewModel] Received network error: $errorMessage")
-                if (errorMessage.isNotBlank()) {
-                    _offlineMessage.value = errorMessage
-                    _isOffline.value = true
-                    println("📡 [DashboardSharedViewModel] Banner should now show with message: $errorMessage")
+
+                // ✅ Skip if same message was already processed
+                if (errorMessage == lastNetworkMessage && errorMessage.isNotEmpty()) {
+                    println("📡 [DashboardSharedViewModel] Skipping duplicate message: $errorMessage")
+                    return@collect
+                }
+
+                when {
+                    errorMessage.isEmpty() -> {
+                        _bannerType.value = BannerType.NONE
+                        _offlineMessage.value = null
+                        _isOffline.value = false
+                        _isBackendDown.value = false
+                        _isInternetDown.value = false
+                        lastNetworkMessage = null
+                        isRecoveringBannerShowing = false
+                    }
+                    errorMessage.contains("No internet") || errorMessage == TokenManager.MSG_NO_INTERNET -> {
+                        isRecoveringBannerShowing = false
+                        _bannerType.value = BannerType.NO_INTERNET
+                        _offlineMessage.value = errorMessage
+                        _isOffline.value = true
+                        _isBackendDown.value = false
+                        _isInternetDown.value = true
+                        lastNetworkMessage = errorMessage
+                        println("📡 [DashboardSharedViewModel] Banner: NO_INTERNET")
+                    }
+                    errorMessage.contains("Service temporarily unavailable") || errorMessage == TokenManager.MSG_BACKEND_DOWN -> {
+                        isRecoveringBannerShowing = false
+                        _bannerType.value = BannerType.BACKEND_DOWN
+                        _offlineMessage.value = errorMessage
+                        _isOffline.value = true
+                        _isBackendDown.value = true
+                        _isInternetDown.value = false
+                        lastNetworkMessage = errorMessage
+                        println("📡 [DashboardSharedViewModel] Banner: BACKEND_DOWN")
+                    }
+                    errorMessage.contains("restored") || errorMessage == TokenManager.MSG_NETWORK_RECOVERED || errorMessage == TokenManager.MSG_BACKEND_RECOVERED -> {
+                        // ✅ Only show RECOVERING if not already showing
+                        if (!isRecoveringBannerShowing) {
+                            isRecoveringBannerShowing = true
+                            _bannerType.value = BannerType.RECOVERING
+                            _offlineMessage.value = errorMessage
+                            _isOffline.value = true
+                            _isBackendDown.value = false
+                            _isInternetDown.value = false
+                            lastNetworkMessage = errorMessage
+                            println("📡 [DashboardSharedViewModel] Banner: RECOVERING")
+                        } else {
+                            println("📡 [DashboardSharedViewModel] Skipping RECOVERING - already showing")
+                        }
+                        // Auto-dismiss after 3 seconds
+                        delay(3000.milliseconds)
+                        if (_bannerType.value == BannerType.RECOVERING) {
+                            _bannerType.value = BannerType.NONE
+                            _offlineMessage.value = null
+                            _isOffline.value = false
+                            lastNetworkMessage = null
+                            isRecoveringBannerShowing = false
+                        }
+                    }
+                    else -> {
+                        if (errorMessage.isNotBlank()) {
+                            _offlineMessage.value = errorMessage
+                            _isOffline.value = true
+                            lastNetworkMessage = errorMessage
+                            isRecoveringBannerShowing = false
+                            println("📡 [DashboardSharedViewModel] Banner should now show with message: $errorMessage")
+                        }
+                    }
                 }
             }
         }
 
-        // Also listen for backend status changes
+        // ✅ Listen for backend status changes
         viewModelScope.launch {
             tokenManager.backendStatusEvent.collect { status ->
-                println("📡 [DashboardSharedViewModel] Backend status: isAvailable=${status.isAvailable}, errors=${status.consecutiveErrors}")
-                if (!status.isAvailable && status.lastError != null) {
-                    _offlineMessage.value = status.lastError
-                    _isOffline.value = true
+                println("📡 [DashboardSharedViewModel] Backend status: isAvailable=${status.isAvailable}, status=${status.status}")
+
+                val currentBanner = _bannerType.value
+
+                when (status.status) {
+                    TokenManager.ServiceStatus.AVAILABLE -> {
+                        if (currentBanner != BannerType.NONE) {
+                            _bannerType.value = BannerType.NONE
+                            _offlineMessage.value = null
+                            _isOffline.value = false
+                            _isBackendDown.value = false
+                            _isInternetDown.value = false
+                            lastNetworkMessage = null
+                            isRecoveringBannerShowing = false
+                        }
+                    }
+                    TokenManager.ServiceStatus.INTERNET_DOWN -> {
+                        if (currentBanner != BannerType.NO_INTERNET) {
+                            isRecoveringBannerShowing = false
+                            _bannerType.value = BannerType.NO_INTERNET
+                            _offlineMessage.value = TokenManager.MSG_NO_INTERNET
+                            _isOffline.value = true
+                            _isBackendDown.value = false
+                            _isInternetDown.value = true
+                            lastNetworkMessage = TokenManager.MSG_NO_INTERNET
+                        }
+                    }
+                    TokenManager.ServiceStatus.BACKEND_DOWN -> {
+                        // ✅ Don't override RECOVERING banner
+                        if (currentBanner == BannerType.RECOVERING) {
+                            println("📡 [DashboardSharedViewModel] Keeping RECOVERING banner, ignoring BACKEND_DOWN")
+                            return@collect
+                        }
+                        if (currentBanner != BannerType.BACKEND_DOWN) {
+                            isRecoveringBannerShowing = false
+                            _bannerType.value = BannerType.BACKEND_DOWN
+                            _offlineMessage.value = TokenManager.MSG_BACKEND_DOWN
+                            _isOffline.value = true
+                            _isBackendDown.value = true
+                            _isInternetDown.value = false
+                            lastNetworkMessage = TokenManager.MSG_BACKEND_DOWN
+                        }
+                    }
+                    TokenManager.ServiceStatus.RECOVERING -> {
+                        // ✅ Skip if RECOVERING banner is already showing
+                        if (isRecoveringBannerShowing) {
+                            println("📡 [DashboardSharedViewModel] Skipping RECOVERING from status - already showing")
+                            return@collect
+                        }
+                        if (currentBanner != BannerType.RECOVERING && currentBanner != BannerType.NONE) {
+                            isRecoveringBannerShowing = true
+                            _bannerType.value = BannerType.RECOVERING
+                            _offlineMessage.value = "Connection restored! Refreshing your data..."
+                            _isOffline.value = true
+                            _isBackendDown.value = false
+                            _isInternetDown.value = false
+                            lastNetworkMessage = "Connection restored! Refreshing your data..."
+                            println("📡 [DashboardSharedViewModel] Banner: RECOVERING (from status)")
+                        }
+                        // Auto-dismiss after 3 seconds
+                        delay(3000.milliseconds)
+                        if (_bannerType.value == BannerType.RECOVERING) {
+                            _bannerType.value = BannerType.NONE
+                            _offlineMessage.value = null
+                            _isOffline.value = false
+                            lastNetworkMessage = null
+                            isRecoveringBannerShowing = false
+                        }
+                    }
                 }
             }
         }
@@ -193,7 +383,6 @@ class DashboardSharedViewModel @Inject constructor(
 
             if (userEntity != null) {
                 if (!userEntity.completeProfileJson.isNullOrEmpty()) {
-                    // ✅ Use the single instance
                     val cachedProfile = json.decodeFromString<CompleteProfile>(userEntity.completeProfileJson)
                     updateStatesWithProfile(cachedProfile)
                     hasEverLoadedProfile = true
@@ -203,6 +392,7 @@ class DashboardSharedViewModel @Inject constructor(
                         val hoursOld = cacheAge / (1000 * 60 * 60)
                         _offlineMessage.value = "Using cached data from $hoursOld hours ago"
                         _isOffline.value = true
+                        _bannerType.value = BannerType.BACKEND_DOWN
                     }
 
                     println("📦 Loaded complete profile from Room (${cacheAge / 1000}s old)")
@@ -324,6 +514,9 @@ class DashboardSharedViewModel @Inject constructor(
                     hasEverLoadedProfile = true
                     _isOffline.value = false
                     _offlineMessage.value = null
+                    _bannerType.value = BannerType.NONE
+                    _isBackendDown.value = false
+                    _isInternetDown.value = false
 
                     println("✅ Profile refreshed and cached successfully")
                 }
@@ -341,6 +534,7 @@ class DashboardSharedViewModel @Inject constructor(
                         val message = networkError.userFriendlyMessage
                         _offlineMessage.value = message
                         _isOffline.value = true
+                        _bannerType.value = BannerType.BACKEND_DOWN
                         println("⚠️ Network error, no cache available: $message")
                     }
                     else {
@@ -357,6 +551,7 @@ class DashboardSharedViewModel @Inject constructor(
                     if (!hasEverLoadedProfile) {
                         _offlineMessage.value = "Loading timeout. Using cached data if available."
                         _isOffline.value = true
+                        _bannerType.value = BannerType.BACKEND_DOWN
                         println("⚠️ Timeout, using cached data")
                     } else {
                         _offlineMessage.value = "Connection timeout. Using cached data."
@@ -374,6 +569,7 @@ class DashboardSharedViewModel @Inject constructor(
             if (!hasEverLoadedProfile) {
                 _offlineMessage.value = "Unable to load profile. Some features may be limited."
                 _isOffline.value = true
+                _bannerType.value = BannerType.BACKEND_DOWN
             }
         } finally {
             isFetching = false
@@ -497,11 +693,11 @@ class DashboardSharedViewModel @Inject constructor(
      * Update all UI states with profile data
      */
     private fun updateStatesWithProfile(profile: CompleteProfile) {
-
         println("🔍 [DEBUG] Profile user scope: ${profile.user.scope}")
         println("🔍 [DEBUG] Profile user planName: ${profile.user.planName}")
         println("🔍 [DEBUG] Profile root planName: ${profile.planName}")
         println("🔍 [DEBUG] Profile root scope: ${profile.scope}")
+
         _dashboardState.value = DashboardState.Success(profile)
         _profileState.value = ProfileLoadState.Success(profile)
 
@@ -604,6 +800,9 @@ class DashboardSharedViewModel @Inject constructor(
     fun dismissOfflineMessage() {
         _offlineMessage.value = null
         _isOffline.value = false
+        _bannerType.value = BannerType.NONE
+        _isBackendDown.value = false
+        _isInternetDown.value = false
         println("📡 [DashboardSharedViewModel] Offline message dismissed")
     }
 
@@ -711,6 +910,9 @@ class DashboardSharedViewModel @Inject constructor(
         hasEverLoadedProfile = false
         _isOffline.value = false
         _offlineMessage.value = null
+        _bannerType.value = BannerType.NONE
+        _isBackendDown.value = false
+        _isInternetDown.value = false
         _isManualRetrying.value = false
     }
 
@@ -762,6 +964,8 @@ class DashboardSharedViewModel @Inject constructor(
     // MANUAL RETRY
     // ======================================================
 
+// DashboardSharedViewModel.kt
+
     fun manualRetry(onResult: (RetryResult) -> Unit = {}) {
         viewModelScope.launch {
             if (_isRetrying.value) {
@@ -774,14 +978,34 @@ class DashboardSharedViewModel @Inject constructor(
             println("🔄 [DashboardViewModel] Manual retry initiated")
 
             try {
+                // ✅ Check network state before retry
+                val hasNetwork = tokenManager.isNetworkAvailable()
+
+                if (!hasNetwork) {
+                    println("❌ [DashboardViewModel] No network connection, retry failed")
+                    _isRetrying.value = false
+                    // ✅ Keep the banner visible with same message
+                    _offlineMessage.value = TokenManager.MSG_NO_INTERNET
+                    _isOffline.value = true
+                    _bannerType.value = BannerType.NO_INTERNET
+
+                    val result = RetryResult.Failed
+                    _retryResult.emit(result)
+                    onResult(result)
+                    return@launch
+                }
+
                 // Call TokenManager's manual retry
                 val success = tokenManager.manualRetry()
 
                 val result = if (success) {
                     println("✅ [DashboardViewModel] Manual retry successful")
+                    // Refresh profile after successful retry
+                    refreshProfileInBackground()
                     RetryResult.Success
                 } else {
                     println("❌ [DashboardViewModel] Manual retry failed")
+                    // ✅ Keep banner visible on failure
                     RetryResult.Failed
                 }
 
@@ -865,3 +1089,4 @@ data class HeaderUser(
             else -> "Member"
         }
 }
+

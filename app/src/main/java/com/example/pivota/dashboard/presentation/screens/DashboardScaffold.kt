@@ -17,6 +17,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -72,6 +74,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -129,6 +132,8 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 import com.example.pivota.R
+import com.example.pivota.core.auth.TokenManager
+
 // ... (keep all the helper functions and conversion functions as they are)
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -410,35 +415,33 @@ fun DashboardScaffold(
                 )
             }
 
-            // In DashboardScaffold.kt - Fix the manualRetry callback
-            if (isOffline && offlineMessage != null && !isRetrying) {
+
+
+            if (isOffline && offlineMessage != null) {
+                val bannerType = when {
+                    offlineMessage!!.contains("No internet") || offlineMessage == TokenManager.MSG_NO_INTERNET -> BannerType.NO_INTERNET
+                    offlineMessage!!.contains("Service temporarily unavailable") || offlineMessage == TokenManager.MSG_BACKEND_DOWN -> BannerType.BACKEND_DOWN
+                    offlineMessage!!.contains("restored") || offlineMessage == TokenManager.MSG_NETWORK_RECOVERED || offlineMessage == TokenManager.MSG_BACKEND_RECOVERED -> BannerType.RECOVERING
+                    else -> BannerType.BACKEND_DOWN
+                }
+
                 OfflineWarningBanner(
                     message = offlineMessage!!,
                     onDismiss = {
                         sharedViewModel.dismissOfflineMessage()
+                        println("📡 [DashboardScaffold] Banner dismissed by user")
                     },
                     onRetry = {
                         println("🔄 Manual retry triggered from banner")
-
-                        // Call manualRetry which returns RetryResult, not Boolean
                         sharedViewModel.manualRetry { result ->
                             when (result) {
                                 is RetryResult.Success -> {
-                                    // Token refresh succeeded, refresh the profile
                                     sharedViewModel.refreshProfile()
                                     println("✅ Manual retry successful")
-                                    // Clear offline state after successful refresh
                                     sharedViewModel.dismissOfflineMessage()
                                 }
                                 is RetryResult.Failed -> {
-                                    // Token refresh failed, still try to refresh profile (might use cached data)
-                                    sharedViewModel.refreshProfile()
-                                    println("⚠️ Manual retry failed")
-                                    // Update offline message - use the existing offlineMessage flow
-                                    sharedViewModel.updateOfflineState(
-                                        message = "Still having connection issues. Please check your internet and try again.",
-                                        isOffline = true
-                                    )
+                                    println("⚠️ Manual retry failed, keeping banner")
                                 }
                                 is RetryResult.AlreadyInProgress -> {
                                     println("⚠️ Manual retry already in progress")
@@ -452,16 +455,10 @@ fun DashboardScaffold(
                                 }
                             }
                         }
-                    }
+                    },
+                    bannerType = bannerType,
+                    isRetrying = isRetrying
                 )
-            }
-
-
-            if (isRetrying) {
-                PivotaFullScreenLoading(
-                    message = "Reconnecting to server..."
-                )
-                return
             }
 
             // Show logging out indicator
@@ -2346,19 +2343,46 @@ fun NoBottomNavScaffold(
     }
 }
 
+
 @Composable
 fun OfflineWarningBanner(
     message: String,
     onDismiss: () -> Unit,
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
+    bannerType: BannerType = BannerType.BACKEND_DOWN,
+    isRetrying: Boolean = false
 ) {
-    var visible by remember { mutableStateOf(true) }
-    var isRetrying by remember { mutableStateOf(false) }
+    // ✅ Use ViewModel's state - no local state needed
+    val retrying = isRetrying
 
+    // ✅ Swipe state
+    var offsetX by remember { mutableStateOf(0f) }
+    val swipeThreshold = 200f
 
+    val config = when (bannerType) {
+        BannerType.NO_INTERNET ->
+            (Icons.Default.WifiOff to "No Internet Connection") to
+                    (Color(0xFFE53935) to Color(0xFFE53935))
+        BannerType.BACKEND_DOWN ->
+            (Icons.Default.Warning to "Service Unavailable") to
+                    (Color(0xFFFF9800) to Color(0xFFFF9800))
+        BannerType.RECOVERING ->
+            (Icons.Default.Refresh to "Reconnecting...") to
+                    (Color(0xFF4CAF50) to Color(0xFF4CAF50))
+        BannerType.BACKEND_RECOVERED ->
+            (Icons.Default.Refresh to "Service Restored") to
+                    (Color(0xFF4CAF50) to Color(0xFF4CAF50))
+        BannerType.NONE -> return
+    }
+
+    val (icon, title) = config.first
+    val (backgroundColor, iconColor) = config.second
+
+    val isRecovering = bannerType == BannerType.RECOVERING || bannerType == BannerType.BACKEND_RECOVERED
+    val showRetry = bannerType == BannerType.BACKEND_DOWN
 
     AnimatedVisibility(
-        visible = visible && !isRetrying,
+        visible = true,
         enter = slideInVertically(
             initialOffsetY = { -it },
             animationSpec = tween(400, easing = FastOutSlowInEasing)
@@ -2371,7 +2395,26 @@ fun OfflineWarningBanner(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            if (kotlin.math.abs(offsetX) > swipeThreshold) {
+                                onDismiss()
+                            }
+                            offsetX = 0f
+                        },
+                        onDragCancel = { offsetX = 0f },
+                        onHorizontalDrag = { _, dragAmount ->
+                            offsetX += dragAmount
+                            offsetX = offsetX.coerceIn(-swipeThreshold * 1.5f, swipeThreshold * 1.5f)
+                        }
+                    )
+                }
+                .graphicsLayer {
+                    translationX = offsetX
+                    alpha = 1f - (kotlin.math.abs(offsetX) / (swipeThreshold * 2f)).coerceIn(0f, 0.3f)
+                },
             shape = RoundedCornerShape(20.dp),
             shadowElevation = 8.dp,
             color = Color.Transparent
@@ -2389,6 +2432,38 @@ fun OfflineWarningBanner(
                         shape = RoundedCornerShape(20.dp)
                     )
             ) {
+                if (kotlin.math.abs(offsetX) > 50f) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        if (offsetX > 0) Color.Transparent else Color.Transparent,
+                                        if (offsetX > 0) Color.Transparent else Color.Transparent
+                                    )
+                                ),
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp),
+                            horizontalArrangement = if (offsetX > 0) Arrangement.End else Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (offsetX > 0) "Swipe to dismiss →" else "← Swipe to dismiss",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2403,7 +2478,6 @@ fun OfflineWarningBanner(
                             modifier = Modifier.weight(1f),
                             verticalAlignment = Alignment.Top
                         ) {
-                            // Animated warning icon
                             val infiniteTransition = rememberInfiniteTransition()
                             val pulse by infiniteTransition.animateFloat(
                                 initialValue = 1f,
@@ -2415,9 +2489,13 @@ fun OfflineWarningBanner(
                             )
 
                             Icon(
-                                Icons.Default.WifiOff,
-                                contentDescription = "Offline",
-                                tint = MaterialTheme.colorScheme.error,
+                                icon,
+                                contentDescription = when (bannerType) {
+                                    BannerType.NO_INTERNET -> "No Internet"
+                                    BannerType.BACKEND_DOWN -> "Service Unavailable"
+                                    else -> "Status"
+                                },
+                                tint = iconColor,
                                 modifier = Modifier
                                     .size(24.dp)
                                     .graphicsLayer(scaleX = pulse, scaleY = pulse)
@@ -2427,14 +2505,14 @@ fun OfflineWarningBanner(
 
                             Column {
                                 Text(
-                                    text = "Connection Lost",
+                                    text = title,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = if (isRetrying) "Reconnecting..." else message,
+                                    text = if (retrying) "Reconnecting..." else message,
                                     fontSize = 13.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     lineHeight = 18.sp
@@ -2443,10 +2521,7 @@ fun OfflineWarningBanner(
                         }
 
                         IconButton(
-                            onClick = {
-                                visible = false
-                                onDismiss()
-                            },
+                            onClick = onDismiss,
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
@@ -2460,17 +2535,13 @@ fun OfflineWarningBanner(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-
-                    if (!isRetrying) {
+                    if (showRetry && !isRecovering && !retrying) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             OutlinedButton(
-                                onClick = {
-                                    visible = false
-                                    onDismiss()
-                                },
+                                onClick = onDismiss,
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
@@ -2478,10 +2549,7 @@ fun OfflineWarningBanner(
                             }
 
                             Button(
-                                onClick = {
-                                    isRetrying = true
-                                    onRetry()
-                                },
+                                onClick = onRetry,
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(
@@ -2497,8 +2565,7 @@ fun OfflineWarningBanner(
                                 Text("Retry", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                             }
                         }
-                    } else {
-                        // Loading state
+                    } else if (retrying) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -2518,97 +2585,51 @@ fun OfflineWarningBanner(
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
-                    }
-                }
-            }
-
-            @Composable
-            fun ConnectLogoIcon(
-                isSelected: Boolean,
-                modifier: Modifier = Modifier
-            ) {
-                // Animation for the bulge/pulse effect
-                val infiniteTransition = rememberInfiniteTransition()
-                val pulse by infiniteTransition.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 1.15f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(1500, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    )
-                )
-
-                // Scale for selection state
-                val scale = if (isSelected) 1.2f else 1f
-
-                Box(
-                    modifier = modifier
-                        .size(if (isSelected) 56.dp else 48.dp)
-                        .then(
-                            if (isSelected) {
-                                Modifier.graphicsLayer {
-                                    scaleX = scale * pulse
-                                    scaleY = scale * pulse
-                                }
-                            } else {
-                                Modifier.graphicsLayer {
-                                    scaleX = pulse
-                                    scaleY = pulse
-                                }
+                    } else if (isRecovering) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = message,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            OutlinedButton(
+                                onClick = onDismiss,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Dismiss", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                             }
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Glowing background circle
-                    Box(
-                        modifier = Modifier
-                            .size(if (isSelected) 52.dp else 44.dp)
-                            .background(
-                                brush = if (isSelected) {
-                                    Brush.radialGradient(
-                                        colors = listOf(
-                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
-                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f),
-                                            Color.Transparent
-                                        ),
-                                        radius = 50f
-                                    )
-                                } else {
-                                    Brush.radialGradient(
-                                        colors = listOf(
-                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
-                                            Color.Transparent
-                                        ),
-                                        radius = 40f
-                                    )
-                                },
-                                shape = CircleShape
-                            )
-                    )
-
-                    // Logo image with border glow
-                    AsyncImage(
-                        model = R.drawable.pclogo_icon_transparent,
-                        contentDescription = "Connect",
-                        modifier = Modifier
-                            .size(if (isSelected) 36.dp else 28.dp)
-                            .shadow(
-                                elevation = if (isSelected) 8.dp else 4.dp,
-                                shape = CircleShape,
-                                clip = false
-                            )
-                            .clip(CircleShape)
-                            .background(
-                                color = if (isSelected)
-                                    MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
-                                else
-                                    Color.Transparent,
-                                shape = CircleShape
-                            )
-                            .padding(if (isSelected) 4.dp else 2.dp)
-                    )
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+// ✅ Add BannerType enum if not already defined
+enum class BannerType {
+    NONE,
+    NO_INTERNET,
+    BACKEND_DOWN,
+    RECOVERING,
+    BACKEND_RECOVERED
 }

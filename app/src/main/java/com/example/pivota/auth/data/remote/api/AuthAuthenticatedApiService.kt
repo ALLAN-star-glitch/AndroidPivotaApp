@@ -16,7 +16,7 @@ class AuthAuthenticatedApiService @Inject constructor(
 
     suspend fun logout(): BaseResponseDto<Nothing> {
         return try {
-            client.post("v1/auth-module/logout") {
+            client.post("authentication/logout") {
                 contentType(ContentType.Application.Json)
             }.body()
         } catch (e: Exception) {

@@ -1,8 +1,12 @@
-// NetworkModule.kt - Updated to use TokenProvider
+// NetworkModule.kt
 package com.example.pivota.core.di
 
 import com.example.pivota.core.auth.TokenProvider
+import com.example.pivota.core.health.GatewayHealthChecker
 import com.example.pivota.core.network.KtorClientFactory
+import com.example.pivota.core.network.api.HealthApiService
+import com.example.pivota.core.network.repository.HealthRepository
+import com.example.pivota.core.network.useCase.HealthUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,7 +18,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    // Client WITHOUT auth interceptor (for login, signup, refresh)
+    // Client WITHOUT auth interceptor (for login, signup, refresh, health)
     @Provides
     @Singleton
     @UnauthHttpClient
@@ -36,7 +40,7 @@ object NetworkModule {
     @Provides
     @Singleton
     @AuthHttpClient
-    fun provideAuthHttpClient(tokenProvider: TokenProvider): HttpClient {  // Use TokenProvider, not TokenManager
+    fun provideAuthHttpClient(tokenProvider: TokenProvider): HttpClient {
         var attempts = 0
         while (!KtorClientFactory.isInitialized() && attempts < 30) {
             try {
@@ -47,7 +51,41 @@ object NetworkModule {
             }
             attempts++
         }
-        KtorClientFactory.setTokenProvider(tokenProvider)  // Changed from setTokenManager to setTokenProvider
+        KtorClientFactory.setTokenProvider(tokenProvider)
         return KtorClientFactory.build()
+    }
+
+    // ✅ Gateway Health Checker (DNS-based)
+    @Provides
+    @Singleton
+    fun provideGatewayHealthChecker(): GatewayHealthChecker {
+        return GatewayHealthChecker()
+    }
+
+    // ✅ Health API Service (HTTP health check)
+    @Provides
+    @Singleton
+    fun provideHealthApiService(
+        @UnauthHttpClient client: HttpClient
+    ): HealthApiService {
+        return HealthApiService(client)
+    }
+
+    // ✅ Health Repository
+    @Provides
+    @Singleton
+    fun provideHealthRepository(
+        healthApiService: HealthApiService
+    ): HealthRepository {
+        return HealthRepository(healthApiService)
+    }
+
+    // ✅ Health UseCase
+    @Provides
+    @Singleton
+    fun provideHealthUseCase(
+        healthRepository: HealthRepository
+    ): HealthUseCase {
+        return HealthUseCase(healthRepository)
     }
 }

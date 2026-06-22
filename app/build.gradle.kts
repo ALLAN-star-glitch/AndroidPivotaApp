@@ -25,24 +25,8 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // Version 1.23.0 - Build 34 - Enhanced UI with Shimmer Effects & Lottie Error States
-        // Added: Elegant shimmer loading effect for housing and job cards
-        // Added: Lottie animation for error states with retry functionality
-        // Added: Unified shimmer system using sliding light streak effect
-        // Added: Connect logo in bottom navigation bar and tablet rail
-        // Added: Smooth curve bump in bottom navigation for Connect item
-        // Added: Shimmer effect for all skeleton loading states
-        // Added: ErrorStateWithLottie composable for network failures
-        // Fixed: Housing skeleton loading with proper shimmer effect
-        // Fixed: Job skeleton loading with consistent shimmer
-        // Fixed: Navigation rail visibility on tablet detail screens
-        // Fixed: Bottom bar gap when system navigation is hidden
-        // Fixed: Service details bottom bar positioning
-        // Fixed: Housing cards shimmer effect matching AllServicesScreen style
-        // Improved: Bottom navigation bar height and styling
-        // Improved: Navigation rail with logo for Connect item
-        versionCode = 34
-        versionName = "1.23.0"
+        versionCode = 35
+        versionName = "1.24.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -80,140 +64,127 @@ android {
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.23.0 - ENHANCED UI WITH SHIMMER EFFECTS & ERROR STATES
+          PIVOTACONNECT v1.24.0 - ENHANCED OFFLINE & ERROR HANDLING
 ================================================================
 
-This release introduces elegant shimmer loading effects, Lottie 
-animations for error states, and significant UI improvements across 
-the entire app.
+This release introduces a comprehensive offline banner system with
+different states for internet and backend issues, DNS-based health 
+checks, duplicate message prevention, and significant improvements 
+to network/error handling.
 
 ================================================================
 NEW FEATURES
 ================================================================
 
-UNIFIED SHIMMER EFFECT SYSTEM
-- Implemented sliding light streak shimmer for all loading states
-- Consistent shimmer across housing, jobs, and service cards
-- Optimized animation speed and smoothness
-- Dark mode compatible shimmer colors
-- Reusable shimmer composable in general package
-- Alpha-based pulsing shimmer option for simple elements
+OFFLINE BANNER SYSTEM
+- Comprehensive banner system with different states:
+  • NO_INTERNET - Red banner with Wi-Fi off icon
+  • BACKEND_DOWN - Orange banner with warning icon
+  • RECOVERING - Green banner with refresh icon
+  • BACKEND_RECOVERED - Green banner with check icon
+- Retry button only shown for BACKEND_DOWN state
+- Dismiss button always available
+- Swipe to dismiss functionality
+- Animated banner entrance/exit with fade and slide
+- Professional "technical downtime" messaging
 
-LOTTIE ERROR STATE ANIMATIONS
-- Added ErrorStateWithLottie composable for network failures
-- Beautiful Lottie animations for loading errors
-- Retry button with proper refresh functionality
-- Consistent error state across all sections
-- Custom Lottie animations for jobs, housing, and services
-- Seamless integration with existing error handling
+DNS-BASED HEALTH CHECK
+- Instant network detection using DNS resolution
+- 30-second cache for DNS results
+- No token refresh on health checks (separate from HTTP)
+- Faster detection of network issues
 
-CONNECT LOGO IN BOTTOM NAVIGATION
-- Custom Connect logo icon in bottom navigation bar
-- Bulging effect with shadow and glow
-- Larger size when selected (56dp)
-- Gradient ring animation for selected state
-- Smooth curved bump in bottom navigation bar
-- Consistent Connect logo in tablet navigation rail
+DUPLICATE MESSAGE PREVENTION
+- Prevents duplicate "Network restored!" messages
+- Tracks last message to avoid repeats
+- Clean status transitions
+- Prevents RECOVERING banner from being overridden
 
-ENHANCED SKELETON LOADING
-- HousingSkeletonContent with shimmer effect
-- ElegantHousingCardSkeleton matching card design
-- JobCardSkeleton with sliding shimmer
-- ServiceGridSkeleton with shimmer effect
-- Proper responsive heights for all screen sizes
-- Consistent loading experience
+ENHANCED TOKEN MANAGEMENT
+- 30-second cooldown ONLY for token refresh operations
+- Always refresh token on network/backend recovery
+- Grace period for backend recovery (5 seconds)
+- Prevent multiple refresh attempts
+- Automatic token refresh on recovery
 
 ================================================================
 UI/UX IMPROVEMENTS
 ================================================================
 
-BOTTOM NAVIGATION BAR
-- Increased height to 72dp for better visibility
-- Smooth curve bump at Connect item position
-- Larger Connect logo with glow effect
-- Bold text for Connect label when selected
-- Removed default indicator for cleaner look
-- Consistent styling across all screens
-
-NAVIGATION RAIL (TABLET)
-- Connect logo displayed in rail
-- Wider rail (80dp) for logo visibility
-- Proper spacing and alignment
-- Consistent with bottom navigation
-- Only shows on main screens
+BANNER BEHAVIOR
+- Banner stays visible on retry failure
+- Retry button shows loading state with spinner
+- Auto-dismiss after 5 seconds for RECOVERING state
+- No auto-dismiss for error states (user must dismiss)
+- Swipe to dismiss with threshold (200px)
+- Smooth animations for banner transitions
+- Different colors for different states:
+  • NO_INTERNET - Red (#E53935)
+  • BACKEND_DOWN - Orange (#FF9800)
+  • RECOVERING - Green (#4CAF50)
 
 ERROR HANDLING
-- Proper visual feedback for network errors
-- Lottie animations for engaging error states
-- Clear retry functionality
-- Consistent error messages
+- Proper distinction between internet and backend issues
+- Clear, professional error messages
+- Graceful degradation during network issues
 - Proper state management for error recovery
-
-================================================================
-PERFORMANCE IMPROVEMENTS
-================================================================
-
-OPTIMIZED SHIMMER ANIMATION
-- Faster animation speed (800ms)
-- Linear easing for smooth motion
-- Wider gradient spread (400f)
-- Better start/end positions
-- Reduced CPU usage
-- Animated with rememberInfiniteTransition
-
-EFFICIENT SKELETON RENDERING
-- Proper key management for skeleton items
-- LazyColumn/LazyVerticalGrid for performance
-- Cached shimmer compositions
-- Reduced recompositions
-- Optimized for large lists
-
-================================================================
-CODE IMPROVEMENTS
-================================================================
-
-UNIFIED SHIMMER UTILITY
-- Single source of truth for shimmer effects
-- Reusable shimmerBrush and shimmer modifier
-- Consistent shimmer across all components
-- Easy to customize shimmer colors
-- Proper documentation
-
-IMPROVED ERROR STATE HANDLING
-- Common ErrorStateWithLottie composable
-- Configurable Lottie animations
-- Consistent error UI across screens
-- Proper retry callbacks
-- State management improvements
-
-RESPONSIVE NAVIGATION
-- Conditional navigation rail visibility
-- Proper padding adjustments
-- Consistent tablet experience
-- Dynamic content width based on rail visibility
+- "We are experiencing technical downtime" messaging
 
 ================================================================
 FIXES & IMPROVEMENTS
 ================================================================
 
-BOTTOM BAR FIXES
-- Fixed gap when system navigation is hidden
-- Proper navigationBarsPadding usage
-- Consistent bottom bar positioning
-- Fixed service details bottom bar
-- Fixed house details bottom bar
+NETWORK DETECTION
+- Instant detection (no cooldown on network state changes)
+- Proper internet vs backend distinction
+- DNS-based health check for faster detection
+- Network callback for instant recovery
 
-SKELETON LOADING FIXES
-- Fixed shimmer effect on all skeleton components
-- Proper height for different screen sizes
-- Consistent loading states
-- Fixed skeleton layout issues
+TOKEN MANAGEMENT
+- Fixed: Double "Reconnecting" messages when network comes back
+- Fixed: Offline banner disappearing on retry failure
+- Fixed: Retry spinner getting stuck when backend is down
+- Fixed: RECOVERING banner being overridden by BACKEND_DOWN
+- Fixed: Session REVOKED errors from duplicate refreshes
+- 30-second cooldown ONLY for token refresh operations
+- Always refresh token on network/backend recovery
 
-NAVIGATION FIXES
-- Fixed rail showing on detail screens
-- Proper isMainScreen logic
-- Consistent navigation experience
-- Fixed back navigation
+BANNER BEHAVIOR
+- Banner stays visible on retry failure
+- Retry button shows loading state
+- Auto-dismiss after 5 seconds for RECOVERING state
+- No auto-dismiss for error states (user must dismiss)
+- Swipe to dismiss with threshold
+
+USER EXPERIENCE
+- Clear distinction between internet and backend issues
+- Different icons and colors for different states
+- Professional "technical downtime" messaging
+- Seamless transitions between states
+- Proper offline mode with cached data
+
+================================================================
+CODE IMPROVEMENTS
+================================================================
+
+TOKEN MANAGER
+- Improved checkBackendHealth() with network-first approach
+- Grace period for backend recovery
+- Proper status tracking (AVAILABLE, INTERNET_DOWN, BACKEND_DOWN, RECOVERING)
+- Duplicate message prevention
+- Network callback for instant detection
+
+VIEWMODEL
+- isRecoveringBannerShowing flag for duplicate prevention
+- lastNetworkMessage tracking
+- Proper state management for banner types
+- Reset flags on state changes
+
+UI COMPONENTS
+- OfflineWarningBanner with swipe to dismiss
+- Different banner styles for different states
+- Proper loading states for retry button
+- Animated transitions
 
 ================================================================
 KNOWN ISSUES
@@ -228,7 +199,7 @@ KNOWN ISSUES
 - Job images not yet available from API (using fallback)
 
 ================================================================
-COMING IN V1.24.0
+COMING IN V1.25.0
 ================================================================
 
 - Professional contact information from backend
@@ -251,7 +222,7 @@ SUPPORT & FEEDBACK
 For issues, bug reports, or feature requests:
 Email: allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.23.0!
+Thank you for testing PivotaConnect v1.24.0!
 Your feedback helps us create a better user experience.
 
 ================================================================

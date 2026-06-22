@@ -68,14 +68,11 @@ class PivotaDataStore @Inject constructor(
 
         private val json = Json { ignoreUnknownKeys = true }
 
-
-
         private val DARK_THEME = booleanPreferencesKey("dark_theme")
 
         private val GUEST_MODE_ENABLED = booleanPreferencesKey("guest_mode_enabled")
 
         private val TOKEN_SAVED_AT = longPreferencesKey("token_saved_at")
-
     }
 
     // ======================================================
@@ -87,11 +84,11 @@ class PivotaDataStore @Inject constructor(
     val userEmail: Flow<String?> = dataStore.data.map { it[USER_EMAIL] }
 
     suspend fun getAccessToken(): String? {
-        return dataStore.data.map { it[AUTH_TOKEN] }.first()
+        return dataStore.data.first()[AUTH_TOKEN]
     }
 
     suspend fun getRefreshToken(): String? {
-        return dataStore.data.map { it[REFRESH_TOKEN] }.first()
+        return dataStore.data.first()[REFRESH_TOKEN]
     }
 
     suspend fun saveAccessToken(token: String) {
@@ -114,7 +111,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun getUserEmail(): String? {
-        return dataStore.data.map { it[USER_EMAIL] }.first()
+        return dataStore.data.first()[USER_EMAIL]
     }
 
     suspend fun clearSession() {
@@ -124,18 +121,26 @@ class PivotaDataStore @Inject constructor(
             it.remove(USER_EMAIL)
         }
     }
+
     suspend fun saveTokenTimestamp(timestamp: Long) {
         dataStore.edit { it[TOKEN_SAVED_AT] = timestamp }
     }
 
     suspend fun getTokenAge(): Long {
-        val savedAt = dataStore.data.map { it[TOKEN_SAVED_AT] }.first() ?: 0L
+        val savedAt = dataStore.data.first()[TOKEN_SAVED_AT] ?: 0L
         return if (savedAt > 0) System.currentTimeMillis() - savedAt else 0L
     }
 
     suspend fun shouldRefreshToken(): Boolean {
-        val tokenAge = getTokenAge()
-        // Refresh if token is older than 12 minutes (before 15-minute expiry)
+        val savedAt = dataStore.data.first()[TOKEN_SAVED_AT] ?: 0L
+        val tokenAge = if (savedAt > 0) System.currentTimeMillis() - savedAt else Long.MAX_VALUE
+
+        println("🔍 [DataStore] ========== SHOULD REFRESH? ==========")
+        println("🔍 Saved at: $savedAt")
+        println("🔍 Token age: ${tokenAge / 1000}s")
+        println("🔍 Threshold: 720s (12 minutes)")
+        println("🔍 Should refresh: ${tokenAge > 12 * 60 * 1000L}")
+
         return tokenAge > 12 * 60 * 1000L
     }
 
@@ -153,7 +158,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun getResetPasswordEmail(): String? {
-        return dataStore.data.map { it[RESET_PASSWORD_EMAIL] }.first()
+        return dataStore.data.first()[RESET_PASSWORD_EMAIL]
     }
 
     suspend fun clearResetPasswordEmail() {
@@ -169,7 +174,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun isOnboardingComplete(): Boolean {
-        return dataStore.data.map { it[ONBOARDING_COMPLETE] ?: false }.first()
+        return dataStore.data.first()[ONBOARDING_COMPLETE] ?: false
     }
 
     suspend fun setOnboardingComplete(complete: Boolean) {
@@ -185,7 +190,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun isWelcomeScreenSeen(): Boolean {
-        val value = dataStore.data.map { it[WELCOME_SCREEN_SEEN] ?: false }.first()
+        val value = dataStore.data.first()[WELCOME_SCREEN_SEEN] ?: false
         println("🔍 [DataStore] isWelcomeScreenSeen returning: $value")
         return value
     }
@@ -208,7 +213,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun getAccountType(): String? {
-        return dataStore.data.map { it[OB_ACCOUNT_TYPE] }.first()
+        return dataStore.data.first()[OB_ACCOUNT_TYPE]
     }
 
     suspend fun debugPrintAll() {
@@ -229,9 +234,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun getPrimaryPurpose(): String? {
-        val result = dataStore.data.map { it[OB_PRIMARY_PURPOSE] }.first()
-        println("🔍 DEBUG: getPrimaryPurpose returning = '$result'")
-        return result
+        return dataStore.data.first()[OB_PRIMARY_PURPOSE]
     }
 
     suspend fun saveBasicUserInfo(
@@ -250,18 +253,32 @@ class PivotaDataStore @Inject constructor(
         }
     }
 
-    suspend fun getFirstName(): String? = dataStore.data.map { it[OB_FIRST_NAME] }.first()
-    suspend fun getLastName(): String? = dataStore.data.map { it[OB_LAST_NAME] }.first()
-    suspend fun getEmail(): String? = dataStore.data.map { it[OB_EMAIL] }.first()
-    suspend fun getPhone(): String? = dataStore.data.map { it[OB_PHONE] }.first()
-    suspend fun getPassword(): String? = dataStore.data.map { it[OB_PASSWORD] }.first()
+    suspend fun getFirstName(): String? {
+        return dataStore.data.first()[OB_FIRST_NAME]
+    }
+
+    suspend fun getLastName(): String? {
+        return dataStore.data.first()[OB_LAST_NAME]
+    }
+
+    suspend fun getEmail(): String? {
+        return dataStore.data.first()[OB_EMAIL]
+    }
+
+    suspend fun getPhone(): String? {
+        return dataStore.data.first()[OB_PHONE]
+    }
+
+    suspend fun getPassword(): String? {
+        return dataStore.data.first()[OB_PASSWORD]
+    }
 
     suspend fun setOtpCode(code: String) {
         dataStore.edit { it[OB_OTP_CODE] = code }
     }
 
     suspend fun getOtpCode(): String? {
-        return dataStore.data.map { it[OB_OTP_CODE] }.first()
+        return dataStore.data.first()[OB_OTP_CODE]
     }
 
     // Purpose-specific data
@@ -271,7 +288,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun getJobSeekerData(): JobSeekerData? {
-        val jsonString = dataStore.data.map { it[OB_JOB_SEEKER_DATA] }.first()
+        val jsonString = dataStore.data.first()[OB_JOB_SEEKER_DATA]
         return jsonString?.let { json.decodeFromString(it) }
     }
 
@@ -281,7 +298,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun getSkilledProfessionalData(): SkilledProfessionalData? {
-        val jsonString = dataStore.data.map { it[OB_SKILLED_PROFESSIONAL_DATA] }.first()
+        val jsonString = dataStore.data.first()[OB_SKILLED_PROFESSIONAL_DATA]
         return jsonString?.let { json.decodeFromString(it) }
     }
 
@@ -291,7 +308,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun getIntermediaryAgentData(): IntermediaryAgentData? {
-        val jsonString = dataStore.data.map { it[OB_INTERMEDIARY_AGENT_DATA] }.first()
+        val jsonString = dataStore.data.first()[OB_INTERMEDIARY_AGENT_DATA]
         return jsonString?.let { json.decodeFromString(it) }
     }
 
@@ -301,7 +318,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun getHousingSeekerData(): HousingSeekerData? {
-        val jsonString = dataStore.data.map { it[OB_HOUSING_SEEKER_DATA] }.first()
+        val jsonString = dataStore.data.first()[OB_HOUSING_SEEKER_DATA]
         return jsonString?.let { json.decodeFromString(it) }
     }
 
@@ -311,7 +328,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun getSupportBeneficiaryData(): SupportBeneficiaryData? {
-        val jsonString = dataStore.data.map { it[OB_SUPPORT_BENEFICIARY_DATA] }.first()
+        val jsonString = dataStore.data.first()[OB_SUPPORT_BENEFICIARY_DATA]
         return jsonString?.let { json.decodeFromString(it) }
     }
 
@@ -321,7 +338,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun getEmployerData(): EmployerData? {
-        val jsonString = dataStore.data.map { it[OB_EMPLOYER_DATA] }.first()
+        val jsonString = dataStore.data.first()[OB_EMPLOYER_DATA]
         return jsonString?.let { json.decodeFromString(it) }
     }
 
@@ -331,7 +348,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun getPropertyOwnerData(): PropertyOwnerData? {
-        val jsonString = dataStore.data.map { it[OB_PROPERTY_OWNER_DATA] }.first()
+        val jsonString = dataStore.data.first()[OB_PROPERTY_OWNER_DATA]
         return jsonString?.let { json.decodeFromString(it) }
     }
 
@@ -425,7 +442,7 @@ class PivotaDataStore @Inject constructor(
     val selectedLanguage: Flow<String?> = dataStore.data.map { it[SELECTED_LANGUAGE] }
 
     suspend fun getSelectedLanguage(): String? {
-        return dataStore.data.map { it[SELECTED_LANGUAGE] }.first()
+        return dataStore.data.first()[SELECTED_LANGUAGE]
     }
 
     suspend fun saveSelectedLanguage(language: String) {
@@ -435,7 +452,7 @@ class PivotaDataStore @Inject constructor(
     val selectedTheme: Flow<String?> = dataStore.data.map { it[SELECTED_THEME] }
 
     suspend fun getSelectedTheme(): String? {
-        return dataStore.data.map { it[SELECTED_THEME] }.first()
+        return dataStore.data.first()[SELECTED_THEME]
     }
 
     suspend fun saveSelectedTheme(theme: String) {
@@ -463,9 +480,6 @@ class PivotaDataStore @Inject constructor(
             it.remove(ONBOARDING_COMPLETE)
         }
     }
-
-
-
 
     suspend fun clearPrimaryPurpose() {
         dataStore.edit { it.remove(OB_PRIMARY_PURPOSE) }
@@ -534,7 +548,7 @@ class PivotaDataStore @Inject constructor(
     }
 
     suspend fun getDarkTheme(): Boolean {
-        return dataStore.data.map { it[DARK_THEME] ?: false }.first()
+        return dataStore.data.first()[DARK_THEME] ?: false
     }
 
     suspend fun toggleTheme() {
@@ -542,21 +556,17 @@ class PivotaDataStore @Inject constructor(
         setDarkTheme(!current)
     }
 
-
-
-
     suspend fun saveGuestModeEnabled(enabled: Boolean) {
         dataStore.edit { it[GUEST_MODE_ENABLED] = enabled }
     }
 
     suspend fun isGuestModeEnabled(): Boolean {
-        return dataStore.data.map { it[GUEST_MODE_ENABLED] ?: false }.first()
+        return dataStore.data.first()[GUEST_MODE_ENABLED] ?: false
     }
 
     suspend fun clearGuestMode() {
         dataStore.edit { it.remove(GUEST_MODE_ENABLED) }
     }
-
 }
 
 // ======================================================
@@ -675,7 +685,6 @@ data class EmployerData(
 @Serializable
 data class PropertyOwnerData(
     // Listing Type (what are they listing)
-
     val listingType: String? = null,  // "RENT", "SALE", "BOTH"
     val isListingForRent: Boolean = false,
     val isListingForSale: Boolean = false,
@@ -689,5 +698,3 @@ data class PropertyOwnerData(
     val isProfessional: Boolean = false,
     val preferredPropertyTypes: List<String> = emptyList()
 )
-
-
