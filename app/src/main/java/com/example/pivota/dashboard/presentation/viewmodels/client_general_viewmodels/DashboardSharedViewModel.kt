@@ -799,7 +799,6 @@ class DashboardSharedViewModel @Inject constructor(
      */
     fun dismissOfflineMessage() {
         _offlineMessage.value = null
-        _isOffline.value = false
         _bannerType.value = BannerType.NONE
         _isBackendDown.value = false
         _isInternetDown.value = false

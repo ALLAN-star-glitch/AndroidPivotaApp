@@ -25,8 +25,8 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        versionCode = 35
-        versionName = "1.24.0"
+        versionCode = 36
+        versionName = "1.25.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -64,127 +64,127 @@ android {
 
                 releaseNotes = """
 ================================================================
-          PIVOTACONNECT v1.24.0 - ENHANCED OFFLINE & ERROR HANDLING
+          PIVOTACONNECT v1.25.0 - UI ENHANCEMENTS & OFFLINE STATUS
 ================================================================
 
-This release introduces a comprehensive offline banner system with
-different states for internet and backend issues, DNS-based health 
-checks, duplicate message prevention, and significant improvements 
-to network/error handling.
+This release introduces significant UI improvements including an 
+online/offline status indicator on the user avatar, optional page 
+titles in the header, and visual refinements to the header component.
 
 ================================================================
 NEW FEATURES
 ================================================================
 
-OFFLINE BANNER SYSTEM
-- Comprehensive banner system with different states:
-  • NO_INTERNET - Red banner with Wi-Fi off icon
-  • BACKEND_DOWN - Orange banner with warning icon
-  • RECOVERING - Green banner with refresh icon
-  • BACKEND_RECOVERED - Green banner with check icon
-- Retry button only shown for BACKEND_DOWN state
-- Dismiss button always available
-- Swipe to dismiss functionality
-- Animated banner entrance/exit with fade and slide
-- Professional "technical downtime" messaging
+ONLINE/OFFLINE STATUS INDICATOR
+- Green dot on avatar when user is online (connected to backend)
+- Gray dot on avatar when user is offline (no network/backend issues)
+- Uses Material Theme colors (SuccessGreen / onSurfaceVariant)
+- Smooth transitions between states
+- Professional visual indicator with shadow and border
+- Status reflects real network connectivity state
 
-DNS-BASED HEALTH CHECK
-- Instant network detection using DNS resolution
-- 30-second cache for DNS results
-- No token refresh on health checks (separate from HTTP)
-- Faster detection of network issues
+OPTIONAL PAGE TITLES
+- Page title is now optional with default null
+- Title section gracefully hides when not provided
+- Maintains professional spacing without title
+- Backward compatible with existing usages
+- Smooth animations for title show/hide
 
-DUPLICATE MESSAGE PREVENTION
-- Prevents duplicate "Network restored!" messages
-- Tracks last message to avoid repeats
-- Clean status transitions
-- Prevents RECOVERING banner from being overridden
-
-ENHANCED TOKEN MANAGEMENT
-- 30-second cooldown ONLY for token refresh operations
-- Always refresh token on network/backend recovery
-- Grace period for backend recovery (5 seconds)
-- Prevent multiple refresh attempts
-- Automatic token refresh on recovery
+HEADER UI REFINEMENTS
+- Avatar size increased from 48dp to 54dp for better visibility
+- Status dot positioned at bottom-right corner of avatar
+- Dot size 16dp with 2.5dp border for clear visibility
+- Shadow effect on status dot for depth
+- Professional visual separation between online/offline states
 
 ================================================================
 UI/UX IMPROVEMENTS
 ================================================================
 
-BANNER BEHAVIOR
-- Banner stays visible on retry failure
-- Retry button shows loading state with spinner
-- Auto-dismiss after 5 seconds for RECOVERING state
-- No auto-dismiss for error states (user must dismiss)
-- Swipe to dismiss with threshold (200px)
-- Smooth animations for banner transitions
-- Different colors for different states:
-  • NO_INTERNET - Red (#E53935)
-  • BACKEND_DOWN - Orange (#FF9800)
-  • RECOVERING - Green (#4CAF50)
+AVATAR ENHANCEMENTS
+- Larger avatar size (54dp) for better visibility
+- Status dot positioned outside avatar bounds
+- Clean circular border around avatar
+- Consistent spacing in header layout
+- Professional visual hierarchy
 
-ERROR HANDLING
-- Proper distinction between internet and backend issues
-- Clear, professional error messages
-- Graceful degradation during network issues
-- Proper state management for error recovery
-- "We are experiencing technical downtime" messaging
+HEADER LAYOUT
+- Optional page title with automatic hiding
+- Smooth title animations (fade + slide)
+- Preserved spacing without title
+- Clean separation line below header
+- Professional elevation shadow
+
+STATUS INDICATOR BEHAVIOR
+- Online: Green dot (SuccessGreen)
+- Offline: Gray dot (onSurfaceVariant)
+- Real-time status updates
+- Network state changes reflected immediately
+- No visual glitches during transitions
 
 ================================================================
 FIXES & IMPROVEMENTS
 ================================================================
 
-NETWORK DETECTION
-- Instant detection (no cooldown on network state changes)
-- Proper internet vs backend distinction
-- DNS-based health check for faster detection
-- Network callback for instant recovery
+HEADER COMPONENT
+- Fixed: Page title now optional with null default
+- Fixed: Status dot clipping on avatar
+- Fixed: Status dot positioning at bottom-right
+- Fixed: Status dot visibility on different backgrounds
+- Fixed: Status dot color matching Material Theme
 
-TOKEN MANAGEMENT
-- Fixed: Double "Reconnecting" messages when network comes back
-- Fixed: Offline banner disappearing on retry failure
-- Fixed: Retry spinner getting stuck when backend is down
-- Fixed: RECOVERING banner being overridden by BACKEND_DOWN
-- Fixed: Session REVOKED errors from duplicate refreshes
-- 30-second cooldown ONLY for token refresh operations
-- Always refresh token on network/backend recovery
+UI CONSISTENCY
+- All header elements use Material Theme colors
+- Consistent spacing throughout header
+- Professional visual hierarchy
+- Smooth animations for all transitions
+- Proper dark/light mode support
 
-BANNER BEHAVIOR
-- Banner stays visible on retry failure
-- Retry button shows loading state
-- Auto-dismiss after 5 seconds for RECOVERING state
-- No auto-dismiss for error states (user must dismiss)
-- Swipe to dismiss with threshold
-
-USER EXPERIENCE
-- Clear distinction between internet and backend issues
-- Different icons and colors for different states
-- Professional "technical downtime" messaging
-- Seamless transitions between states
-- Proper offline mode with cached data
+NETWORK STATUS
+- Real-time online/offline detection
+- Proper banner state management
+- Status dot reflects actual connectivity
+- Network recovery detection
+- Automatic status updates
 
 ================================================================
 CODE IMPROVEMENTS
 ================================================================
 
-TOKEN MANAGER
-- Improved checkBackendHealth() with network-first approach
-- Grace period for backend recovery
-- Proper status tracking (AVAILABLE, INTERNET_DOWN, BACKEND_DOWN, RECOVERING)
-- Duplicate message prevention
-- Network callback for instant detection
-
-VIEWMODEL
-- isRecoveringBannerShowing flag for duplicate prevention
-- lastNetworkMessage tracking
-- Proper state management for banner types
-- Reset flags on state changes
+REUSABLE HEADER
+- pageTitle parameter now optional (String? = null)
+- Status dot using Material Theme colors
+- Derived state for online/offline status
+- Comprehensive logging for debugging
+- Proper state observation with collectAsState()
 
 UI COMPONENTS
-- OfflineWarningBanner with swipe to dismiss
-- Different banner styles for different states
-- Proper loading states for retry button
-- Animated transitions
+- Status dot with shadow and border
+- Optional title section with animations
+- Consistent theming across components
+- Clean separation of concerns
+- Reusable and maintainable code
+
+================================================================
+DOCUMENTATION
+================================================================
+
+NEW COMPONENT: STATUS DOT
+- Position: Bottom-right corner of avatar
+- Size: 16dp with 2.5dp border
+- Colors: SuccessGreen (online) / onSurfaceVariant (offline)
+- Shadow: 3dp elevation with color-matched glow
+- Animation: Smooth transitions
+
+HEADER PARAMETER CHANGES
+- pageTitle: String? = null (previously required)
+- All other parameters unchanged
+- Backward compatible
+
+USAGE EXAMPLES
+- With title: ReusableHeader(pageTitle = "Dashboard")
+- Without title: ReusableHeader() // title hidden
+- Status dot: Automatic based on connectivity
 
 ================================================================
 KNOWN ISSUES
@@ -199,7 +199,7 @@ KNOWN ISSUES
 - Job images not yet available from API (using fallback)
 
 ================================================================
-COMING IN V1.25.0
+COMING IN V1.26.0
 ================================================================
 
 - Professional contact information from backend
@@ -214,6 +214,8 @@ COMING IN V1.25.0
 - Favorites management
 - Enhanced search functionality
 - Push notification integration
+- Status dot animation enhancements
+- Avatar status indicator customization
 
 ================================================================
 SUPPORT & FEEDBACK
@@ -222,7 +224,7 @@ SUPPORT & FEEDBACK
 For issues, bug reports, or feature requests:
 Email: allanmathenge22@gmail.com
 
-Thank you for testing PivotaConnect v1.24.0!
+Thank you for testing PivotaConnect v1.25.0!
 Your feedback helps us create a better user experience.
 
 ================================================================

@@ -40,6 +40,8 @@ import com.example.pivota.core.presentations.viewmodel.ThemeViewModel
 import com.example.pivota.dashboard.presentation.composables.client_general_composables.profile_composables.LogoutConfirmationDialog
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.DashboardSharedViewModel
 import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.HeaderState
+import com.example.pivota.dashboard.presentation.viewmodels.client_general_viewmodels.BannerType
+import com.example.pivota.ui.theme.SuccessGreen
 import kotlinx.coroutines.delay
 import kotlin.math.absoluteValue
 
@@ -92,7 +94,6 @@ private fun truncateText(text: String, maxLength: Int = 20): String {
     }
 }
 
-
 private fun getBorderColor(colorScheme: ColorScheme): Color {
     return colorScheme.surfaceVariant
 }
@@ -103,7 +104,7 @@ private fun getBorderColor(colorScheme: ColorScheme): Color {
 fun ReusableHeader(
     modifier: Modifier = Modifier,
     colorScheme: ColorScheme,
-    pageTitle: String,
+    pageTitle: String? = null,
     isGuestMode: Boolean = false,
     isSticky: Boolean = false,
     pageSubtitle: String? = null,
@@ -189,9 +190,9 @@ fun ReusableHeader(
     // Display text format with NO truncation for SYSTEM scope
     val displayText = when {
         isGuestMode -> "Guest"
-        isSystemScope -> "Admin"  // ← FIXED: Show "Admin" instead of truncated role
+        isSystemScope -> "Admin"
         isBusinessScope -> truncatedPlanName
-        else -> "Member"  // ← FIXED: Fallback to "Member" instead of truncated role
+        else -> "Member"
     }
 
     val profileImageUrl = when {
@@ -201,6 +202,34 @@ fun ReusableHeader(
     }
     val isVerified = !isGuestMode && true  // Temporarily always true for testing
 // TODO: Change back to: val isVerified = !isGuestMode && (headerUser?.isVerified == true)
+
+    // ✅ Collect state from ViewModel with proper observation
+    val isOffline by sharedViewModel.isOffline.collectAsState()
+    val bannerType by sharedViewModel.bannerType.collectAsState()
+
+    // ✅ Log the current state values
+    LaunchedEffect(isOffline, bannerType) {
+        println("📊 [ReusableHeader] State update:")
+        println("   - isOffline: $isOffline")
+        println("   - bannerType: $bannerType")
+    }
+
+    // ✅ Compute online status with proper dependency tracking
+    val isOnline = remember(isOffline, bannerType) {
+        val online = !isOffline && bannerType != BannerType.NO_INTERNET && bannerType != BannerType.BACKEND_DOWN
+
+        println("🔄 [ReusableHeader] Computing isOnline:")
+        println("   - isOffline: $isOffline")
+        println("   - bannerType: $bannerType")
+        println("   - isOnline: $online")
+
+        online
+    }
+
+    // ✅ Log when online status changes
+    LaunchedEffect(isOnline) {
+        println("🟢 [ReusableHeader] Online status changed to: ${if (isOnline) "🟢 ONLINE" else "⚪ OFFLINE"}")
+    }
 
     LaunchedEffect(headerUser, isLoading) {
         println("🔍 [ReusableHeader] Current values - firstName: $firstName, displayText: $displayText, scope: $userScope, planName: $planName, isLoading: $isLoading")
@@ -242,25 +271,21 @@ fun ReusableHeader(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Profile Avatar with Professional Border
+                        // ✅ Profile Avatar Wrapper with Safety Bounds
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .clickable { showMenuBottomSheet = true }
-                                .shadow(
-                                    elevation = 2.dp,
-                                    shape = CircleShape,
-                                    ambientColor = Color.Black.copy(alpha = 0.15f),
-                                    spotColor = Color.Black.copy(alpha = 0.1f)
-                                ),
+                                .size(54.dp)
+                                .clickable {
+                                    println("👆 [ReusableHeader] Avatar clicked")
+                                    showMenuBottomSheet = true
+                                },
                             contentAlignment = Alignment.Center
                         ) {
                             when {
                                 isGuestMode -> {
                                     Box(
                                         modifier = Modifier
-                                            .fillMaxSize()
+                                            .size(48.dp)
                                             .background(
                                                 brush = Brush.linearGradient(
                                                     colors = listOf(
@@ -269,6 +294,12 @@ fun ReusableHeader(
                                                     )
                                                 ),
                                                 shape = CircleShape
+                                            )
+                                            .shadow(
+                                                elevation = 2.dp,
+                                                shape = CircleShape,
+                                                ambientColor = Color.Black.copy(alpha = 0.15f),
+                                                spotColor = Color.Black.copy(alpha = 0.1f)
                                             ),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -283,10 +314,16 @@ fun ReusableHeader(
                                 isLoading && headerUser == null -> {
                                     Box(
                                         modifier = Modifier
-                                            .fillMaxSize()
+                                            .size(48.dp)
                                             .background(
                                                 color = colorScheme.surfaceVariant,
                                                 shape = CircleShape
+                                            )
+                                            .shadow(
+                                                elevation = 2.dp,
+                                                shape = CircleShape,
+                                                ambientColor = Color.Black.copy(alpha = 0.15f),
+                                                spotColor = Color.Black.copy(alpha = 0.1f)
                                             ),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -299,28 +336,77 @@ fun ReusableHeader(
                                     }
                                 }
                                 else -> {
-                                    // Get alternating border color based on user ID (border for everyone)
                                     val borderColor = getBorderColor(colorScheme)
 
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(context)
-                                            .data(profileImageUrl)
-                                            .size(128)
-                                            .crossfade(true)
-                                            .build(),
-                                        contentDescription = "Profile",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(CircleShape)
-                                            .border(
-                                                width = 2.5.dp,
-                                                color = borderColor,
-                                                shape = CircleShape
-                                            ),
-                                        placeholder = painterResource(R.drawable.job_placeholder3),
-                                        error = painterResource(R.drawable.job_placeholder3)
-                                    )
+                                    // Outer container allocation frame
+                                    Box(
+                                        modifier = Modifier.size(54.dp)
+                                    ) {
+                                        // Avatar image capsule
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.Center)
+                                                .size(48.dp)
+                                                .shadow(
+                                                    elevation = 2.dp,
+                                                    shape = CircleShape,
+                                                    ambientColor = Color.Black.copy(alpha = 0.15f),
+                                                    spotColor = Color.Black.copy(alpha = 0.1f)
+                                                )
+                                        ) {
+                                            AsyncImage(
+                                                model = ImageRequest.Builder(context)
+                                                    .data(profileImageUrl)
+                                                    .size(128)
+                                                    .crossfade(true)
+                                                    .build(),
+                                                contentDescription = "Profile",
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .clip(CircleShape)
+                                                    .border(
+                                                        width = 2.5.dp,
+                                                        color = borderColor,
+                                                        shape = CircleShape
+                                                    ),
+                                                placeholder = painterResource(R.drawable.job_placeholder3),
+                                                error = painterResource(R.drawable.job_placeholder3)
+                                            )
+                                        }
+
+                                        // ✅ STATUS DOT - Using Material Theme Colors
+                                        // Online: Green (tertiary color), Offline: Gray (onSurfaceVariant)
+                                        val dotColor = if (isOnline) {
+                                            println("🟢 [ReusableHeader] Status dot: ONLINE - GREEN")
+                                            SuccessGreen
+                                        } else {
+                                            println("⚪ [ReusableHeader] Status dot: OFFLINE - GRAY")
+                                            colorScheme.onSurfaceVariant
+                                        }
+
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.BottomEnd)
+                                                .offset(x = (-2).dp, y = (-2).dp)
+                                                .size(16.dp)
+                                                .background(
+                                                    color = dotColor,
+                                                    shape = CircleShape
+                                                )
+                                                .border(
+                                                    width = 2.5.dp,
+                                                    color = colorScheme.surface,
+                                                    shape = CircleShape
+                                                )
+                                                .shadow(
+                                                    elevation = 3.dp,
+                                                    shape = CircleShape,
+                                                    ambientColor = dotColor.copy(alpha = 0.3f),
+                                                    spotColor = dotColor.copy(alpha = 0.2f)
+                                                )
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -328,7 +414,10 @@ fun ReusableHeader(
                         // User Info Column
                         Column(
                             modifier = Modifier
-                                .clickable { showMenuBottomSheet = true }
+                                .clickable {
+                                    println("👆 [ReusableHeader] User info clicked")
+                                    showMenuBottomSheet = true
+                                }
                                 .weight(1f)
                         ) {
                             // Name Row with Verified Badge
@@ -378,7 +467,6 @@ fun ReusableHeader(
                             ) {
                                 when {
                                     isBusinessScope && planConfig != null -> {
-                                        // Business scope: Show pill with Plan
                                         Surface(
                                             shape = RoundedCornerShape(20.dp),
                                             color = planConfig.color.copy(alpha = 0.12f),
@@ -408,7 +496,6 @@ fun ReusableHeader(
                                         }
                                     }
                                     isSystemScope -> {
-                                        // System scope: Show "Admin" pill
                                         Surface(
                                             shape = RoundedCornerShape(20.dp),
                                             color = colorScheme.primary.copy(alpha = 0.12f),
@@ -426,7 +513,7 @@ fun ReusableHeader(
                                                     modifier = Modifier.size(12.dp)
                                                 )
                                                 Text(
-                                                    text = displayText,  // Now shows "Admin"
+                                                    text = displayText,
                                                     fontSize = 11.sp,
                                                     fontWeight = FontWeight.Medium,
                                                     color = colorScheme.primary,
@@ -438,9 +525,8 @@ fun ReusableHeader(
                                         }
                                     }
                                     else -> {
-                                        // Fallback - just text (shows "Member")
                                         Text(
-                                            text = displayText,  // Now shows "Member"
+                                            text = displayText,
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Medium,
                                             color = colorScheme.onSurfaceVariant,
@@ -460,7 +546,6 @@ fun ReusableHeader(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Search Icon (conditionally shown)
                         if (showSearchIcon) {
                             HeaderActionIcon(
                                 icon = Icons.Rounded.Search,
@@ -469,11 +554,13 @@ fun ReusableHeader(
                             )
                         }
 
-                        // Theme Toggle Icon
                         HeaderActionIcon(
                             icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
                             colorScheme = colorScheme,
-                            onClick = { themeViewModel.toggleTheme() }
+                            onClick = {
+                                println("🎨 [ReusableHeader] Theme toggled")
+                                themeViewModel.toggleTheme()
+                            }
                         )
 
                         // Notifications Icon with Badge
@@ -482,6 +569,7 @@ fun ReusableHeader(
                                 icon = Icons.Outlined.NotificationsActive,
                                 colorScheme = colorScheme,
                                 onClick = {
+                                    println("🔔 [ReusableHeader] Notification icon clicked")
                                     onNotificationClick()
                                     onMessageClick()
                                 }
@@ -518,9 +606,9 @@ fun ReusableHeader(
                     }
                 }
 
-                // Animated Page Title Section - Hides on scroll
+                // Animated Page Title Section
                 AnimatedVisibility(
-                    visible = !isScrolled,
+                    visible = !isScrolled && !pageTitle.isNullOrEmpty(),
                     enter = fadeIn(animationSpec = tween(300)) +
                             slideInVertically(initialOffsetY = { -it / 2 }, animationSpec = tween(300)),
                     exit = fadeOut(animationSpec = tween(200)) +
@@ -533,7 +621,7 @@ fun ReusableHeader(
                     ) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = pageTitle,
+                            text = pageTitle!!,
                             style = MaterialTheme.typography.headlineLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = colorScheme.onSurface,
@@ -580,14 +668,31 @@ fun ReusableHeader(
 
     // Bottom Sheet for Profile Menu
     if (showMenuBottomSheet) {
+        println("📱 [ReusableHeader] Opening ProfileMenuBottomSheet")
         ProfileMenuBottomSheet(
-            onDismiss = { showMenuBottomSheet = false },
+            onDismiss = {
+                println("📱 [ReusableHeader] Dismissing ProfileMenuBottomSheet")
+                showMenuBottomSheet = false
+            },
             colorScheme = colorScheme,
-            onMyAccountClick = { showMenuBottomSheet = false },
-            onMyListingsClick = { showMenuBottomSheet = false },
-            onMyFavoritesClick = { showMenuBottomSheet = false },
-            onPostClick = { showMenuBottomSheet = false },
+            onMyAccountClick = {
+                println("👤 [ReusableHeader] My Account clicked")
+                showMenuBottomSheet = false
+            },
+            onMyListingsClick = {
+                println("📋 [ReusableHeader] My Listings clicked")
+                showMenuBottomSheet = false
+            },
+            onMyFavoritesClick = {
+                println("❤️ [ReusableHeader] My Favorites clicked")
+                showMenuBottomSheet = false
+            },
+            onPostClick = {
+                println("📝 [ReusableHeader] Post clicked")
+                showMenuBottomSheet = false
+            },
             onLogoutClick = {
+                println("🚪 [ReusableHeader] Logout clicked")
                 showMenuBottomSheet = false
                 sharedViewModel.onLogoutClicked()
             }
@@ -596,12 +701,17 @@ fun ReusableHeader(
 
     // Logout Confirmation Dialog
     if (showLogoutDialog) {
+        println("⚠️ [ReusableHeader] Showing logout confirmation dialog")
         LogoutConfirmationDialog(
             onConfirm = {
+                println("✅ [ReusableHeader] Logout confirmed")
                 sharedViewModel.onLogoutConfirmed()
                 onLogoutComplete()
             },
-            onDismiss = { sharedViewModel.onLogoutCancelled() }
+            onDismiss = {
+                println("❌ [ReusableHeader] Logout cancelled")
+                sharedViewModel.onLogoutCancelled()
+            }
         )
     }
 }

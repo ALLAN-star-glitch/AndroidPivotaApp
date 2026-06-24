@@ -305,8 +305,6 @@ fun DiscoverScreen(
                 item(key = "header") {
                     ReusableHeader(
                         colorScheme = colorScheme,
-                        pageTitle = "Pivota Connect",
-                        pageSubtitle = "Connect to opportunities near you",
                         isGuestMode = isGuestMode,
                         isSticky = false,
                         sharedViewModel = sharedViewModel,
