@@ -19,7 +19,7 @@ fun WelcomeScreen(
     }
 
     AdaptiveWelcomeLayout(
-        header = "Let's Connect You!",
+        header = "PivotaConnect.Connecting You!",
         welcomeText = "Your all-in-one platform for verified jobs, quality housing, and essential support services across Kenya.",
         onNavigateToContinueSetup = onNavigateToContinueSetup,
         onNavigateToContinueWithGoogle = onNavigateToContinueWithGoogle,
