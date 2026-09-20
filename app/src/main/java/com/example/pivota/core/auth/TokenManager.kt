@@ -5,7 +5,9 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import androidx.compose.remote.creation.dsl.first
 import androidx.core.content.ContextCompat
+import com.example.pivota.auth.domain.model.TokenRefreshResult
 import com.example.pivota.auth.domain.useCase.AuthUseCases
 import com.example.pivota.core.health.GatewayHealthChecker
 import com.example.pivota.core.network.ApiResult
@@ -629,7 +631,8 @@ class TokenManager @Inject constructor(
 
             return when (result) {
                 is ApiResult.Success -> {
-                    handleRefreshSuccess(result.data.first, result.data.second ?: refreshToken)
+                    // ✅ result.data is now a TokenRefreshResult (was Pair<String, String>)
+                    handleRefreshSuccess(result.data)
                     true
                 }
                 is ApiResult.Error -> {
@@ -652,7 +655,8 @@ class TokenManager @Inject constructor(
         }
     }
 
-    private suspend fun handleRefreshSuccess(accessToken: String, refreshToken: String) {
+    // ✅ New signature: takes the domain result object directly
+    private suspend fun handleRefreshSuccess(tokens: TokenRefreshResult) {
         consecutiveFailures = 0
         consecutiveBackendErrors = 0
         lastSuccessfulRefresh = System.currentTimeMillis()
@@ -661,7 +665,7 @@ class TokenManager @Inject constructor(
         currentStatus = ServiceStatus.AVAILABLE
         lastTokenRefreshTime = System.currentTimeMillis()
 
-        dataStore.saveTokensWithTimestamp(accessToken, refreshToken)
+        dataStore.saveTokensWithTimestamp(tokens.accessToken, tokens.refreshToken)
         println("✅ [TokenManager] Token refreshed successfully")
 
         if (consecutiveFailures > 0 || !isBackendAvailable) {

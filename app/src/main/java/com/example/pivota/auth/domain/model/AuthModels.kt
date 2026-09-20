@@ -437,3 +437,60 @@ data class CompleteProfileResult(
     val profileCompletionPercentage: Int
         get() = completion?.profileCompleted ?: 0
 }
+
+
+/* ======================================================
+   AUTH FLOW RESULT MODELS
+   (domain-layer replacements for data-layer DTOs)
+====================================================== */
+
+/**
+ * Result of requesting an OTP (signup, password reset, generic verification).
+ */
+data class OtpRequestResult(
+    val message: String? = null,
+    val expiresInSeconds: Int? = null
+)
+
+/**
+ * Result of verifying an OTP code.
+ * [verificationToken] is used by subsequent stages (e.g. signup) when required.
+ */
+data class OtpVerificationResult(
+    val message: String? = null,
+    val verificationToken: String? = null,
+    val email: String? = null
+)
+
+/**
+ * Result of completing individual signup.
+ */
+data class SignupResult(
+    val message: String? = null,
+    val user: User? = null,
+    // Auto-login (free plan)
+    val accessToken: String? = null,
+    val refreshToken: String? = null,
+    val redirectTo: String? = null,
+    // Payment required (premium plan)
+    val redirectUrl: String? = null,
+    val merchantReference: String? = null
+) {
+    val requiresPayment: Boolean get() = redirectUrl != null
+    val isAutoLoggedIn: Boolean get() = accessToken != null
+}
+
+/**
+ * Result of refreshing tokens.
+ */
+data class TokenRefreshResult(
+    val accessToken: String,
+    val refreshToken: String
+)
+
+/**
+ * Result of resetting a password.
+ */
+data class PasswordResetResult(
+    val message: String? = null
+)

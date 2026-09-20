@@ -24,4 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Pivota"
 include(":app")
- 
+include(":benchmark")

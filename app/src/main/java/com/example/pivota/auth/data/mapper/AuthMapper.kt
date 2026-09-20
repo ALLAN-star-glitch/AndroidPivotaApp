@@ -432,9 +432,7 @@ class AuthDataMapper @Inject constructor() {
     // HELPER METHODS FOR OTHER RESPONSES
     // ======================================================
 
-    fun toSignupResult(response: SignupResponseDto): Boolean {
-        return response.success
-    }
+
 
     fun toResetPasswordResult(response: BaseResponseDto<Nothing>): Pair<Boolean, String> {
         return Pair(response.success, response.message)
@@ -448,9 +446,6 @@ class AuthDataMapper @Inject constructor() {
         }
     }
 
-    fun toOtpRequestResult(response: BaseOtpResponseDto): Boolean {
-        return response.success
-    }
 
 
 // ======================================================
@@ -488,6 +483,73 @@ class AuthDataMapper @Inject constructor() {
             }
         )
     }
+
+
+
+    // ======================================================
+// RESPONSE DTO → DOMAIN RESULT TYPES  (corrected to real DTO shapes)
+// ======================================================
+
+    fun toOtpRequestResult(response: BaseOtpResponseDto): OtpRequestResult {
+        if (!response.success) {
+            throw IllegalStateException(response.message.ifBlank { "Failed to send OTP" })
+        }
+        return OtpRequestResult(
+            message = response.message.ifBlank { null }
+        )
+    }
+
+    fun toOtpVerificationResult(
+        response: VerifyOtpResponseDto,
+        email: String                         // caller already knows it — pass it in
+    ): OtpVerificationResult {
+        if (!response.success) {
+            throw IllegalStateException(response.message.ifBlank { "OTP verification failed" })
+        }
+        return OtpVerificationResult(
+            message = response.message.ifBlank { null },
+            email = email,
+            verificationToken = null          // backend doesn't issue one in this DTO
+        )
+    }
+
+    fun toSignupResult(response: SignupResponseDto): SignupResult {
+        if (!response.success) {
+            throw IllegalStateException(response.message.ifBlank { "Signup failed" })
+        }
+        val data = response.data
+        return SignupResult(
+            message = data?.message ?: response.message.ifBlank { null },
+            user = null,
+            accessToken = data?.accessToken,
+            refreshToken = data?.refreshToken,
+            redirectTo = data?.redirectTo,
+            redirectUrl = data?.redirectUrl,
+            merchantReference = data?.merchantReference
+        )
+    }
+
+    fun toTokenRefreshResult(response: RefreshTokenResponseDto): TokenRefreshResult {
+        val data = response.data
+        if (!response.success || data == null) {
+            throw IllegalStateException(response.message.ifBlank { "Token refresh failed" })
+        }
+        return TokenRefreshResult(
+            accessToken = data.accessToken,
+            refreshToken = data.refreshToken
+        )
+    }
+
+    fun toPasswordResetResult(response: BaseResponseDto<Nothing>): PasswordResetResult {
+        if (!response.success) {
+            throw IllegalStateException(response.message.ifBlank { "Password reset failed" })
+        }
+        return PasswordResetResult(
+            message = response.message.ifBlank { null }
+        )
+    }
+
+
 
     /**
      * Convert AccountDataDto to Account domain model

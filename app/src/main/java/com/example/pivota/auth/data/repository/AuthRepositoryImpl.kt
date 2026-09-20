@@ -6,11 +6,18 @@ import com.example.pivota.auth.data.remote.api.AuthApiService
 import com.example.pivota.auth.data.remote.api.AuthAuthenticatedApiService
 import com.example.pivota.auth.data.remote.dto.*
 import com.example.pivota.auth.domain.model.CompleteProfileResult
+import com.example.pivota.auth.domain.model.LoginResponse
+import com.example.pivota.auth.domain.model.OtpRequestResult
+import com.example.pivota.auth.domain.model.OtpVerificationResult
+import com.example.pivota.auth.domain.model.PasswordResetResult
+import com.example.pivota.auth.domain.model.SignupResult
+import com.example.pivota.auth.domain.model.TokenRefreshResult
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.auth.domain.repository.AuthRepository
 import com.example.pivota.core.database.dao.UserDao
 import com.example.pivota.core.database.entity.UserEntity
 import com.example.pivota.core.network.ApiResult
+import com.example.pivota.core.network.NetworkError
 import com.example.pivota.core.network.safeApiCall
 import com.example.pivota.core.preferences.PivotaDataStore
 import kotlinx.serialization.json.Json
@@ -18,36 +25,48 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
-import com.example.pivota.auth.domain.model.LoginResponse
-import com.example.pivota.core.network.NetworkError
 
 class AuthRepositoryImpl @Inject constructor(
-    private val apiService: AuthApiService, // For unauthenticated calls
-    private val authenticatedApiService: AuthAuthenticatedApiService, // For authenticated calls
+    private val apiService: AuthApiService,
+    private val authenticatedApiService: AuthAuthenticatedApiService,
     private val preferences: PivotaDataStore,
     private val userDao: UserDao,
     private val mapper: AuthDataMapper
 ) : AuthRepository {
 
-    override suspend fun requestOtp(email: String, purpose: String, phone: String?): ApiResult<BaseOtpResponseDto> {
+    // ======================================================
+    // OTP / SIGNUP FLOW
+    // ======================================================
+
+    override suspend fun requestOtp(
+        email: String,
+        purpose: String,
+        phone: String?
+    ): ApiResult<OtpRequestResult> {
         val request = RequestOtpRequestDto(
             email = email,
             purpose = purpose,
             phone = phone
         )
         return safeApiCall {
-            apiService.requestOtp(request)
+            val dto = apiService.requestOtp(request)
+            mapper.toOtpRequestResult(dto)
         }
     }
 
-    override suspend fun verifyOtp(email: String, code: String, purpose: String): ApiResult<VerifyOtpResponseDto> {
+    override suspend fun verifyOtp(
+        email: String,
+        code: String,
+        purpose: String
+    ): ApiResult<OtpVerificationResult> {
         val request = VerifyOtpRequestDto(
             email = email,
             code = code,
             purpose = purpose
         )
         return safeApiCall {
-            apiService.verifyOtp(request)
+            val dto = apiService.verifyOtp(request)
+            mapper.toOtpVerificationResult(dto, email)
         }
     }
 
@@ -55,7 +74,7 @@ class AuthRepositoryImpl @Inject constructor(
         user: User,
         code: String,
         password: String
-    ): ApiResult<SignupResponseDto> {
+    ): ApiResult<SignupResult> {
         val request = mapper.toSignupRequestDto(user, code, password)
 
         // ========== LOG THE FULL REQUEST ==========
@@ -77,112 +96,98 @@ class AuthRepositoryImpl @Inject constructor(
         println("🔍 =========================================================")
 
         return safeApiCall {
-            apiService.signup(request)
-        }.let { apiResult ->
-            when (apiResult) {
-                is ApiResult.Success -> {
-                    val response = apiResult.data
-                    println("🔍 RESPONSE: success=${response.success}, message=${response.message}")
+            val dto = apiService.signup(request)
+            val result = mapper.toSignupResult(dto)
 
-                    // Handle auto-login if tokens are present
-                    if (response.success && response.data != null) {
-                        val signupData = response.data
+            // Side-effect: handle auto-login / payment-required / manual-login
+            println("🔍 RESPONSE: success=${dto.success}, message=${dto.message}")
 
-                        // Check if we have tokens (auto-login for free plan)
-                        if (!signupData.accessToken.isNullOrEmpty() && !signupData.refreshToken.isNullOrEmpty()) {
-                            println("🔍 Auto-login: Tokens received, saving user session")
+            if (dto.success) {
+                when {
+                    // Auto-login (free plan): tokens present
+                    !result.accessToken.isNullOrEmpty() &&
+                            !result.refreshToken.isNullOrEmpty() -> {
+                        println("🔍 Auto-login: Tokens received, saving user session")
 
-                            // Extract user from token and save authenticated session
-                            val authenticatedUser = extractUserFromToken(
-                                email = request.email,
-                                accessToken = signupData.accessToken,
-                                refreshToken = signupData.refreshToken
-                            )
+                        val authenticatedUser = extractUserFromToken(
+                            email = request.email,
+                            accessToken = result.accessToken,
+                            refreshToken = result.refreshToken
+                        )
 
-                            // Also save additional fields from signup
-                            val finalUser = authenticatedUser.copy(
-                                firstName = request.firstName,
-                                lastName = request.lastName,
-                                personalPhone = request.phone,
-                                primaryPurpose = request.primaryPurpose
-                            )
+                        val finalUser = authenticatedUser.copy(
+                            firstName = request.firstName,
+                            lastName = request.lastName,
+                            personalPhone = request.phone,
+                            primaryPurpose = request.primaryPurpose
+                        )
 
-                            saveAuthenticatedUser(finalUser)
-
-                            println("🔍 User auto-logged in successfully: ${finalUser.email}")
-                        }
-                        // Check if payment is required (premium plan)
-                        else if (!signupData.redirectUrl.isNullOrEmpty()) {
-                            println("🔍 Payment required: Redirect to ${signupData.redirectUrl}")
-                            // Don't save user yet - they need to complete payment first
-                            // Save only basic info for later
-                            val basicUser = user.copy(isAuthenticated = false)
-                            saveBasicUserInfo(basicUser)
-                        }
-                        // Fallback - just success message (should go to login)
-                        else {
-                            println("🔍 Signup successful, no tokens. User should login manually")
-                            val basicUser = user.copy(isAuthenticated = false)
-                            saveBasicUserInfo(basicUser)
-                        }
+                        saveAuthenticatedUser(finalUser)
+                        println("🔍 User auto-logged in successfully: ${finalUser.email}")
                     }
-                    apiResult
-                }
-                is ApiResult.Error -> {
-                    println("❌ Signup failed: ${apiResult.networkError.userFriendlyMessage}")
-                    apiResult
-                }
-                ApiResult.Loading -> {
-                    // Loading state - do nothing, just return
-                    apiResult
+
+                    // Payment required (premium plan)
+                    !result.redirectUrl.isNullOrEmpty() -> {
+                        println("🔍 Payment required: Redirect to ${result.redirectUrl}")
+                        val basicUser = user.copy(isAuthenticated = false)
+                        saveBasicUserInfo(basicUser)
+                    }
+
+                    // Fallback: success but no tokens, no redirect
+                    else -> {
+                        println("🔍 Signup successful, no tokens. User should login manually")
+                        val basicUser = user.copy(isAuthenticated = false)
+                        saveBasicUserInfo(basicUser)
+                    }
                 }
             }
+
+            result
         }
     }
 
-    override suspend fun login(email: String, password: String): ApiResult<LoginResponseDto> {
+    // ======================================================
+    // LOGIN FLOW
+    // ======================================================
+
+    override suspend fun login(
+        email: String,
+        password: String
+    ): ApiResult<LoginResponse> {
         val request = LoginRequestDto(
             email = email,
             password = password
         )
         return safeApiCall {
-            apiService.login(request)
+            val dto = apiService.login(request)
+            val loginResponse = mapper.toLoginResponse(dto)
+
+            // Persist user only if authenticated (not MFA-required)
+            if (loginResponse is LoginResponse.Authenticated) {
+                saveAuthenticatedUser(loginResponse.user)
+            }
+
+            loginResponse
         }
     }
 
-    override suspend fun verifyMfaLogin(email: String, code: String): ApiResult<LoginResponseDto> {
+    override suspend fun verifyMfaLogin(
+        email: String,
+        code: String
+    ): ApiResult<LoginResponse> {
         val request = VerifyMfaLoginRequestDto(
             email = email,
             code = code
         )
         return safeApiCall {
-            apiService.verifyMfaLogin(request)
-        }.let { apiResult ->
-            when (apiResult) {
-                is ApiResult.Success -> {
-                    val response = apiResult.data
-                    // Save authenticated user if login successful
-                    if (response.success && response.data?.accessToken != null) {
-                        val data = response.data
-                        // Decode JWT token to extract user information
-                        val user = extractUserFromToken(
-                            email = email,
-                            accessToken = data.accessToken!!,
-                            refreshToken = data.refreshToken
-                        )
-                        saveAuthenticatedUser(user)
-                    }
-                    apiResult
-                }
-                is ApiResult.Error -> {
-                    println("❌ MFA verification failed: ${apiResult.networkError.userFriendlyMessage}")
-                    apiResult
-                }
-                ApiResult.Loading -> {
-                    // Loading state - do nothing, just return
-                    apiResult
-                }
+            val dto = apiService.verifyMfaLogin(request)
+            val loginResponse = mapper.toLoginResponse(dto)
+
+            if (loginResponse is LoginResponse.Authenticated) {
+                saveAuthenticatedUser(loginResponse.user)
             }
+
+            loginResponse
         }
     }
 
@@ -211,292 +216,98 @@ class AuthRepositoryImpl @Inject constructor(
         )
 
         return safeApiCall {
-            apiService.googleSignIn(request)
-        }.let { apiResult ->
-            when (apiResult) {
-                is ApiResult.Success -> {
-                    val response = apiResult.data
-                    println("🔍 [Google Sign-In] Response: success=${response.success}, message=${response.message}")
+            val dto = apiService.googleSignIn(request)
+            println("🔍 [Google Sign-In] Response: success=${dto.success}, message=${dto.message}")
 
-                    try {
-                        // Use the existing mapper to convert DTO to domain model
-                        val loginResponse = mapper.toLoginResponse(response)
+            val loginResponse = mapper.toLoginResponse(dto)
 
-                        // Save authenticated user if login successful
-                        if (loginResponse is LoginResponse.Authenticated) {
-                            saveAuthenticatedUser(loginResponse.user)
-                            println("🔍 [Google Sign-In] User authenticated: ${loginResponse.user.email}")
-                        }
-
-                        ApiResult.Success(loginResponse)
-                    } catch (e: Exception) {
-                        println("❌ [Google Sign-In] Parse error: ${e.message}")
-                        // ✅ FIXED: Use data class constructor
-                        ApiResult.Error(NetworkError.ParsingError(originalMessage = e.message), e.message)
-                    }
-                }
-                is ApiResult.Error -> {
-                    println("❌ [Google Sign-In] Failed: ${apiResult.networkError.userFriendlyMessage}")
-                    ApiResult.Error(apiResult.networkError)
-                }
-                ApiResult.Loading -> {
-                    ApiResult.Loading
-                }
+            if (loginResponse is LoginResponse.Authenticated) {
+                saveAuthenticatedUser(loginResponse.user)
+                println("🔍 [Google Sign-In] User authenticated: ${loginResponse.user.email}")
             }
+
+            loginResponse
         }
     }
 
-    override suspend fun refreshToken(refreshToken: String): ApiResult<RefreshTokenResponseDto> {
+    // ======================================================
+    // TOKEN LIFECYCLE
+    // ======================================================
+
+    override suspend fun refreshToken(
+        refreshToken: String
+    ): ApiResult<TokenRefreshResult> {
         return safeApiCall {
-            apiService.refreshToken(refreshToken)
-        }.let { apiResult ->
-            when (apiResult) {
-                is ApiResult.Success -> {
-                    val response = apiResult.data
-                    // Update stored tokens if refresh successful
-                    if (response.success && response.data != null) {
-                        preferences.saveAccessToken(response.data.accessToken)
-                        preferences.saveRefreshToken(response.data.refreshToken)
-                    }
-                    apiResult
-                }
-                is ApiResult.Error -> apiResult
-                ApiResult.Loading -> apiResult
-            }
+            val dto = apiService.refreshToken(refreshToken)
+            val result = mapper.toTokenRefreshResult(dto)
+
+            // Persist new tokens
+            preferences.saveAccessToken(result.accessToken)
+            preferences.saveRefreshToken(result.refreshToken)
+
+            result
         }
     }
 
-    override suspend fun requestPasswordReset(email: String): ApiResult<BaseOtpResponseDto> {
+    // ======================================================
+    // PASSWORD RESET FLOW
+    // ======================================================
+
+    override suspend fun requestPasswordReset(
+        email: String
+    ): ApiResult<OtpRequestResult> {
         return safeApiCall {
-            apiService.requestPasswordReset(email)
+            val dto = apiService.requestPasswordReset(email)
+            mapper.toOtpRequestResult(dto)
         }
     }
 
-    override suspend fun resetPassword(email: String, code: String, newPassword: String): ApiResult<BaseResponseDto<Nothing>> {
-        return safeApiCall {
-            apiService.resetPassword(email, code, newPassword)
-        }
-    }
-
-    override suspend fun logout(refreshToken: String): ApiResult<BaseResponseDto<Nothing>> {
-        return safeApiCall {
-            authenticatedApiService.logout()  // Use authenticated service (no parameters)
-        }.let { apiResult ->
-            when (apiResult) {
-                is ApiResult.Success -> {
-                    val response = apiResult.data
-                    if (response.success) {
-                        // Clear local user data
-                        preferences.clearUserData()
-                        userDao.deleteAll()
-                        println("✅ Logout successful, local data cleared")
-                    }
-                    apiResult
-                }
-                is ApiResult.Error -> {
-                    println("❌ Logout failed: ${apiResult.networkError.userFriendlyMessage}")
-                    // Still clear local data even if API fails
-                    preferences.clearUserData()
-                    userDao.deleteAll()
-                    apiResult
-                }
-                ApiResult.Loading -> apiResult
-            }
-        }
-    }
-
-
-    // Helper function to update local user data from profile
-    private suspend fun updateLocalUserFromProfile(profile: CompleteProfileResult) {
-        try {
-            // Get existing user
-            val existingUser = userDao.getUserByEmail(profile.user?.email ?: return)
-
-            // Convert profile data to JSON strings
-            val jobSeekerJson = profile.jobSeekerProfile?.let { Json.encodeToString(it) }
-            val skilledProfessionalJson = profile.skilledProfessionalProfile?.let { Json.encodeToString(it) }
-            val intermediaryAgentJson = profile.intermediaryAgentProfile?.let { Json.encodeToString(it) }
-            val housingSeekerJson = profile.housingSeekerProfile?.let { Json.encodeToString(it) }
-            val supportBeneficiaryJson = profile.supportBeneficiaryProfile?.let { Json.encodeToString(it) }
-            val employerJson = profile.employerProfile?.let { Json.encodeToString(it) }
-            val propertyOwnerJson = profile.propertyOwnerProfile?.let { Json.encodeToString(it) }
-            val organizationJson = profile.organizationProfile?.let { Json.encodeToString(it) }
-            val individualJson = profile.individualProfile?.let { Json.encodeToString(it) }
-            val verificationsJson = profile.verifications.let { Json.encodeToString(it) }
-            val completionJson = profile.completion?.let { Json.encodeToString(it) }
-
-            // Update user with profile information
-            val updatedUser = UserEntity(
-                uuid = profile.user?.uuid ?: existingUser?.uuid ?: "",
-                email = profile.user?.email ?: existingUser?.email ?: return,
-                firstName = profile.user?.firstName ?: existingUser?.firstName ?: "",
-                lastName = profile.user?.lastName ?: existingUser?.lastName ?: "",
-                userName = profile.displayName,
-                phone = profile.user?.personalPhone ?: existingUser?.phone,
-                profileImage = profile.profileImageUrl ?: existingUser?.profileImage,
-                isAuthenticated = existingUser?.isAuthenticated ?: true,
-                isOnboardingComplete = existingUser?.isOnboardingComplete ?: true,
-                hasSeenWelcomeScreen = existingUser?.hasSeenWelcomeScreen ?: true,
-                primaryPurpose = profile.user?.primaryPurpose ?: existingUser?.primaryPurpose,
-                role = profile.user?.role ?: existingUser?.role,
-                accountType = profile.accountType,
-                accountId = profile.account.uuid,
-                accountName = profile.account.name,
-                organizationUuid = existingUser?.organizationUuid,
-                planSlug = existingUser?.planSlug,
-                tokenId = existingUser?.tokenId,
-                // Profile data as JSON
-                jobSeekerPreferences = jobSeekerJson,
-                skilledProfessionalProfile = skilledProfessionalJson,
-                intermediaryAgentProfile = intermediaryAgentJson,
-                housingSeekerPreferences = housingSeekerJson,
-                supportBeneficiaryNeeds = supportBeneficiaryJson,
-                employerRequirements = employerJson,
-                propertyOwnerPortfolio = propertyOwnerJson,
-                organizationProfile = organizationJson,
-                individualProfile = individualJson,
-                verifications = verificationsJson,
-                profileCompletion = completionJson,
-                updatedAt = System.currentTimeMillis()
-            )
-
-            userDao.updateUser(updatedUser)
-            println("✅ Local user data updated from profile")
-
-        } catch (e: Exception) {
-            println("⚠️ Failed to update local user from profile: ${e.message}")
-            e.printStackTrace()
-        }
-    }
-
-    // Update the extractUserFromToken function in AuthRepositoryImpl.kt
-
-    /**
-     * Extract user information from JWT token
-     * Updated for new JWT payload structure matching backend:
-     * - sub (userUuid)
-     * - jti (tokenId)
-     * - iat (issued at)
-     * - email
-     * - accountId
-     * - role
-     * - accountType
-     * - organizationUuid (optional)
-     * - planSlug (optional)
-     */
-    private suspend fun extractUserFromToken(
+    override suspend fun resetPassword(
         email: String,
-        accessToken: String,
-        refreshToken: String?
-    ): User {
-        return try {
-            // Split JWT token
-            val parts = accessToken.split(".")
-            if (parts.size != 3) {
-                // Invalid JWT format, return basic user
-                return User(
-                    email = email,
-                    isAuthenticated = true,
-                    accessToken = accessToken,
-                    refreshToken = refreshToken
-                )
+        code: String,
+        newPassword: String
+    ): ApiResult<PasswordResetResult> {
+        return safeApiCall {
+            val dto = apiService.resetPassword(email, code, newPassword)
+            mapper.toPasswordResetResult(dto)
+        }
+    }
+
+    // ======================================================
+    // SESSION
+    // ======================================================
+
+    override suspend fun logout(refreshToken: String): ApiResult<Unit> {
+        return safeApiCall {
+            val dto = authenticatedApiService.logout()
+            if (!dto.success) {
+                throw IllegalStateException(dto.message.ifBlank { "Logout failed" })
             }
 
-            // Decode payload (second part)
-            val payloadJson = decodeBase64Url(parts[1])
-
-            // Parse JSON
-            val jsonElement = Json.parseToJsonElement(payloadJson)
-            val jsonObject = jsonElement.jsonObject
-
-            // Extract fields from JWT payload (matching backend)
-            val userUuid = jsonObject["sub"]?.jsonPrimitive?.contentOrNull ?: ""
-            val tokenId = jsonObject["jti"]?.jsonPrimitive?.contentOrNull ?: ""
-            val emailFromToken = jsonObject["email"]?.jsonPrimitive?.contentOrNull ?: email
-            val accountId = jsonObject["accountId"]?.jsonPrimitive?.contentOrNull ?: ""
-            val role = jsonObject["role"]?.jsonPrimitive?.contentOrNull ?: "Individual"
-            val accountType = jsonObject["accountType"]?.jsonPrimitive?.contentOrNull
-            val organizationUuid = jsonObject["organizationUuid"]?.jsonPrimitive?.contentOrNull
-            val planSlug = jsonObject["planSlug"]?.jsonPrimitive?.contentOrNull
-
-            println("🔍 [JWT Decoded - Backend Structure]")
-            println("   - sub (userUuid): $userUuid")
-            println("   - jti (tokenId): $tokenId")
-            println("   - email: $emailFromToken")
-            println("   - accountId: $accountId")
-            println("   - role: $role")
-            println("   - accountType: $accountType")
-            println("   - organizationUuid: $organizationUuid")
-            println("   - planSlug: $planSlug")
-
-            // Get existing user from local DB for name fields (not in JWT)
-            val existingUser = userDao.getUserByEmail(emailFromToken)
-            val firstName = existingUser?.firstName ?: emailFromToken.substringBefore("@")
-            val lastName = existingUser?.lastName ?: ""
-            val userName = existingUser?.userName ?: firstName
-            val profileImage = existingUser?.profileImage
-            val phone = existingUser?.phone
-
-            User(
-                uuid = userUuid,
-                email = emailFromToken,
-                firstName = firstName,
-                lastName = lastName,
-                userName = userName,
-                personalPhone = phone,
-                profileImage = profileImage,
-                accessToken = accessToken,
-                refreshToken = refreshToken,
-                isAuthenticated = true,
-                // JWT payload fields
-                userUuid = userUuid,
-                accountId = accountId,
-                accountType = accountType,
-                tokenId = tokenId,
-                role = role,
-                organizationUuid = organizationUuid,
-                planSlug = planSlug,
-                // Account name will come from profile fetch
-                accountName = existingUser?.accountName ?: "",
-                primaryPurpose = existingUser?.primaryPurpose
-            )
-        } catch (e: Exception) {
-            println("🔍 [JWT Decode Error] ${e.message}")
-            e.printStackTrace()
-            // Fallback to basic user
-            User(
-                email = email,
-                isAuthenticated = true,
-                accessToken = accessToken,
-                refreshToken = refreshToken
-            )
+            // Clear local data on success
+            preferences.clearUserData()
+            userDao.deleteAll()
+            println("✅ Logout successful, local data cleared")
+        }.also { apiResult ->
+            // Even on error, clear local data so the user isn't stuck
+            if (apiResult is ApiResult.Error) {
+                println("❌ Logout API failed: ${apiResult.networkError.userFriendlyMessage}")
+                preferences.clearUserData()
+                userDao.deleteAll()
+            }
         }
     }
 
-    /**
-     * Decode Base64Url string to JSON string
-     */
-    private fun decodeBase64Url(base64Url: String): String {
-        // Convert Base64Url to standard Base64
-        var base64 = base64Url.replace('-', '+').replace('_', '/')
-        // Add padding if needed
-        when (base64.length % 4) {
-            2 -> base64 += "=="
-            3 -> base64 += "="
-        }
-        val decodedBytes = Base64.decode(base64, Base64.DEFAULT)
-        return String(decodedBytes, Charsets.UTF_8)
-    }
-
+    // ======================================================
+    // PERSISTENCE
+    // ======================================================
 
     override suspend fun saveAuthenticatedUser(user: User) {
-        // Save tokens to DataStore (simple key-value, more secure)
         user.accessToken?.let { preferences.saveAccessToken(it) }
         user.refreshToken?.let { preferences.saveRefreshToken(it) }
         preferences.saveUserEmail(user.email)
         preferences.markOnboardingComplete(true)
 
-        // Save user profile to Room Database (complex data, no tokens)
         val userEntity = UserEntity(
             uuid = user.uuid,
             email = user.email,
@@ -520,7 +331,6 @@ class AuthRepositoryImpl @Inject constructor(
         )
         userDao.insertUser(userEntity)
 
-        // Log user info for debugging
         println("🔍 [AuthRepositoryImpl] User saved successfully:")
         println("   - UUID: ${user.uuid}")
         println("   - Email: ${user.email}")
@@ -533,13 +343,21 @@ class AuthRepositoryImpl @Inject constructor(
         user.planSlug?.let { println("   - Plan Slug: $it") }
     }
 
+    override suspend fun setWelcomeScreenSeen() {
+        preferences.markWelcomeScreenSeen(true)
+    }
 
+    override suspend fun hasSeenWelcomeScreen(): Boolean {
+        return preferences.isWelcomeScreenSeen()
+    }
+
+    // ======================================================
+    // HELPERS (unchanged from your original, private to impl)
+    // ======================================================
 
     private suspend fun saveBasicUserInfo(user: User) {
-        // Save basic user info without tokens (for pre-fill after signup)
         preferences.saveUserEmail(user.email)
 
-        // Optionally save to Room as non-authenticated user
         val userEntity = UserEntity(
             uuid = user.uuid,
             email = user.email,
@@ -551,11 +369,149 @@ class AuthRepositoryImpl @Inject constructor(
         userDao.insertUser(userEntity)
     }
 
-    override suspend fun setWelcomeScreenSeen() {
-        preferences.markWelcomeScreenSeen(true)
+    private suspend fun updateLocalUserFromProfile(profile: CompleteProfileResult) {
+        try {
+            val existingUser = userDao.getUserByEmail(profile.user?.email ?: return)
+
+            val jobSeekerJson = profile.jobSeekerProfile?.let { Json.encodeToString(it) }
+            val skilledProfessionalJson = profile.skilledProfessionalProfile?.let { Json.encodeToString(it) }
+            val intermediaryAgentJson = profile.intermediaryAgentProfile?.let { Json.encodeToString(it) }
+            val housingSeekerJson = profile.housingSeekerProfile?.let { Json.encodeToString(it) }
+            val supportBeneficiaryJson = profile.supportBeneficiaryProfile?.let { Json.encodeToString(it) }
+            val employerJson = profile.employerProfile?.let { Json.encodeToString(it) }
+            val propertyOwnerJson = profile.propertyOwnerProfile?.let { Json.encodeToString(it) }
+            val organizationJson = profile.organizationProfile?.let { Json.encodeToString(it) }
+            val individualJson = profile.individualProfile?.let { Json.encodeToString(it) }
+            val verificationsJson = Json.encodeToString(profile.verifications)
+            val completionJson = profile.completion?.let { Json.encodeToString(it) }
+
+            val updatedUser = UserEntity(
+                uuid = profile.user?.uuid ?: existingUser?.uuid ?: "",
+                email = profile.user?.email ?: existingUser?.email ?: return,
+                firstName = profile.user?.firstName ?: existingUser?.firstName ?: "",
+                lastName = profile.user?.lastName ?: existingUser?.lastName ?: "",
+                userName = profile.displayName,
+                phone = profile.user?.personalPhone ?: existingUser?.phone,
+                profileImage = profile.profileImageUrl ?: existingUser?.profileImage,
+                isAuthenticated = existingUser?.isAuthenticated ?: true,
+                isOnboardingComplete = existingUser?.isOnboardingComplete ?: true,
+                hasSeenWelcomeScreen = existingUser?.hasSeenWelcomeScreen ?: true,
+                primaryPurpose = profile.user?.primaryPurpose ?: existingUser?.primaryPurpose,
+                role = profile.user?.role ?: existingUser?.role,
+                accountType = profile.accountType,
+                accountId = profile.account.uuid,
+                accountName = profile.account.name,
+                organizationUuid = existingUser?.organizationUuid,
+                planSlug = existingUser?.planSlug,
+                tokenId = existingUser?.tokenId,
+                jobSeekerPreferences = jobSeekerJson,
+                skilledProfessionalProfile = skilledProfessionalJson,
+                intermediaryAgentProfile = intermediaryAgentJson,
+                housingSeekerPreferences = housingSeekerJson,
+                supportBeneficiaryNeeds = supportBeneficiaryJson,
+                employerRequirements = employerJson,
+                propertyOwnerPortfolio = propertyOwnerJson,
+                organizationProfile = organizationJson,
+                individualProfile = individualJson,
+                verifications = verificationsJson,
+                profileCompletion = completionJson,
+                updatedAt = System.currentTimeMillis()
+            )
+
+            userDao.updateUser(updatedUser)
+            println("✅ Local user data updated from profile")
+        } catch (e: Exception) {
+            println("⚠️ Failed to update local user from profile: ${e.message}")
+            e.printStackTrace()
+        }
     }
 
-    override suspend fun hasSeenWelcomeScreen(): Boolean {
-        return preferences.isWelcomeScreenSeen()
+    private suspend fun extractUserFromToken(
+        email: String,
+        accessToken: String,
+        refreshToken: String?
+    ): User {
+        return try {
+            val parts = accessToken.split(".")
+            if (parts.size != 3) {
+                return User(
+                    email = email,
+                    isAuthenticated = true,
+                    accessToken = accessToken,
+                    refreshToken = refreshToken
+                )
+            }
+
+            val payloadJson = decodeBase64Url(parts[1])
+            val jsonElement = Json.parseToJsonElement(payloadJson)
+            val jsonObject = jsonElement.jsonObject
+
+            val userUuid = jsonObject["sub"]?.jsonPrimitive?.contentOrNull ?: ""
+            val tokenId = jsonObject["jti"]?.jsonPrimitive?.contentOrNull ?: ""
+            val emailFromToken = jsonObject["email"]?.jsonPrimitive?.contentOrNull ?: email
+            val accountId = jsonObject["accountId"]?.jsonPrimitive?.contentOrNull ?: ""
+            val role = jsonObject["role"]?.jsonPrimitive?.contentOrNull ?: "Individual"
+            val accountType = jsonObject["accountType"]?.jsonPrimitive?.contentOrNull
+            val organizationUuid = jsonObject["organizationUuid"]?.jsonPrimitive?.contentOrNull
+            val planSlug = jsonObject["planSlug"]?.jsonPrimitive?.contentOrNull
+
+            println("🔍 [JWT Decoded - Backend Structure]")
+            println("   - sub (userUuid): $userUuid")
+            println("   - jti (tokenId): $tokenId")
+            println("   - email: $emailFromToken")
+            println("   - accountId: $accountId")
+            println("   - role: $role")
+            println("   - accountType: $accountType")
+            println("   - organizationUuid: $organizationUuid")
+            println("   - planSlug: $planSlug")
+
+            val existingUser = userDao.getUserByEmail(emailFromToken)
+            val firstName = existingUser?.firstName ?: emailFromToken.substringBefore("@")
+            val lastName = existingUser?.lastName ?: ""
+            val userName = existingUser?.userName ?: firstName
+            val profileImage = existingUser?.profileImage
+            val phone = existingUser?.phone
+
+            User(
+                uuid = userUuid,
+                email = emailFromToken,
+                firstName = firstName,
+                lastName = lastName,
+                userName = userName,
+                personalPhone = phone,
+                profileImage = profileImage,
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+                isAuthenticated = true,
+                userUuid = userUuid,
+                accountId = accountId,
+                accountType = accountType,
+                tokenId = tokenId,
+                role = role,
+                organizationUuid = organizationUuid,
+                planSlug = planSlug,
+                accountName = existingUser?.accountName ?: "",
+                primaryPurpose = existingUser?.primaryPurpose
+            )
+        } catch (e: Exception) {
+            println("🔍 [JWT Decode Error] ${e.message}")
+            e.printStackTrace()
+            User(
+                email = email,
+                isAuthenticated = true,
+                accessToken = accessToken,
+                refreshToken = refreshToken
+            )
+        }
+    }
+
+    private fun decodeBase64Url(base64Url: String): String {
+        var base64 = base64Url.replace('-', '+').replace('_', '/')
+        when (base64.length % 4) {
+            2 -> base64 += "=="
+            3 -> base64 += "="
+        }
+        val decodedBytes = Base64.decode(base64, Base64.DEFAULT)
+        return String(decodedBytes, Charsets.UTF_8)
     }
 }

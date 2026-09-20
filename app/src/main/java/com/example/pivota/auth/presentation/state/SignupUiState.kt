@@ -9,7 +9,7 @@ sealed class SignupUiState {
     object OtpSent : SignupUiState()
 
     data class Success(
-        val message: String,
+        val message: String?,
         val redirectTo: String? = null,
         val accessToken: String? = null,
         val refreshToken: String? = null,
@@ -17,8 +17,8 @@ sealed class SignupUiState {
     ) : SignupUiState()
 
     data class PaymentRequired(
-        val message: String,
-        val redirectUrl: String,
+        val message: String?,
+        val redirectUrl: String?,
         val merchantReference: String?
     ) : SignupUiState()
 

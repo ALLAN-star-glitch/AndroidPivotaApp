@@ -1,87 +1,125 @@
 package com.example.pivota.auth.domain.repository
 
-import com.example.pivota.auth.data.remote.dto.BaseOtpResponseDto
-import com.example.pivota.auth.data.remote.dto.BaseResponseDto
-import com.example.pivota.auth.data.remote.dto.LoginResponseDto
-import com.example.pivota.auth.data.remote.dto.RefreshTokenResponseDto
-import com.example.pivota.auth.data.remote.dto.SignupResponseDto
-import com.example.pivota.auth.data.remote.dto.VerifyOtpResponseDto
 import com.example.pivota.auth.domain.model.LoginResponse
+import com.example.pivota.auth.domain.model.OtpRequestResult
+import com.example.pivota.auth.domain.model.OtpVerificationResult
+import com.example.pivota.auth.domain.model.PasswordResetResult
+import com.example.pivota.auth.domain.model.SignupResult
+import com.example.pivota.auth.domain.model.TokenRefreshResult
 import com.example.pivota.auth.domain.model.User
 import com.example.pivota.core.network.ApiResult
 
 interface AuthRepository {
 
-    /**
-     * Stage 1: Request OTP
-     * Backend returns: BaseOtpResponseDto (BaseResponseDto<Nothing>)
-     */
-    suspend fun requestOtp(email: String, purpose: String, phone: String? = null): ApiResult<BaseOtpResponseDto>
+    // ─────────────────────────────────────────────────────────
+    // OTP / Signup flow
+    // ─────────────────────────────────────────────────────────
 
     /**
-     * Stage 2: Verify OTP
-     * Backend returns: VerifyOtpResponseDto (BaseResponseDto<VerifyOtpDataDto>)
+     * Stage 1: Request OTP for signup / verification.
      */
-    suspend fun verifyOtp(email: String, code: String, purpose: String): ApiResult<VerifyOtpResponseDto>
+    suspend fun requestOtp(
+        email: String,
+        purpose: String,
+        phone: String? = null
+    ): ApiResult<OtpRequestResult>
 
     /**
-     * Stage 3: Individual Signup
-     * Backend returns: SignupResponseDto (BaseResponseDto<SignupSuccessDataDto>)
+     * Stage 2: Verify OTP code.
      */
-    suspend fun signupIndividual(user: User, code: String, password: String): ApiResult<SignupResponseDto>
+    suspend fun verifyOtp(
+        email: String,
+        code: String,
+        purpose: String
+    ): ApiResult<OtpVerificationResult>
 
     /**
-     * Stage 1: User Login
-     * Backend returns: LoginResponseDto (BaseResponseDto<LoginDataDto>)
+     * Stage 3: Complete individual signup after OTP verification.
      */
-    suspend fun login(email: String, password: String): ApiResult<LoginResponseDto>
+    suspend fun signupIndividual(
+        user: User,
+        code: String,
+        password: String
+    ): ApiResult<SignupResult>
+
+    // ─────────────────────────────────────────────────────────
+    // Login flow
+    // ─────────────────────────────────────────────────────────
 
     /**
-     * Stage 2: Verify MFA and Complete Login
-     * Backend returns: LoginResponseDto (BaseResponseDto<LoginDataDto>)
+     * Stage 1: Login with email + password.
+     * Returns either MfaRequired or Authenticated.
      */
-    suspend fun verifyMfaLogin(email: String, code: String): ApiResult<LoginResponseDto>
+    suspend fun login(
+        email: String,
+        password: String
+    ): ApiResult<LoginResponse>
 
     /**
-     * Google Sign-In - Login or Register using Google OAuth token
+     * Stage 2: Verify MFA code and complete login.
+     */
+    suspend fun verifyMfaLogin(
+        email: String,
+        code: String
+    ): ApiResult<LoginResponse>
+
+    /**
+     * Google Sign-In — login or register using a Google ID token.
      *
-     * @param idToken The Google ID token from the client
-     * @param onboardingData Optional onboarding data collected from previous screens
-     *                       (primaryPurpose, jobSeekerData, housingSeekerData, etc.)
-     * @return LoginResponseDto with tokens and user info (same as regular login)
+     * @param idToken       Google ID token from the client SDK.
+     * @param onboardingData Optional onboarding data (primaryPurpose, etc.).
      */
     suspend fun googleSignIn(
         idToken: String,
         onboardingData: Map<String, Any?>? = null
     ): ApiResult<LoginResponse>
 
-    /**
-     * Refresh expired access token
-     * Backend returns: RefreshTokenResponseDto (BaseResponseDto<RefreshTokenDataDto>)
-     */
-    suspend fun refreshToken(refreshToken: String): ApiResult<RefreshTokenResponseDto>
+    // ─────────────────────────────────────────────────────────
+    // Token lifecycle
+    // ─────────────────────────────────────────────────────────
 
     /**
-     * Request password reset OTP
-     * Backend returns: BaseOtpResponseDto (BaseResponseDto<Nothing>)
+     * Refresh an expired access token.
      */
-    suspend fun requestPasswordReset(email: String): ApiResult<BaseOtpResponseDto>
+    suspend fun refreshToken(
+        refreshToken: String
+    ): ApiResult<TokenRefreshResult>
+
+    // ─────────────────────────────────────────────────────────
+    // Password reset flow
+    // ─────────────────────────────────────────────────────────
 
     /**
-     * Reset password using OTP
-     * Backend returns: BaseResponseDto<Nothing>
+     * Request a password reset OTP for the given email.
      */
-    suspend fun resetPassword(email: String, code: String, newPassword: String): ApiResult<BaseResponseDto<Nothing>>
+    suspend fun requestPasswordReset(
+        email: String
+    ): ApiResult<OtpRequestResult>
 
     /**
-     * Logout user and invalidate tokens
-     * Backend returns: BaseResponseDto<Nothing>
+     * Reset password using the OTP code.
      */
-    suspend fun logout(refreshToken: String): ApiResult<BaseResponseDto<Nothing>>
+    suspend fun resetPassword(
+        email: String,
+        code: String,
+        newPassword: String
+    ): ApiResult<PasswordResetResult>
+
+    // ─────────────────────────────────────────────────────────
+    // Session
+    // ─────────────────────────────────────────────────────────
 
     /**
-     * Persistence & Navigation
+     * Logout — invalidate tokens on the backend.
      */
+    suspend fun logout(
+        refreshToken: String
+    ): ApiResult<Unit>
+
+    // ─────────────────────────────────────────────────────────
+    // Persistence & Navigation
+    // ─────────────────────────────────────────────────────────
+
     suspend fun saveAuthenticatedUser(user: User)
     suspend fun setWelcomeScreenSeen()
     suspend fun hasSeenWelcomeScreen(): Boolean

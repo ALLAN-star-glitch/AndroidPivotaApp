@@ -47,25 +47,24 @@ suspend inline fun <reified T> safeApiCall(
     } catch (e: ResponseException) {
         println("❌ HTTP Response Error: ${e.response.status.value} - ${e.response.status.description}")
         val handler = getNetworkExceptionHandlerSafely()
-        val networkError = if (handler != null) {
-            handler.handleHttpResponse(e.response)
-        } else {
-            // Fallback based on status code
+        val networkError = handler?.handleHttpResponse(e.response)
+            ?: // Fallback based on status code
             when (e.response.status.value) {
                 in 400..499 -> NetworkError.BadRequest(
                     originalMessage = e.message,
                     userFriendlyMessage = "Invalid request. Please try again."
                 )
+
                 in 500..599 -> NetworkError.ServerError(
                     originalMessage = e.message,
                     userFriendlyMessage = "Server error. Please try again later."
                 )
+
                 else -> NetworkError.Unknown(
                     originalMessage = e.message,
                     userFriendlyMessage = "An unexpected error occurred. Please try again."
                 )
             }
-        }
         println("❌ Mapped to error: ${networkError.message}")
         ApiResult.Error(networkError, e.message)
     } catch (e: NoTransformationFoundException) {
@@ -74,10 +73,8 @@ suspend inline fun <reified T> safeApiCall(
     } catch (e: Exception) {
         val handler = getNetworkExceptionHandlerSafely()
 
-        val networkError = if (handler != null) {
-            handler.handleException(e)
-        } else {
-            // Fallback based on exception type - FIXED to use NoInternet for ConnectException
+        val networkError = handler?.handleException(e)
+            ?: // Fallback based on exception type - FIXED to use NoInternet for ConnectException
             when (e) {
                 is ConnectException -> {
                     println("❌ Fallback: Assuming no internet connection for ConnectException")
@@ -86,6 +83,7 @@ suspend inline fun <reified T> safeApiCall(
                         userFriendlyMessage = "No internet connection. Please check your network."
                     )
                 }
+
                 is SocketTimeoutException -> {
                     println("❌ Fallback: Connection timeout")
                     NetworkError.Timeout(
@@ -93,6 +91,7 @@ suspend inline fun <reified T> safeApiCall(
                         userFriendlyMessage = "Connection timed out. Please try again."
                     )
                 }
+
                 is UnknownHostException -> {
                     println("❌ Fallback: DNS resolution failed")
                     NetworkError.NoInternet(
@@ -100,6 +99,7 @@ suspend inline fun <reified T> safeApiCall(
                         userFriendlyMessage = "No internet connection. Please check your network."
                     )
                 }
+
                 else -> {
                     println("❌ Fallback: Unknown error")
                     NetworkError.Unknown(
@@ -108,7 +108,6 @@ suspend inline fun <reified T> safeApiCall(
                     )
                 }
             }
-        }
 
         val isNetworkAvail = handler?.isNetworkAvailable(e) ?: false
 

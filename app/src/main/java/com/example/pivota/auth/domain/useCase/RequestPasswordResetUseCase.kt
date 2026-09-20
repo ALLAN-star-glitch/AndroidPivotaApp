@@ -1,42 +1,23 @@
 package com.example.pivota.auth.domain.useCase
 
+import com.example.pivota.auth.domain.model.OtpRequestResult
 import com.example.pivota.auth.domain.repository.AuthRepository
 import com.example.pivota.core.network.ApiResult
-import com.example.pivota.core.network.NetworkError
 import javax.inject.Inject
 
 class RequestPasswordResetUseCase @Inject constructor(
     private val repository: AuthRepository
 ) {
     /**
-     * Request password reset OTP
-     * @param email User's email
-     * @return ApiResult<Unit> - Success or error
+     * Request a password reset OTP for the given email.
+     *
+     * The repository is responsible for calling the backend and unwrapping the response
+     * envelope — a failed envelope is surfaced as [ApiResult.Error] by `safeApiCall`.
+     *
+     * @param email User's email.
+     * @return [OtpRequestResult] on success, [ApiResult.Error] otherwise.
      */
-    suspend operator fun invoke(email: String): ApiResult<Unit> {
-        return when (val result = repository.requestPasswordReset(email)) {
-            is ApiResult.Success -> {
-                val response = result.data
-
-                if (response.success) {
-                    ApiResult.Success(Unit)
-                } else {
-                    // ✅ FIXED: Use data class constructor
-                    ApiResult.Error(
-                        networkError = NetworkError.Unknown(
-                            originalMessage = response.message ?: "Password reset request failed"
-                        ),
-                        technicalMessage = response.message ?: "Password reset request failed"
-                    )
-                }
-            }
-            is ApiResult.Error -> {
-                // Pass through the network error (e.g., server unreachable, no internet)
-                result
-            }
-            ApiResult.Loading -> {
-                ApiResult.Loading
-            }
-        }
+    suspend operator fun invoke(email: String): ApiResult<OtpRequestResult> {
+        return repository.requestPasswordReset(email)
     }
 }

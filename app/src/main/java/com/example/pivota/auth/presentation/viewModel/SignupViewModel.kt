@@ -332,7 +332,6 @@ class SignupViewModel @Inject constructor(
                 }
                 is ApiResult.Error -> {
                     println("🔍 STEP 2: OTP request FAILED: ${result.technicalMessage}")
-                    // ✅ FIXED: Use getUserFriendlyMessage() like LoginViewModel
                     val errorMessage = result.getUserFriendlyMessage()
                     _uiState.value = SignupUiState.Error(errorMessage)
                     showMainSnackbar(errorMessage, SnackbarType.ERROR)
@@ -364,7 +363,6 @@ class SignupViewModel @Inject constructor(
                     _shouldCloseDialog.value = false
                 }
                 is ApiResult.Error -> {
-                    // ✅ FIXED: Use getUserFriendlyMessage() like LoginViewModel
                     val errorMessage = result.getUserFriendlyMessage()
                     showDialogSnackbar(errorMessage, SnackbarType.ERROR)
                     _shouldCloseDialog.value = true
@@ -418,14 +416,12 @@ class SignupViewModel @Inject constructor(
 
             when (result) {
                 is ApiResult.Success -> {
-                    val signupData = result.data
+                    val signup = result.data
 
                     when {
-                        !signupData.accessToken.isNullOrEmpty() -> {
+                        // Auto-login: tokens present (repository already persisted the user)
+                        signup.isAutoLoggedIn -> {
                             println("🔍 Signup successful with tokens - auto-login")
-
-                            datastore.saveTokens(signupData.accessToken, signupData.refreshToken ?: "")
-                            datastore.saveUserEmail(user.email)
 
                             val userEntity = userDao.getUserByEmail(user.email)
 
@@ -438,8 +434,8 @@ class SignupViewModel @Inject constructor(
                                     userName = userEntity.userName,
                                     personalPhone = userEntity.phone,
                                     profileImage = userEntity.profileImage,
-                                    accessToken = signupData.accessToken,
-                                    refreshToken = signupData.refreshToken,
+                                    accessToken = signup.accessToken,
+                                    refreshToken = signup.refreshToken,
                                     isAuthenticated = true,
                                     primaryPurpose = userEntity.primaryPurpose,
                                     role = userEntity.role,
@@ -454,35 +450,38 @@ class SignupViewModel @Inject constructor(
                                 User(
                                     email = user.email,
                                     isAuthenticated = true,
-                                    accessToken = signupData.accessToken,
-                                    refreshToken = signupData.refreshToken
+                                    accessToken = signup.accessToken,
+                                    refreshToken = signup.refreshToken
                                 )
                             }
 
-                            datastore.clear()
+                            // Clear pre-signup onboarding scratch data only
+                            clearOnboardingData()
                             clearCache()
                             _uiState.value = SignupUiState.Success(
-                                message = signupData.message,
-                                redirectTo = signupData.redirectTo ?: "/dashboard",
-                                accessToken = signupData.accessToken,
-                                refreshToken = signupData.refreshToken ?: "",
+                                message = signup.message,
+                                redirectTo = signup.redirectTo ?: "/dashboard",
+                                accessToken = signup.accessToken,
+                                refreshToken = signup.refreshToken ?: "",
                                 user = authenticatedUser
                             )
                         }
-                        !signupData.redirectUrl.isNullOrEmpty() -> {
+                        // Payment required: no tokens, redirect to payment gateway
+                        signup.requiresPayment -> {
                             println("🔍 Payment required - redirect to payment")
                             _uiState.value = SignupUiState.PaymentRequired(
-                                message = signupData.message,
-                                redirectUrl = signupData.redirectUrl,
-                                merchantReference = signupData.merchantReference
+                                message = signup.message,
+                                redirectUrl = signup.redirectUrl,
+                                merchantReference = signup.merchantReference
                             )
                         }
+                        // Plain success, no tokens: user should log in manually
                         else -> {
                             println("🔍 Signup successful without tokens")
-                            datastore.clear()
+                            clearOnboardingData()
                             clearCache()
                             _uiState.value = SignupUiState.Success(
-                                message = signupData.message,
+                                message = signup.message,
                                 redirectTo = "/login"
                             )
                         }
@@ -490,7 +489,6 @@ class SignupViewModel @Inject constructor(
                 }
                 is ApiResult.Error -> {
                     println("🔍 SIGNUP ERROR: ${result.technicalMessage}")
-                    // ✅ FIXED: Use getUserFriendlyMessage() like LoginViewModel
                     val errorMessage = result.getUserFriendlyMessage()
                     _uiState.value = SignupUiState.Error(errorMessage)
                     showDialogSnackbar(errorMessage, SnackbarType.ERROR)
@@ -539,34 +537,9 @@ class SignupViewModel @Inject constructor(
                     val loginResponse = result.data
                     when (loginResponse) {
                         is LoginResponse.Authenticated -> {
+                            // Repository has already persisted the user + tokens
+                            // via saveAuthenticatedUser inside googleSignIn.
                             val user = loginResponse.user
-
-                            datastore.saveTokens(loginResponse.accessToken, loginResponse.refreshToken)
-                            datastore.saveUserEmail(user.email)
-                            datastore.markOnboardingComplete(true)
-
-                            val userEntity = com.example.pivota.core.database.entity.UserEntity(
-                                uuid = user.uuid,
-                                email = user.email,
-                                firstName = user.firstName,
-                                lastName = user.lastName,
-                                userName = user.userName,
-                                phone = user.personalPhone,
-                                profileImage = user.profileImage,
-                                isAuthenticated = true,
-                                isOnboardingComplete = true,
-                                hasSeenWelcomeScreen = true,
-                                primaryPurpose = user.primaryPurpose,
-                                role = user.role,
-                                accountType = user.accountType,
-                                accountId = user.accountId,
-                                accountName = user.accountName,
-                                organizationUuid = user.organizationUuid,
-                                planSlug = user.planSlug,
-                                tokenId = user.tokenId,
-                                updatedAt = System.currentTimeMillis()
-                            )
-                            userDao.insertUser(userEntity)
 
                             clearOnboardingData()
 
@@ -584,7 +557,6 @@ class SignupViewModel @Inject constructor(
                     }
                 }
                 is ApiResult.Error -> {
-                    // ✅ FIXED: Use getUserFriendlyMessage() like LoginViewModel
                     val errorMessage = result.getUserFriendlyMessage()
                     _googleSignInState.value = GoogleSignInState.Error(errorMessage)
                     showMainSnackbar(errorMessage, SnackbarType.ERROR)

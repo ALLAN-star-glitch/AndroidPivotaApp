@@ -2,41 +2,22 @@ package com.example.pivota.auth.domain.useCase
 
 import com.example.pivota.auth.domain.repository.AuthRepository
 import com.example.pivota.core.network.ApiResult
-import com.example.pivota.core.network.NetworkError
 import javax.inject.Inject
 
 class LogoutUseCase @Inject constructor(
     private val repository: AuthRepository
 ) {
     /**
-     * Logout user and clear local session
-     * @param refreshToken User's refresh token
-     * @return ApiResult<Unit> - Success or error
+     * Logout user and clear local session.
+     *
+     * The repository is responsible for:
+     *  - calling the backend to invalidate the refresh token,
+     *  - clearing local tokens and Room data — even if the API call fails.
+     *
+     * @param refreshToken User's refresh token.
+     * @return [ApiResult.Success] on completion, [ApiResult.Error] otherwise.
      */
     suspend operator fun invoke(refreshToken: String): ApiResult<Unit> {
-        return when (val result = repository.logout(refreshToken)) {
-            is ApiResult.Success -> {
-                val response = result.data
-
-                if (response.success) {
-                    ApiResult.Success(Unit)
-                } else {
-                    // ✅ FIXED: Use data class constructor
-                    ApiResult.Error(
-                        networkError = NetworkError.Unknown(
-                            originalMessage = response.message ?: "Logout failed"
-                        ),
-                        technicalMessage = response.message ?: "Logout failed"
-                    )
-                }
-            }
-            is ApiResult.Error -> {
-                // Pass through the network error (e.g., server unreachable, no internet)
-                result
-            }
-            ApiResult.Loading -> {
-                ApiResult.Loading
-            }
-        }
+        return repository.logout(refreshToken)
     }
 }

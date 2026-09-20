@@ -1,45 +1,25 @@
 package com.example.pivota.auth.domain.useCase
 
+import com.example.pivota.auth.domain.model.TokenRefreshResult
 import com.example.pivota.auth.domain.repository.AuthRepository
 import com.example.pivota.core.network.ApiResult
-import com.example.pivota.core.network.NetworkError
 import javax.inject.Inject
 
 class RefreshTokenUseCase @Inject constructor(
     private val repository: AuthRepository
 ) {
     /**
-     * Refresh access token using refresh token
-     * @param refreshToken Current refresh token
-     * @return ApiResult<Pair<String, String>> (accessToken, refreshToken)
+     * Refresh the access token using the current refresh token.
+     *
+     * The repository is responsible for:
+     *  - calling the backend,
+     *  - unwrapping the response envelope,
+     *  - persisting the new tokens via [PivotaDataStore].
+     *
+     * @param refreshToken Current refresh token.
+     * @return [TokenRefreshResult] with the new access/refresh pair, or [ApiResult.Error].
      */
-    suspend operator fun invoke(refreshToken: String): ApiResult<Pair<String, String>> {
-        return when (val result = repository.refreshToken(refreshToken)) {
-            is ApiResult.Success -> {
-                val response = result.data
-
-                if (response.success && response.data != null) {
-                    val accessToken = response.data.accessToken
-                    val newRefreshToken = response.data.refreshToken
-
-                    ApiResult.Success(accessToken to newRefreshToken)
-                } else {
-                    // ✅ FIXED: Use data class constructor
-                    ApiResult.Error(
-                        networkError = NetworkError.Unknown(
-                            originalMessage = response.message ?: "Token refresh failed"
-                        ),
-                        technicalMessage = response.message ?: "Token refresh failed"
-                    )
-                }
-            }
-            is ApiResult.Error -> {
-                // Pass through the network error (e.g., server unreachable, no internet)
-                result
-            }
-            ApiResult.Loading -> {
-                ApiResult.Loading
-            }
-        }
+    suspend operator fun invoke(refreshToken: String): ApiResult<TokenRefreshResult> {
+        return repository.refreshToken(refreshToken)
     }
 }

@@ -280,12 +280,14 @@ fun RegistrationFormContent(
                 showOtpDialog = false
                 isVerifying = false
                 val successState = uiState as SignupUiState.Success
-                onRegisterSuccess(
-                    successState.message,
-                    successState.accessToken ?: "",
-                    successState.refreshToken ?: "",
-                    successState.user
-                )
+                successState.message?.let {
+                    onRegisterSuccess(
+                        it,
+                        successState.accessToken ?: "",
+                        successState.refreshToken ?: "",
+                        successState.user
+                    )
+                }
                 viewModel.resetState()
             }
             is SignupUiState.PaymentRequired -> {

@@ -231,6 +231,12 @@ Your feedback helps us create a better user experience.
                 """.trimIndent()
             }
         }
+        create("benchmark") {
+            initWith(buildTypes.getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+        }
     }
 
     compileOptions {
@@ -255,6 +261,7 @@ Your feedback helps us create a better user experience.
 }
 
 dependencies {
+    implementation(libs.androidx.compose.remote.creation.core)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.runtime)
